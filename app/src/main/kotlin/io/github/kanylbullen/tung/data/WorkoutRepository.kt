@@ -76,6 +76,27 @@ class WorkoutRepository(
 
     suspend fun updateReps(setId: String, reps: Int) = dao.updateReps(setId, reps, clock())
 
+    /**
+     * "Apply to all sets" for weight: writes [weightKg] to [setId] and to every
+     * set of the workout exercise that is not ticked. Ticked sets stay as logged;
+     * the set being edited gets the value even if it is ticked.
+     */
+    suspend fun updateWeightForOpenSets(workoutExerciseId: String, setId: String, weightKg: Double) =
+        db.withTransaction {
+            val now = clock()
+            openSetIds(workoutExerciseId, setId).forEach { dao.updateWeight(it, weightKg, now) }
+        }
+
+    /** "Apply to all sets" for reps; see [updateWeightForOpenSets]. */
+    suspend fun updateRepsForOpenSets(workoutExerciseId: String, setId: String, reps: Int) =
+        db.withTransaction {
+            val now = clock()
+            openSetIds(workoutExerciseId, setId).forEach { dao.updateReps(it, reps, now) }
+        }
+
+    private suspend fun openSetIds(workoutExerciseId: String, setId: String): List<String> =
+        dao.getSets(workoutExerciseId).filter { it.id == setId || !it.completed }.map { it.id }
+
     suspend fun setCompleted(setId: String, completed: Boolean) = dao.setCompleted(setId, completed, clock())
 
     suspend fun deleteSet(setId: String) = dao.deleteSet(setId)

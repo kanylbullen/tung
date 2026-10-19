@@ -81,6 +81,7 @@
         <item quantity="one">%d rep</item>
         <item quantity="other">%d reps</item>
     </plurals>
+    <string name="input_apply_all">Gäller alla set</string>
 
     <!-- Exercises -->
     <string name="exercises_title">Övningar</string>

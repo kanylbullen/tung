@@ -193,8 +193,9 @@ fun ActiveWorkoutScreen(
     }
 
     editing?.let { target ->
-        val set = state.findSet(target.setId)
-        if (set == null) {
+        val exercise = state.findExerciseOf(target.setId)
+        val set = exercise?.sets?.firstOrNull { it.id == target.setId }
+        if (exercise == null || set == null) {
             LaunchedEffect(target) { editing = null }
         } else {
             NumberInputSheet(
@@ -202,11 +203,18 @@ fun ActiveWorkoutScreen(
                     Field.WEIGHT -> weightSpec(localWeight(set.weightKg))
                     Field.REPS -> repsSpec(set.reps.toString())
                 },
+                // Only offered when another un-ticked set would take the value.
+                showApplyToAll = exercise.sets.any { it.id != set.id && !it.completed },
                 onDismiss = { editing = null },
-                onConfirm = { text ->
+                onConfirm = { text, applyToAll ->
+                    val weId = exercise.workoutExerciseId
                     when (target.field) {
-                        Field.WEIGHT -> parseWeight(text)?.let { vm.setWeight(set.id, it) }
-                        Field.REPS -> parseReps(text)?.let { vm.setReps(set.id, it) }
+                        Field.WEIGHT -> parseWeight(text)?.let {
+                            if (applyToAll) vm.setWeightForOpenSets(weId, set.id, it) else vm.setWeight(set.id, it)
+                        }
+                        Field.REPS -> parseReps(text)?.let {
+                            if (applyToAll) vm.setRepsForOpenSets(weId, set.id, it) else vm.setReps(set.id, it)
+                        }
                     }
                     editing = null
                 },
