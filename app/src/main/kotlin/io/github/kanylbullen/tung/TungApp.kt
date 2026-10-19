@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.data.ExerciseRepository
+import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.data.fromAssets
@@ -20,6 +21,7 @@ class AppContainer(
 ) {
     private val database: TungDatabase by lazy { createDatabase(context) }
     val workoutRepository: WorkoutRepository by lazy { WorkoutRepository(database) }
+    val routineRepository: RoutineRepository by lazy { RoutineRepository(database) }
     val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database.exerciseDao()) }
     val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog.fromAssets(context) }
 }

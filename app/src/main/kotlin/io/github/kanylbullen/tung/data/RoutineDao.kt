@@ -52,6 +52,9 @@ interface RoutineDao {
     @Query("SELECT * FROM routine_exercise WHERE routineId = :routineId ORDER BY position")
     suspend fun getRoutineExercises(routineId: String): List<RoutineExercise>
 
+    @Query("SELECT * FROM routine_exercise WHERE id = :id")
+    suspend fun getRoutineExercise(id: String): RoutineExercise?
+
     @Query("UPDATE routine_exercise SET position = :position, updatedAt = :updatedAt WHERE id = :id")
     suspend fun setPosition(id: String, position: Int, updatedAt: Long)
 
