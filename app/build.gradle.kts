@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
 }
 
@@ -38,6 +39,15 @@ android {
 
     sourceSets.getByName("main") {
         java.srcDir("src/main/kotlin")
+        // catalog/core.json and catalog/extended.json ship as assets, read straight from the repo.
+        assets.srcDirs("../catalog")
+    }
+
+    androidResources {
+        // AGP's default pattern, plus what in catalog/ is not data: the tools, the README and
+        // the CC0 text. Assets have no per-directory exclude, so this pattern is the filter.
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~" +
+            ":!<dir>tools:!README.md:!LICENSE"
     }
     sourceSets.getByName("test") {
         java.srcDir("src/test/kotlin")
@@ -66,6 +76,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

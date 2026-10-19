@@ -57,10 +57,12 @@ No backend, no analytics, no network permission.
   Ollama), an operator key on self-hosted servers, or a small free monthly
   budget on our instance. Always on request, never in the background, and the
   app shows what it sends before it sends it.
-- **Open exercise catalogue.** The curated core is open data under CC0. A
-  broader English catalogue is imported from
+- **Open exercise catalogue.** The curated core is open data under CC0 in
+  [`catalog/core.json`](catalog/core.json); the app's seed list and strings
+  are generated from it. A broader English catalogue is imported from
   [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (Unlicense)
-  and reachable through search.
+  into `catalog/extended.json` and reachable through search in the picker.
+  See [`catalog/README.md`](catalog/README.md).
 
 ## Building
 

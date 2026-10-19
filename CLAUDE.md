@@ -18,10 +18,11 @@ repositoryn lazy. ViewModels skapas med `viewModel(factory = factoryOf { ... })`
 | Katalog | Innehåll |
 |---|---|
 | `domain/` | Rena funktioner utan Android: volym, bästa set, rekord, förifyllning, vikt-parsing/-formatering, diakritikokänslig sökning, `MuscleGroup`/`Equipment`. Allt som går att testa på JVM bor här. |
-| `data/` | Entities, `ExerciseDao`, `WorkoutDao`, `TungDatabase` (seedar ~70 övningar i `onCreate`), `ExerciseRepository`, `WorkoutRepository`. |
+| `data/` | Entities, `ExerciseDao`, `WorkoutDao`, `TungDatabase` (seedar kärnkatalogens 70 övningar i `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `ExtendedCatalog`. `SeedExercises.kt` är genererad. |
 | `ui/<skärm>/` | `Screen` + `ViewModel` + `UiState` per skärm: `home`, `workout` (pågående pass + inmatningsarket), `exercises` (flik och väljare i ett), `history` (lista + detalj), `summary`. |
 | `ui/common/` | Formatering, delade komponenter, `WorkoutReport`, `ExerciseNames` (visade övningsnamn). |
 | `ui/theme/` | Färgtokens, typografi, tema. |
+| `../catalog/` | Övningskatalogen som öppen data (CC0): `core.json`, `extended.json`, generator- och importskript. Ligger som asset-katalog i APK:n. Se `catalog/README.md`. |
 
 Appens viktigaste query är `WorkoutDao.previousSessionSets` — set för en övning
 från senaste avslutade pass som innehåller den. Den driver både "Förra: 80 × 8"
@@ -51,11 +52,31 @@ telefonens språk. `name` lagras ändå, som svensk reserv. Egna övningar har
 varje nyckel med `getIdentifier` en gång och cachar id:t. Sök i väljaren går
 mot det **visade** namnet (`domain.filterByDisplayName`), aldrig mot `name` i SQL.
 
-Ett nytt katalognamn kräver tre ändringar: raden i `data/SeedExercises.kt`,
-`ex_<nyckel>` i `res/values/strings.xml` och i `res/values-en/strings.xml`.
-Engelska namn är gym-engelska (Lat pulldown, Skull crusher), inte
-ordagranna översättningar. Kontroll: `grep -c 'name="ex_'` i båda filerna ska
-vara lika med antalet rader i seedlistan.
+**Sanningen är `catalog/core.json`**, inte Kotlin eller strängarna.
+`data/SeedExercises.kt` och `ex_*`-raderna mellan `<!-- catalog:begin -->` och
+`<!-- catalog:end -->` i båda `strings.xml` genereras av
+`catalog/tools/gen_android.py`; redigera dem aldrig för hand. Lägga till en
+övning = lägg posten i `core.json` (sorterad på `key`, `sv` och `en`
+obligatoriska) och kör `python3 -I catalog/tools/gen_android.py`; tre filer
+uppdateras och alla fyra committas. `--check` skriver inget och avslutar med 1
+om något är inaktuellt, och `CatalogTest` jämför `core.json` med seedlistan.
+Engelska namn är gym-engelska (Lat pulldown, Skull crusher), inte ordagranna
+översättningar. En `key` byts aldrig när den väl finns: den bär övningens id.
+
+### Utökade katalogen
+
+`catalog/extended.json` (~600 övningar, bara engelska, ur free-exercise-db
+under Unlicense, byggd av `catalog/tools/import_free_exercise_db.py`) ligger
+**inte** i Room. `ExtendedCatalog` läser den från assets en gång, lazy på IO,
+och bara övningsväljaren söker i den: från två tecken visas träffarna under
+rubriken "Fler övningar", med samma `filterByDisplayName`. Fliken Övningar
+visar den aldrig. När en sådan övning väljs gör
+`ExerciseRepository.getOrCreateExtended` get-or-create (insert med
+`OnConflictStrategy.IGNORE`) med det deterministiska id:t
+`extendedExerciseId(fedId)` = `catalogExerciseId("ext:" + fedId)`,
+`nameKey = null`, engelska namnet i `name` och `isCustom = false`. Samma övning
+får alltså samma rad på alla enheter, och därefter är den en vanlig övning
+(den syns i fliken och bland kärnträffarna, och försvinner ur "Fler övningar").
 
 Ett set räknas (`domain.isLogged`) när det är bockat **och** har reps > 0.
 "Avsluta pass" raderar allt annat, sedan övningar utan set, och ett pass utan
