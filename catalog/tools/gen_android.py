@@ -4,8 +4,8 @@
 catalog/core.json is the source of truth. This script writes:
 
   app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt
-  app/src/main/res/values/strings.xml      (sv, only between the catalog markers)
-  app/src/main/res/values-en/strings.xml   (en, only between the catalog markers)
+  app/src/main/res/values/strings.xml      (en, only between the catalog markers)
+  app/src/main/res/values-sv/strings.xml   (sv, only between the catalog markers)
 
 Run it from anywhere:  python3 -I catalog/tools/gen_android.py
 With --check it writes nothing and exits 1 if any file is out of date.
@@ -20,8 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / "catalog" / "core.json"
 KOTLIN = ROOT / "app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt"
 STRINGS = {
-    "sv": ROOT / "app/src/main/res/values/strings.xml",
-    "en": ROOT / "app/src/main/res/values-en/strings.xml",
+    "en": ROOT / "app/src/main/res/values/strings.xml",
+    "sv": ROOT / "app/src/main/res/values-sv/strings.xml",
 }
 
 # Same order as domain/Catalog.kt; the muscle-group order is the order in the Kotlin list.
