@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.data
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -23,6 +24,14 @@ abstract class TungDatabase : RoomDatabase() {
         fun build(context: Context): TungDatabase =
             Room.databaseBuilder(context, TungDatabase::class.java, "tung.db")
                 .addCallback(SeedCallback)
+                .build()
+
+        /** The same schema and seed in memory, for the JVM flow tests. The app never calls it. */
+        @VisibleForTesting
+        fun buildInMemory(context: Context): TungDatabase =
+            Room.inMemoryDatabaseBuilder(context, TungDatabase::class.java)
+                .addCallback(SeedCallback)
+                .allowMainThreadQueries()
                 .build()
     }
 
