@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Järn</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Hem</string>
+    <string name="nav_history">Historik</string>
+    <string name="nav_exercises">Övningar</string>
+    <string name="action_back">Tillbaka</string>
+    <string name="action_close">Stäng</string>
+    <string name="action_more">Fler val</string>
+    <string name="action_cancel">Avbryt</string>
+
+    <!-- Home -->
+    <string name="home_start_workout">Starta pass</string>
+    <string name="home_resume_workout">Fortsätt pass</string>
+    <string name="home_in_progress_since">Pågår sedan %1$s</string>
+    <string name="home_recent">Senaste passen</string>
+    <string name="home_empty">Inga pass än. Starta ditt första så hamnar det här.</string>
+    <string name="home_show_all">Visa alla</string>
+
+    <!-- Workout list rows and stats -->
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="volume_kg">%1$s kg</string>
+    <string name="row_separator">" · "</string>
+    <plurals name="exercise_count">
+        <item quantity="one">%d övning</item>
+        <item quantity="other">%d övningar</item>
+    </plurals>
+    <string name="stat_duration">Varaktighet</string>
+    <string name="stat_sets">Set</string>
+    <string name="stat_volume">Volym, kg</string>
+
+    <!-- Active workout -->
+    <string name="workout_finish">Avsluta pass</string>
+    <string name="workout_add_exercise">Lägg till övning</string>
+    <string name="workout_add_set">+ Set</string>
+    <string name="workout_add_set_description">Lägg till set i %1$s</string>
+    <string name="workout_empty">Lägg till en övning för att börja.</string>
+    <string name="workout_remove_exercise">Ta bort övning</string>
+    <string name="workout_exercise_menu">Val för %1$s</string>
+    <string name="workout_previous">Förra: %1$s × %2$d</string>
+    <string name="workout_unit_kg">kg</string>
+    <string name="workout_unit_reps">reps</string>
+    <string name="workout_reps_empty">–</string>
+    <string name="workout_set_number_description">Set %1$d</string>
+    <string name="workout_edit_weight">Ändra vikt, %1$s kilo</string>
+    <string name="workout_edit_reps">Ändra reps, %1$s</string>
+    <string name="workout_mark_done">Markera set %1$d som klart</string>
+    <string name="workout_mark_undone">Markera set %1$d som inte klart</string>
+    <string name="workout_delete_set">Ta bort set</string>
+    <string name="workout_delete">Ta bort</string>
+    <string name="workout_elapsed_description">Tid sedan start %1$s</string>
+    <string name="workout_finish_title">Avsluta pass?</string>
+    <string name="workout_finish_body">Set som inte är bockade och övningar utan set tas bort.</string>
+    <string name="workout_finish_body_empty">Inga set är bockade, så passet sparas inte.</string>
+    <string name="workout_keep_training">Fortsätt träna</string>
+    <string name="workout_discarded">Passet sparades inte eftersom inga set var bockade.</string>
+    <string name="workout_not_found">Passet finns inte längre. Gå tillbaka och starta ett nytt.</string>
+
+    <!-- Number input sheet -->
+    <string name="input_weight_title">Vikt</string>
+    <string name="input_reps_title">Reps</string>
+    <string name="input_minus_weight">Minska med 2,5 kilo</string>
+    <string name="input_plus_weight">Öka med 2,5 kilo</string>
+    <string name="input_minus_reps">Minska med en rep</string>
+    <string name="input_plus_reps">Öka med en rep</string>
+    <string name="input_minus">−</string>
+    <string name="input_plus">+</string>
+    <string name="input_done">Klar</string>
+    <string name="input_hint">Tryck på talet för att skriva.</string>
+    <string name="input_error_weight">Skriv en vikt mellan 0 och 999, till exempel 82,5.</string>
+    <string name="input_error_reps">Skriv ett heltal mellan 0 och 999.</string>
+    <string name="input_field_weight">Vikt i kilo</string>
+    <string name="input_field_reps">Antal reps</string>
+
+    <!-- Exercises -->
+    <string name="exercises_title">Övningar</string>
+    <string name="picker_title">Välj övning</string>
+    <string name="exercises_search">Sök övning</string>
+    <string name="exercises_clear_search">Rensa sökning</string>
+    <string name="exercises_no_match">Ingen övning heter så. Skapa den längst ned.</string>
+    <string name="exercises_create">Skapa övning</string>
+    <string name="exercises_custom">Egen</string>
+    <string name="create_title">Skapa övning</string>
+    <string name="create_name">Namn</string>
+    <string name="create_muscle">Muskelgrupp</string>
+    <string name="create_equipment">Utrustning</string>
+    <string name="create_save">Spara</string>
+    <string name="create_error_name">Skriv ett namn på övningen.</string>
+
+    <string name="muscle_chest">Bröst</string>
+    <string name="muscle_back">Rygg</string>
+    <string name="muscle_shoulders">Axlar</string>
+    <string name="muscle_biceps">Biceps</string>
+    <string name="muscle_triceps">Triceps</string>
+    <string name="muscle_legs">Ben</string>
+    <string name="muscle_glutes">Säte</string>
+    <string name="muscle_core">Bål</string>
+    <string name="muscle_fullbody">Helkropp</string>
+
+    <string name="equipment_barbell">Skivstång</string>
+    <string name="equipment_dumbbell">Hantlar</string>
+    <string name="equipment_machine">Maskin</string>
+    <string name="equipment_cable">Kabel</string>
+    <string name="equipment_bodyweight">Kroppsvikt</string>
+    <string name="equipment_other">Övrigt</string>
+
+    <!-- History -->
+    <string name="history_title">Historik</string>
+    <string name="history_empty">Avslutade pass hamnar här.</string>
+    <string name="detail_delete">Radera pass</string>
+    <string name="detail_delete_title">Radera pass?</string>
+    <string name="detail_delete_body">Passet och alla dess set raderas. Det går inte att ångra.</string>
+    <string name="detail_delete_confirm">Radera</string>
+    <string name="detail_set_line">%1$s kg × %2$d</string>
+
+    <!-- Summary -->
+    <string name="summary_title">Pass klart</string>
+    <string name="summary_best_set">Bästa set</string>
+    <string name="summary_record">Nytt rekord</string>
+    <string name="summary_done">Klar</string>
+    <string name="times_sign">×</string>
+    <string name="set_value">%1$s × %2$d</string>
+</resources>

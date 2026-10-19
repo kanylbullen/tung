@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Järn</string>
+
+    <string name="nav_home">Home</string>
+    <string name="nav_history">History</string>
+    <string name="nav_exercises">Exercises</string>
+    <string name="action_back">Back</string>
+    <string name="action_close">Close</string>
+    <string name="action_more">More options</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="home_start_workout">Start workout</string>
+    <string name="home_resume_workout">Resume workout</string>
+    <string name="home_in_progress_since">In progress for %1$s</string>
+    <string name="home_recent">Recent workouts</string>
+    <string name="home_empty">No workouts yet. Start your first and it will show up here.</string>
+    <string name="home_show_all">Show all</string>
+
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="volume_kg">%1$s kg</string>
+    <string name="row_separator">" · "</string>
+    <plurals name="exercise_count">
+        <item quantity="one">%d exercise</item>
+        <item quantity="other">%d exercises</item>
+    </plurals>
+    <string name="stat_duration">Duration</string>
+    <string name="stat_sets">Sets</string>
+    <string name="stat_volume">Volume, kg</string>
+
+    <string name="workout_finish">Finish workout</string>
+    <string name="workout_add_exercise">Add exercise</string>
+    <string name="workout_add_set">+ Set</string>
+    <string name="workout_add_set_description">Add set to %1$s</string>
+    <string name="workout_empty">Add an exercise to begin.</string>
+    <string name="workout_remove_exercise">Remove exercise</string>
+    <string name="workout_exercise_menu">Options for %1$s</string>
+    <string name="workout_previous">Last: %1$s × %2$d</string>
+    <string name="workout_unit_kg">kg</string>
+    <string name="workout_unit_reps">reps</string>
+    <string name="workout_reps_empty">–</string>
+    <string name="workout_set_number_description">Set %1$d</string>
+    <string name="workout_edit_weight">Change weight, %1$s kilos</string>
+    <string name="workout_edit_reps">Change reps, %1$s</string>
+    <string name="workout_mark_done">Mark set %1$d as done</string>
+    <string name="workout_mark_undone">Mark set %1$d as not done</string>
+    <string name="workout_delete_set">Delete set</string>
+    <string name="workout_delete">Delete</string>
+    <string name="workout_elapsed_description">Time since start %1$s</string>
+    <string name="workout_finish_title">Finish workout?</string>
+    <string name="workout_finish_body">Sets that are not ticked and exercises without sets will be removed.</string>
+    <string name="workout_finish_body_empty">No sets are ticked, so the workout will not be saved.</string>
+    <string name="workout_keep_training">Keep training</string>
+    <string name="workout_discarded">The workout was not saved because no sets were ticked.</string>
+    <string name="workout_not_found">This workout no longer exists. Go back and start a new one.</string>
+
+    <string name="input_weight_title">Weight</string>
+    <string name="input_reps_title">Reps</string>
+    <string name="input_minus_weight">Decrease by 2.5 kilos</string>
+    <string name="input_plus_weight">Increase by 2.5 kilos</string>
+    <string name="input_minus_reps">Decrease by one rep</string>
+    <string name="input_plus_reps">Increase by one rep</string>
+    <string name="input_minus">−</string>
+    <string name="input_plus">+</string>
+    <string name="input_done">Done</string>
+    <string name="input_hint">Tap the number to type.</string>
+    <string name="input_error_weight">Enter a weight between 0 and 999, for example 82.5.</string>
+    <string name="input_error_reps">Enter a whole number between 0 and 999.</string>
+    <string name="input_field_weight">Weight in kilos</string>
+    <string name="input_field_reps">Number of reps</string>
+
+    <string name="exercises_title">Exercises</string>
+    <string name="picker_title">Choose exercise</string>
+    <string name="exercises_search">Search exercises</string>
+    <string name="exercises_clear_search">Clear search</string>
+    <string name="exercises_no_match">No exercise has that name. Create it at the bottom.</string>
+    <string name="exercises_create">Create exercise</string>
+    <string name="exercises_custom">Custom</string>
+    <string name="create_title">Create exercise</string>
+    <string name="create_name">Name</string>
+    <string name="create_muscle">Muscle group</string>
+    <string name="create_equipment">Equipment</string>
+    <string name="create_save">Save</string>
+    <string name="create_error_name">Enter a name for the exercise.</string>
+
+    <string name="muscle_chest">Chest</string>
+    <string name="muscle_back">Back</string>
+    <string name="muscle_shoulders">Shoulders</string>
+    <string name="muscle_biceps">Biceps</string>
+    <string name="muscle_triceps">Triceps</string>
+    <string name="muscle_legs">Legs</string>
+    <string name="muscle_glutes">Glutes</string>
+    <string name="muscle_core">Core</string>
+    <string name="muscle_fullbody">Full body</string>
+
+    <string name="equipment_barbell">Barbell</string>
+    <string name="equipment_dumbbell">Dumbbells</string>
+    <string name="equipment_machine">Machine</string>
+    <string name="equipment_cable">Cable</string>
+    <string name="equipment_bodyweight">Bodyweight</string>
+    <string name="equipment_other">Other</string>
+
+    <string name="history_title">History</string>
+    <string name="history_empty">Finished workouts show up here.</string>
+    <string name="detail_delete">Delete workout</string>
+    <string name="detail_delete_title">Delete workout?</string>
+    <string name="detail_delete_body">The workout and all its sets will be deleted. This cannot be undone.</string>
+    <string name="detail_delete_confirm">Delete</string>
+    <string name="detail_set_line">%1$s kg × %2$d</string>
+
+    <string name="summary_title">Workout done</string>
+    <string name="summary_best_set">Best set</string>
+    <string name="summary_record">New record</string>
+    <string name="summary_done">Done</string>
+    <string name="times_sign">×</string>
+    <string name="set_value">%1$s × %2$d</string>
+</resources>
