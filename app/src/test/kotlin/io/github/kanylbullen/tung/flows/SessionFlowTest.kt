@@ -149,6 +149,23 @@ class SessionFlowTest : FlowTest() {
         assertEquals(workoutId, activeWorkoutId())
     }
 
+    /**
+     * Someone starts their very first workout and goes back to Home: it offers
+     * "Resume workout" and how long the workout has been going, and does not
+     * also claim there are no workouts yet.
+     */
+    @Test
+    fun homeWithTheFirstWorkoutInProgressIsNotEmpty() {
+        waitForText(str(R.string.home_empty))
+        startWorkoutFromHome()
+
+        clickDescription(str(R.string.action_back))
+        waitForText(str(R.string.home_resume_workout))
+        compose.onNode(hasText(str(R.string.home_empty))).assertDoesNotExist()
+        compose.onNode(hasText(str(R.string.home_recent))).assertDoesNotExist()
+        screenshot("1-home-first-in-progress")
+    }
+
     private fun activeWorkoutId(): String =
         db.openHelper.readableDatabase.query("SELECT id FROM workout WHERE endedAt IS NULL")
             .use { c -> check(c.count == 1) { "expected one active workout, found ${c.count}" }; c.moveToFirst(); c.getString(0) }
