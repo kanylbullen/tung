@@ -1,5 +1,8 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -77,6 +83,11 @@ fun NumberInputSheet(
     var field by remember {
         mutableStateOf(TextFieldValue(spec.initialText, TextRange(spec.initialText.length)))
     }
+    // Tapping the number selects all of it, so typing replaces the value instead of
+    // appending to it (#7). The text field places the caret itself after a tap, so
+    // the tap is noted here and that caret move is turned into a select-all.
+    var focused by remember { mutableStateOf(false) }
+    var tapped by remember { mutableStateOf(false) }
     val valid = spec.isValid(field.text)
     val confirm = { if (valid) onConfirm(field.text) }
 
@@ -99,7 +110,14 @@ fun NumberInputSheet(
             Text(spec.title, style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
             BasicTextField(
                 value = field,
-                onValueChange = { new -> field = new.copy(text = spec.sanitize(new.text)) },
+                onValueChange = { new ->
+                    field = if (tapped && new.text == field.text) {
+                        new.selectAll()
+                    } else {
+                        new.copy(text = spec.sanitize(new.text))
+                    }
+                    tapped = false
+                },
                 singleLine = true,
                 textStyle = Tung.numbers.huge.copy(color = Tung.colors.text, textAlign = TextAlign.Center),
                 cursorBrush = SolidColor(Tung.colors.accent),
@@ -108,6 +126,17 @@ fun NumberInputSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
+                    .onFocusChanged { state ->
+                        if (state.hasFocus && !focused) field = field.selectAll()
+                        focused = state.hasFocus
+                    }
+                    .pointerInput(Unit) {
+                        // Initial pass: seen before the text field handles the same tap.
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            if (waitForUpOrCancellation(PointerEventPass.Initial) != null) tapped = true
+                        }
+                    }
                     .semantics { contentDescription = spec.fieldDescription },
             )
             Text(spec.unit, style = MaterialTheme.typography.titleLarge, color = Tung.colors.muted)
@@ -121,9 +150,11 @@ fun NumberInputSheet(
             Spacer(Modifier.height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StepButton(spec.minusText, spec.minusDescription, Modifier.weight(1f)) {
+                    tapped = false
                     field = spec.step(field.text, -1).let { TextFieldValue(it, TextRange(it.length)) }
                 }
                 StepButton(spec.plusText, spec.plusDescription, Modifier.weight(1f)) {
+                    tapped = false
                     field = spec.step(field.text, 1).let { TextFieldValue(it, TextRange(it.length)) }
                 }
             }
@@ -132,6 +163,8 @@ fun NumberInputSheet(
         }
     }
 }
+
+private fun TextFieldValue.selectAll() = copy(selection = TextRange(0, text.length))
 
 @Composable
 private fun StepButton(symbol: String, description: String, modifier: Modifier, onClick: () -> Unit) {
