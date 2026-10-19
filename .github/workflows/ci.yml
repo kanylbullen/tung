@@ -36,7 +36,7 @@ jobs:
       # separate SDK setup step is needed. Build-tools and platform 35 are
       # fetched by AGP on demand if missing.
       # `test` covers both modules: :core:test (the Android-free domain module)
-      # and the app's unit tests.
+      # and the app's unit tests, including the Robolectric flow tests.
       - name: Build debug APK and run unit tests
         run: ./gradlew assembleDebug test --no-daemon --stacktrace
 
@@ -46,6 +46,17 @@ jobs:
         with:
           name: unit-test-results
           path: "**/build/test-results/**"
+          if-no-files-found: ignore
+
+      # PNGs of every screen the Robolectric flow tests pass through, for a
+      # human to look at. Also uploaded when a flow test fails: that is when
+      # the picture matters most.
+      - name: Upload flow test screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flow-screenshots
+          path: app/build/reports/flow-screenshots/
           if-no-files-found: ignore
 
       - name: Upload debug APK

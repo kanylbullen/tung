@@ -155,6 +155,36 @@ debug and the release variant). Only the core tests, fast and without AGP:
 APK: `app/build/outputs/apk/debug/app-debug.apk`. The first build downloads
 dependencies and takes a few minutes.
 
+## Flow tests
+
+`app/src/test/kotlin/io/github/kanylbullen/tung/flows/` drives the real
+screens: `MainActivity`, the nav graph, the ViewModels and a real Room
+database, held in memory. They run on the JVM under Robolectric (SDK 34,
+native graphics) with Compose UI testing — no emulator, no device — and are
+part of `./gradlew test`. Only them:
+
+```sh
+./gradlew :app:testDebugUnitTest --tests 'io.github.kanylbullen.tung.flows.*' --no-daemon
+```
+
+- `FlowTestApp` (named in `src/test/resources/robolectric.properties`)
+  overrides `TungApp.createContainer()` to hand `AppContainer` an in-memory
+  `TungDatabase.buildInMemory`, same schema and seed. That is the only test
+  seam in production code.
+- Assertions are on semantics, with text from the English string resources
+  (`str(R.string.…)`), never on pixels. Room works on its own threads, so wait
+  (`waitForText`, `assertShown`) rather than assert right after a tap.
+- Each test also saves PNGs of the screens it passes through to
+  `app/build/reports/flow-screenshots/<test>-<step>.png`; CI uploads them as
+  the `flow-screenshots` artifact. Only `testDebugUnitTest` writes them (the
+  release variant runs the same flows), and the directory is a declared task
+  output, so a run restored from the build cache restores them too. They are
+  drawn with `View.draw`, because `captureToImage()` times out under
+  Robolectric on API 34.
+- **A UI change that breaks a flow test is a UI bug until proven otherwise.**
+  Change the test only when the behaviour change is intended, and say so in
+  the commit.
+
 ## Design: the numbers are the content
 
 The app is used with one hand, between sets, in poor light, with tired eyes.
