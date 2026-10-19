@@ -364,28 +364,39 @@ private fun SwipeableSetRow(
         },
     )
     val deleteLabel = stringResource(R.string.workout_delete_set)
+    // The accessible way to delete: a custom action on every part of the row a
+    // screen reader can focus. The row container itself is never focused, so an
+    // action there would be out of reach.
+    val deleteAction = remember(deleteLabel) {
+        listOf(CustomAccessibilityAction(deleteLabel) { currentOnDelete(); true })
+    }
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = false,
         backgroundContent = {
+            // Always composed under the row; hidden from screen readers until a swipe reveals it,
+            // or TalkBack would read "Delete" on every set.
+            val settled = dismissState.dismissDirection == SwipeToDismissBoxValue.Settled
             Box(
-                modifier = Modifier.fillMaxSize().background(Tung.colors.border).padding(horizontal = 24.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (settled) Modifier.clearAndSetSemantics {} else Modifier)
+                    .background(Tung.colors.border)
+                    .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.CenterEnd,
             ) {
                 Text(stringResource(R.string.workout_delete), color = Tung.colors.text)
             }
         },
-        modifier = Modifier.semantics {
-            customActions = listOf(CustomAccessibilityAction(deleteLabel) { currentOnDelete(); true })
-        },
     ) {
-        SetRow(set, onEditWeight, onEditReps, onToggle)
+        SetRow(set, deleteAction, onEditWeight, onEditReps, onToggle)
     }
 }
 
 @Composable
 private fun SetRow(
     set: ActiveSetUi,
+    deleteAction: List<CustomAccessibilityAction>,
     onEditWeight: () -> Unit,
     onEditReps: () -> Unit,
     onToggle: () -> Unit,
@@ -408,7 +419,10 @@ private fun SetRow(
             modifier = Modifier
                 .width(32.dp)
                 .padding(start = 8.dp)
-                .semantics { contentDescription = setDescription },
+                .semantics {
+                    contentDescription = setDescription
+                    customActions = deleteAction
+                },
         )
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -416,6 +430,7 @@ private fun SetRow(
                     value = weight,
                     unit = stringResource(R.string.workout_unit_kg),
                     description = stringResource(R.string.workout_edit_weight, weight),
+                    actions = deleteAction,
                     onClick = onEditWeight,
                 )
                 Text(stringResource(R.string.times_sign), style = Tung.numbers.inline, color = Tung.colors.muted)
@@ -423,6 +438,7 @@ private fun SetRow(
                     value = reps,
                     unit = stringResource(R.string.workout_unit_reps),
                     description = stringResource(R.string.workout_edit_reps, reps),
+                    actions = deleteAction,
                     onClick = onEditReps,
                 )
             }
@@ -435,12 +451,18 @@ private fun SetRow(
                 )
             }
         }
-        DoneCheck(number = set.number, completed = set.completed, onToggle = onToggle)
+        DoneCheck(number = set.number, completed = set.completed, actions = deleteAction, onToggle = onToggle)
     }
 }
 
 @Composable
-private fun NumberCell(value: String, unit: String, description: String, onClick: () -> Unit) {
+private fun NumberCell(
+    value: String,
+    unit: String,
+    description: String,
+    actions: List<CustomAccessibilityAction>,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
@@ -449,6 +471,7 @@ private fun NumberCell(value: String, unit: String, description: String, onClick
             .clearAndSetSemantics {
                 contentDescription = description
                 role = Role.Button
+                customActions = actions
             }
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.Bottom,
@@ -460,7 +483,12 @@ private fun NumberCell(value: String, unit: String, description: String, onClick
 }
 
 @Composable
-private fun DoneCheck(number: Int, completed: Boolean, onToggle: () -> Unit) {
+private fun DoneCheck(
+    number: Int,
+    completed: Boolean,
+    actions: List<CustomAccessibilityAction>,
+    onToggle: () -> Unit,
+) {
     val fill by animateColorAsState(if (completed) Tung.colors.accent else Color.Transparent, label = "check-fill")
     val ring by animateColorAsState(if (completed) Tung.colors.accent else Tung.colors.muted, label = "check-ring")
     val tint by animateColorAsState(if (completed) Tung.colors.onAccent else Color.Transparent, label = "check-tint")
@@ -472,7 +500,10 @@ private fun DoneCheck(number: Int, completed: Boolean, onToggle: () -> Unit) {
         modifier = Modifier
             .size(56.dp)
             .toggleable(value = completed, role = Role.Checkbox, onValueChange = { onToggle() })
-            .semantics { contentDescription = description },
+            .semantics {
+                contentDescription = description
+                customActions = actions
+            },
         contentAlignment = Alignment.Center,
     ) {
         Box(
