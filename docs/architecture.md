@@ -67,9 +67,34 @@
 | Identities | UUIDs generated on the client; catalogue exercises get deterministic UUIDs from `nameKey` | Two devices can create data offline without collisions, and the catalogue has the same id everywhere |
 | Sync | Per row: `updatedAt`, last write wins, tombstones for deletions | Training data rarely changes on two devices at the same time; simplicity beats CRDT here |
 | Exercise catalogue | Own curated core (70 exercises, sv + en) as open data under CC0; broader English catalogue imported from free-exercise-db (Unlicense), reached via search | The picker should show what you actually do, not 900 exercises. wger was rejected: CC-BY-SA would spread to the catalogue, and it has 3 of 932 exercises in Swedish |
+| Import | Adapters in `core/`, Jefit first, then Strong and Hevy; alias table in `catalog/`, review list for unmatched names, deterministic ids, source marked on the session | The import decides whether someone switches; it must be safe to run twice |
 | Health Connect | App-side only: write the session as strength training, read heart rate and calories, attach them to the session and sync them as columns | Health Connect has no server API; the server sees the values through sync like all other data |
 | AI | MCP first: the user's own assistant reads history and saves programs via `save_routine`. In-app as a second choice with BYOK, operator key or a small free budget | See the AI features section. MCP means we do not pay for tokens and the feature comes along with self-hosting; same validation whichever route |
 | Personal data | Never leaves the device unless sync is on. JSON export at any time. No analytics or telemetry in the app | It is the only part that is not open, and it should belong to the user |
+
+## Import from other apps
+
+Someone switching from Jefit, Strong or Hevy decides on the import. It is
+built as adapters in `core/`, pure parsing with no Android dependency, one
+adapter per source format recognised by its header row. Jefit first: its
+export is a single CSV with the whole account history, produced on the
+website under My Jefit, Settings, Data Controls, Export Data. Strong and Hevy
+have documented CSV formats and follow in the same frame.
+
+- **Exercise names map to catalogue keys** through an alias table in
+  `catalog/`, the same mechanism the free-exercise-db import uses. Rows that
+  do not match go to a review list where the person picks an exercise, skips
+  the row, or creates a custom exercise. Nothing is guessed silently.
+- **Idempotent.** Every imported row gets a deterministic UUID from the source
+  and the row content, so importing the same file twice adds nothing and an
+  interrupted import can be run again.
+- **Traceable.** Imported sessions carry their source, so old sets do not
+  trigger "new record" and an import can be undone in one step.
+- **Two entry points.** From a file in the app, and through the API on the
+  server once it exists, so an MCP client can import on request.
+
+The Jefit column layout is not documented anywhere public; the parser is
+written against a real export, not a guess.
 
 ## Health Connect
 
@@ -178,10 +203,13 @@ exercise that is not in the catalogue is discarded, not shown.
    ends; nothing is stored on the host except the Postgres volume; and the
    public hostname is ours, never the host's, so clients, API tokens and MCP
    registrations survive the move unchanged.
-9. **Health Connect:** write sessions after step 5 so the attached heart
+9. **Import from Jefit** in the app, written against a real export file;
+   Strong and Hevy after it. Needs step 3 (done) and the catalogue alias
+   table, not the server.
+10. **Health Connect:** write sessions after step 5 so the attached heart
    rate and calories sync; read support once the watch exists, since that is
    where the heart rate comes from.
-10. **Templates and in-app AI:** `Routine` in the data model already comes in
+11. **Templates and in-app AI:** `Routine` in the data model already comes in
    step 6 because `save_routine` needs it. In-app suggestions in BYOK mode
    after that, budget mode on our instance last, and only if the MCP route
    turns out to be too narrow for many people.
