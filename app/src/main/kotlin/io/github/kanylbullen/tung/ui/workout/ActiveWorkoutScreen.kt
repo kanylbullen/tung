@@ -277,7 +277,10 @@ private fun WorkoutList(
                 )
             }
             item(key = "add-${exercise.workoutExerciseId}") {
-                val description = stringResource(R.string.workout_add_set_description, exercise.name)
+                val description = stringResource(
+                    R.string.workout_add_set_description,
+                    exerciseDisplayName(exercise.nameKey, exercise.name),
+                )
                 TextButton(
                     onClick = { onAddSet(exercise.workoutExerciseId) },
                     modifier = Modifier
