@@ -176,8 +176,11 @@ part of `./gradlew test`. Only them:
   (`waitForText`, `assertShown`) rather than assert right after a tap.
 - Each test also saves PNGs of the screens it passes through to
   `app/build/reports/flow-screenshots/<test>-<step>.png`; CI uploads them as
-  the `flow-screenshots` artifact. They are drawn with `View.draw`, because
-  `captureToImage()` times out under Robolectric on API 34.
+  the `flow-screenshots` artifact. Only `testDebugUnitTest` writes them (the
+  release variant runs the same flows), and the directory is a declared task
+  output, so a run restored from the build cache restores them too. They are
+  drawn with `View.draw`, because `captureToImage()` times out under
+  Robolectric on API 34.
 - **A UI change that breaks a flow test is a UI bug until proven otherwise.**
   Change the test only when the behaviour change is intended, and say so in
   the commit.

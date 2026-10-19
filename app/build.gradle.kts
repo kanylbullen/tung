@@ -69,6 +69,27 @@ ksp {
     arg("room.generateKotlin", "true")
 }
 
+/**
+ * Where the flow tests save their screenshots, handed to the test JVM as a
+ * system property. Declared as an output so a test task restored from the
+ * build cache restores the PNGs too.
+ */
+abstract class FlowScreenshotsDir : CommandLineArgumentProvider {
+    @get:OutputDirectory
+    abstract val dir: DirectoryProperty
+
+    override fun asArguments(): List<String> = listOf("-Dtung.flowScreenshots=${dir.get().asFile.absolutePath}")
+}
+
+// Debug only: the release variant runs the same flows, and two tasks cannot share one output directory.
+tasks.withType<Test>().configureEach {
+    if (name == "testDebugUnitTest") {
+        jvmArgumentProviders += objects.newInstance<FlowScreenshotsDir>().apply {
+            dir.set(layout.buildDirectory.dir("reports/flow-screenshots"))
+        }
+    }
+}
+
 dependencies {
     implementation(project(":core"))
 

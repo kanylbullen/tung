@@ -182,19 +182,22 @@ abstract class FlowTest {
 
     /**
      * Saves the topmost window (a dialog or sheet if one is open, else the
-     * activity) as `<test>-<step>.png`. An artefact, not an assertion.
+     * activity) as `<test>-<step>.png` in `app/build/reports/flow-screenshots/`.
+     * An artefact, not an assertion; skipped when Gradle did not name a directory.
      *
      * Draws the window's view into a bitmap rather than using
      * `captureToImage()`: on API 34 that waits for a frame-commit callback,
      * which Robolectric never fires, and times out after two seconds.
      */
     protected fun screenshot(step: String) {
+        // Set by Gradle for testDebugUnitTest only (see app/build.gradle.kts).
+        val dir = System.getProperty("tung.flowScreenshots")?.let(::File) ?: return
         compose.waitForIdle()
         val roots = compose.onAllNodes(isRoot()).fetchSemanticsNodes()
         val view = (roots.last().root as ViewRootForTest).view.rootView
         val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
         compose.runOnUiThread { view.draw(Canvas(bitmap)) }
-        val dir = File("build/reports/flow-screenshots").apply { mkdirs() }
+        dir.mkdirs()
         File(dir, "${testName.methodName}-$step.png").outputStream().use {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
         }
