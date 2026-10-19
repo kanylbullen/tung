@@ -16,6 +16,9 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+        // The app's languages: English (values/, the default) and Swedish. Libraries bring
+        // dozens of locales of their own; only these ship. Same list as res/xml/locales_config.xml.
+        resourceConfigurations += listOf("en", "sv")
     }
 
     buildTypes {
@@ -44,6 +47,8 @@ android {
     }
 
     androidResources {
+        // res/xml/locales_config.xml is maintained by hand and referenced from the manifest.
+        generateLocaleConfig = false
         // AGP's default pattern, plus what in catalog/ is not data: the tools, the README and
         // the CC0 text. Assets have no per-directory exclude, so this pattern is the filter.
         ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~" +

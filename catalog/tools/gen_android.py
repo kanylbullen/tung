@@ -4,8 +4,16 @@
 catalog/core.json is the source of truth. This script writes:
 
   app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt
-  app/src/main/res/values/strings.xml      (sv, only between the catalog markers)
-  app/src/main/res/values-en/strings.xml   (en, only between the catalog markers)
+  app/src/main/res/values/strings.xml          (en, only between the catalog markers)
+  app/src/main/res/values-<lang>/strings.xml   (<lang>, only between the catalog markers)
+
+English is the default locale and the fallback: every entry needs name.en, and
+SeedExercises.kt stores the English name in `name`, which the app shows when no
+`ex_<key>` resource matches. Today the only translation is values-sv.
+
+A translation takes part when its values-<lang>/strings.xml contains the catalog
+markers; <lang> is the directory qualifier and the key in `name`. Entries without
+name.<lang> are left out of that file, so Android falls back to English for them.
 
 Run it from anywhere:  python3 -I catalog/tools/gen_android.py
 With --check it writes nothing and exits 1 if any file is out of date.
@@ -19,19 +27,31 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / "catalog" / "core.json"
 KOTLIN = ROOT / "app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt"
-STRINGS = {
-    "sv": ROOT / "app/src/main/res/values/strings.xml",
-    "en": ROOT / "app/src/main/res/values-en/strings.xml",
-}
+RES = ROOT / "app/src/main/res"
 
 # Same order as domain/Catalog.kt; the muscle-group order is the order in the Kotlin list.
 MUSCLE_GROUPS = ["chest", "back", "shoulders", "biceps", "triceps", "legs", "glutes", "core", "fullbody"]
 EQUIPMENT = ["barbell", "dumbbell", "machine", "cable", "bodyweight", "other"]
-LANGUAGES = ["sv", "en"]
+# The language of values/ and the fallback name; every entry must have it.
+DEFAULT_LANGUAGE = "en"
 
 BEGIN = "<!-- catalog:begin -->"
 END = "<!-- catalog:end -->"
-HEADER = "Genererad ur catalog/core.json, redigera inte. Kör catalog/tools/gen_android.py."
+HEADER = "Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py."
+
+
+def string_files():
+    """values/strings.xml is the default language; each values-<lang>/strings.xml with the markers is <lang>."""
+    files = {DEFAULT_LANGUAGE: RES / "values" / "strings.xml"}
+    for directory in sorted(RES.glob("values-*")):
+        path = directory / "strings.xml"
+        if not path.is_file() or BEGIN not in path.read_text(encoding="utf-8"):
+            continue
+        lang = directory.name[len("values-"):]
+        if lang in files:
+            sys.exit(f"{path}: {lang} is already {files[lang].relative_to(ROOT)}")
+        files[lang] = path
+    return files
 
 
 def load_core():
@@ -44,9 +64,11 @@ def load_core():
         if key in seen:
             sys.exit(f"core.json: duplicate key {key!r}")
         seen.add(key)
-        for lang in LANGUAGES:
-            if not e["name"].get(lang, "").strip():
-                sys.exit(f"core.json: {key} has no {lang} name")
+        if not e["name"].get(DEFAULT_LANGUAGE, "").strip():
+            sys.exit(f"core.json: {key} has no {DEFAULT_LANGUAGE} name")
+        for lang, name in e["name"].items():
+            if not name.strip():
+                sys.exit(f"core.json: {key} has an empty {lang} name")
         if e["muscleGroup"] not in MUSCLE_GROUPS:
             sys.exit(f"core.json: {key} has unknown muscleGroup {e['muscleGroup']!r}")
         if e["equipment"] not in EQUIPMENT:
@@ -88,7 +110,7 @@ def render_kotlin(entries):
     lines += [f"import io.github.kanylbullen.tung.domain.MuscleGroup.{m.upper()}" for m in muscles]
     lines += [
         "",
-        "/** A catalogue exercise: a stable [key] for `ex_<key>` and the Swedish [name] as fallback. */",
+        "/** A catalogue exercise: a stable [key] for `ex_<key>` and the English [name] as fallback. */",
         "internal data class SeedExercise(",
         "    val key: String,",
         "    val name: String,",
@@ -98,10 +120,10 @@ def render_kotlin(entries):
         "",
         "/**",
         " * The starting catalogue, generated from `catalog/core.json`. What the user sees",
-        " * comes from the string resource `ex_<key>` in `values/strings.xml` and",
-        " * `values-en/strings.xml`, generated from the same file; [SeedExercise.name] is",
-        " * stored as the Swedish fallback. To add an entry, edit `catalog/core.json` and",
-        " * run `catalog/tools/gen_android.py`.",
+        " * comes from the string resource `ex_<key>` in `values/strings.xml` (English)",
+        " * and `values-sv/strings.xml` (Swedish), generated from the same file;",
+        " * [SeedExercise.name] is stored as the English fallback. To add an entry, edit",
+        " * `catalog/core.json` and run `catalog/tools/gen_android.py`.",
         " */",
         "internal object SeedExercises {",
         "    val all: List<SeedExercise> = listOf(",
@@ -112,7 +134,7 @@ def render_kotlin(entries):
             lines.append("")
         previous = e["muscleGroup"]
         lines.append(
-            f"        SeedExercise({kotlin_string(e['key'])}, {kotlin_string(e['name']['sv'])}, "
+            f"        SeedExercise({kotlin_string(e['key'])}, {kotlin_string(e['name'][DEFAULT_LANGUAGE])}, "
             f"{e['muscleGroup'].upper()}, {e['equipment'].upper()}),"
         )
     lines += ["    )", "}", ""]
@@ -127,7 +149,9 @@ def render_strings(text, entries, lang, path):
     line_start = text.rfind("\n", 0, begin) + 1
     indent = text[line_start:begin]
     block = [BEGIN, f"<!-- {HEADER} -->"]
-    block += [f'<string name="ex_{e["key"]}">{android_string(e["name"][lang])}</string>' for e in entries]
+    block += [
+        f'<string name="ex_{e["key"]}">{android_string(e["name"][lang])}</string>' for e in entries if lang in e["name"]
+    ]
     block.append(END)
     return text[:line_start] + "\n".join(indent + b for b in block) + text[end + len(END):]
 
@@ -136,7 +160,7 @@ def main():
     check = "--check" in sys.argv[1:]
     entries = load_core()
     outputs = {KOTLIN: render_kotlin(entries)}
-    for lang, path in STRINGS.items():
+    for lang, path in string_files().items():
         outputs[path] = render_strings(path.read_text(encoding="utf-8"), entries, lang, path)
     stale = []
     for path, content in outputs.items():

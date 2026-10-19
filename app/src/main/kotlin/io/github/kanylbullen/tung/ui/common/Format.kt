@@ -26,7 +26,7 @@ fun localWeight(kg: Double): String =
 /** Whole kilos with locale grouping: 12 450. */
 fun localVolume(kg: Double): String = NumberFormat.getIntegerInstance().format(kg.roundToLong())
 
-/** "Måndag 19 oktober" — first letter capitalised, the rest as the locale writes it. */
+/** "Monday 19 October" ("Måndag 19 oktober" in Swedish) — first letter capitalised, the rest as the locale writes it. */
 fun localDate(epochMillis: Long): String {
     val locale = Locale.getDefault()
     val text = DateTimeFormatter.ofPattern("EEEE d MMMM", locale)

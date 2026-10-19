@@ -36,14 +36,14 @@ data class ExerciseGroup(val muscleGroup: MuscleGroup, val exercises: List<Named
 data class ExercisesUiState(
     val loading: Boolean = true,
     val groups: List<ExerciseGroup> = emptyList(),
-    /** Picker only: matches from the extended catalogue, shown under "Fler övningar". */
+    /** Picker only: matches from the extended catalogue, shown under "More exercises". */
     val more: List<ExtendedExercise> = emptyList(),
 ) {
     val isEmpty: Boolean get() = groups.isEmpty() && more.isEmpty()
 }
 
 /**
- * Backs both the Övningar tab and the picker. With a [workoutId] a tap adds the
+ * Backs both the Exercises tab and the picker. With a [workoutId] a tap adds the
  * exercise to that workout; without one the list is just a catalogue.
  *
  * [displayName] gives the name shown on screen (see `ui/common/ExerciseNames.kt`);

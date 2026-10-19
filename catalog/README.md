@@ -1,81 +1,97 @@
-# Övningskatalogen
+# The exercise catalogue
 
-Tungs övningskatalog som öppen data. Appen läser den, och en framtida server
-och andra klienter kan läsa samma filer.
+Tung's exercise catalogue as open data. The app reads it, and a future server
+and other clients can read the same files.
 
-| Fil | Innehåll |
+| File | Contents |
 |---|---|
-| `core.json` | Kärnan: de övningar appen seedar och visar i fliken Övningar, med namn på svenska och engelska. Sanningen för `SeedExercises.kt` och `ex_*`-strängarna i appen. |
-| `extended.json` | Den utökade katalogen: drygt 600 styrkeövningar på engelska, importerade ur [free-exercise-db](https://github.com/yuhonas/free-exercise-db). Nås bara via sök i övningsväljaren. |
-| `tools/gen_android.py` | Genererar Android-källorna ur `core.json`. |
-| `tools/import_free_exercise_db.py` | Bygger `extended.json` ur free-exercise-db. |
+| `core.json` | The core: the exercises the app seeds and shows in the Exercises tab, with names in English and Swedish. The source of truth for `SeedExercises.kt` and the `ex_*` strings in the app. |
+| `extended.json` | The extended catalogue: just over 600 strength exercises in English, imported from [free-exercise-db](https://github.com/yuhonas/free-exercise-db). Reached only through search in the exercise picker. |
+| `tools/gen_android.py` | Generates the Android sources from `core.json`. |
+| `tools/import_free_exercise_db.py` | Builds `extended.json` from free-exercise-db. |
 
 ## Format
 
-`core.json` är en lista sorterad på `key`, en post per rad:
+`core.json` is a list sorted by `key`, one entry per line:
 
 ```json
 {"key": "bench_press", "name": {"sv": "Bänkpress", "en": "Bench press"}, "muscleGroup": "chest", "equipment": "barbell"}
 ```
 
-- `key`: stabil nyckel, gemener och understreck. Ändras aldrig när den väl
-  finns: den bär övningens id (`catalogExerciseId(key)`) på varje enhet.
-- `name`: `sv` och `en`, båda obligatoriska. Engelska namn är gym-engelska
-  (Lat pulldown, Skull crusher), inte ordagranna översättningar.
+- `key`: stable key, lowercase letters and underscores. Never changes once it
+  exists: it carries the exercise's id (`catalogExerciseId(key)`) on every device.
+- `name`: one name per language, keyed by language tag. `en` is required:
+  English is the app's default locale and the fallback name. `sv` is the
+  translation the app ships today and is kept complete. English names are gym
+  English (Lat pulldown, Skull crusher), not literal translations.
 - `muscleGroup`: `chest`, `back`, `shoulders`, `biceps`, `triceps`, `legs`,
-  `glutes`, `core` eller `fullbody`.
-- `equipment`: `barbell`, `dumbbell`, `machine`, `cable`, `bodyweight` eller
+  `glutes`, `core` or `fullbody`.
+- `equipment`: `barbell`, `dumbbell`, `machine`, `cable`, `bodyweight` or
   `other`.
 
-## Lägga till en övning i kärnan
+## Adding an exercise to the core
 
-1. Lägg till posten i `core.json`, på sin plats i bokstavsordning efter `key`.
-2. Kör `python3 -I catalog/tools/gen_android.py` från repots rot.
-3. Tre filer uppdateras: `app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt`,
-   `app/src/main/res/values/strings.xml` och `app/src/main/res/values-en/strings.xml`
-   (i strängfilerna bara raderna mellan `<!-- catalog:begin -->` och
-   `<!-- catalog:end -->`). Committa alla fyra.
+1. Add the entry to `core.json`, in its place in alphabetical order by `key`.
+2. Run `python3 -I catalog/tools/gen_android.py` from the repository root.
+3. Three files are updated: `app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt`,
+   `app/src/main/res/values/strings.xml` (English) and
+   `app/src/main/res/values-sv/strings.xml` (Swedish); in the string files only
+   the lines between `<!-- catalog:begin -->` and `<!-- catalog:end -->`.
+   Commit all four.
 
-Redigera aldrig de genererade filerna för hand. `gen_android.py --check`
-skriver ingenting och avslutar med 1 om något är inaktuellt.
+`SeedExercises.kt` stores the English name as the fallback that the app shows
+when no `ex_<key>` resource matches.
 
-Seedningen sker när databasen skapas. En ny övning i kärnan når alltså inte en
-redan installerad app förrän det finns en migrering som lägger till den.
+Never edit the generated files by hand. `gen_android.py --check` writes nothing
+and exits with 1 if anything is out of date.
 
-## Den utökade katalogen
+Seeding happens when the database is created. A new core exercise therefore
+does not reach an already installed app until there is a migration that adds it.
 
-`extended.json` genereras av `tools/import_free_exercise_db.py`, som hämtar
-`dist/exercises.json` från free-exercise-db (grenen `main`) och:
+## Catalogue names in a new language
 
-- behåller kategorierna `strength`, `powerlifting`, `olympic weightlifting`
-  och `strongman`;
-- mappar `primaryMuscles[0]` och `equipment` till våra värden (tabellerna står
-  överst i skriptet; okänt blir `fullbody` respektive `other`);
-- tar bort övningar som redan finns i kärnan: samma normaliserade engelska namn
-  (gemener, bindestreck till mellanslag, mellanslag hopslagna) eller ett par i
-  skriptets handskrivna aliaslista (`Barbell Squat` ↔ `back_squat` osv.);
-- tar inte med bilderna, eftersom deras ursprung inte är dokumenterat.
+The generator writes the `ex_*` block into every `values-<lang>/strings.xml`
+that contains the catalog markers, using `name.<lang>` from `core.json`, where
+`<lang>` is the resource directory's qualifier. Entries without that name are
+left out of the file, so Android falls back to English for them. A new app
+language that copied `values/strings.xml` therefore gets an empty block until
+`core.json` has names in that language; add them and run the generator.
 
-En post:
+## The extended catalogue
+
+`extended.json` is generated by `tools/import_free_exercise_db.py`, which
+fetches `dist/exercises.json` from free-exercise-db (branch `main`) and:
+
+- keeps the categories `strength`, `powerlifting`, `olympic weightlifting`
+  and `strongman`;
+- maps `primaryMuscles[0]` and `equipment` to our values (the tables are at the
+  top of the script; anything unknown becomes `fullbody` and `other`
+  respectively);
+- drops exercises that are already in the core: the same normalised English
+  name (lowercase, hyphens to spaces, spaces collapsed) or a pair in the
+  script's hand-written alias list (`Barbell Squat` ↔ `back_squat` and so on);
+- leaves out the images, since their origin is not documented.
+
+An entry:
 
 ```json
 {"id": "Zercher_Squats", "name": {"en": "Zercher Squats"}, "muscleGroup": "legs", "equipment": "barbell", "instructions": ["…"], "source": "free-exercise-db"}
 ```
 
-`id` är free-exercise-dbs id. Appen ger en vald övning id:t
-`catalogExerciseId("ext:" + id)`, så samma övning får samma id på alla enheter.
-Ändra inte `extended.json` för hand; kör skriptet igen
-(`python3 -I catalog/tools/import_free_exercise_db.py`, eller `--input fil`
-för en lokal kopia). Utdata är deterministisk för samma indata, men följer
-`main` uppströms.
+`id` is free-exercise-db's id. The app gives a chosen exercise the id
+`catalogExerciseId("ext:" + id)`, so the same exercise gets the same id on every
+device. Do not edit `extended.json` by hand; run the script again
+(`python3 -I catalog/tools/import_free_exercise_db.py`, or `--input file`
+for a local copy). The output is deterministic for the same input, but follows
+`main` upstream.
 
-## Licens
+## Licence
 
-Katalogen (filerna i den här katalogen) är tillägnad allmän egendom under
-**CC0 1.0 Universal**, se `LICENSE`. Den får användas, ändras och spridas utan
-villkor och utan att nämna oss. Appens kod är AGPL-3.0-or-later, se repots
-`LICENSE`.
+The catalogue (the files in this directory) is dedicated to the public domain
+under **CC0 1.0 Universal**, see `LICENSE`. It may be used, changed and shared
+without conditions and without mentioning us. The app's code is
+AGPL-3.0-or-later, see the repository's `LICENSE`.
 
-`extended.json` härstammar från free-exercise-db (GitHub-användaren yuhonas), som är släppt
-under [the Unlicense](https://github.com/yuhonas/free-exercise-db/blob/main/LICENSE.md)
-(allmän egendom). Vår bearbetning läggs under CC0 som resten av katalogen.
+`extended.json` derives from free-exercise-db (GitHub user yuhonas), which is
+released under [the Unlicense](https://github.com/yuhonas/free-exercise-db/blob/main/LICENSE.md)
+(public domain). Our processing is placed under CC0 like the rest of the catalogue.
