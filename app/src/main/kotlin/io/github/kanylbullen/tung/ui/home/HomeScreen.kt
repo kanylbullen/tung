@@ -77,7 +77,9 @@ fun HomeScreen(
             }
         }
 
-        if (!state.loading && state.recent.isEmpty()) {
+        // "No workouts yet" would contradict "Resume workout" above it; the
+        // in-progress line under the button says enough until the first one is finished.
+        if (!state.loading && state.recent.isEmpty() && state.activeWorkout == null) {
             item(key = "empty") {
                 Text(
                     stringResource(R.string.home_empty),
