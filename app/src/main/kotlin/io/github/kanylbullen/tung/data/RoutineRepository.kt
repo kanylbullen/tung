@@ -67,16 +67,25 @@ class RoutineRepository(
      * with its target number of sets, unticked and pre-filled from the previous
      * session position by position ([routineStartSets]). Marks the routine used.
      *
+     * [programDayId] is recorded on the workout when it is started from a
+     * program day; a rotating program follows it to suggest the next day.
+     *
      * There is at most one workout in progress: if one exists, its id is
      * returned and nothing is created.
      *
      * @return the workout's id, or null if the routine no longer exists.
      */
-    suspend fun start(routineId: String): String? = db.withTransaction {
+    suspend fun start(routineId: String, programDayId: String? = null): String? = db.withTransaction {
         workoutDao.getActiveWorkout()?.let { return@withTransaction it.id }
         dao.getRoutine(routineId) ?: return@withTransaction null
         val now = clock()
-        val workout = Workout(id = newId(), startedAt = now, routineId = routineId, updatedAt = now)
+        val workout = Workout(
+            id = newId(),
+            startedAt = now,
+            routineId = routineId,
+            updatedAt = now,
+            programDayId = programDayId,
+        )
         workoutDao.insertWorkout(workout)
         dao.getRoutineExercises(routineId).forEachIndexed { position, re ->
             val workoutExercise = WorkoutExercise(

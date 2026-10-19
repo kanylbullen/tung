@@ -19,6 +19,8 @@ private const val CATALOG_UPDATED_AT = 0L
         SetEntry::class,
         Routine::class,
         RoutineExercise::class,
+        Program::class,
+        ProgramDay::class,
     ],
     version = 1,
     exportSchema = false,
@@ -27,6 +29,7 @@ abstract class TungDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun workoutDao(): WorkoutDao
     abstract fun routineDao(): RoutineDao
+    abstract fun programDao(): ProgramDao
 
     companion object {
         fun build(context: Context): TungDatabase =

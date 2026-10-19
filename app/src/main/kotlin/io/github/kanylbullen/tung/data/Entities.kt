@@ -32,7 +32,10 @@ data class Exercise(
     val restSeconds: Int? = null,
 )
 
-@Entity(tableName = "workout", indices = [Index("endedAt"), Index("startedAt"), Index("routineId")])
+@Entity(
+    tableName = "workout",
+    indices = [Index("endedAt"), Index("startedAt"), Index("routineId"), Index("programDayId")],
+)
 data class Workout(
     @PrimaryKey val id: String,
     val startedAt: Long,
@@ -47,6 +50,12 @@ data class Workout(
     val routineId: String? = null,
     /** Epoch millis of the last write; set by the repository. */
     val updatedAt: Long,
+    /**
+     * The program day this workout was started from, if any; it decides which
+     * day a rotating program suggests next. Not a foreign key, like [routineId]:
+     * removing a day or deleting a program never touches history.
+     */
+    val programDayId: String? = null,
 )
 
 @Entity(
@@ -140,6 +149,63 @@ data class RoutineExercise(
     val updatedAt: Long,
 )
 
+/**
+ * An ordered list of routines with a [mode]: fixed weekdays or rotating. At
+ * most one program [isActive]; that one gives Home its "Today".
+ */
+@Entity(tableName = "program", indices = [Index("isActive")])
+data class Program(
+    @PrimaryKey val id: String,
+    val name: String,
+    /** A [io.github.kanylbullen.tung.core.ProgramMode] key: "fixed" or "rotating". */
+    val mode: String,
+    val isActive: Boolean,
+    /** Epoch millis of the last write; set by the repository. */
+    val updatedAt: Long,
+)
+
+/**
+ * One day of a program: a routine at a [position], and in fixed mode the
+ * weekdays it falls on.
+ *
+ * Both foreign keys cascade. Deleting the program deletes its days, and so
+ * does deleting the routine: a day without its routine has nothing to start,
+ * so the day goes with it rather than being left empty. Workouts started from
+ * a day keep their [Workout.programDayId], which is not a foreign key.
+ */
+@Entity(
+    tableName = "program_day",
+    foreignKeys = [
+        ForeignKey(
+            entity = Program::class,
+            parentColumns = ["id"],
+            childColumns = ["programId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = Routine::class,
+            parentColumns = ["id"],
+            childColumns = ["routineId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("programId"), Index("routineId")],
+)
+data class ProgramDay(
+    @PrimaryKey val id: String,
+    val programId: String,
+    val routineId: String,
+    val position: Int,
+    /**
+     * The ISO weekdays (1 Monday … 7 Sunday) this day is trained on in fixed
+     * mode, one bit each with Monday in bit 0 (`core.weekdaysToMask`). 0 is
+     * none. Kept, but unused, in rotating mode.
+     */
+    val weekdays: Int,
+    /** Epoch millis of the last write; set by the repository. */
+    val updatedAt: Long,
+)
+
 fun SetEntry.toLogged(): LoggedSet = LoggedSet(weightKg, reps)
 
 /** A workout's exercise with its catalogue row and its sets, as one observable unit. */
@@ -175,4 +241,23 @@ data class RoutineSummaryRow(
     val name: String,
     val lastUsedAt: Long?,
     val exerciseCount: Int,
+)
+
+/** One row in the program list, aggregated in SQL. */
+data class ProgramSummaryRow(
+    val id: String,
+    val name: String,
+    val mode: String,
+    val isActive: Boolean,
+    val dayCount: Int,
+)
+
+/** A program day with the name of its routine. */
+data class ProgramDayRow(
+    val id: String,
+    val programId: String,
+    val routineId: String,
+    val position: Int,
+    val weekdays: Int,
+    val routineName: String,
 )
