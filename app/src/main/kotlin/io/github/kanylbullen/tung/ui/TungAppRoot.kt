@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
@@ -70,10 +71,23 @@ private val tabs = listOf(
 
 private val idArgument = listOf(navArgument(Routes.ARG_ID) { type = NavType.StringType })
 
+/**
+ * @param openWorkoutId a workout to open on top of Home, set when a "Rest over"
+ *   notification is tapped; [onWorkoutOpened] is called once it has been.
+ */
 @Composable
-fun TungAppRoot() {
+fun TungAppRoot(openWorkoutId: String? = null, onWorkoutOpened: () -> Unit = {}) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
+    LaunchedEffect(openWorkoutId) {
+        if (openWorkoutId != null) {
+            nav.navigate(Routes.workout(openWorkoutId)) {
+                popUpTo(Routes.HOME)
+                launchSingleTop = true
+            }
+            onWorkoutOpened()
+        }
+    }
     val destination = backStack?.destination
     val showBar = destination?.route in tabs.map { it.route }
 

@@ -1,6 +1,11 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,7 +24,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -63,12 +71,18 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.REPS_RULER
+import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
@@ -79,7 +93,6 @@ import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.clockText
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.theme.Tung
@@ -100,7 +113,17 @@ fun ActiveWorkoutScreen(
 ) {
     val container = appContainer()
     val vm: ActiveWorkoutViewModel = viewModel(
-        factory = factoryOf { ActiveWorkoutViewModel(workoutId, container.workoutRepository) }
+        factory = viewModelFactory {
+            initializer {
+                ActiveWorkoutViewModel(
+                    workoutId = workoutId,
+                    repo = container.workoutRepository,
+                    exerciseRepo = container.exerciseRepository,
+                    restTimer = container.restTimer,
+                    savedState = createSavedStateHandle(),
+                )
+            }
+        }
     )
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -114,6 +137,9 @@ fun ActiveWorkoutScreen(
         onDispose { view.keepScreenOn = false }
     }
 
+    // Asked once, when the first rest timer starts. Denied is fine: the countdown and the buzz still work.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
     LaunchedEffect(vm) {
         vm.events.collect { event ->
             when (event) {
@@ -121,16 +147,46 @@ fun ActiveWorkoutScreen(
                     if (!event.saved) Toast.makeText(context, discardedMessage, Toast.LENGTH_LONG).show()
                     currentOnFinished(event.workoutId, event.saved)
                 }
+                ActiveWorkoutEvent.AskForNotifications -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
             }
         }
     }
 
     var editing by remember { mutableStateOf<EditTarget?>(null) }
     var confirmFinish by remember { mutableStateOf(false) }
+    var restControlsOpen by remember { mutableStateOf(false) }
+    var restSheetFor by remember { mutableStateOf<ActiveExerciseUi?>(null) }
+    // The set that was just logged; once the current set has moved on from it, that set is scrolled into view.
+    var scrollAfterLogging by remember { mutableStateOf<String?>(null) }
+    val listState = rememberLazyListState()
+
+    // The clock, not a counter: what is left of the rest is always computed from it.
+    val now = rememberNow()
+    val rest = state.rest?.takeIf { it.isRunningAt(now) }
+    state.rest?.let { timer ->
+        if (timer.isFinishedAt(now)) LaunchedEffect(timer) { vm.onRestOver(timer) }
+    }
+    LaunchedEffect(rest == null) { if (rest == null) restControlsOpen = false }
+
+    val current = state.current
+    LaunchedEffect(current?.set?.id, scrollAfterLogging) {
+        val logged = scrollAfterLogging ?: return@LaunchedEffect
+        if (current?.set?.id == logged) return@LaunchedEffect
+        scrollAfterLogging = null
+        current?.let { listState.scrollIntoView(itemIndexOfSet(state, it.set.id)) }
+    }
 
     Scaffold(
         containerColor = Tung.colors.background,
         topBar = {
+            Column {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Tung.colors.background,
@@ -143,14 +199,19 @@ fun ActiveWorkoutScreen(
                 },
                 title = {
                     if (!state.loading && !state.missing) {
-                        val now = rememberNow()
-                        val clock = clockText(now - state.startedAt)
-                        val description = stringResource(R.string.workout_elapsed_description, clock)
-                        Text(
-                            clock,
-                            style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.8f),
-                            modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val clock = clockText(now - state.startedAt)
+                            val description = stringResource(R.string.workout_elapsed_description, clock)
+                            Text(
+                                clock,
+                                style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.8f),
+                                modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+                            )
+                            if (rest != null) {
+                                Spacer(Modifier.width(12.dp))
+                                RestCountdown(rest, now, onClick = { restControlsOpen = !restControlsOpen })
+                            }
+                        }
                     }
                 },
                 actions = {
@@ -165,6 +226,26 @@ fun ActiveWorkoutScreen(
                     }
                 },
             )
+            if (rest != null && restControlsOpen) {
+                RestControls(onSkip = vm::skipRest, onAdd = vm::addRest)
+            }
+            }
+        },
+        bottomBar = {
+            if (!state.loading && !state.missing && current != null) {
+                LogSetBar(
+                    set = current.set,
+                    onClick = {
+                        // Logging a set without reps would just be removed on finish, so ask for reps first.
+                        if (current.set.reps <= 0) {
+                            editing = EditTarget(current.set.id, Field.REPS)
+                        } else {
+                            scrollAfterLogging = current.set.id
+                            vm.logSet(current.exercise, current.set)
+                        }
+                    },
+                )
+            }
         },
     ) { padding ->
         when {
@@ -177,16 +258,18 @@ fun ActiveWorkoutScreen(
             )
             else -> WorkoutList(
                 state = state,
+                listState = listState,
                 contentPadding = padding,
                 onEdit = { setId, field -> editing = EditTarget(setId, field) },
-                onToggle = { set ->
+                onToggle = { exercise, set ->
                     // Ticking a set without reps would just be removed on finish, so ask for reps first.
                     if (!set.completed && set.reps <= 0) editing = EditTarget(set.id, Field.REPS)
-                    else vm.setCompleted(set.id, !set.completed)
+                    else vm.setCompleted(exercise, set.id, !set.completed)
                 },
                 onDeleteSet = vm::deleteSet,
                 onAddSet = vm::addSet,
                 onRemoveExercise = vm::removeExercise,
+                onRestTimer = { restSheetFor = it },
                 onAddExercise = onAddExercise,
             )
         }
@@ -210,16 +293,28 @@ fun ActiveWorkoutScreen(
                     val weId = exercise.workoutExerciseId
                     when (target.field) {
                         Field.WEIGHT -> parseWeight(text)?.let {
-                            if (applyToAll) vm.setWeightForOpenSets(weId, set.id, it) else vm.setWeight(set.id, it)
+                            if (applyToAll) vm.setWeightForOpenSets(weId, set.id, it) else vm.setWeight(weId, set.id, it)
                         }
                         Field.REPS -> parseReps(text)?.let {
-                            if (applyToAll) vm.setRepsForOpenSets(weId, set.id, it) else vm.setReps(set.id, it)
+                            if (applyToAll) vm.setRepsForOpenSets(weId, set.id, it) else vm.setReps(weId, set.id, it)
                         }
                     }
                     editing = null
                 },
             )
         }
+    }
+
+    restSheetFor?.let { exercise ->
+        RestTimerSheet(
+            exerciseName = exerciseDisplayName(exercise.nameKey, exercise.name),
+            initialSeconds = exercise.restSeconds,
+            onDismiss = { restSheetFor = null },
+            onConfirm = { seconds ->
+                vm.setRestSeconds(exercise.exerciseId, seconds)
+                restSheetFor = null
+            },
+        )
     }
 
     if (confirmFinish) {
@@ -249,18 +344,110 @@ fun ActiveWorkoutScreen(
     }
 }
 
+/**
+ * The big button above the system navigation: always under the thumb, wherever
+ * the list is scrolled, which a button at the end of the list would not be.
+ */
+@Composable
+private fun LogSetBar(set: ActiveSetUi, onClick: () -> Unit) {
+    val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(Tung.colors.background)
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+    ) {
+        PrimaryButton(text = stringResource(R.string.workout_log_set, localWeight(set.weightKg), reps), onClick = onClick)
+    }
+}
+
+/** "1:30" counting down next to the elapsed time; a tap shows Skip and +30 s. */
+@Composable
+private fun RestCountdown(timer: RestTimer, now: Long, onClick: () -> Unit) {
+    // Rounded up, so 89.4 s left reads 1:30 and 0:00 never shows; capped, so a clock a tick behind never shows 1:31.
+    val left = clockText(minOf(timer.remainingAt(now) + 999, timer.durationMillis))
+    val title = stringResource(R.string.rest_title)
+    val remaining = stringResource(R.string.rest_remaining, left)
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clip(TungCorner)
+            .clickable(onClick = onClick)
+            .clearAndSetSemantics {
+                contentDescription = title
+                stateDescription = remaining
+                role = Role.Button
+            }
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            left,
+            style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.8f),
+            color = Tung.colors.accentText,
+        )
+    }
+}
+
+@Composable
+private fun RestControls(onSkip: () -> Unit, onAdd: () -> Unit) {
+    val addDescription = stringResource(R.string.rest_add_description)
+    Row(
+        modifier = Modifier.fillMaxWidth().background(Tung.colors.background).padding(start = 56.dp, end = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TextButton(onClick = onSkip, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(stringResource(R.string.rest_skip), style = MaterialTheme.typography.labelLarge, color = Tung.colors.text)
+        }
+        TextButton(
+            onClick = onAdd,
+            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = addDescription },
+        ) {
+            Text(stringResource(R.string.rest_add), style = MaterialTheme.typography.labelLarge, color = Tung.colors.text)
+        }
+    }
+}
+
+/** The position of set [setId] among the list's items; mirrors the item order in [WorkoutList]. */
+private fun itemIndexOfSet(state: ActiveWorkoutUiState, setId: String): Int {
+    var index = if (state.exercises.isEmpty()) 1 else 0
+    state.exercises.forEach { exercise ->
+        index++ // header
+        exercise.sets.forEach { set ->
+            if (set.id == setId) return index
+            index++
+        }
+        index++ // "+ Set"
+    }
+    return index
+}
+
+/** Scrolls only when the item is not wholly on screen, and then leaves the row above it in view too. */
+private suspend fun LazyListState.scrollIntoView(index: Int) {
+    val info = layoutInfo
+    val item = info.visibleItemsInfo.firstOrNull { it.index == index }
+    val whollyVisible = item != null &&
+        item.offset >= info.viewportStartOffset + info.beforeContentPadding &&
+        item.offset + item.size <= info.viewportEndOffset - info.afterContentPadding
+    if (!whollyVisible) animateScrollToItem((index - 1).coerceAtLeast(0))
+}
+
 @Composable
 private fun WorkoutList(
     state: ActiveWorkoutUiState,
+    listState: LazyListState,
     contentPadding: PaddingValues,
     onEdit: (String, Field) -> Unit,
-    onToggle: (ActiveSetUi) -> Unit,
+    onToggle: (ActiveExerciseUi, ActiveSetUi) -> Unit,
     onDeleteSet: (String) -> Unit,
     onAddSet: (String) -> Unit,
     onRemoveExercise: (String) -> Unit,
+    onRestTimer: (ActiveExerciseUi) -> Unit,
     onAddExercise: () -> Unit,
 ) {
     LazyColumn(
+        state = listState,
         contentPadding = contentPadding,
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -276,14 +463,18 @@ private fun WorkoutList(
         }
         state.exercises.forEach { exercise ->
             item(key = "we-${exercise.workoutExerciseId}") {
-                ExerciseHeader(exerciseDisplayName(exercise.nameKey, exercise.name), onRemove = { onRemoveExercise(exercise.workoutExerciseId) })
+                ExerciseHeader(
+                    exerciseDisplayName(exercise.nameKey, exercise.name),
+                    onRestTimer = { onRestTimer(exercise) },
+                    onRemove = { onRemoveExercise(exercise.workoutExerciseId) },
+                )
             }
             items(exercise.sets, key = { "set-${it.id}" }) { set ->
                 SwipeableSetRow(
                     set = set,
                     onEditWeight = { onEdit(set.id, Field.WEIGHT) },
                     onEditReps = { onEdit(set.id, Field.REPS) },
-                    onToggle = { onToggle(set) },
+                    onToggle = { onToggle(exercise, set) },
                     onDelete = { onDeleteSet(set.id) },
                 )
             }
@@ -322,7 +513,7 @@ private fun WorkoutList(
 }
 
 @Composable
-private fun ExerciseHeader(name: String, onRemove: () -> Unit) {
+private fun ExerciseHeader(name: String, onRestTimer: () -> Unit, onRemove: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 12.dp),
@@ -348,6 +539,10 @@ private fun ExerciseHeader(name: String, onRemove: () -> Unit) {
                 containerColor = Tung.colors.raised,
                 shape = TungCorner,
             ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.workout_rest_timer)) },
+                    onClick = { menuOpen = false; onRestTimer() },
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.workout_remove_exercise)) },
                     onClick = { menuOpen = false; onRemove() },

@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.data
 
 import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.prefillSet
 import kotlinx.coroutines.flow.Flow
@@ -98,6 +99,25 @@ class WorkoutRepository(
         dao.getSets(workoutExerciseId).filter { it.id == setId || !it.completed }.map { it.id }
 
     suspend fun setCompleted(setId: String, completed: Boolean) = dao.setCompleted(setId, completed, clock())
+
+    /**
+     * "Log set": ticks [setId] and, if it was the last set of its exercise,
+     * adds the next one pre-filled by the usual rule (a copy of the set just
+     * logged). An exercise from a routine is not padded past the routine's
+     * target sets ([addsNextSet]). One transaction, so the screen sees the tick
+     * and the new set together.
+     *
+     * @return the id of the added set, or null if none was added.
+     */
+    suspend fun logSet(setId: String): String? = db.withTransaction {
+        val set = dao.getSet(setId) ?: return@withTransaction null
+        dao.setCompleted(setId, true, clock())
+        val we = dao.getWorkoutExercise(set.workoutExerciseId) ?: return@withTransaction null
+        val sets = dao.getSets(we.id)
+        val wasLast = sets.maxOf { it.position } == set.position
+        val target = if (wasLast) dao.routineTargetSets(we.workoutId, we.exerciseId) else null
+        if (addsNextSet(wasLast, sets.size, target)) insertPrefilledSet(we.id, we.workoutId, we.exerciseId) else null
+    }
 
     suspend fun deleteSet(setId: String) = dao.deleteSet(setId)
 

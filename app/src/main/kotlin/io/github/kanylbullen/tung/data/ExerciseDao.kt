@@ -17,4 +17,7 @@ interface ExerciseDao {
     /** Inserts unless a row with the same id exists; an existing row is left untouched. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(exercise: Exercise)
+
+    @Query("UPDATE exercise SET restSeconds = :restSeconds, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateRestSeconds(id: String, restSeconds: Int?, updatedAt: Long)
 }

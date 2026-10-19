@@ -82,6 +82,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM set_entry WHERE workoutExerciseId = :workoutExerciseId ORDER BY position")
     suspend fun getSets(workoutExerciseId: String): List<SetEntry>
 
+    @Query("SELECT * FROM set_entry WHERE id = :id")
+    suspend fun getSet(id: String): SetEntry?
+
     @Insert
     suspend fun insertSet(set: SetEntry)
 
@@ -148,4 +151,19 @@ interface WorkoutDao {
         """
     )
     suspend fun previousMaxWeight(exerciseId: String, before: Long): Double?
+
+    /**
+     * How many sets the routine that [workoutId] was started from asks for of
+     * [exerciseId], or null when the workout has no routine, the routine is
+     * gone, or the exercise is not in it. Read when "Log set" decides whether to
+     * add a set, so a routine's sets are not padded past their target.
+     */
+    @Query(
+        """
+        SELECT MAX(re.targetSets) FROM routine_exercise re
+        JOIN workout w ON re.routineId = w.routineId
+        WHERE w.id = :workoutId AND re.exerciseId = :exerciseId
+        """
+    )
+    suspend fun routineTargetSets(workoutId: String, exerciseId: String): Int?
 }

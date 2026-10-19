@@ -1,10 +1,16 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kanylbullen.tung.core.DEFAULT_REST_SECONDS
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.RestTimer
+import io.github.kanylbullen.tung.core.restSecondsFor
+import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
+import io.github.kanylbullen.tung.timer.RestTimerController
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -12,7 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -21,6 +29,10 @@ import kotlinx.coroutines.launch
 class ActiveWorkoutViewModel(
     private val workoutId: String,
     private val repo: WorkoutRepository,
+    private val exerciseRepo: ExerciseRepository,
+    private val restTimer: RestTimerController,
+    private val savedState: SavedStateHandle,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
     /**
@@ -30,19 +42,34 @@ class ActiveWorkoutViewModel(
     private val previousByExercise = mutableMapOf<String, List<LoggedSet>>()
     private val finishing = MutableStateFlow(false)
 
+    /**
+     * The rest countdown. Kept in [savedState] (process death with the screen
+     * restored) and, through [restTimer], in DataStore and an alarm (process
+     * death without it, and the alert in the background). Only timestamps are
+     * stored; what is left is computed from the clock.
+     */
+    private val rest = MutableStateFlow(restoredRest()?.takeIf { it.isRunningAt(clock()) })
+    private val lastTouched = MutableStateFlow(savedState.get<String>(KEY_TOUCHED))
+    private val defaultRest = restTimer.defaultSeconds
+        .stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_REST_SECONDS)
+
+    /** Workout exercises seen so far; one that appears later was just added, and becomes the touched one. */
+    private var knownExercises: Set<String>? = null
+
     private val exercisesWithPrevious: Flow<Pair<List<WorkoutExerciseWithSets>, Map<String, List<LoggedSet>>>> =
-        repo.observeExercises(workoutId).mapLatest { list ->
+        repo.observeExercises(workoutId).onEach(::noteAddedExercise).mapLatest { list ->
             list.map { it.exercise.id }.distinct()
                 .filterNot { it in previousByExercise }
                 .forEach { id -> previousByExercise[id] = repo.previousSessionSets(id, workoutId) }
             list to previousByExercise.toMap()
         }
 
-    val state: StateFlow<ActiveWorkoutUiState> = combine(
+    private val workoutState: Flow<ActiveWorkoutUiState> = combine(
         repo.observeWorkout(workoutId),
         exercisesWithPrevious,
         finishing,
-    ) { workout, (exercises, previous), isFinishing ->
+        defaultRest,
+    ) { workout, (exercises, previous), isFinishing, defaultSeconds ->
         when {
             workout == null && isFinishing -> ActiveWorkoutUiState(loading = true)
             workout == null -> ActiveWorkoutUiState(loading = false, missing = true)
@@ -66,30 +93,92 @@ class ActiveWorkoutViewModel(
                                 previous = last.getOrNull(index),
                             )
                         },
+                        restSeconds = restSecondsFor(e.exercise.restSeconds, defaultSeconds),
                     )
                 },
             )
         }
+    }
+
+    val state: StateFlow<ActiveWorkoutUiState> = combine(workoutState, rest, lastTouched) { s, timer, touched ->
+        s.copy(rest = timer, lastTouchedExerciseId = touched)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActiveWorkoutUiState())
 
     private val eventChannel = Channel<ActiveWorkoutEvent>(Channel.BUFFERED)
     val events: Flow<ActiveWorkoutEvent> = eventChannel.receiveAsFlow()
 
-    fun addSet(workoutExerciseId: String) = launch { repo.addSet(workoutExerciseId) }
+    init {
+        viewModelScope.launch {
+            // Every change after the first value goes to DataStore and the alarm, in order.
+            rest.drop(1).collect { restTimer.set(workoutId, it) }
+        }
+        viewModelScope.launch {
+            // No saved state (the app was started anew): fall back to what DataStore kept.
+            if (rest.value == null) {
+                restTimer.stored(workoutId)?.takeIf { it.isRunningAt(clock()) }?.let(::setRest)
+            }
+        }
+    }
 
-    fun setWeight(setId: String, weightKg: Double) = launch { repo.updateWeight(setId, weightKg) }
+    fun addSet(workoutExerciseId: String) {
+        touch(workoutExerciseId)
+        launch { repo.addSet(workoutExerciseId) }
+    }
 
-    fun setReps(setId: String, reps: Int) = launch { repo.updateReps(setId, reps) }
+    fun setWeight(workoutExerciseId: String, setId: String, weightKg: Double) {
+        touch(workoutExerciseId)
+        launch { repo.updateWeight(setId, weightKg) }
+    }
+
+    fun setReps(workoutExerciseId: String, setId: String, reps: Int) {
+        touch(workoutExerciseId)
+        launch { repo.updateReps(setId, reps) }
+    }
 
     /** "Apply to all sets": [setId] and every un-ticked set of the exercise get the weight. */
-    fun setWeightForOpenSets(workoutExerciseId: String, setId: String, weightKg: Double) =
+    fun setWeightForOpenSets(workoutExerciseId: String, setId: String, weightKg: Double) {
+        touch(workoutExerciseId)
         launch { repo.updateWeightForOpenSets(workoutExerciseId, setId, weightKg) }
+    }
 
     /** "Apply to all sets": [setId] and every un-ticked set of the exercise get the reps. */
-    fun setRepsForOpenSets(workoutExerciseId: String, setId: String, reps: Int) =
+    fun setRepsForOpenSets(workoutExerciseId: String, setId: String, reps: Int) {
+        touch(workoutExerciseId)
         launch { repo.updateRepsForOpenSets(workoutExerciseId, setId, reps) }
+    }
 
-    fun setCompleted(setId: String, completed: Boolean) = launch { repo.setCompleted(setId, completed) }
+    /** The tick on the row. Ticking (not un-ticking) starts the rest timer too. */
+    fun setCompleted(exercise: ActiveExerciseUi, setId: String, completed: Boolean) {
+        touch(exercise.workoutExerciseId)
+        launch { repo.setCompleted(setId, completed) }
+        if (completed) startRest(exercise)
+    }
+
+    /**
+     * "Log set": ticks [set], adds the next set when [set] was the exercise's
+     * last ([WorkoutRepository.logSet]) and starts the rest timer.
+     */
+    fun logSet(exercise: ActiveExerciseUi, set: ActiveSetUi) {
+        touch(exercise.workoutExerciseId)
+        launch { repo.logSet(set.id) }
+        startRest(exercise)
+    }
+
+    fun skipRest() = setRest(rest.value?.skip())
+
+    fun addRest() {
+        rest.value?.let { setRest(it.plus(clock())) }
+    }
+
+    /** The countdown on screen reached zero: alert (unless the alarm already did) and clear it. */
+    fun onRestOver(timer: RestTimer) {
+        if (rest.value != timer) return
+        restTimer.restOver(workoutId, timer.endsAtMillis)
+        setRest(null)
+    }
+
+    /** The rest timer of an exercise, in seconds; 0 turns it off. */
+    fun setRestSeconds(exerciseId: String, seconds: Int) = launch { exerciseRepo.setRestSeconds(exerciseId, seconds) }
 
     fun deleteSet(setId: String) = launch { repo.deleteSet(setId) }
 
@@ -97,11 +186,53 @@ class ActiveWorkoutViewModel(
 
     fun finish() = launch {
         finishing.value = true
+        setRest(null)
+        // Directly as well: the screen leaves right after, and the collector goes with it.
+        restTimer.set(workoutId, null)
         val saved = repo.finishWorkout(workoutId)
         eventChannel.send(ActiveWorkoutEvent.Finished(workoutId, saved))
     }
 
+    private fun startRest(exercise: ActiveExerciseUi) {
+        val timer = RestTimer.start(clock(), exercise.restSeconds)
+        setRest(timer)
+        if (timer != null) {
+            launch {
+                if (restTimer.firstTimeAskingForNotifications()) eventChannel.send(ActiveWorkoutEvent.AskForNotifications)
+            }
+        }
+    }
+
+    private fun setRest(timer: RestTimer?) {
+        rest.value = timer
+        savedState[KEY_ENDS_AT] = timer?.endsAtMillis
+        savedState[KEY_DURATION] = timer?.durationMillis
+    }
+
+    private fun restoredRest(): RestTimer? {
+        val endsAt = savedState.get<Long>(KEY_ENDS_AT) ?: return null
+        return RestTimer(endsAt, savedState.get<Long>(KEY_DURATION) ?: 0L)
+    }
+
+    private fun touch(workoutExerciseId: String) {
+        lastTouched.value = workoutExerciseId
+        savedState[KEY_TOUCHED] = workoutExerciseId
+    }
+
+    private fun noteAddedExercise(list: List<WorkoutExerciseWithSets>) {
+        val ids = list.map { it.workoutExercise.id }
+        val known = knownExercises
+        knownExercises = ids.toSet()
+        if (known != null) ids.lastOrNull { it !in known }?.let(::touch)
+    }
+
     private fun launch(block: suspend () -> Unit) {
         viewModelScope.launch { block() }
+    }
+
+    private companion object {
+        const val KEY_ENDS_AT = "rest_ends_at"
+        const val KEY_DURATION = "rest_duration"
+        const val KEY_TOUCHED = "last_touched_exercise"
     }
 }
