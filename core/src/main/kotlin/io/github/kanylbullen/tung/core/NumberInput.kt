@@ -44,4 +44,4 @@ fun formatWeight(kg: Double, decimalSeparator: Char = ','): String {
     }
 }
 
-private fun roundToHundredths(value: Double): Double = (value * 100).roundToLong() / 100.0
+internal fun roundToHundredths(value: Double): Double = (value * 100).roundToLong() / 100.0

@@ -200,6 +200,21 @@ Weight and reps are the only things that matter; everything else is scenery.
 - Dark/light follows the system. Dynamic colours are **off**.
 - Typeface: Archivo (variable, OFL) — one family.
 
+The ruler under the big number (`RulerPicker`, scale in `core/Ruler.kt`) is
+the same gesture as a slider with usable precision: ticks every 2.5 kg from 0
+to 500 kg (labelled every 10) or every rep from 0 to 100 (labelled every 5),
+a fixed accent line in the centre, horizontal drag only so vertical swipes
+still reach the sheet. Dragging moves the big number live, one
+`CLOCK_TICK` haptic per step; release snaps to the nearest step and a fling
+decelerates onto one. **Typing wins:** typing or −/+ moves the ruler to the
+value (between ticks if off the grid, pinned at the end if past it), and the
+ruler never writes back what was typed; only a drag writes, always on the
+grid. "Apply to all sets" is a switch in the sheet, off every time it opens,
+shown only when another un-ticked set of the exercise exists. With it on,
+Done writes the value to the edited set and to every un-ticked set of that
+exercise (`WorkoutRepository.update…ForOpenSets`); ticked sets stay as
+logged. Weight and reps are applied independently.
+
 | Token | Dark | Light | Used for |
 |---|---|---|---|
 | background | `#1A1D21` | `#F6F6F4` | Background, list rows |

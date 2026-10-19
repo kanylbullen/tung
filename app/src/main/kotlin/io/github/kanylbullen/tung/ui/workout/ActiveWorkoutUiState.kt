@@ -34,6 +34,9 @@ data class ActiveWorkoutUiState(
 
     fun findSet(setId: String): ActiveSetUi? =
         exercises.firstNotNullOfOrNull { e -> e.sets.firstOrNull { it.id == setId } }
+
+    fun findExerciseOf(setId: String): ActiveExerciseUi? =
+        exercises.firstOrNull { e -> e.sets.any { it.id == setId } }
 }
 
 sealed interface ActiveWorkoutEvent {

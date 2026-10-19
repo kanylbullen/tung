@@ -81,6 +81,14 @@ class ActiveWorkoutViewModel(
 
     fun setReps(setId: String, reps: Int) = launch { repo.updateReps(setId, reps) }
 
+    /** "Apply to all sets": [setId] and every un-ticked set of the exercise get the weight. */
+    fun setWeightForOpenSets(workoutExerciseId: String, setId: String, weightKg: Double) =
+        launch { repo.updateWeightForOpenSets(workoutExerciseId, setId, weightKg) }
+
+    /** "Apply to all sets": [setId] and every un-ticked set of the exercise get the reps. */
+    fun setRepsForOpenSets(workoutExerciseId: String, setId: String, reps: Int) =
+        launch { repo.updateRepsForOpenSets(workoutExerciseId, setId, reps) }
+
     fun setCompleted(setId: String, completed: Boolean) = launch { repo.setCompleted(setId, completed) }
 
     fun deleteSet(setId: String) = launch { repo.deleteSet(setId) }
