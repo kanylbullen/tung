@@ -1,4 +1,4 @@
-# Järn — agentmanual
+# Tung — agentmanual
 
 Styrketräningslogg för Android. Lokal app: ingen backend, ingen inloggning,
 inget nätverk. Allt ligger i Room på telefonen.
@@ -9,7 +9,7 @@ Kotlin 2.0.21, Jetpack Compose (BOM 2024.12.01), Material 3, Room 2.6.1 via
 KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines. AGP 8.7.3,
 Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26.
 
-**Ingen Hilt/Koin.** `AppContainer` i `JarnApp.kt` håller databasen och
+**Ingen Hilt/Koin.** `AppContainer` i `TungApp.kt` håller databasen och
 repositoryn lazy. ViewModels skapas med `viewModel(factory = factoryOf { ... })`
 (`ui/common/Containers.kt`) och får repository och nav-argument i konstruktorn.
 
@@ -18,7 +18,7 @@ repositoryn lazy. ViewModels skapas med `viewModel(factory = factoryOf { ... })`
 | Katalog | Innehåll |
 |---|---|
 | `domain/` | Rena funktioner utan Android: volym, bästa set, rekord, förifyllning, vikt-parsing/-formatering, diakritikokänslig sökning, `MuscleGroup`/`Equipment`. Allt som går att testa på JVM bor här. |
-| `data/` | Entities, `ExerciseDao`, `WorkoutDao`, `JarnDatabase` (seedar ~70 övningar i `onCreate`), `ExerciseRepository`, `WorkoutRepository`. |
+| `data/` | Entities, `ExerciseDao`, `WorkoutDao`, `TungDatabase` (seedar ~70 övningar i `onCreate`), `ExerciseRepository`, `WorkoutRepository`. |
 | `ui/<skärm>/` | `Screen` + `ViewModel` + `UiState` per skärm: `home`, `workout` (pågående pass + inmatningsarket), `exercises` (flik och väljare i ett), `history` (lista + detalj), `summary`. |
 | `ui/common/` | Formatering, delade komponenter, `WorkoutReport`. |
 | `ui/theme/` | Färgtokens, typografi, tema. |
@@ -51,7 +51,7 @@ Vikt och reps är det enda som spelar roll; allt annat är kuliss.
 - Ett djärvt grepp: inmatningsarket (enormt tal, tumstora −/+, "Klar").
   Resten är lugnt — inga kort-i-kort, inga ikoner som inte gör något, inga
   avdelare där luft räcker, inga versala etiketter, inga illustrationer.
-- En hörnradie: 12dp (`JarnCorner`) på knappar, ark och dialoger. 0 på listrader.
+- En hörnradie: 12dp (`TungCorner`) på knappar, ark och dialoger. 0 på listrader.
 - Rörelse bara som svar på handling (bocken fylls, arket glider upp).
 - Skärmen hålls tänd på Pågående pass (`view.keepScreenOn`).
 - Mörkt/ljust följer systemet. Dynamiska färger är **av**.

@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "io.github.kanylbullen.jarn"
+    namespace = "io.github.kanylbullen.tung"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "io.github.kanylbullen.jarn"
+        applicationId = "io.github.kanylbullen.tung"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

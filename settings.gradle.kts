@@ -14,6 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "jarn"
+rootProject.name = "tung"
 
 include(":app")

@@ -1,4 +1,4 @@
-# Järn
+# Tung
 
 En logg för styrketräningspass för Android. Som Jefit, fast lugnare: starta ett
 pass, lägg till övningar, slå in vikt och reps med en hand mellan seten, och se
