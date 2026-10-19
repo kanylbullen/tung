@@ -1,144 +1,152 @@
-# Tung – arkitektur och riktning
+# Tung: architecture and direction
 
-*Beslutat 2026-10-19. Det här dokumentet beskriver vart appen är på väg;
-`CLAUDE.md` beskriver hur den är byggd just nu.*
+*Decided on 2026-10-19. This document describes where the app is heading;
+`CLAUDE.md` describes how it is built right now.*
 
-## Mål
+## Goals
 
-1. **Öppen källkod.** Allt utom användarens egen träningsdata är öppet: app,
-   server, MCP-server, övningskatalog, dokumentation.
-2. **Öppet API.** Allt appen kan göra går att göra över HTTP, dokumenterat med
-   en OpenAPI-specifikation. Inga privata endpoints som appen har men andra
-   inte får.
-3. **MCP-server.** En agent ska kunna logga ett set, läsa historik och svara på
-   "vad körde jag på bänk förra gången" med samma rättigheter som användaren.
-4. **Självhostbar.** En person med en VPS ska kunna köra hela tjänsten med en
-   `docker compose up`. Vår hostade instans är bara en sådan installation.
-5. **Offline först.** Gym har dålig täckning. Appen fungerar fullt ut utan
-   server; servern är tillval och ger synk mellan enheter, API och MCP.
-6. **Klockan loggar.** En Wear OS-app startar pass och tar emot set med vikt
-   och reps från handleden, så att telefonen kan ligga i skåpet.
-7. **AI på begäran, med egen nyckel om man vill.** Appen kan ta fram förslag
-   på program, nästa pass och progression ur ens egen historik. Vår instans
-   ger en liten gratis månadsbudget; därutöver, och för den som vill, egen
-   nyckel (BYOK) eller en självhostad modell.
+1. **Open source.** Everything except the user's own training data is open:
+   app, server, MCP server, exercise catalogue, documentation.
+2. **Open API.** Everything the app can do can be done over HTTP, documented
+   with an OpenAPI specification. No private endpoints that the app has and
+   others do not.
+3. **MCP server.** An agent should be able to log a set, read history and
+   answer "what did I do on bench press last time" with the same rights as the
+   user.
+4. **Self-hostable.** A person with a VPS should be able to run the whole
+   service with one `docker compose up`. Our hosted instance is just one such
+   installation.
+5. **Offline first.** Gyms have poor coverage. The app works fully without a
+   server; the server is optional and adds sync between devices, the API and
+   MCP.
+6. **The watch logs.** A Wear OS app starts workouts and takes in sets with
+   weight and reps from the wrist, so the phone can stay in the locker.
+7. **AI on request, with your own key if you want.** The app can produce
+   suggestions for programs, the next workout and progression from your own
+   history. Our instance gives a small free monthly budget; beyond that, and
+   for those who want it, your own key (BYOK) or a self-hosted model.
 
-## Formen
+## Shape
 
 ```
-┌──────────────┐ Data Layer ┌──────────────┐  synk (HTTPS, API-token)  ┌──────────────────────────┐
-│ Wear OS-app  │ ◄────────► │ Android-app  │ ◄───────────────────────► │ tung-server (en binär)   │
-│ egen lokal   │ (Bluetooth)│ Room, lokal  │                           │  REST + OpenAPI          │
-│ logg         │            │ sanning      │                           │  MCP (streamable HTTP)   │
-└──────────────┘            └──────────────┘                           │  auth, synk, export      │
+┌──────────────┐ Data Layer ┌──────────────┐  sync (HTTPS, API token)  ┌──────────────────────────┐
+│ Wear OS app  │ ◄────────► │ Android app  │ ◄───────────────────────► │ tung-server (one binary) │
+│ own local    │ (Bluetooth)│ Room, local  │                           │  REST + OpenAPI          │
+│ log          │            │ truth        │                           │  MCP (streamable HTTP)   │
+└──────────────┘            └──────────────┘                           │  auth, sync, export      │
                                                                        └────────────┬─────────────┘
-                                agenter / andra klienter ─── REST eller MCP ────────┘
+                                agents / other clients ─── REST or MCP ─────────────┘
                                                                                     │
                                                                                Postgres
 ```
 
-- **Appen är sanningen för sin egen enhet.** Den skriver alltid lokalt först
-  och synkar när den kan. Ingen vy väntar på nätet.
-- **Servern är ett tillval** som användaren pekar ut med en URL i
-  inställningarna. Standard är ingen server alls. Självhost och vår instans
-  är samma kod och samma inställning.
-- **Klockan är en egen klient med samma modell.** Den har sin egen lilla
-  logg, skapar set med egna UUID och `updatedAt`, och synkar mot telefonen
-  över Wearable Data Layer när den är i närheten. Telefonen slår ihop med
-  samma regler som den använder mot servern. Ett synkprotokoll, två
-  transporter. Klockan fungerar alltså även när telefonen ligger i skåpet och
-  behöver aldrig nå servern själv.
-- **API:t är kontraktet.** Appen, MCP-servern och tredje part går genom samma
-  REST-yta. MCP-verktygen är tunna omslag över API:t, inte en egen väg in i
-  databasen.
+- **The app is the truth for its own device.** It always writes locally first
+  and syncs when it can. No view waits for the network.
+- **The server is optional.** The user points to it with a URL in the
+  settings. The default is no server at all. Self-host and our instance are
+  the same code and the same setting.
+- **The watch is its own client with the same model.** It has its own small
+  log, creates sets with its own UUIDs and `updatedAt`, and syncs with the
+  phone over the Wearable Data Layer when it is nearby. The phone merges using
+  the same rules it uses against the server. One sync protocol, two
+  transports. So the watch works even when the phone is in the locker and
+  never needs to reach the server itself.
+- **The API is the contract.** The app, the MCP server and third parties go
+  through the same REST surface. The MCP tools are thin wrappers over the API,
+  not a separate way into the database.
 
-## Beslut som är tagna
+## Decisions taken
 
-| Fråga | Beslut | Varför |
+| Question | Decision | Why |
 |---|---|---|
-| App | Kotlin, Jetpack Compose, Room | Redan byggd; native ger bäst inmatning med en hand |
-| Server | Kotlin, Ktor, Postgres, en Docker-image | Delar domänkod med appen i en `core`-modul (volym, rekord, förifyllning räknas lika på båda sidor). En binär är det enklaste att självhosta |
-| MCP | Inbyggd i servern över streamable HTTP, officiella Kotlin-SDK:n | En container, en auth, en deploy. Registreras i MCP-registret som `io.github.kanylbullen/tung` när den är stabil |
-| Klocka | Wear OS, Compose for Wear OS, egen modul `wear/` i samma repo; Data Layer mot telefonen, ingen egen serverkontakt | Samma språk och samma `core`-modul som appen. Burnwatch har redan en Wear-modul på den här maskinen att utgå från |
-| Auth | E-post + lösenord i servern, API-tokens för klienter och agenter; OIDC som tillval senare | Självhostare ska inte behöva en identitetsleverantör. Tokens är hur MCP-klienter och skript kopplar in sig |
-| Identiteter | UUID genererade på klienten; katalogövningar får deterministiska UUID ur `nameKey` | Två enheter kan skapa data offline utan kollision, och katalogen har samma id överallt |
-| Synk | Per rad: `updatedAt`, senaste skrivning vinner, gravstenar för raderingar | Träningsdata ändras sällan samtidigt på två enheter; enkelhet slår CRDT här |
-| Övningskatalog | Egen kuraterad kärna (70 övningar, sv + en) som öppen data under CC0; bredare engelsk katalog importerad ur free-exercise-db (Unlicense) nås via sök | Väljaren ska visa det man faktiskt gör, inte 900 övningar. wger valdes bort: CC-BY-SA smittar katalogen och har 3 av 932 övningar på svenska |
-| AI | MCP först: användarens egen assistent läser historik och sparar program via `save_routine`. In-app som andrahandsval med BYOK, operatörsnyckel eller en liten gratisbudget | Se avsnittet AI-funktioner. MCP gör att vi inte betalar tokens och att funktionen följer med vid självhost; samma validering oavsett väg |
-| Personlig data | Lämnar aldrig enheten utan att synk är påslagen. Export i JSON när som helst. Ingen analys eller telemetri i appen | Det är den enda delen som inte är öppen, och den ska vara användarens |
+| App | Kotlin, Jetpack Compose, Room | Already built; native gives the best one-handed input |
+| Server | Kotlin, Ktor, Postgres, one Docker image | Shares domain code with the app in a `core` module (volume, records and prefill are calculated the same on both sides). One binary is the simplest to self-host |
+| MCP | Built into the server over streamable HTTP, the official Kotlin SDK | One container, one auth, one deploy. Registered in the MCP registry as `io.github.kanylbullen/tung` when it is stable |
+| Watch | Wear OS, Compose for Wear OS, own `wear/` module in the same repo; Data Layer to the phone, no server contact of its own | Same language and same `core` module as the app. Burnwatch already has a Wear module on this machine to start from |
+| Auth | Email + password in the server, API tokens for clients and agents; OIDC as an option later | Self-hosters should not need an identity provider. Tokens are how MCP clients and scripts connect |
+| Identities | UUIDs generated on the client; catalogue exercises get deterministic UUIDs from `nameKey` | Two devices can create data offline without collisions, and the catalogue has the same id everywhere |
+| Sync | Per row: `updatedAt`, last write wins, tombstones for deletions | Training data rarely changes on two devices at the same time; simplicity beats CRDT here |
+| Exercise catalogue | Own curated core (70 exercises, sv + en) as open data under CC0; broader English catalogue imported from free-exercise-db (Unlicense), reached via search | The picker should show what you actually do, not 900 exercises. wger was rejected: CC-BY-SA would spread to the catalogue, and it has 3 of 932 exercises in Swedish |
+| AI | MCP first: the user's own assistant reads history and saves programs via `save_routine`. In-app as a second choice with BYOK, operator key or a small free budget | See the AI features section. MCP means we do not pay for tokens and the feature comes along with self-hosting; same validation whichever route |
+| Personal data | Never leaves the device unless sync is on. JSON export at any time. No analytics or telemetry in the app | It is the only part that is not open, and it should belong to the user |
 
-## AI-funktioner
+## AI features
 
-**MCP först.** Den som redan har en AI (Claude, ChatGPT, en lokal modell
-med MCP-klient) kopplar in Tungs MCP-server och ber sin egen assistent:
-"gör mig ett tredagarsprogram för hemmagym ur min historik". Assistenten
-läser historiken med lästverktygen och sparar resultatet med ett
-skrivverktyg, `save_routine`, som bara tar emot ett strukturerat program
-(dagar → övningar som katalognycklar → set × reps) och validerar det mot
-katalogen. Vi betalar inga tokens, användaren använder den modell och det
-abonnemang hen redan har, och funktionen fungerar lika bra mot en självhostad
-instans. MCP-servern skickar med färdiga *prompts* ("Föreslå program",
-"Nästa pass", "Var har jag fastnat") så att assistenten får rätt ram utan
-att användaren behöver formulera den.
+**MCP first.** Anyone who already has an AI (Claude, ChatGPT, a local model
+with an MCP client) connects Tung's MCP server and asks their own assistant:
+"make me a three-day program for a home gym from my history". The assistant
+reads the history with the read tools and saves the result with a write tool,
+`save_routine`, which only accepts a structured program (days → exercises as
+catalogue keys → sets × reps) and validates it against the catalogue. We pay
+no tokens, the user uses the model and the subscription they already have, and
+the feature works just as well against a self-hosted instance. The MCP server
+ships with ready-made *prompts* ("Suggest a program", "Next workout", "Where
+have I got stuck") so that the assistant gets the right frame without the user
+having to phrase it.
 
-**In-app som andrahandsval.** För den som inte har någon AI, eller vill ha
-förslaget direkt i appen mellan två set, finns samma tre frågor som knappar
-i appen. Svaret måste ha samma struktur som `save_routine` tar emot, så
-valideringen är en och samma kod. Modellen kommer då från ett av tre håll:
+**In-app as a second choice.** For those who have no AI, or who want the
+suggestion right in the app between two sets, the same three questions are
+available as buttons in the app. The answer must have the same structure that
+`save_routine` accepts, so the validation is one and the same code. The model
+then comes from one of three places:
 
-| Läge | Nyckel ligger | Vem betalar | Typisk användare |
+| Mode | Key lives | Who pays | Typical user |
 |---|---|---|---|
-| BYOK | På telefonen, i Android Keystore; skickas aldrig till vår server | Användaren, direkt mot leverantören | Den som vill ha det i appen och har en nyckel |
-| Självhost | I serverns konfiguration, för alla på instansen | Operatören | Den som kör egen server, gärna mot en lokal modell |
-| Vår instans, gratisbudget | På servern | Vi, upp till en liten månadskvot i tokens per konto, räknad på servern och synlig i appen | Den som varken har AI eller nyckel |
+| BYOK | On the phone, in Android Keystore; never sent to our server | The user, directly to the provider | Someone who wants it in the app and has a key |
+| Self-host | In the server configuration, for everyone on the instance | The operator | Someone who runs their own server, preferably against a local model |
+| Our instance, free budget | On the server | We do, up to a small monthly token quota per account, counted on the server and visible in the app | Someone who has neither an AI nor a key |
 
-BYOK talar OpenAI-kompatibelt eller Anthropic-API direkt från appen, med
-valbar bas-URL, så att Ollama eller en annan lokal server fungerar utan att
-vi gör något särskilt. Gratisbudgeten på vår instans är medvetet sist: den
-är den enda som kostar oss, och MCP-vägen gör den till ett undantag snarare
-än regeln.
+BYOK speaks the OpenAI-compatible or the Anthropic API directly from the app,
+with a configurable base URL, so that Ollama or another local server works
+without us doing anything special. The free budget on our instance is
+deliberately last: it is the only one that costs us, and the MCP route makes it
+an exception rather than the rule.
 
-**Regler som inte förhandlas.** Anropet sker bara när användaren trycker på
-knappen eller ber sin assistent, aldrig i bakgrunden. Appen visar vad som
-skickas innan det skickas första gången. Det som skickas är träningsdata och
-inställningar, aldrig e-post, namn eller enhets-id. Ett förslag som refererar
-en övning som inte finns i katalogen kastas, inte visas.
+**Non-negotiable rules.** The call happens only when the user presses the
+button or asks their assistant, never in the background. The app shows what is
+sent before it is sent the first time. What is sent is training data and
+settings, never email, name or device id. A suggestion that refers to an
+exercise that is not in the catalogue is discarded, not shown.
 
-## Beslut som väntar
+## Open decisions
 
-- **Licens.** AGPL-3.0 är förslaget: en självhostbar tjänst med API är exakt
-  fallet AGPL är skrivet för, och målet är öppen källkod i OSI-mening (FSL,
-  som ScreenTimeAgent använder, är det inte). Katalogdata under CC0 oavsett.
-  Ägarens beslut; inget `LICENSE` ligger i repot förrän det är taget.
-- **Serverns lagring för minsta självhost.** Postgres är standard. Om det visar
-  sig att folk vill köra på en Raspberry Pi utan Postgres kan SQLite läggas
-  till bakom samma repository-gränssnitt; det bestäms när någon frågar.
-- **Webbklient.** Inte planerad. API:t gör det möjligt för någon annan.
+- **Licence.** AGPL-3.0 is the proposal: a self-hostable service with an API is
+  exactly the case AGPL was written for, and the goal is open source in the OSI
+  sense (FSL, which ScreenTimeAgent uses, is not). Catalogue data under CC0
+  regardless. The owner's decision; no `LICENSE` goes in the repo until it is
+  taken.
+- **Server storage for the smallest self-host.** Postgres is the default. If it
+  turns out that people want to run on a Raspberry Pi without Postgres, SQLite
+  can be added behind the same repository interface; that is decided when
+  someone asks.
+- **Web client.** Not planned. The API makes it possible for someone else.
 
-## Ordning
+## Order of work
 
-1. **Nu:** UUID-nycklar och `updatedAt` i appen (pågår), licensbeslut,
-   repot publikt.
-2. **Katalog:** importskript från free-exercise-db till `catalog/`, kärnan
-   bryts ut som öppen datafil som både app och server läser.
-3. **`core`-modul:** domänlogiken flyttas ur `app/` till en Kotlin-modul utan
-   Android-beroenden så att servern kan använda den.
-4. **Server v0:** konto, API-token, OpenAPI, CRUD för pass och set, export.
-   `docker compose` med Postgres. Ingen synk ännu; API:t först.
-5. **Synk i appen:** server-URL i inställningar, push/pull av ändringar sedan
-   senaste synk, gravstenar.
-6. **MCP:** verktyg över API:t: `log_set`, `last_time`, `start_workout`,
-   `finish_workout`, `history`, `save_routine`, plus prompts för program,
-   nästa pass och platåer. Registrering i MCP-registret.
-7. **Klocka v0:** se pågående pass, nästa set med förra gången som förslag,
-   vikt och reps med kronan eller ringen i stora steg, bekräfta med ett tryck,
-   vilotimer med haptik. Starta pass från klockan med de senaste övningarna.
-   Kräver att `core`-modulen (steg 3) finns, inte servern.
-8. **Vår instans** på Coolify, samma image som självhostarna får.
-9. **Mallar och in-app-AI:** `Routine` i datamodellen kommer redan i steg 6
-   eftersom `save_routine` behöver den. In-app-förslag i BYOK-läge därefter,
-   budgetläget på vår instans sist och bara om MCP-vägen visar sig vara för
-   smal för många.
+1. **Now:** UUID keys and `updatedAt` in the app (in progress), licence
+   decision, repo public.
+2. **Catalogue:** import script from free-exercise-db into `catalog/`, the core
+   broken out as an open data file that both app and server read.
+3. **`core` module:** the domain logic moves out of `app/` into a Kotlin module
+   without Android dependencies so that the server can use it.
+4. **Server v0:** account, API token, OpenAPI, CRUD for workouts and sets,
+   export. `docker compose` with Postgres. No sync yet; API first.
+5. **Sync in the app:** server URL in settings, push/pull of changes since the
+   last sync, tombstones.
+6. **MCP:** tools over the API: `log_set`, `last_time`, `start_workout`,
+   `finish_workout`, `history`, `save_routine`, plus prompts for program,
+   next workout and plateaus. Registration in the MCP registry.
+7. **Watch v0:** see the current workout, next set with last time as the
+   suggestion, weight and reps with the crown or the bezel in large steps,
+   confirm with a tap, rest timer with haptics. Start a workout from the watch
+   with the latest exercises. Requires that the `core` module (step 3) exists,
+   not the server.
+8. **Our instance** on Coolify, the same image that self-hosters get.
+9. **Templates and in-app AI:** `Routine` in the data model already comes in
+   step 6 because `save_routine` needs it. In-app suggestions in BYOK mode
+   after that, budget mode on our instance last, and only if the MCP route
+   turns out to be too narrow for many people.
 
-Allt som rör pengar eller en hostad betaltjänst är medvetet utanför. Om det
-kommer senare ligger det i vår instans, inte i koden alla får.
+Anything that involves money or a hosted paid service is deliberately out of
+scope. If it comes later, it lives in our instance, not in the code everyone
+gets.
