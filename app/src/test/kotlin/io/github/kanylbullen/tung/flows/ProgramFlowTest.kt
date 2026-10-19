@@ -6,6 +6,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import io.github.kanylbullen.tung.R
@@ -139,8 +140,10 @@ class ProgramFlowTest : FlowTest() {
         clickText(str(R.string.programs_title))
         clickText("Weekly")
         waitForText(str(R.string.program_active))
-        clickDescription(str(R.string.program_weekday_description, "Push day", weekdayFull(weekday)))
+        val toggle = str(R.string.program_weekday_description, "Push day", weekdayFull(weekday))
+        clickDescription(toggle)
         compose.waitUntil(5_000) { count("SELECT weekdays FROM program_day") == 1 shl (weekday - 1) }
+        assertShown(hasContentDescription(toggle) and isOn())
         screenshot("2-program-wednesday")
 
         clickDescription(str(R.string.action_back))
