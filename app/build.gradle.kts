@@ -57,6 +57,12 @@ android {
     sourceSets.getByName("test") {
         java.srcDir("src/test/kotlin")
     }
+
+    testOptions {
+        // The flow tests (src/test/.../flows) run the real screens under Robolectric,
+        // which needs the merged resources, assets and manifest.
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 ksp {
@@ -90,4 +96,10 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    // Registers the empty activity that createComposeRule() hosts content in.
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
