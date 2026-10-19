@@ -74,6 +74,13 @@
     <string name="input_error_reps">Skriv ett heltal mellan 0 och 999.</string>
     <string name="input_field_weight">Vikt i kilo</string>
     <string name="input_field_reps">Antal reps</string>
+    <string name="input_ruler_weight">Viktlinjal</string>
+    <string name="input_ruler_reps">Repslinjal</string>
+    <string name="input_ruler_weight_state">%1$s kilo</string>
+    <plurals name="input_ruler_reps_state">
+        <item quantity="one">%d rep</item>
+        <item quantity="other">%d reps</item>
+    </plurals>
 
     <!-- Exercises -->
     <string name="exercises_title">Övningar</string>

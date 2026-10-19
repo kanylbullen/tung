@@ -32,6 +32,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -40,8 +41,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kanylbullen.tung.core.RulerScale
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -66,11 +69,21 @@ data class NumberInputSpec(
     val step: (text: String, steps: Int) -> String,
     /** Strips characters that can never be part of a value. */
     val sanitize: (String) -> String,
+    /** The ruler under the number: its steps and range. */
+    val ruler: RulerScale,
+    /** The text as a number for the ruler, or null when it is not one. */
+    val toValue: (String) -> Double?,
+    /** A value on the ruler as text: what a drag writes into the field, and the tick labels. */
+    val fromValue: (Double) -> String,
+    val rulerDescription: String,
+    /** What the ruler points at, for screen readers: "82.5 kilos". */
+    val rulerState: (Double) -> String,
 )
 
 /**
- * The signature of the app: one enormous number, two thumb-sized buttons and
- * a "done". The number itself is the text field — tap it to type.
+ * The signature of the app: one enormous number, a ruler to drag it, two
+ * thumb-sized buttons and a "done". The number itself is the text field — tap
+ * it to type.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,7 +153,20 @@ fun NumberInputSheet(
                     .semantics { contentDescription = spec.fieldDescription },
             )
             Text(spec.unit, style = MaterialTheme.typography.titleLarge, color = Tung.colors.muted)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
+            RulerPicker(
+                scale = spec.ruler,
+                value = spec.toValue(field.text),
+                onValueChange = { value ->
+                    tapped = false
+                    field = spec.fromValue(value).let { TextFieldValue(it, TextRange(it.length)) }
+                },
+                tickLabel = spec.fromValue,
+                description = spec.rulerDescription,
+                stateDescriptionOf = spec.rulerState,
+                modifier = Modifier.fullBleed(20.dp),
+            )
+            Spacer(Modifier.height(4.dp))
             Text(
                 if (valid) spec.hint else spec.errorText,
                 style = MaterialTheme.typography.bodyMedium,
@@ -165,6 +191,14 @@ fun NumberInputSheet(
 }
 
 private fun TextFieldValue.selectAll() = copy(selection = TextRange(0, text.length))
+
+/** Widens a child of a column padded by [padding] on each side back to the full width of the sheet. */
+private fun Modifier.fullBleed(padding: Dp) = layout { measurable, constraints ->
+    val extra = (padding * 2).roundToPx()
+    val width = constraints.maxWidth + extra
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
+}
 
 @Composable
 private fun StepButton(symbol: String, description: String, modifier: Modifier, onClick: () -> Unit) {

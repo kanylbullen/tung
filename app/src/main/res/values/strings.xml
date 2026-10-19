@@ -74,6 +74,13 @@
     <string name="input_error_reps">Enter a whole number between 0 and 999.</string>
     <string name="input_field_weight">Weight in kilos</string>
     <string name="input_field_reps">Number of reps</string>
+    <string name="input_ruler_weight">Weight ruler</string>
+    <string name="input_ruler_reps">Reps ruler</string>
+    <string name="input_ruler_weight_state">%1$s kilos</string>
+    <plurals name="input_ruler_reps_state">
+        <item quantity="one">%d rep</item>
+        <item quantity="other">%d reps</item>
+    </plurals>
 
     <!-- Exercises -->
     <string name="exercises_title">Exercises</string>

@@ -68,6 +68,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.REPS_RULER
+import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepReps
@@ -82,6 +84,7 @@ import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
+import kotlin.math.roundToInt
 
 private enum class Field { WEIGHT, REPS }
 
@@ -523,39 +526,55 @@ private fun DoneCheck(
 
 
 @Composable
-private fun weightSpec(initial: String) = NumberInputSpec(
-    title = stringResource(R.string.input_weight_title),
-    unit = stringResource(R.string.workout_unit_kg),
-    initialText = initial,
-    keyboardType = KeyboardType.Decimal,
-    fieldDescription = stringResource(R.string.input_field_weight),
-    minusDescription = stringResource(R.string.input_minus_weight),
-    plusDescription = stringResource(R.string.input_plus_weight),
-    hint = stringResource(R.string.input_hint),
-    errorText = stringResource(R.string.input_error_weight),
-    doneText = stringResource(R.string.input_done),
-    minusText = stringResource(R.string.input_minus),
-    plusText = stringResource(R.string.input_plus),
-    isValid = { parseWeight(it) != null },
-    step = { text, steps -> localWeight(stepWeight(parseWeight(text) ?: 0.0, steps)) },
-    sanitize = { text -> text.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
-)
+private fun weightSpec(initial: String): NumberInputSpec {
+    val context = LocalContext.current
+    return NumberInputSpec(
+        title = stringResource(R.string.input_weight_title),
+        unit = stringResource(R.string.workout_unit_kg),
+        initialText = initial,
+        keyboardType = KeyboardType.Decimal,
+        fieldDescription = stringResource(R.string.input_field_weight),
+        minusDescription = stringResource(R.string.input_minus_weight),
+        plusDescription = stringResource(R.string.input_plus_weight),
+        hint = stringResource(R.string.input_hint),
+        errorText = stringResource(R.string.input_error_weight),
+        doneText = stringResource(R.string.input_done),
+        minusText = stringResource(R.string.input_minus),
+        plusText = stringResource(R.string.input_plus),
+        isValid = { parseWeight(it) != null },
+        step = { text, steps -> localWeight(stepWeight(parseWeight(text) ?: 0.0, steps)) },
+        sanitize = { text -> text.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
+        ruler = WEIGHT_RULER,
+        toValue = ::parseWeight,
+        fromValue = ::localWeight,
+        rulerDescription = stringResource(R.string.input_ruler_weight),
+        rulerState = { context.getString(R.string.input_ruler_weight_state, localWeight(it)) },
+    )
+}
 
 @Composable
-private fun repsSpec(initial: String) = NumberInputSpec(
-    title = stringResource(R.string.input_reps_title),
-    unit = stringResource(R.string.workout_unit_reps),
-    initialText = initial,
-    keyboardType = KeyboardType.Number,
-    fieldDescription = stringResource(R.string.input_field_reps),
-    minusDescription = stringResource(R.string.input_minus_reps),
-    plusDescription = stringResource(R.string.input_plus_reps),
-    hint = stringResource(R.string.input_hint),
-    errorText = stringResource(R.string.input_error_reps),
-    doneText = stringResource(R.string.input_done),
-    minusText = stringResource(R.string.input_minus),
-    plusText = stringResource(R.string.input_plus),
-    isValid = { parseReps(it) != null },
-    step = { text, steps -> stepReps(parseReps(text) ?: 0, steps).toString() },
-    sanitize = { text -> text.filter { it.isDigit() }.take(3) },
-)
+private fun repsSpec(initial: String): NumberInputSpec {
+    val context = LocalContext.current
+    return NumberInputSpec(
+        title = stringResource(R.string.input_reps_title),
+        unit = stringResource(R.string.workout_unit_reps),
+        initialText = initial,
+        keyboardType = KeyboardType.Number,
+        fieldDescription = stringResource(R.string.input_field_reps),
+        minusDescription = stringResource(R.string.input_minus_reps),
+        plusDescription = stringResource(R.string.input_plus_reps),
+        hint = stringResource(R.string.input_hint),
+        errorText = stringResource(R.string.input_error_reps),
+        doneText = stringResource(R.string.input_done),
+        minusText = stringResource(R.string.input_minus),
+        plusText = stringResource(R.string.input_plus),
+        isValid = { parseReps(it) != null },
+        step = { text, steps -> stepReps(parseReps(text) ?: 0, steps).toString() },
+        sanitize = { text -> text.filter { it.isDigit() }.take(3) },
+        ruler = REPS_RULER,
+        toValue = { parseReps(it)?.toDouble() },
+        fromValue = { it.roundToInt().toString() },
+        rulerDescription = stringResource(R.string.input_ruler_reps),
+        rulerState = { it.roundToInt().let { n -> context.resources.getQuantityString(R.plurals.input_ruler_reps_state, n, n) } },
+    )
+}
