@@ -11,7 +11,7 @@ import io.github.kanylbullen.tung.domain.LoggedSet
 @Entity(tableName = "exercise", indices = [Index("name")])
 data class Exercise(
     @PrimaryKey val id: String,
-    /** What the user typed for a custom exercise; the Swedish fallback for a catalogue one. */
+    /** What the user typed for a custom exercise; the English fallback for a catalogue one. */
     val name: String,
     /**
      * Stable catalogue key, shown via the string resource `ex_<nameKey>`

@@ -127,7 +127,7 @@
 
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- catalog:begin -->
-    <!-- Genererad ur catalog/core.json, redigera inte. Kör catalog/tools/gen_android.py. -->
+    <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bench press</string>
     <string name="ex_cable_fly">Cable fly</string>
     <string name="ex_dips">Dips</string>

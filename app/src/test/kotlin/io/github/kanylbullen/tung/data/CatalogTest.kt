@@ -62,12 +62,16 @@ class CatalogTest {
         assertEquals(core.map { it.key }.sorted(), core.map { it.key })
     }
 
+    /** English is the default locale and the fallback name, so it must be complete. */
     @Test
-    fun everyCoreEntryHasASwedishAndAnEnglishName() {
-        core.forEach { e ->
-            assertTrue("${e.key} has no sv name", e.sv.isNotBlank())
-            assertTrue("${e.key} has no en name", e.en.isNotBlank())
-        }
+    fun everyCoreEntryHasAnEnglishName() {
+        core.forEach { e -> assertTrue("${e.key} has no en name", e.en.isNotBlank()) }
+    }
+
+    /** Swedish is the shipped translation and is kept complete as well. */
+    @Test
+    fun everyCoreEntryHasASwedishName() {
+        core.forEach { e -> assertTrue("${e.key} has no sv name", e.sv.isNotBlank()) }
     }
 
     @Test
@@ -76,7 +80,7 @@ class CatalogTest {
         assertEquals(core.map { it.key }.toSet(), seeds.keys)
         core.forEach { e ->
             val seed = seeds.getValue(e.key)
-            assertEquals(e.sv, seed.name)
+            assertEquals("${e.key}: the fallback name is English", e.en, seed.name)
             assertEquals(e.muscleGroup, seed.muscle.key)
             assertEquals(e.equipment, seed.equipment.key)
         }
