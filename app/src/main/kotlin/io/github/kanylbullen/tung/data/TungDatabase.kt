@@ -26,10 +26,10 @@ abstract class TungDatabase : RoomDatabase() {
     private object SeedCallback : Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
-            SeedExercises.all.forEach { (name, muscle, equipment) ->
+            SeedExercises.all.forEach { seed ->
                 db.execSQL(
-                    "INSERT INTO exercise (name, muscleGroup, equipment, isCustom) VALUES (?, ?, ?, 0)",
-                    arrayOf<Any>(name, muscle.key, equipment.key),
+                    "INSERT INTO exercise (name, nameKey, muscleGroup, equipment, isCustom) VALUES (?, ?, ?, ?, 0)",
+                    arrayOf<Any>(seed.name, seed.key, seed.muscle.key, seed.equipment.key),
                 )
             }
         }

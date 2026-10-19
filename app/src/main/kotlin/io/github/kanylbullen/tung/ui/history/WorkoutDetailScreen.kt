@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.Stat
 import io.github.kanylbullen.tung.ui.common.StatRow
 import io.github.kanylbullen.tung.ui.common.appContainer
@@ -104,7 +105,7 @@ fun WorkoutDetailScreen(workoutId: Long, onBack: () -> Unit) {
                 report.exercises.forEach { exercise ->
                     item(key = "we-${exercise.workoutExerciseId}") {
                         Text(
-                            exercise.name,
+                            exerciseDisplayName(exercise.nameKey, exercise.name),
                             style = MaterialTheme.typography.titleLarge,
                             color = Tung.colors.text,
                             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 4.dp),

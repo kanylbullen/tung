@@ -12,7 +12,9 @@ import io.github.kanylbullen.tung.domain.totalVolume
 
 data class ExerciseReport(
     val workoutExerciseId: Long,
+    /** Fallback name; shown through `exerciseDisplayName(nameKey, name)`. */
     val name: String,
+    val nameKey: String?,
     val sets: List<LoggedSet>,
     val best: LoggedSet?,
     val isRecord: Boolean,
@@ -44,6 +46,7 @@ suspend fun buildWorkoutReport(
         ExerciseReport(
             workoutExerciseId = e.workoutExercise.id,
             name = e.exercise.name,
+            nameKey = e.exercise.nameKey,
             sets = sets,
             best = bestSet(sets),
             isRecord = withRecords &&

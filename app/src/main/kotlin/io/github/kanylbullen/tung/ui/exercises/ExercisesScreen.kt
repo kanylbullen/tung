@@ -37,6 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +45,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -51,11 +54,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
-import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.domain.Equipment
 import io.github.kanylbullen.tung.domain.MuscleGroup
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.appContainer
+import io.github.kanylbullen.tung.ui.common.displayName
 import io.github.kanylbullen.tung.ui.common.equipmentLabel
 import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.muscleGroupLabel
@@ -74,11 +77,16 @@ fun ExercisesScreen(
     onPicked: () -> Unit,
 ) {
     val container = appContainer()
+    val appContext = LocalContext.current.applicationContext
     val vm: ExercisesViewModel = viewModel(
         factory = factoryOf {
-            ExercisesViewModel(container.exerciseRepository, container.workoutRepository, workoutId)
+            ExercisesViewModel(container.exerciseRepository, container.workoutRepository, workoutId) {
+                it.displayName(appContext)
+            }
         }
     )
+    val locale = LocalConfiguration.current.locales[0]
+    LaunchedEffect(locale) { vm.setLocale(locale) }
     val state by vm.state.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
     var creating by rememberSaveable { mutableStateOf(false) }
@@ -130,10 +138,10 @@ fun ExercisesScreen(
                         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 4.dp),
                     )
                 }
-                items(group.exercises, key = { "ex-${it.id}" }) { exercise ->
+                items(group.exercises, key = { "ex-${it.exercise.id}" }) { named ->
                     ExerciseRow(
-                        exercise = exercise,
-                        onClick = if (vm.isPicker) ({ vm.pick(exercise.id, onPicked) }) else null,
+                        exercise = named,
+                        onClick = if (vm.isPicker) ({ vm.pick(named.exercise.id, onPicked) }) else null,
                     )
                 }
             }
@@ -201,7 +209,7 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 )
 
 @Composable
-private fun ExerciseRow(exercise: Exercise, onClick: (() -> Unit)?) {
+private fun ExerciseRow(exercise: NamedExercise, onClick: (() -> Unit)?) {
     val base = Modifier.fillMaxWidth()
     Row(
         modifier = (if (onClick != null) base.clickable(onClick = onClick) else base)
@@ -210,14 +218,14 @@ private fun ExerciseRow(exercise: Exercise, onClick: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            exercise.name,
+            exercise.displayName,
             style = MaterialTheme.typography.bodyLarge,
             color = Tung.colors.text,
             modifier = Modifier.weight(1f),
         )
         val detail = buildList {
-            add(equipmentLabel(Equipment.fromKey(exercise.equipment)))
-            if (exercise.isCustom) add(stringResource(R.string.exercises_custom))
+            add(equipmentLabel(Equipment.fromKey(exercise.exercise.equipment)))
+            if (exercise.exercise.isCustom) add(stringResource(R.string.exercises_custom))
         }.joinToString(stringResource(R.string.row_separator))
         Text(detail, style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     }

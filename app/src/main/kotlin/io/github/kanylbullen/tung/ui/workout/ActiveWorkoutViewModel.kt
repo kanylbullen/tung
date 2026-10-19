@@ -55,6 +55,7 @@ class ActiveWorkoutViewModel(
                         workoutExerciseId = e.workoutExercise.id,
                         exerciseId = e.exercise.id,
                         name = e.exercise.name,
+                        nameKey = e.exercise.nameKey,
                         sets = e.sortedSets.mapIndexed { index, s ->
                             ActiveSetUi(
                                 id = s.id,

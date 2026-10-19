@@ -20,12 +20,29 @@ repositoryn lazy. ViewModels skapas med `viewModel(factory = factoryOf { ... })`
 | `domain/` | Rena funktioner utan Android: volym, bästa set, rekord, förifyllning, vikt-parsing/-formatering, diakritikokänslig sökning, `MuscleGroup`/`Equipment`. Allt som går att testa på JVM bor här. |
 | `data/` | Entities, `ExerciseDao`, `WorkoutDao`, `TungDatabase` (seedar ~70 övningar i `onCreate`), `ExerciseRepository`, `WorkoutRepository`. |
 | `ui/<skärm>/` | `Screen` + `ViewModel` + `UiState` per skärm: `home`, `workout` (pågående pass + inmatningsarket), `exercises` (flik och väljare i ett), `history` (lista + detalj), `summary`. |
-| `ui/common/` | Formatering, delade komponenter, `WorkoutReport`. |
+| `ui/common/` | Formatering, delade komponenter, `WorkoutReport`, `ExerciseNames` (visade övningsnamn). |
 | `ui/theme/` | Färgtokens, typografi, tema. |
 
 Appens viktigaste query är `WorkoutDao.previousSessionSets` — set för en övning
 från senaste avslutade pass som innehåller den. Den driver både "Förra: 80 × 8"
 och förifyllningen av nya set.
+
+### Övningsnamn är resurser
+
+Katalogövningarna har en stabil nyckel i `Exercise.nameKey` (`bench_press`,
+`back_squat` …) och visas via strängresursen `ex_<nameKey>`, så namnet följer
+telefonens språk. `name` lagras ändå, som svensk reserv. Egna övningar har
+`nameKey = null` och visar det användaren skrev. Allt som visar ett
+övningsnamn går via `exerciseDisplayName(nameKey, name)` eller
+`Exercise.displayName(context)` i `ui/common/ExerciseNames.kt`, som slår upp
+varje nyckel med `getIdentifier` en gång och cachar id:t. Sök i väljaren går
+mot det **visade** namnet (`domain.filterByDisplayName`), aldrig mot `name` i SQL.
+
+Ett nytt katalognamn kräver tre ändringar: raden i `data/SeedExercises.kt`,
+`ex_<nyckel>` i `res/values/strings.xml` och i `res/values-en/strings.xml`.
+Engelska namn är gym-engelska (Lat pulldown, Skull crusher), inte
+ordagranna översättningar. Kontroll: `grep -c 'name="ex_'` i båda filerna ska
+vara lika med antalet rader i seedlistan.
 
 Ett set räknas (`domain.isLogged`) när det är bockat **och** har reps > 0.
 "Avsluta pass" raderar allt annat, sedan övningar utan set, och ett pass utan
@@ -34,6 +51,7 @@ ett enda räknat set raderas helt i stället för att sparas tomt.
 ## Bygga
 
 ```sh
+cd /home/xup/tung
 export JAVA_HOME=/home/xup/android/jdk ANDROID_HOME=/home/xup/android/sdk ANDROID_SDK_ROOT=/home/xup/android/sdk
 export PATH=$JAVA_HOME/bin:$PATH
 ./gradlew assembleDebug testDebugUnitTest --no-daemon
@@ -90,7 +108,7 @@ och vad man gör, utan "oj".
   annan version.
 - **Strängar bara i resurser.** Inga hårdkodade strängar i composables; allt i
   `res/values/strings.xml` (svenska) och `res/values-en/strings.xml`
-  (engelska). Undantag: övningsnamnen i seed-datan är data, inte UI.
+  (engelska). Övningsnamnen också — se "Övningsnamn är resurser".
 - **`res/font/` tar bara typsnittsfiler.** Därför ligger OFL-licensen i
   `assets/licenses/`, inte bredvid `.ttf`-filen.
 - Inga `!!`, ingen `GlobalScope`, inga blockerande DB-anrop på main. DAO:erna

@@ -11,7 +11,13 @@ import io.github.kanylbullen.tung.domain.LoggedSet
 @Entity(tableName = "exercise", indices = [Index("name")])
 data class Exercise(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** What the user typed for a custom exercise; the Swedish fallback for a catalogue one. */
     val name: String,
+    /**
+     * Stable catalogue key, shown via the string resource `ex_<nameKey>`
+     * (see `ui/common/ExerciseNames.kt`). Null for custom exercises.
+     */
+    val nameKey: String? = null,
     /** One of [io.github.kanylbullen.tung.domain.MuscleGroup] keys. */
     val muscleGroup: String,
     /** One of [io.github.kanylbullen.tung.domain.Equipment] keys. */

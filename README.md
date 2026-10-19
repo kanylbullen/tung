@@ -13,6 +13,7 @@ Ingen Android-toolchain ligger på PATH på devservern, så sätt miljön i samm
 skal som du bygger i:
 
 ```sh
+cd /home/xup/tung
 export JAVA_HOME=/home/xup/android/jdk ANDROID_HOME=/home/xup/android/sdk ANDROID_SDK_ROOT=/home/xup/android/sdk
 export PATH=$JAVA_HOME/bin:$PATH
 echo "sdk.dir=/home/xup/android/sdk" > local.properties   # en gång, filen gitignoreras

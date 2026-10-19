@@ -72,6 +72,7 @@ import io.github.kanylbullen.tung.domain.parseReps
 import io.github.kanylbullen.tung.domain.parseWeight
 import io.github.kanylbullen.tung.domain.stepReps
 import io.github.kanylbullen.tung.domain.stepWeight
+import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.appContainer
@@ -264,7 +265,7 @@ private fun WorkoutList(
         }
         state.exercises.forEach { exercise ->
             item(key = "we-${exercise.workoutExerciseId}") {
-                ExerciseHeader(exercise.name, onRemove = { onRemoveExercise(exercise.workoutExerciseId) })
+                ExerciseHeader(exerciseDisplayName(exercise.nameKey, exercise.name), onRemove = { onRemoveExercise(exercise.workoutExerciseId) })
             }
             items(exercise.sets, key = { "set-${it.id}" }) { set ->
                 SwipeableSetRow(

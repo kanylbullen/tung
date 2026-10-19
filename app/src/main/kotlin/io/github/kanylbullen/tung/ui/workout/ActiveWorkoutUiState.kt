@@ -17,7 +17,9 @@ data class ActiveSetUi(
 data class ActiveExerciseUi(
     val workoutExerciseId: Long,
     val exerciseId: Long,
+    /** Fallback name; shown through `exerciseDisplayName(nameKey, name)`. */
     val name: String,
+    val nameKey: String?,
     val sets: List<ActiveSetUi>,
 )
 

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.ExerciseReport
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.Stat
@@ -101,7 +102,7 @@ private fun BestSetRow(exercise: ExerciseReport) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(exercise.name, style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
+            Text(exerciseDisplayName(exercise.nameKey, exercise.name), style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
             if (exercise.isRecord) {
                 Text(
                     stringResource(R.string.summary_record),
