@@ -4,17 +4,24 @@ import io.github.kanylbullen.tung.domain.Equipment
 import io.github.kanylbullen.tung.domain.MuscleGroup
 import kotlinx.coroutines.flow.Flow
 
-class ExerciseRepository(private val dao: ExerciseDao) {
+class ExerciseRepository(
+    private val dao: ExerciseDao,
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
 
     fun observeExercises(): Flow<List<Exercise>> = dao.observeAll()
 
-    suspend fun createExercise(name: String, muscleGroup: MuscleGroup, equipment: Equipment): Long =
-        dao.insert(
-            Exercise(
-                name = name.trim(),
-                muscleGroup = muscleGroup.key,
-                equipment = equipment.key,
-                isCustom = true,
-            )
+    /** Creates a custom exercise and returns its id. */
+    suspend fun createExercise(name: String, muscleGroup: MuscleGroup, equipment: Equipment): String {
+        val exercise = Exercise(
+            id = newId(),
+            name = name.trim(),
+            muscleGroup = muscleGroup.key,
+            equipment = equipment.key,
+            isCustom = true,
+            updatedAt = clock(),
         )
+        dao.insert(exercise)
+        return exercise.id
+    }
 }

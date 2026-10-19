@@ -48,7 +48,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkoutDetailScreen(workoutId: Long, onBack: () -> Unit) {
+fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
     val container = appContainer()
     val vm: WorkoutDetailViewModel = viewModel(
         factory = factoryOf { WorkoutDetailViewModel(workoutId, container.workoutRepository) }

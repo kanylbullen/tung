@@ -85,15 +85,15 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 private enum class Field { WEIGHT, REPS }
 
-private data class EditTarget(val setId: Long, val field: Field)
+private data class EditTarget(val setId: String, val field: Field)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveWorkoutScreen(
-    workoutId: Long,
+    workoutId: String,
     onBack: () -> Unit,
     onAddExercise: () -> Unit,
-    onFinished: (workoutId: Long, saved: Boolean) -> Unit,
+    onFinished: (workoutId: String, saved: Boolean) -> Unit,
 ) {
     val container = appContainer()
     val vm: ActiveWorkoutViewModel = viewModel(
@@ -242,11 +242,11 @@ fun ActiveWorkoutScreen(
 private fun WorkoutList(
     state: ActiveWorkoutUiState,
     contentPadding: PaddingValues,
-    onEdit: (Long, Field) -> Unit,
+    onEdit: (String, Field) -> Unit,
     onToggle: (ActiveSetUi) -> Unit,
-    onDeleteSet: (Long) -> Unit,
-    onAddSet: (Long) -> Unit,
-    onRemoveExercise: (Long) -> Unit,
+    onDeleteSet: (String) -> Unit,
+    onAddSet: (String) -> Unit,
+    onRemoveExercise: (String) -> Unit,
     onAddExercise: () -> Unit,
 ) {
     LazyColumn(

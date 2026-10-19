@@ -27,6 +27,19 @@ Appens viktigaste query är `WorkoutDao.previousSessionSets` — set för en öv
 från senaste avslutade pass som innehåller den. Den driver både "Förra: 80 × 8"
 och förifyllningen av nya set.
 
+### Id:n och `updatedAt`
+
+Alla fyra entiteterna har `id: String`, ett UUID som klienten genererar
+(`data/Ids.kt`): `newId()` för allt användaren skapar (pass, passövningar,
+set, egna övningar), och `catalogExerciseId(nameKey)` för katalogövningar — ett
+namnbaserat UUID ur `"tung:exercise:<nameKey>"`, så samma katalogövning har
+samma id på alla enheter. Seedningen i `TungDatabase` använder det, med
+`updatedAt = 0` för en orörd katalograd. Varje entitet har `updatedAt` (epoch
+millis), och det sätts av repositoryt vid varje insert och update; skärmar och
+ViewModels rör det aldrig. Varför: förberedelse för synk mot en server, och
+export/import mellan enheter utan id-kollisioner. Ingen query får sortera på
+id — ordning kommer från `position` eller tidsstämplar.
+
 ### Övningsnamn är resurser
 
 Katalogövningarna har en stabil nyckel i `Exercise.nameKey` (`bench_press`,

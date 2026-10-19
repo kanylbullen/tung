@@ -4,7 +4,7 @@ import io.github.kanylbullen.tung.domain.LoggedSet
 import io.github.kanylbullen.tung.domain.isLogged
 
 data class ActiveSetUi(
-    val id: Long,
+    val id: String,
     /** 1-based, as shown. */
     val number: Int,
     val weightKg: Double,
@@ -15,8 +15,8 @@ data class ActiveSetUi(
 )
 
 data class ActiveExerciseUi(
-    val workoutExerciseId: Long,
-    val exerciseId: Long,
+    val workoutExerciseId: String,
+    val exerciseId: String,
     /** Fallback name; shown through `exerciseDisplayName(nameKey, name)`. */
     val name: String,
     val nameKey: String?,
@@ -32,10 +32,10 @@ data class ActiveWorkoutUiState(
     val loggedSetCount: Int
         get() = exercises.sumOf { e -> e.sets.count { isLogged(it.completed, it.reps) } }
 
-    fun findSet(setId: Long): ActiveSetUi? =
+    fun findSet(setId: String): ActiveSetUi? =
         exercises.firstNotNullOfOrNull { e -> e.sets.firstOrNull { it.id == setId } }
 }
 
 sealed interface ActiveWorkoutEvent {
-    data class Finished(val workoutId: Long, val saved: Boolean) : ActiveWorkoutEvent
+    data class Finished(val workoutId: String, val saved: Boolean) : ActiveWorkoutEvent
 }

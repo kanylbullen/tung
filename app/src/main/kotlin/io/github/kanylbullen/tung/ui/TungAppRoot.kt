@@ -48,10 +48,10 @@ private object Routes {
     const val DETAIL = "detail/{$ARG_ID}"
     const val SUMMARY = "summary/{$ARG_ID}"
 
-    fun workout(id: Long) = "workout/$id"
-    fun picker(id: Long) = "picker/$id"
-    fun detail(id: Long) = "detail/$id"
-    fun summary(id: Long) = "summary/$id"
+    fun workout(id: String) = "workout/$id"
+    fun picker(id: String) = "picker/$id"
+    fun detail(id: String) = "detail/$id"
+    fun summary(id: String) = "summary/$id"
 }
 
 private data class Tab(val route: String, @StringRes val label: Int)
@@ -62,7 +62,7 @@ private val tabs = listOf(
     Tab(Routes.EXERCISES, R.string.nav_exercises),
 )
 
-private val idArgument = listOf(navArgument(Routes.ARG_ID) { type = NavType.LongType })
+private val idArgument = listOf(navArgument(Routes.ARG_ID) { type = NavType.StringType })
 
 @Composable
 fun TungAppRoot() {
@@ -118,7 +118,7 @@ fun TungAppRoot() {
                 ExercisesScreen(workoutId = null, onBack = null, onPicked = {})
             }
             composable(Routes.WORKOUT, arguments = idArgument) { entry ->
-                val id = entry.arguments?.getLong(Routes.ARG_ID) ?: return@composable
+                val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
                 ActiveWorkoutScreen(
                     workoutId = id,
                     onBack = { nav.popBackStack() },
@@ -133,7 +133,7 @@ fun TungAppRoot() {
                 )
             }
             composable(Routes.PICKER, arguments = idArgument) { entry ->
-                val id = entry.arguments?.getLong(Routes.ARG_ID) ?: return@composable
+                val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
                 ExercisesScreen(
                     workoutId = id,
                     onBack = { nav.popBackStack() },
@@ -141,11 +141,11 @@ fun TungAppRoot() {
                 )
             }
             composable(Routes.DETAIL, arguments = idArgument) { entry ->
-                val id = entry.arguments?.getLong(Routes.ARG_ID) ?: return@composable
+                val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
                 WorkoutDetailScreen(workoutId = id, onBack = { nav.popBackStack() })
             }
             composable(Routes.SUMMARY, arguments = idArgument) { entry ->
-                val id = entry.arguments?.getLong(Routes.ARG_ID) ?: return@composable
+                val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
                 SummaryScreen(workoutId = id, onDone = { nav.popBackStack(Routes.HOME, inclusive = false) })
             }
         }

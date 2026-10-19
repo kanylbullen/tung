@@ -33,7 +33,7 @@ class HomeViewModel(private val workouts: WorkoutRepository) : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     /** Starts a workout, or resumes the one in progress, and hands back its id. */
-    fun startOrResume(onReady: (Long) -> Unit) {
+    fun startOrResume(onReady: (String) -> Unit) {
         viewModelScope.launch { onReady(workouts.startOrResumeWorkout()) }
     }
 

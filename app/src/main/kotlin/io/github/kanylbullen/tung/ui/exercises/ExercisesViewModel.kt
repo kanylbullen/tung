@@ -41,7 +41,7 @@ data class ExercisesUiState(
 class ExercisesViewModel(
     private val exercises: ExerciseRepository,
     private val workouts: WorkoutRepository,
-    private val workoutId: Long?,
+    private val workoutId: String?,
     private val displayName: (Exercise) -> String,
 ) : ViewModel() {
 
@@ -74,7 +74,7 @@ class ExercisesViewModel(
         locale.value = value
     }
 
-    fun pick(exerciseId: Long, onDone: () -> Unit) {
+    fun pick(exerciseId: String, onDone: () -> Unit) {
         val id = workoutId ?: return
         viewModelScope.launch {
             workouts.addExercise(id, exerciseId)

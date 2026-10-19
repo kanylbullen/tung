@@ -16,64 +16,76 @@ class WorkoutRepository(
 
     fun observeFinishedWorkouts(): Flow<List<WorkoutSummaryRow>> = dao.observeFinishedWorkouts()
 
-    fun observeWorkout(id: Long): Flow<Workout?> = dao.observeWorkout(id)
+    fun observeWorkout(id: String): Flow<Workout?> = dao.observeWorkout(id)
 
-    fun observeExercises(workoutId: Long): Flow<List<WorkoutExerciseWithSets>> =
+    fun observeExercises(workoutId: String): Flow<List<WorkoutExerciseWithSets>> =
         dao.observeExercisesWithSets(workoutId)
 
     /** Returns the workout in progress, creating one if there is none. */
-    suspend fun startOrResumeWorkout(): Long = db.withTransaction {
-        dao.getActiveWorkout()?.id ?: dao.insertWorkout(Workout(startedAt = clock()))
+    suspend fun startOrResumeWorkout(): String = db.withTransaction {
+        dao.getActiveWorkout()?.id ?: run {
+            val now = clock()
+            val workout = Workout(id = newId(), startedAt = now, updatedAt = now)
+            dao.insertWorkout(workout)
+            workout.id
+        }
     }
 
     /** Adds an exercise at the end, with a first set already filled in from last time. */
-    suspend fun addExercise(workoutId: Long, exerciseId: Long): Long = db.withTransaction {
+    suspend fun addExercise(workoutId: String, exerciseId: String): String = db.withTransaction {
         val position = dao.maxExercisePosition(workoutId) + 1
-        val weId = dao.insertWorkoutExercise(
-            WorkoutExercise(workoutId = workoutId, exerciseId = exerciseId, position = position)
+        val workoutExercise = WorkoutExercise(
+            id = newId(),
+            workoutId = workoutId,
+            exerciseId = exerciseId,
+            position = position,
+            updatedAt = clock(),
         )
-        insertPrefilledSet(weId, workoutId, exerciseId)
-        weId
+        dao.insertWorkoutExercise(workoutExercise)
+        insertPrefilledSet(workoutExercise.id, workoutId, exerciseId)
+        workoutExercise.id
     }
 
-    suspend fun removeExercise(workoutExerciseId: Long) = dao.deleteWorkoutExercise(workoutExerciseId)
+    suspend fun removeExercise(workoutExerciseId: String) = dao.deleteWorkoutExercise(workoutExerciseId)
 
-    suspend fun addSet(workoutExerciseId: Long): Long? = db.withTransaction {
+    suspend fun addSet(workoutExerciseId: String): String? = db.withTransaction {
         val we = dao.getWorkoutExercise(workoutExerciseId) ?: return@withTransaction null
         insertPrefilledSet(we.id, we.workoutId, we.exerciseId)
     }
 
-    private suspend fun insertPrefilledSet(workoutExerciseId: Long, workoutId: Long, exerciseId: Long): Long {
+    private suspend fun insertPrefilledSet(workoutExerciseId: String, workoutId: String, exerciseId: String): String {
         val existing = dao.getSets(workoutExerciseId)
         val previous = dao.previousSessionSets(exerciseId, workoutId).map { it.toLogged() }
         val values = prefillSet(existing.lastOrNull()?.toLogged(), previous, existing.size)
             ?: LoggedSet(weightKg = 0.0, reps = 0)
-        return dao.insertSet(
-            SetEntry(
-                workoutExerciseId = workoutExerciseId,
-                position = (existing.maxOfOrNull { it.position } ?: -1) + 1,
-                weightKg = values.weightKg,
-                reps = values.reps,
-                completed = false,
-            )
+        val set = SetEntry(
+            id = newId(),
+            workoutExerciseId = workoutExerciseId,
+            position = (existing.maxOfOrNull { it.position } ?: -1) + 1,
+            weightKg = values.weightKg,
+            reps = values.reps,
+            completed = false,
+            updatedAt = clock(),
         )
+        dao.insertSet(set)
+        return set.id
     }
 
-    suspend fun updateWeight(setId: Long, weightKg: Double) = dao.updateWeight(setId, weightKg)
+    suspend fun updateWeight(setId: String, weightKg: Double) = dao.updateWeight(setId, weightKg, clock())
 
-    suspend fun updateReps(setId: Long, reps: Int) = dao.updateReps(setId, reps)
+    suspend fun updateReps(setId: String, reps: Int) = dao.updateReps(setId, reps, clock())
 
-    suspend fun setCompleted(setId: Long, completed: Boolean) = dao.setCompleted(setId, completed)
+    suspend fun setCompleted(setId: String, completed: Boolean) = dao.setCompleted(setId, completed, clock())
 
-    suspend fun deleteSet(setId: Long) = dao.deleteSet(setId)
+    suspend fun deleteSet(setId: String) = dao.deleteSet(setId)
 
-    suspend fun previousSessionSets(exerciseId: Long, excludeWorkoutId: Long): List<LoggedSet> =
+    suspend fun previousSessionSets(exerciseId: String, excludeWorkoutId: String): List<LoggedSet> =
         dao.previousSessionSets(exerciseId, excludeWorkoutId).map { it.toLogged() }
 
-    suspend fun previousMaxWeight(exerciseId: Long, before: Long): Double? =
+    suspend fun previousMaxWeight(exerciseId: String, before: Long): Double? =
         dao.previousMaxWeight(exerciseId, before)
 
-    suspend fun countLoggedSets(workoutId: Long): Int = dao.countLoggedSets(workoutId)
+    suspend fun countLoggedSets(workoutId: String): Int = dao.countLoggedSets(workoutId)
 
     /**
      * Ends the workout: drops unticked or empty sets, then exercises left with
@@ -82,17 +94,18 @@ class WorkoutRepository(
      *
      * @return true if the workout was saved, false if it was discarded.
      */
-    suspend fun finishWorkout(workoutId: Long): Boolean = db.withTransaction {
+    suspend fun finishWorkout(workoutId: String): Boolean = db.withTransaction {
         dao.deleteUnloggedSets(workoutId)
         dao.deleteEmptyExercises(workoutId)
         if (dao.countLoggedSets(workoutId) == 0) {
             dao.deleteWorkout(workoutId)
             false
         } else {
-            dao.setEndedAt(workoutId, clock())
+            val now = clock()
+            dao.setEndedAt(workoutId, endedAt = now, updatedAt = now)
             true
         }
     }
 
-    suspend fun deleteWorkout(workoutId: Long) = dao.deleteWorkout(workoutId)
+    suspend fun deleteWorkout(workoutId: String) = dao.deleteWorkout(workoutId)
 }

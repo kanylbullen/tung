@@ -18,7 +18,7 @@ data class SummaryUiState(
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class SummaryViewModel(workoutId: Long, repo: WorkoutRepository) : ViewModel() {
+class SummaryViewModel(workoutId: String, repo: WorkoutRepository) : ViewModel() {
     val state: StateFlow<SummaryUiState> =
         combine(repo.observeWorkout(workoutId), repo.observeExercises(workoutId)) { w, e -> w to e }
             .mapLatest { (workout, exercises) ->

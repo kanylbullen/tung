@@ -11,7 +11,7 @@ import io.github.kanylbullen.tung.domain.isNewRecord
 import io.github.kanylbullen.tung.domain.totalVolume
 
 data class ExerciseReport(
-    val workoutExerciseId: Long,
+    val workoutExerciseId: String,
     /** Fallback name; shown through `exerciseDisplayName(nameKey, name)`. */
     val name: String,
     val nameKey: String?,

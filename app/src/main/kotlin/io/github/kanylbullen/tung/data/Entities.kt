@@ -10,7 +10,7 @@ import io.github.kanylbullen.tung.domain.LoggedSet
 
 @Entity(tableName = "exercise", indices = [Index("name")])
 data class Exercise(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @PrimaryKey val id: String,
     /** What the user typed for a custom exercise; the Swedish fallback for a catalogue one. */
     val name: String,
     /**
@@ -23,15 +23,19 @@ data class Exercise(
     /** One of [io.github.kanylbullen.tung.domain.Equipment] keys. */
     val equipment: String,
     val isCustom: Boolean,
+    /** Epoch millis of the last write; set by the repository. */
+    val updatedAt: Long,
 )
 
 @Entity(tableName = "workout", indices = [Index("endedAt"), Index("startedAt")])
 data class Workout(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @PrimaryKey val id: String,
     val startedAt: Long,
     /** Null while the workout is in progress. At most one such row is expected. */
     val endedAt: Long? = null,
     val note: String? = null,
+    /** Epoch millis of the last write; set by the repository. */
+    val updatedAt: Long,
 )
 
 @Entity(
@@ -53,10 +57,12 @@ data class Workout(
     indices = [Index("workoutId"), Index("exerciseId")],
 )
 data class WorkoutExercise(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val workoutId: Long,
-    val exerciseId: Long,
+    @PrimaryKey val id: String,
+    val workoutId: String,
+    val exerciseId: String,
     val position: Int,
+    /** Epoch millis of the last write; set by the repository. */
+    val updatedAt: Long,
 )
 
 @Entity(
@@ -72,12 +78,14 @@ data class WorkoutExercise(
     indices = [Index("workoutExerciseId")],
 )
 data class SetEntry(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val workoutExerciseId: Long,
+    @PrimaryKey val id: String,
+    val workoutExerciseId: String,
     val position: Int,
     val weightKg: Double,
     val reps: Int,
     val completed: Boolean,
+    /** Epoch millis of the last write; set by the repository. */
+    val updatedAt: Long,
 )
 
 fun SetEntry.toLogged(): LoggedSet = LoggedSet(weightKg, reps)
@@ -95,7 +103,7 @@ data class WorkoutExerciseWithSets(
 
 /** One row in the history list, aggregated in SQL. */
 data class WorkoutSummaryRow(
-    val id: Long,
+    val id: String,
     val startedAt: Long,
     val endedAt: Long?,
     val exerciseCount: Int,

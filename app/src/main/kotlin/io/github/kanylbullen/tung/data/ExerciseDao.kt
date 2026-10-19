@@ -11,5 +11,5 @@ interface ExerciseDao {
     fun observeAll(): Flow<List<Exercise>>
 
     @Insert
-    suspend fun insert(exercise: Exercise): Long
+    suspend fun insert(exercise: Exercise)
 }

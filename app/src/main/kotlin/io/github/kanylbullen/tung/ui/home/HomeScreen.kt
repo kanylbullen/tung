@@ -30,8 +30,8 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 
 @Composable
 fun HomeScreen(
-    onOpenWorkout: (Long) -> Unit,
-    onOpenDetail: (Long) -> Unit,
+    onOpenWorkout: (String) -> Unit,
+    onOpenDetail: (String) -> Unit,
     onShowHistory: () -> Unit,
 ) {
     val container = appContainer()

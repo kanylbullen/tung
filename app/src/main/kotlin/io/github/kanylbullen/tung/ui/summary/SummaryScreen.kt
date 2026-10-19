@@ -42,7 +42,7 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SummaryScreen(workoutId: Long, onDone: () -> Unit) {
+fun SummaryScreen(workoutId: String, onDone: () -> Unit) {
     val container = appContainer()
     val vm: SummaryViewModel = viewModel(factory = factoryOf { SummaryViewModel(workoutId, container.workoutRepository) })
     val state by vm.state.collectAsStateWithLifecycle()

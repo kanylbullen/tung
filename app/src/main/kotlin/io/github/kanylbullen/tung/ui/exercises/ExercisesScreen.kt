@@ -72,7 +72,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisesScreen(
-    workoutId: Long?,
+    workoutId: String?,
     onBack: (() -> Unit)?,
     onPicked: () -> Unit,
 ) {

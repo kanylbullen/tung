@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActiveWorkoutViewModel(
-    private val workoutId: Long,
+    private val workoutId: String,
     private val repo: WorkoutRepository,
 ) : ViewModel() {
 
@@ -27,10 +27,10 @@ class ActiveWorkoutViewModel(
      * Last session's sets per exercise. History cannot change while a workout
      * is in progress, so each exercise is looked up once.
      */
-    private val previousByExercise = mutableMapOf<Long, List<LoggedSet>>()
+    private val previousByExercise = mutableMapOf<String, List<LoggedSet>>()
     private val finishing = MutableStateFlow(false)
 
-    private val exercisesWithPrevious: Flow<Pair<List<WorkoutExerciseWithSets>, Map<Long, List<LoggedSet>>>> =
+    private val exercisesWithPrevious: Flow<Pair<List<WorkoutExerciseWithSets>, Map<String, List<LoggedSet>>>> =
         repo.observeExercises(workoutId).mapLatest { list ->
             list.map { it.exercise.id }.distinct()
                 .filterNot { it in previousByExercise }
@@ -75,17 +75,17 @@ class ActiveWorkoutViewModel(
     private val eventChannel = Channel<ActiveWorkoutEvent>(Channel.BUFFERED)
     val events: Flow<ActiveWorkoutEvent> = eventChannel.receiveAsFlow()
 
-    fun addSet(workoutExerciseId: Long) = launch { repo.addSet(workoutExerciseId) }
+    fun addSet(workoutExerciseId: String) = launch { repo.addSet(workoutExerciseId) }
 
-    fun setWeight(setId: Long, weightKg: Double) = launch { repo.updateWeight(setId, weightKg) }
+    fun setWeight(setId: String, weightKg: Double) = launch { repo.updateWeight(setId, weightKg) }
 
-    fun setReps(setId: Long, reps: Int) = launch { repo.updateReps(setId, reps) }
+    fun setReps(setId: String, reps: Int) = launch { repo.updateReps(setId, reps) }
 
-    fun setCompleted(setId: Long, completed: Boolean) = launch { repo.setCompleted(setId, completed) }
+    fun setCompleted(setId: String, completed: Boolean) = launch { repo.setCompleted(setId, completed) }
 
-    fun deleteSet(setId: Long) = launch { repo.deleteSet(setId) }
+    fun deleteSet(setId: String) = launch { repo.deleteSet(setId) }
 
-    fun removeExercise(workoutExerciseId: Long) = launch { repo.removeExercise(workoutExerciseId) }
+    fun removeExercise(workoutExerciseId: String) = launch { repo.removeExercise(workoutExerciseId) }
 
     fun finish() = launch {
         finishing.value = true

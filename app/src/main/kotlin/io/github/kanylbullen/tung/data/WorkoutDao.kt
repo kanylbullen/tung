@@ -12,7 +12,7 @@ interface WorkoutDao {
     // --- workouts ---
 
     @Insert
-    suspend fun insertWorkout(workout: Workout): Long
+    suspend fun insertWorkout(workout: Workout)
 
     @Query("SELECT * FROM workout WHERE endedAt IS NULL ORDER BY startedAt DESC LIMIT 1")
     fun observeActiveWorkout(): Flow<Workout?>
@@ -21,16 +21,16 @@ interface WorkoutDao {
     suspend fun getActiveWorkout(): Workout?
 
     @Query("SELECT * FROM workout WHERE id = :id")
-    fun observeWorkout(id: Long): Flow<Workout?>
+    fun observeWorkout(id: String): Flow<Workout?>
 
     @Query("SELECT * FROM workout WHERE id = :id")
-    suspend fun getWorkout(id: Long): Workout?
+    suspend fun getWorkout(id: String): Workout?
 
-    @Query("UPDATE workout SET endedAt = :endedAt WHERE id = :id")
-    suspend fun setEndedAt(id: Long, endedAt: Long)
+    @Query("UPDATE workout SET endedAt = :endedAt, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setEndedAt(id: String, endedAt: Long, updatedAt: Long)
 
     @Query("DELETE FROM workout WHERE id = :id")
-    suspend fun deleteWorkout(id: Long)
+    suspend fun deleteWorkout(id: String)
 
     @Query(
         """
@@ -50,19 +50,19 @@ interface WorkoutDao {
 
     @Transaction
     @Query("SELECT * FROM workout_exercise WHERE workoutId = :workoutId ORDER BY position")
-    fun observeExercisesWithSets(workoutId: Long): Flow<List<WorkoutExerciseWithSets>>
+    fun observeExercisesWithSets(workoutId: String): Flow<List<WorkoutExerciseWithSets>>
 
     @Query("SELECT * FROM workout_exercise WHERE id = :id")
-    suspend fun getWorkoutExercise(id: Long): WorkoutExercise?
+    suspend fun getWorkoutExercise(id: String): WorkoutExercise?
 
     @Query("SELECT COALESCE(MAX(position), -1) FROM workout_exercise WHERE workoutId = :workoutId")
-    suspend fun maxExercisePosition(workoutId: Long): Int
+    suspend fun maxExercisePosition(workoutId: String): Int
 
     @Insert
-    suspend fun insertWorkoutExercise(workoutExercise: WorkoutExercise): Long
+    suspend fun insertWorkoutExercise(workoutExercise: WorkoutExercise)
 
     @Query("DELETE FROM workout_exercise WHERE id = :id")
-    suspend fun deleteWorkoutExercise(id: Long)
+    suspend fun deleteWorkoutExercise(id: String)
 
     @Query(
         """
@@ -71,27 +71,27 @@ interface WorkoutDao {
           AND NOT EXISTS (SELECT 1 FROM set_entry s WHERE s.workoutExerciseId = workout_exercise.id)
         """
     )
-    suspend fun deleteEmptyExercises(workoutId: Long)
+    suspend fun deleteEmptyExercises(workoutId: String)
 
     // --- sets ---
 
     @Query("SELECT * FROM set_entry WHERE workoutExerciseId = :workoutExerciseId ORDER BY position")
-    suspend fun getSets(workoutExerciseId: Long): List<SetEntry>
+    suspend fun getSets(workoutExerciseId: String): List<SetEntry>
 
     @Insert
-    suspend fun insertSet(set: SetEntry): Long
+    suspend fun insertSet(set: SetEntry)
 
-    @Query("UPDATE set_entry SET weightKg = :weightKg WHERE id = :id")
-    suspend fun updateWeight(id: Long, weightKg: Double)
+    @Query("UPDATE set_entry SET weightKg = :weightKg, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateWeight(id: String, weightKg: Double, updatedAt: Long)
 
-    @Query("UPDATE set_entry SET reps = :reps WHERE id = :id")
-    suspend fun updateReps(id: Long, reps: Int)
+    @Query("UPDATE set_entry SET reps = :reps, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateReps(id: String, reps: Int, updatedAt: Long)
 
-    @Query("UPDATE set_entry SET completed = :completed WHERE id = :id")
-    suspend fun setCompleted(id: Long, completed: Boolean)
+    @Query("UPDATE set_entry SET completed = :completed, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setCompleted(id: String, completed: Boolean, updatedAt: Long)
 
     @Query("DELETE FROM set_entry WHERE id = :id")
-    suspend fun deleteSet(id: Long)
+    suspend fun deleteSet(id: String)
 
     /** Removes sets that were never ticked or have no reps — see [io.github.kanylbullen.tung.domain.isLogged]. */
     @Query(
@@ -101,7 +101,7 @@ interface WorkoutDao {
           AND workoutExerciseId IN (SELECT id FROM workout_exercise WHERE workoutId = :workoutId)
         """
     )
-    suspend fun deleteUnloggedSets(workoutId: Long)
+    suspend fun deleteUnloggedSets(workoutId: String)
 
     @Query(
         """
@@ -109,7 +109,7 @@ interface WorkoutDao {
         WHERE we.workoutId = :workoutId AND s.completed = 1 AND s.reps > 0
         """
     )
-    suspend fun countLoggedSets(workoutId: Long): Int
+    suspend fun countLoggedSets(workoutId: String): Int
 
     /**
      * The app's most important query: the sets of exercise [exerciseId] from the
@@ -129,7 +129,7 @@ interface WorkoutDao {
         ORDER BY s.position
         """
     )
-    suspend fun previousSessionSets(exerciseId: Long, excludeWorkoutId: Long): List<SetEntry>
+    suspend fun previousSessionSets(exerciseId: String, excludeWorkoutId: String): List<SetEntry>
 
     /** Heaviest completed set for an exercise in finished workouts started before [before]. */
     @Query(
@@ -143,5 +143,5 @@ interface WorkoutDao {
           AND s.completed = 1 AND s.reps > 0
         """
     )
-    suspend fun previousMaxWeight(exerciseId: Long, before: Long): Double?
+    suspend fun previousMaxWeight(exerciseId: String, before: Long): Double?
 }

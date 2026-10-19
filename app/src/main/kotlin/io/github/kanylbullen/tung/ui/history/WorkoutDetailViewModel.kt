@@ -20,7 +20,7 @@ data class WorkoutDetailUiState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WorkoutDetailViewModel(
-    private val workoutId: Long,
+    private val workoutId: String,
     private val repo: WorkoutRepository,
 ) : ViewModel() {
 

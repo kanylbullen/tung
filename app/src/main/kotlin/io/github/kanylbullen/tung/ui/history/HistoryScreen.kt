@@ -25,7 +25,7 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(onOpenDetail: (Long) -> Unit) {
+fun HistoryScreen(onOpenDetail: (String) -> Unit) {
     val container = appContainer()
     val vm: HistoryViewModel = viewModel(factory = factoryOf { HistoryViewModel(container.workoutRepository) })
     val state by vm.state.collectAsStateWithLifecycle()
