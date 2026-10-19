@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The app languages offered in the system's per-app language settings (Android 13+).
+  Maintained by hand: one entry per values-<lang>/ directory, plus en for values/.
+  Keep it in step with resourceConfigurations in app/build.gradle.kts.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="sv" />
+</locale-config>
