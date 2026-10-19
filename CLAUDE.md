@@ -271,8 +271,9 @@ part of `./gradlew test`. Only them:
 
 - `FlowTestApp` (named in `src/test/resources/robolectric.properties`)
   overrides `TungApp.createContainer()` to hand `AppContainer` an in-memory
-  `TungDatabase.buildInMemory`, same schema and seed. That is the only test
-  seam in production code.
+  `TungDatabase.buildInMemory`, same schema and seed, and a settable
+  `Clock` (`FlowTestApp.today`) for Home's "Today". Those two
+  `AppContainer` parameters are the only test seams in production code.
 - Assertions are on semantics, with text from the English string resources
   (`str(R.string.…)`), never on pixels. Room works on its own threads, so wait
   (`waitForText`, `assertShown`) rather than assert right after a tap.
