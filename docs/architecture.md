@@ -169,7 +169,15 @@ exercise that is not in the catalogue is discarded, not shown.
    confirm with a tap, rest timer with haptics. Start a workout from the watch
    with the latest exercises. Requires that the `core` module (step 3) exists,
    not the server.
-8. **Our instance** on Coolify, the same image that self-hosters get.
+8. **Our instance**, the same image that self-hosters get. During beta it
+   runs on Coolify in the home lab. Once out of beta it moves to a hosted
+   server, most likely HostUp in Sweden, decided 2026-10-19. The move must be
+   a DNS change and a restore, not a project, which sets three rules from
+   day one: Postgres is backed up nightly with `pg_dump` to S3-compatible
+   storage outside the home lab and the restore is rehearsed before beta
+   ends; nothing is stored on the host except the Postgres volume; and the
+   public hostname is ours, never the host's, so clients, API tokens and MCP
+   registrations survive the move unchanged.
 9. **Health Connect:** write sessions after step 5 so the attached heart
    rate and calories sync; read support once the watch exists, since that is
    where the heart rate comes from.
