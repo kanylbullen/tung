@@ -133,6 +133,46 @@
     <string name="times_sign">×</string>
     <string name="set_value">%1$s × %2$d</string>
 
+    <!-- Routines -->
+    <string name="routines_title">Rutiner</string>
+    <string name="routines_all">Alla</string>
+    <string name="routines_empty">Inga rutiner. Spara ett avslutat pass som rutin från sammanfattningen eller från passets meny i historiken.</string>
+    <string name="routine_start">Starta</string>
+    <string name="routine_start_description">Starta %1$s</string>
+    <string name="routine_last">Senast: %1$s</string>
+    <string name="routine_never">Aldrig</string>
+    <string name="routine_today">i dag</string>
+    <string name="routine_yesterday">i går</string>
+    <plurals name="routine_days_ago">
+        <item quantity="one">för %d dag sedan</item>
+        <item quantity="other">för %d dagar sedan</item>
+    </plurals>
+    <string name="routine_save_as">Spara som rutin</string>
+    <string name="routine_name">Namn</string>
+    <string name="routine_save">Spara</string>
+    <string name="routine_saved">Sparat som rutin: %1$s</string>
+    <string name="routine_default_name">%1$s: %2$s</string>
+    <string name="list_separator">", "</string>
+    <string name="routine_error_name">Skriv ett namn på rutinen.</string>
+    <string name="routine_rename">Byt namn</string>
+    <string name="routine_rename_title">Byt namn på rutin</string>
+    <string name="routine_delete">Radera rutin</string>
+    <string name="routine_delete_title">Radera rutin?</string>
+    <string name="routine_delete_body">Rutinen raderas. Pass du har gjort från den finns kvar i historiken.</string>
+    <string name="routine_delete_confirm">Radera</string>
+    <string name="routine_move_up">Flytta upp</string>
+    <string name="routine_move_down">Flytta ner</string>
+    <string name="routine_exercise_menu">Val för %1$s</string>
+    <string name="routine_fewer_sets">Färre set av %1$s</string>
+    <string name="routine_more_sets">Fler set av %1$s</string>
+    <string name="routine_sets_label">set</string>
+    <plurals name="routine_target_reps">
+        <item quantity="one">%d rep per set</item>
+        <item quantity="other">%d reps per set</item>
+    </plurals>
+    <string name="routine_no_target_reps">Inget mål för reps</string>
+    <string name="routine_not_found">Rutinen finns inte längre.</string>
+
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->

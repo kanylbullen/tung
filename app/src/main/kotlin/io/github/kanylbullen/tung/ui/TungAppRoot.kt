@@ -34,6 +34,8 @@ import io.github.kanylbullen.tung.ui.exercises.ExercisesScreen
 import io.github.kanylbullen.tung.ui.history.HistoryScreen
 import io.github.kanylbullen.tung.ui.history.WorkoutDetailScreen
 import io.github.kanylbullen.tung.ui.home.HomeScreen
+import io.github.kanylbullen.tung.ui.routines.RoutineDetailScreen
+import io.github.kanylbullen.tung.ui.routines.RoutinesScreen
 import io.github.kanylbullen.tung.ui.summary.SummaryScreen
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.workout.ActiveWorkoutScreen
@@ -47,11 +49,15 @@ private object Routes {
     const val PICKER = "picker/{$ARG_ID}"
     const val DETAIL = "detail/{$ARG_ID}"
     const val SUMMARY = "summary/{$ARG_ID}"
+    const val ROUTINES = "routines"
+    const val ARG_ROUTINE = "routineId"
+    const val ROUTINE = "routine/{$ARG_ROUTINE}"
 
     fun workout(id: String) = "workout/$id"
     fun picker(id: String) = "picker/$id"
     fun detail(id: String) = "detail/$id"
     fun summary(id: String) = "summary/$id"
+    fun routine(id: String) = "routine/$id"
 }
 
 private data class Tab(val route: String, @StringRes val label: Int)
@@ -109,7 +115,22 @@ fun TungAppRoot() {
                     onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) },
                     onOpenDetail = { id -> nav.navigate(Routes.detail(id)) },
                     onShowHistory = { nav.navigateToTab(Routes.HISTORY) },
+                    onShowRoutines = { nav.navigate(Routes.ROUTINES) },
                 )
+            }
+            composable(Routes.ROUTINES) {
+                RoutinesScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenRoutine = { id -> nav.navigate(Routes.routine(id)) },
+                    onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) { popUpTo(Routes.HOME) } },
+                )
+            }
+            composable(
+                Routes.ROUTINE,
+                arguments = listOf(navArgument(Routes.ARG_ROUTINE) { type = NavType.StringType }),
+            ) { entry ->
+                val id = entry.arguments?.getString(Routes.ARG_ROUTINE) ?: return@composable
+                RoutineDetailScreen(routineId = id, onBack = { nav.popBackStack() })
             }
             composable(Routes.HISTORY) {
                 HistoryScreen(onOpenDetail = { id -> nav.navigate(Routes.detail(id)) })

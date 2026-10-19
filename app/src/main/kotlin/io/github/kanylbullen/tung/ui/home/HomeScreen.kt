@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -14,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -26,6 +28,7 @@ import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.durationText
 import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.rememberNow
+import io.github.kanylbullen.tung.ui.routines.RoutineRow
 import io.github.kanylbullen.tung.ui.theme.Tung
 
 @Composable
@@ -33,10 +36,15 @@ fun HomeScreen(
     onOpenWorkout: (String) -> Unit,
     onOpenDetail: (String) -> Unit,
     onShowHistory: () -> Unit,
+    onShowRoutines: () -> Unit,
 ) {
     val container = appContainer()
-    val vm: HomeViewModel = viewModel(factory = factoryOf { HomeViewModel(container.workoutRepository) })
+    val vm: HomeViewModel = viewModel(
+        factory = factoryOf { HomeViewModel(container.workoutRepository, container.routineRepository) }
+    )
     val state by vm.state.collectAsStateWithLifecycle()
+    // "Last: 3 days ago" changes at most at midnight; a minute is plenty.
+    val today = rememberNow(intervalMillis = 60_000L)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -74,6 +82,33 @@ fun HomeScreen(
                         modifier = Modifier.heightIn(min = 72.dp),
                     )
                 }
+            }
+        }
+
+        if (state.routines.isNotEmpty()) {
+            item(key = "routines-title") {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.routines_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Tung.colors.muted,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onShowRoutines, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.routines_all), color = Tung.colors.text)
+                    }
+                }
+            }
+            items(state.routines, key = { "routine-${it.id}" }) { row ->
+                RoutineRow(
+                    row = row,
+                    now = today,
+                    startEnabled = !state.loading && state.activeWorkout == null,
+                    onStart = { vm.startRoutine(row.id, onOpenWorkout) },
+                )
             }
         }
 

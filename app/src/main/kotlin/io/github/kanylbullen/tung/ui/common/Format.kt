@@ -6,10 +6,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.daysAgo
 import io.github.kanylbullen.tung.core.formatWeight
 import kotlinx.coroutines.delay
 import java.text.DecimalFormatSymbols
@@ -94,3 +96,23 @@ fun equipmentLabel(equipment: Equipment): String = stringResource(
         Equipment.OTHER -> R.string.equipment_other
     }
 )
+
+/** "Monday" ("Måndag" in Swedish), first letter capitalised. */
+fun localWeekday(epochMillis: Long): String {
+    val locale = Locale.getDefault()
+    val text = DateTimeFormatter.ofPattern("EEEE", locale)
+        .format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
+    return text.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+}
+
+/** "Last: 3 days ago", "Last: yesterday", "Last: today", or "Never" for a routine never started. */
+@Composable
+fun lastUsedText(lastUsedAt: Long?, now: Long): String {
+    if (lastUsedAt == null) return stringResource(R.string.routine_never)
+    val ago = when (val days = daysAgo(lastUsedAt, now, ZoneId.systemDefault()).toInt()) {
+        0 -> stringResource(R.string.routine_today)
+        1 -> stringResource(R.string.routine_yesterday)
+        else -> pluralStringResource(R.plurals.routine_days_ago, days, days)
+    }
+    return stringResource(R.string.routine_last, ago)
+}

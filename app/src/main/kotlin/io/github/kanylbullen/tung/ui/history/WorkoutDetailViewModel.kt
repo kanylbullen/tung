@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.ui.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.ui.common.WorkoutReport
 import io.github.kanylbullen.tung.ui.common.buildWorkoutReport
@@ -22,6 +23,7 @@ data class WorkoutDetailUiState(
 class WorkoutDetailViewModel(
     private val workoutId: String,
     private val repo: WorkoutRepository,
+    private val routines: RoutineRepository,
 ) : ViewModel() {
 
     val state: StateFlow<WorkoutDetailUiState> =
@@ -33,6 +35,11 @@ class WorkoutDetailViewModel(
                 )
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WorkoutDetailUiState())
+
+    /** Saves this workout as a new routine; [onSaved] gets false if there was nothing to save. */
+    fun saveAsRoutine(name: String, onSaved: (Boolean) -> Unit) {
+        viewModelScope.launch { onSaved(routines.saveFromWorkout(workoutId, name) != null) }
+    }
 
     fun delete(onDeleted: () -> Unit) {
         viewModelScope.launch {
