@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.ui.history
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,8 +28,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,6 +46,8 @@ import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localDate
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.localWeight
+import io.github.kanylbullen.tung.ui.routines.RoutineNameDialog
+import io.github.kanylbullen.tung.ui.routines.defaultRoutineName
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
@@ -51,9 +56,13 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
     val container = appContainer()
     val vm: WorkoutDetailViewModel = viewModel(
-        factory = factoryOf { WorkoutDetailViewModel(workoutId, container.workoutRepository) }
+        factory = factoryOf {
+            WorkoutDetailViewModel(workoutId, container.workoutRepository, container.routineRepository)
+        }
     )
     val state by vm.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var savingRoutine by rememberSaveable { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
@@ -83,6 +92,10 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
                             containerColor = Tung.colors.raised,
                             shape = TungCorner,
                         ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.routine_save_as)) },
+                                onClick = { menuOpen = false; savingRoutine = true },
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.detail_delete)) },
                                 onClick = { menuOpen = false; confirmDelete = true },
@@ -129,6 +142,22 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
                 }
             }
         }
+    }
+
+    val report = state.report
+    if (savingRoutine && report != null) {
+        RoutineNameDialog(
+            title = stringResource(R.string.routine_save_as),
+            initialName = defaultRoutineName(report),
+            confirmLabel = stringResource(R.string.routine_save),
+            onDismiss = { savingRoutine = false },
+            onConfirm = { name ->
+                savingRoutine = false
+                vm.saveAsRoutine(name) { saved ->
+                    if (saved) Toast.makeText(context, context.getString(R.string.routine_saved, name), Toast.LENGTH_SHORT).show()
+                }
+            },
+        )
     }
 
     if (confirmDelete) {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -101,3 +102,23 @@ fun StatRow(content: @Composable androidx.compose.foundation.layout.RowScope.() 
         content = content,
     )
 }
+
+/** Text field colours on the raised surface, shared by every dialog with a text field. */
+@Composable
+fun tungFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = Tung.colors.raised,
+    unfocusedContainerColor = Tung.colors.raised,
+    focusedBorderColor = Tung.colors.muted,
+    unfocusedBorderColor = Tung.colors.border,
+    focusedTextColor = Tung.colors.text,
+    unfocusedTextColor = Tung.colors.text,
+    cursorColor = Tung.colors.accent,
+    focusedLeadingIconColor = Tung.colors.muted,
+    unfocusedLeadingIconColor = Tung.colors.muted,
+    focusedTrailingIconColor = Tung.colors.muted,
+    unfocusedTrailingIconColor = Tung.colors.muted,
+    focusedPlaceholderColor = Tung.colors.muted,
+    unfocusedPlaceholderColor = Tung.colors.muted,
+    focusedLabelColor = Tung.colors.muted,
+    unfocusedLabelColor = Tung.colors.muted,
+)

@@ -27,13 +27,19 @@ data class Exercise(
     val updatedAt: Long,
 )
 
-@Entity(tableName = "workout", indices = [Index("endedAt"), Index("startedAt")])
+@Entity(tableName = "workout", indices = [Index("endedAt"), Index("startedAt"), Index("routineId")])
 data class Workout(
     @PrimaryKey val id: String,
     val startedAt: Long,
     /** Null while the workout is in progress. At most one such row is expected. */
     val endedAt: Long? = null,
     val note: String? = null,
+    /**
+     * The routine this workout was started from, if any. Deliberately not a
+     * foreign key: deleting a routine must never delete or change history, so
+     * this can point at a routine that no longer exists.
+     */
+    val routineId: String? = null,
     /** Epoch millis of the last write; set by the repository. */
     val updatedAt: Long,
 )
@@ -88,6 +94,47 @@ data class SetEntry(
     val updatedAt: Long,
 )
 
+/** A saved workout template: exercises in order, each with a number of sets. */
+@Entity(tableName = "routine", indices = [Index("lastUsedAt")])
+data class Routine(
+    @PrimaryKey val id: String,
+    val name: String,
+    /** Epoch millis of the last write; set by the repository. */
+    val updatedAt: Long,
+    /** When a workout was last started from it; null if never. */
+    val lastUsedAt: Long? = null,
+)
+
+@Entity(
+    tableName = "routine_exercise",
+    foreignKeys = [
+        ForeignKey(
+            entity = Routine::class,
+            parentColumns = ["id"],
+            childColumns = ["routineId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = Exercise::class,
+            parentColumns = ["id"],
+            childColumns = ["exerciseId"],
+            onDelete = ForeignKey.RESTRICT,
+        ),
+    ],
+    indices = [Index("routineId"), Index("exerciseId")],
+)
+data class RoutineExercise(
+    @PrimaryKey val id: String,
+    val routineId: String,
+    val exerciseId: String,
+    val position: Int,
+    val targetSets: Int,
+    /** The reps the routine aims at; null when it has none. */
+    val targetReps: Int?,
+    /** Epoch millis of the last write; set by the repository. */
+    val updatedAt: Long,
+)
+
 fun SetEntry.toLogged(): LoggedSet = LoggedSet(weightKg, reps)
 
 /** A workout's exercise with its catalogue row and its sets, as one observable unit. */
@@ -108,4 +155,19 @@ data class WorkoutSummaryRow(
     val endedAt: Long?,
     val exerciseCount: Int,
     val volumeKg: Double,
+)
+
+/** A routine's exercise with its catalogue row. */
+data class RoutineExerciseWithExercise(
+    @Embedded val routineExercise: RoutineExercise,
+    @Relation(parentColumn = "exerciseId", entityColumn = "id")
+    val exercise: Exercise,
+)
+
+/** One row in a routine list, aggregated in SQL. */
+data class RoutineSummaryRow(
+    val id: String,
+    val name: String,
+    val lastUsedAt: Long?,
+    val exerciseCount: Int,
 )

@@ -1,11 +1,12 @@
 package io.github.kanylbullen.tung.ui.summary
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,12 +18,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,14 +44,20 @@ import io.github.kanylbullen.tung.ui.common.durationText
 import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.localWeight
+import io.github.kanylbullen.tung.ui.routines.RoutineNameDialog
+import io.github.kanylbullen.tung.ui.routines.defaultRoutineName
 import io.github.kanylbullen.tung.ui.theme.Tung
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SummaryScreen(workoutId: String, onDone: () -> Unit) {
     val container = appContainer()
-    val vm: SummaryViewModel = viewModel(factory = factoryOf { SummaryViewModel(workoutId, container.workoutRepository) })
+    val vm: SummaryViewModel = viewModel(
+        factory = factoryOf { SummaryViewModel(workoutId, container.workoutRepository, container.routineRepository) }
+    )
     val state by vm.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var savingRoutine by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -86,12 +98,37 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit) {
                     BestSetRow(exercise)
                 }
                 item(key = "done") {
-                    Box(Modifier.padding(20.dp)) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         PrimaryButton(text = stringResource(R.string.summary_done), onClick = onDone)
+                        TextButton(
+                            onClick = { savingRoutine = true },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.routine_save_as), color = Tung.colors.text)
+                        }
                     }
                 }
             }
         }
+    }
+
+    val report = state.report
+    if (savingRoutine && report != null) {
+        RoutineNameDialog(
+            title = stringResource(R.string.routine_save_as),
+            initialName = defaultRoutineName(report),
+            confirmLabel = stringResource(R.string.routine_save),
+            onDismiss = { savingRoutine = false },
+            onConfirm = { name ->
+                savingRoutine = false
+                vm.saveAsRoutine(name) { saved ->
+                    if (saved) Toast.makeText(context, context.getString(R.string.routine_saved, name), Toast.LENGTH_SHORT).show()
+                }
+            },
+        )
     }
 }
 

@@ -133,6 +133,46 @@
     <string name="times_sign">×</string>
     <string name="set_value">%1$s × %2$d</string>
 
+    <!-- Routines -->
+    <string name="routines_title">Routines</string>
+    <string name="routines_all">All</string>
+    <string name="routines_empty">No routines. Save a finished workout as a routine from its summary or from its menu in History.</string>
+    <string name="routine_start">Start</string>
+    <string name="routine_start_description">Start %1$s</string>
+    <string name="routine_last">Last: %1$s</string>
+    <string name="routine_never">Never</string>
+    <string name="routine_today">today</string>
+    <string name="routine_yesterday">yesterday</string>
+    <plurals name="routine_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <string name="routine_save_as">Save as routine</string>
+    <string name="routine_name">Name</string>
+    <string name="routine_save">Save</string>
+    <string name="routine_saved">Saved as routine: %1$s</string>
+    <string name="routine_default_name">%1$s: %2$s</string>
+    <string name="list_separator">", "</string>
+    <string name="routine_error_name">Enter a name for the routine.</string>
+    <string name="routine_rename">Rename</string>
+    <string name="routine_rename_title">Rename routine</string>
+    <string name="routine_delete">Delete routine</string>
+    <string name="routine_delete_title">Delete routine?</string>
+    <string name="routine_delete_body">The routine will be deleted. Workouts you did from it stay in your history.</string>
+    <string name="routine_delete_confirm">Delete</string>
+    <string name="routine_move_up">Move up</string>
+    <string name="routine_move_down">Move down</string>
+    <string name="routine_exercise_menu">Options for %1$s</string>
+    <string name="routine_fewer_sets">Fewer sets of %1$s</string>
+    <string name="routine_more_sets">More sets of %1$s</string>
+    <string name="routine_sets_label">sets</string>
+    <plurals name="routine_target_reps">
+        <item quantity="one">%d rep per set</item>
+        <item quantity="other">%d reps per set</item>
+    </plurals>
+    <string name="routine_no_target_reps">No target reps</string>
+    <string name="routine_not_found">This routine no longer exists.</string>
+
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->

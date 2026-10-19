@@ -52,6 +52,10 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_exercise WHERE workoutId = :workoutId ORDER BY position")
     fun observeExercisesWithSets(workoutId: String): Flow<List<WorkoutExerciseWithSets>>
 
+    @Transaction
+    @Query("SELECT * FROM workout_exercise WHERE workoutId = :workoutId ORDER BY position")
+    suspend fun getExercisesWithSets(workoutId: String): List<WorkoutExerciseWithSets>
+
     @Query("SELECT * FROM workout_exercise WHERE id = :id")
     suspend fun getWorkoutExercise(id: String): WorkoutExercise?
 

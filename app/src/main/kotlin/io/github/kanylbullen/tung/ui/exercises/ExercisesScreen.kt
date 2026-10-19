@@ -30,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,6 +62,7 @@ import io.github.kanylbullen.tung.ui.common.displayName
 import io.github.kanylbullen.tung.ui.common.equipmentLabel
 import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.muscleGroupLabel
+import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
@@ -193,29 +193,10 @@ private fun SearchField(query: String, onChange: (String) -> Unit) {
         },
         shape = TungCorner,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        colors = fieldColors(),
+        colors = tungFieldColors(),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
     )
 }
-
-@Composable
-private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = Tung.colors.raised,
-    unfocusedContainerColor = Tung.colors.raised,
-    focusedBorderColor = Tung.colors.muted,
-    unfocusedBorderColor = Tung.colors.border,
-    focusedTextColor = Tung.colors.text,
-    unfocusedTextColor = Tung.colors.text,
-    cursorColor = Tung.colors.accent,
-    focusedLeadingIconColor = Tung.colors.muted,
-    unfocusedLeadingIconColor = Tung.colors.muted,
-    focusedTrailingIconColor = Tung.colors.muted,
-    unfocusedTrailingIconColor = Tung.colors.muted,
-    focusedPlaceholderColor = Tung.colors.muted,
-    unfocusedPlaceholderColor = Tung.colors.muted,
-    focusedLabelColor = Tung.colors.muted,
-    unfocusedLabelColor = Tung.colors.muted,
-)
 
 @Composable
 private fun SectionHeader(text: String) {
@@ -297,7 +278,7 @@ private fun CreateExerciseDialog(
                     },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     shape = TungCorner,
-                    colors = fieldColors(),
+                    colors = tungFieldColors(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(16.dp))

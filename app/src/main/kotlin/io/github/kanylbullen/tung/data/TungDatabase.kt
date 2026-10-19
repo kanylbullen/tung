@@ -12,13 +12,21 @@ import io.github.kanylbullen.tung.core.catalogExerciseId
 private const val CATALOG_UPDATED_AT = 0L
 
 @Database(
-    entities = [Exercise::class, Workout::class, WorkoutExercise::class, SetEntry::class],
+    entities = [
+        Exercise::class,
+        Workout::class,
+        WorkoutExercise::class,
+        SetEntry::class,
+        Routine::class,
+        RoutineExercise::class,
+    ],
     version = 1,
     exportSchema = false,
 )
 abstract class TungDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun workoutDao(): WorkoutDao
+    abstract fun routineDao(): RoutineDao
 
     companion object {
         fun build(context: Context): TungDatabase =
