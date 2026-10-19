@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window background before Compose draws; mirrors ui/theme/Color.kt. -->
+    <color name="window_background">#F6F6F4</color>
+    <color name="launcher_background">#1A1D21</color>
+    <color name="launcher_plate">#F2C230</color>
+</resources>
