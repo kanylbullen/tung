@@ -67,8 +67,36 @@
 | Identities | UUIDs generated on the client; catalogue exercises get deterministic UUIDs from `nameKey` | Two devices can create data offline without collisions, and the catalogue has the same id everywhere |
 | Sync | Per row: `updatedAt`, last write wins, tombstones for deletions | Training data rarely changes on two devices at the same time; simplicity beats CRDT here |
 | Exercise catalogue | Own curated core (70 exercises, sv + en) as open data under CC0; broader English catalogue imported from free-exercise-db (Unlicense), reached via search | The picker should show what you actually do, not 900 exercises. wger was rejected: CC-BY-SA would spread to the catalogue, and it has 3 of 932 exercises in Swedish |
+| Health Connect | App-side only: write the session as strength training, read heart rate and calories, attach them to the session and sync them as columns | Health Connect has no server API; the server sees the values through sync like all other data |
 | AI | MCP first: the user's own assistant reads history and saves programs via `save_routine`. In-app as a second choice with BYOK, operator key or a small free budget | See the AI features section. MCP means we do not pay for tokens and the feature comes along with self-hosting; same validation whichever route |
 | Personal data | Never leaves the device unless sync is on. JSON export at any time. No analytics or telemetry in the app | It is the only part that is not open, and it should belong to the user |
+
+## Health Connect
+
+Health Connect is an on-device store on the phone with no cloud API, so the
+server can never talk to it. The integration therefore lives in the Android
+app and the server sees its results through ordinary sync.
+
+- **Write.** When a session ends, the app writes an exercise session of type
+  strength training to Health Connect, with one segment per set where Health
+  Connect has a matching exercise type (bench press, squat, deadlift and so
+  on), so Google Fit, Samsung Health, Fitbit and others show the workout.
+  Opt-in, asked once, with the standard permission sheet.
+- **Read.** During and after a session the app can read heart rate, active
+  calories and, when present, the watch's own exercise record for the same
+  interval, and attach them to the session (average and maximum heart rate,
+  calories). Opt-in separately from write.
+- **Sync.** The attached values are columns on the session and sync like
+  everything else, so the API, MCP and the history on another device see
+  them. The server stores what the phone sent and never reads Health Connect
+  itself.
+- **Watch.** The Wear OS app records heart rate through Health Services on the
+  watch; it reaches the phone either through the watch's own Health Connect
+  sync or through our Data Layer sync, whichever arrives first. The phone
+  deduplicates by interval.
+- **Self-host and API.** Nothing changes: a self-hosted server receives the same
+  columns. A client without Health Connect (iOS one day, a web client) simply
+  leaves them empty.
 
 ## AI features
 
@@ -142,7 +170,10 @@ exercise that is not in the catalogue is discarded, not shown.
    with the latest exercises. Requires that the `core` module (step 3) exists,
    not the server.
 8. **Our instance** on Coolify, the same image that self-hosters get.
-9. **Templates and in-app AI:** `Routine` in the data model already comes in
+9. **Health Connect:** write sessions after step 5 so the attached heart
+   rate and calories sync; read support once the watch exists, since that is
+   where the heart rate comes from.
+10. **Templates and in-app AI:** `Routine` in the data model already comes in
    step 6 because `save_routine` needs it. In-app suggestions in BYOK mode
    after that, budget mode on our instance last, and only if the MCP route
    turns out to be too narrow for many people.
