@@ -25,12 +25,14 @@ Adding an app language:
 ## Stack (decided)
 
 Kotlin 2.0.21, Jetpack Compose (BOM 2024.12.01), Material 3, Room 2.6.1 via
-KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines. AGP 8.7.3,
+KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
+DataStore 1.1.1 (small state outside Room). AGP 8.7.3,
 Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26.
 
 **No Hilt/Koin.** `AppContainer` in `TungApp.kt` holds the database and the
 repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
-(`ui/common/Containers.kt`) and get repository and nav arguments in the constructor.
+(`ui/common/Containers.kt`) and get repository and nav arguments in the constructor;
+the active workout's factory also passes `createSavedStateHandle()`, for the rest timer.
 
 ## Layers
 
@@ -48,7 +50,8 @@ Multiplatform; that is a later step if a non-JVM client ever needs it.
 What belongs there: pure functions and plain data shapes that are calculated
 the same on every client — volume, best set, records, pre-fill (`LoggedSet`,
 `isLogged`), routine targets and start sets (`Routines.kt`), weight/reps parsing and formatting, diacritic-insensitive search,
-`MuscleGroup`/`Equipment`, the id helpers (`Ids.kt`), and the catalogue models
+`MuscleGroup`/`Equipment`, the id helpers (`Ids.kt`), the rest timer and the
+current set (`RestTimer.kt`, `LogSet.kt`), and the catalogue models
 with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
 `ExtendedCatalog`/`ExtendedExercise` for `extended.json`, including the
 extended-catalogue search). Core gets the catalogue as a `String` or an
@@ -68,7 +71,8 @@ only dependencies are `kotlinx-serialization-json` and
 | Directory | Contents |
 |---|---|
 | `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`). `SeedExercises.kt` is generated. |
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout + the input sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share). |
+| `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver`, `RestAlerts` (vibration + notification). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share). |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `ExerciseNames` (displayed exercise names). |
 | `ui/theme/` | Colour tokens, typography, theme. |
 | `../catalog/` | The exercise catalogue as open data (CC0): `core.json`, `extended.json`, generator and import scripts. Shipped as an asset directory in the APK. See `catalog/README.md`. |
@@ -96,6 +100,53 @@ second, and the Start buttons are disabled while it exists.
 `Workout.routineId` is indexed but deliberately **not** a foreign key:
 deleting a routine (which cascades to its `RoutineExercise` rows) never
 touches history.
+
+### Log set and rest timer
+
+The active workout has a sticky **Log set · 80 × 8** button above the system
+navigation (always under the thumb, wherever the list is scrolled). It acts on
+the **current set** (`core.currentSet`): the first un-ticked set of the
+exercise the user last touched (ticked, edited, added a set to, or just added),
+else the first un-ticked set of the first exercise that has one; no current
+set, no button. Tapping it calls `WorkoutRepository.logSet`, one transaction:
+tick the set and, **only if it was the last set of its exercise**, add the next
+set pre-filled by the usual rule (a copy of the set just logged). A workout
+started from a routine is not padded past the routine's `targetSets` for that
+exercise (`core.addsNextSet`, `WorkoutDao.routineTargetSets` reads the
+routine live), so its third Log set of three adds nothing and the current set
+moves on. With reps 0 it opens the reps sheet instead, like the tick. The tick
+on the row is the secondary way: it ticks only, and also starts the timer.
+
+**The timer state** is `core.RestTimer` (`endsAtMillis`, `durationMillis`,
+wall clock); what is left is always `remainingAt(now)`, never a counter. The
+active workout's ViewModel holds it and writes it to its `SavedStateHandle`
+and, through `RestTimerController`, to DataStore (`settings` file, also the
+global default `rest_default_seconds`, 90 s, with no screen yet) and to an
+alarm. A new ViewModel restores it from saved state, else from DataStore,
+and drops one that already ended. The rest per exercise is
+`Exercise.restSeconds` (null = default, 0 = off), set from the exercise's menu
+("Rest timer…", 0–300 s in 30 s steps) as an ordinary update with
+`updatedAt`. The countdown sits next to the elapsed time; tapping it shows
+Skip and +30 s.
+
+**When it ends:** `RestAlarm` sets a one-shot `RTC_WAKEUP` alarm, exact
+(`setExactAndAllowWhileIdle`) below Android 12 or when "Alarms & reminders"
+(`SCHEDULE_EXACT_ALARM`) is granted, else `setAndAllowWhileIdle`, which may be
+late in the background. `USE_EXACT_ALARM` is not used: Play reserves it for
+alarm-clock, timer and calendar apps. `RestTimerReceiver` gets the broadcast
+and calls `RestAlerts.restOver`: vibrate (`VibratorManager` on 31+, `Vibrator`
+below), and post "Rest over" on channel `rest_timer` only when no activity is
+started (`TungApp.isInForeground`). With the workout on screen the countdown
+reaching zero calls the same function, so the alert is on time even with an
+inexact alarm; it alerts once per `endsAt`. Tapping the notification opens
+`MainActivity` with `EXTRA_OPEN_WORKOUT`, which `TungAppRoot` navigates to. No
+foreground service. `POST_NOTIFICATIONS` is asked for once, the first time a
+timer starts on Android 13+ (flag in DataStore); denied, the countdown and the
+vibration still work.
+
+The DataStore is built in `AppContainer` with `PreferenceDataStoreFactory`,
+not the `preferencesDataStore` delegate: the delegate is a process-wide
+singleton, and Robolectric makes a new application for every flow test.
 
 ### Ids and `updatedAt`
 
@@ -282,3 +333,6 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
   `suspend` or `Flow`.
 - `exportSchema = false` and no migration: if the schema changes, `version`
   must be raised and a `Migration` written before the app is used for real.
+  Until the first release the schema changes at `version = 1` (last:
+  `Exercise.restSeconds`), so a dev install must be wiped (uninstall or
+  clear data) after pulling such a change, or Room throws on open.
