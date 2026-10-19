@@ -1,4 +1,4 @@
-package io.github.kanylbullen.tung.domain
+package io.github.kanylbullen.tung.core
 
 import java.text.Normalizer
 import java.util.Locale

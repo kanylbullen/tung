@@ -2,9 +2,9 @@ package io.github.kanylbullen.tung.ui.workout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
-import io.github.kanylbullen.tung.domain.LoggedSet
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow

@@ -2,23 +2,23 @@
 
 package io.github.kanylbullen.tung.data
 
-import io.github.kanylbullen.tung.domain.Equipment
-import io.github.kanylbullen.tung.domain.Equipment.BARBELL
-import io.github.kanylbullen.tung.domain.Equipment.BODYWEIGHT
-import io.github.kanylbullen.tung.domain.Equipment.CABLE
-import io.github.kanylbullen.tung.domain.Equipment.DUMBBELL
-import io.github.kanylbullen.tung.domain.Equipment.MACHINE
-import io.github.kanylbullen.tung.domain.Equipment.OTHER
-import io.github.kanylbullen.tung.domain.MuscleGroup
-import io.github.kanylbullen.tung.domain.MuscleGroup.BACK
-import io.github.kanylbullen.tung.domain.MuscleGroup.BICEPS
-import io.github.kanylbullen.tung.domain.MuscleGroup.CHEST
-import io.github.kanylbullen.tung.domain.MuscleGroup.CORE
-import io.github.kanylbullen.tung.domain.MuscleGroup.FULLBODY
-import io.github.kanylbullen.tung.domain.MuscleGroup.GLUTES
-import io.github.kanylbullen.tung.domain.MuscleGroup.LEGS
-import io.github.kanylbullen.tung.domain.MuscleGroup.SHOULDERS
-import io.github.kanylbullen.tung.domain.MuscleGroup.TRICEPS
+import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.Equipment.BARBELL
+import io.github.kanylbullen.tung.core.Equipment.BODYWEIGHT
+import io.github.kanylbullen.tung.core.Equipment.CABLE
+import io.github.kanylbullen.tung.core.Equipment.DUMBBELL
+import io.github.kanylbullen.tung.core.Equipment.MACHINE
+import io.github.kanylbullen.tung.core.Equipment.OTHER
+import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.MuscleGroup.BACK
+import io.github.kanylbullen.tung.core.MuscleGroup.BICEPS
+import io.github.kanylbullen.tung.core.MuscleGroup.CHEST
+import io.github.kanylbullen.tung.core.MuscleGroup.CORE
+import io.github.kanylbullen.tung.core.MuscleGroup.FULLBODY
+import io.github.kanylbullen.tung.core.MuscleGroup.GLUTES
+import io.github.kanylbullen.tung.core.MuscleGroup.LEGS
+import io.github.kanylbullen.tung.core.MuscleGroup.SHOULDERS
+import io.github.kanylbullen.tung.core.MuscleGroup.TRICEPS
 
 /** A catalogue exercise: a stable [key] for `ex_<key>` and the English [name] as fallback. */
 internal data class SeedExercise(

@@ -29,7 +29,8 @@ CORE = ROOT / "catalog" / "core.json"
 KOTLIN = ROOT / "app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt"
 RES = ROOT / "app/src/main/res"
 
-# Same order as domain/Catalog.kt; the muscle-group order is the order in the Kotlin list.
+# Same order as core/src/main/kotlin/io/github/kanylbullen/tung/core/Catalog.kt;
+# the muscle-group order is the order in the Kotlin list.
 MUSCLE_GROUPS = ["chest", "back", "shoulders", "biceps", "triceps", "legs", "glutes", "core", "fullbody"]
 EQUIPMENT = ["barbell", "dumbbell", "machine", "cable", "bodyweight", "other"]
 # The language of values/ and the fallback name; every entry must have it.
@@ -103,11 +104,11 @@ def render_kotlin(entries):
         "",
         "package io.github.kanylbullen.tung.data",
         "",
-        "import io.github.kanylbullen.tung.domain.Equipment",
+        "import io.github.kanylbullen.tung.core.Equipment",
     ]
-    lines += [f"import io.github.kanylbullen.tung.domain.Equipment.{q.upper()}" for q in equipment]
-    lines.append("import io.github.kanylbullen.tung.domain.MuscleGroup")
-    lines += [f"import io.github.kanylbullen.tung.domain.MuscleGroup.{m.upper()}" for m in muscles]
+    lines += [f"import io.github.kanylbullen.tung.core.Equipment.{q.upper()}" for q in equipment]
+    lines.append("import io.github.kanylbullen.tung.core.MuscleGroup")
+    lines += [f"import io.github.kanylbullen.tung.core.MuscleGroup.{m.upper()}" for m in muscles]
     lines += [
         "",
         "/** A catalogue exercise: a stable [key] for `ex_<key>` and the English [name] as fallback. */",

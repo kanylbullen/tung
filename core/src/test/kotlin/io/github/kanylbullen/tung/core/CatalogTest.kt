@@ -1,11 +1,5 @@
-package io.github.kanylbullen.tung.data
+package io.github.kanylbullen.tung.core
 
-import io.github.kanylbullen.tung.domain.Equipment
-import io.github.kanylbullen.tung.domain.MuscleGroup
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -16,29 +10,20 @@ import java.util.Locale
 
 /**
  * Checks the open catalogue files in `catalog/` as data. Gradle runs unit tests
- * with `app/` as working directory, so the files are at `../catalog/`.
+ * with the module directory (`core/`) as working directory, so the files are at
+ * `../catalog/`. That the seed list in the app matches `core.json` is checked
+ * by `SeedExercisesTest` in the app, which owns the generated list.
  */
 class CatalogTest {
-
-    private data class CoreEntry(val key: String, val sv: String, val en: String, val muscleGroup: String, val equipment: String)
 
     private fun catalogFile(name: String): File =
         listOf(File("../catalog/$name"), File("catalog/$name")).firstOrNull { it.isFile }
             ?: error("catalog/$name not found from ${File(".").absolutePath}")
 
-    private val core: List<CoreEntry> by lazy {
-        Json.parseToJsonElement(catalogFile("core.json").readText()).jsonArray.map { element ->
-            val o = element.jsonObject
-            val name = o.getValue("name").jsonObject
-            CoreEntry(
-                key = o.getValue("key").jsonPrimitive.content,
-                sv = name["sv"]?.jsonPrimitive?.content.orEmpty(),
-                en = name["en"]?.jsonPrimitive?.content.orEmpty(),
-                muscleGroup = o.getValue("muscleGroup").jsonPrimitive.content,
-                equipment = o.getValue("equipment").jsonPrimitive.content,
-            )
-        }
-    }
+    private val core: List<CoreExercise> by lazy { CoreCatalog.parse(catalogFile("core.json").readText()) }
+
+    private val CoreExercise.en: String get() = name["en"].orEmpty()
+    private val CoreExercise.sv: String get() = name["sv"].orEmpty()
 
     private val extended: List<ExtendedExercise> by lazy {
         catalogFile("extended.json").inputStream().use(ExtendedCatalog::parse)
@@ -72,18 +57,6 @@ class CatalogTest {
     @Test
     fun everyCoreEntryHasASwedishName() {
         core.forEach { e -> assertTrue("${e.key} has no sv name", e.sv.isNotBlank()) }
-    }
-
-    @Test
-    fun coreMatchesTheGeneratedSeedList() {
-        val seeds = SeedExercises.all.associateBy { it.key }
-        assertEquals(core.map { it.key }.toSet(), seeds.keys)
-        core.forEach { e ->
-            val seed = seeds.getValue(e.key)
-            assertEquals("${e.key}: the fallback name is English", e.en, seed.name)
-            assertEquals(e.muscleGroup, seed.muscle.key)
-            assertEquals(e.equipment, seed.equipment.key)
-        }
     }
 
     @Test

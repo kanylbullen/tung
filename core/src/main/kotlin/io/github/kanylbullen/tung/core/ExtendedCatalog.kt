@@ -1,8 +1,5 @@
-package io.github.kanylbullen.tung.data
+package io.github.kanylbullen.tung.core
 
-import android.content.Context
-import io.github.kanylbullen.tung.domain.filterByDisplayName
-import io.github.kanylbullen.tung.domain.normalizeForSearch
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -31,9 +28,11 @@ data class ExtendedExercise(
 }
 
 /**
- * The extended catalogue (`catalog/extended.json`, shipped as an asset). It is
- * not in Room: the picker searches it, and an entry becomes a Room row only
- * when picked (see [ExerciseRepository.getOrCreateExtended]). Read once, on
+ * The extended catalogue (`catalog/extended.json`). Where the bytes come from
+ * is the caller's business: the app hands in an asset stream
+ * (`ExtendedCatalog.fromAssets` in the app's `data` package). It is not in
+ * Room: the picker searches it, and an entry becomes a Room row only when
+ * picked (`ExerciseRepository.getOrCreateExtended` in the app). Read once, on
  * [io], the first time [all] is called, then kept in memory.
  */
 class ExtendedCatalog(
@@ -50,17 +49,10 @@ class ExtendedCatalog(
     }
 
     companion object {
-        const val ASSET = "extended.json"
-
         /** Searching the extended catalogue starts at this many characters. */
         const val MIN_QUERY_LENGTH = 2
 
         private val json = Json { ignoreUnknownKeys = true }
-
-        fun fromAssets(context: Context): ExtendedCatalog {
-            val assets = context.applicationContext.assets
-            return ExtendedCatalog({ assets.open(ASSET) })
-        }
 
         @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
         fun parse(stream: InputStream): List<ExtendedExercise> = json.decodeFromStream(stream)

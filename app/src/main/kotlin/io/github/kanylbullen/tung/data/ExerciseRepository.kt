@@ -1,7 +1,10 @@
 package io.github.kanylbullen.tung.data
 
-import io.github.kanylbullen.tung.domain.Equipment
-import io.github.kanylbullen.tung.domain.MuscleGroup
+import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.ExtendedExercise
+import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.extendedExerciseId
+import io.github.kanylbullen.tung.core.newId
 import kotlinx.coroutines.flow.Flow
 
 class ExerciseRepository(

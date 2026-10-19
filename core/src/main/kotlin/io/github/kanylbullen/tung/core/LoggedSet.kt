@@ -1,4 +1,4 @@
-package io.github.kanylbullen.tung.domain
+package io.github.kanylbullen.tung.core
 
 /**
  * The two numbers a set is made of. Domain functions work on this rather than

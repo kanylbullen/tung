@@ -1,8 +1,9 @@
 package io.github.kanylbullen.tung.data
 
 import androidx.room.withTransaction
-import io.github.kanylbullen.tung.domain.LoggedSet
-import io.github.kanylbullen.tung.domain.prefillSet
+import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.newId
+import io.github.kanylbullen.tung.core.prefillSet
 import kotlinx.coroutines.flow.Flow
 
 /** All workout reads and writes. Room runs suspend DAO calls off the main thread. */
