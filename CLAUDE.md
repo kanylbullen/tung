@@ -1,88 +1,112 @@
-# Tung — agentmanual
+# Tung — agent manual
 
-Styrketräningslogg för Android. Lokal app: ingen backend, ingen inloggning,
-inget nätverk. Allt ligger i Room på telefonen.
+Strength training log for Android. A local app: no backend, no login, no
+network. Everything lives in Room on the phone.
 
-## Stack (beslutad)
+## Language
+
+English is the repository language: code, comments, documentation, commit
+messages and pull requests. The app's default locale is English
+(`res/values/`), and Swedish (`res/values-sv/`) is the first translation.
+
+Adding an app language:
+
+1. Copy `res/values/strings.xml` to `res/values-<lang>/strings.xml` and
+   translate it. Keep exactly the same string names.
+2. Add `<locale android:name="<lang>" />` to `res/xml/locales_config.xml` and
+   the tag to `resourceConfigurations` in `app/build.gradle.kts`.
+3. Only if the catalogue gets that language: add `name.<lang>` to the entries
+   in `catalog/core.json`.
+4. Run `python3 -I catalog/tools/gen_android.py`. It manages the `ex_*` block
+   in every `values-<lang>/strings.xml` that has the catalog markers; without
+   `name.<lang>` the block stays empty and the exercise names fall back to
+   English.
+
+## Stack (decided)
 
 Kotlin 2.0.21, Jetpack Compose (BOM 2024.12.01), Material 3, Room 2.6.1 via
 KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines. AGP 8.7.3,
 Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26.
 
-**Ingen Hilt/Koin.** `AppContainer` i `TungApp.kt` håller databasen och
-repositoryn lazy. ViewModels skapas med `viewModel(factory = factoryOf { ... })`
-(`ui/common/Containers.kt`) och får repository och nav-argument i konstruktorn.
+**No Hilt/Koin.** `AppContainer` in `TungApp.kt` holds the database and the
+repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
+(`ui/common/Containers.kt`) and get repository and nav arguments in the constructor.
 
-## Lager
+## Layers
 
-| Katalog | Innehåll |
+| Directory | Contents |
 |---|---|
-| `domain/` | Rena funktioner utan Android: volym, bästa set, rekord, förifyllning, vikt-parsing/-formatering, diakritikokänslig sökning, `MuscleGroup`/`Equipment`. Allt som går att testa på JVM bor här. |
-| `data/` | Entities, `ExerciseDao`, `WorkoutDao`, `TungDatabase` (seedar kärnkatalogens 70 övningar i `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `ExtendedCatalog`. `SeedExercises.kt` är genererad. |
-| `ui/<skärm>/` | `Screen` + `ViewModel` + `UiState` per skärm: `home`, `workout` (pågående pass + inmatningsarket), `exercises` (flik och väljare i ett), `history` (lista + detalj), `summary`. |
-| `ui/common/` | Formatering, delade komponenter, `WorkoutReport`, `ExerciseNames` (visade övningsnamn). |
-| `ui/theme/` | Färgtokens, typografi, tema. |
-| `../catalog/` | Övningskatalogen som öppen data (CC0): `core.json`, `extended.json`, generator- och importskript. Ligger som asset-katalog i APK:n. Se `catalog/README.md`. |
+| `domain/` | Pure functions without Android: volume, best set, records, pre-fill, weight parsing/formatting, diacritic-insensitive search, `MuscleGroup`/`Equipment`. Everything that can be tested on the JVM lives here. |
+| `data/` | Entities, `ExerciseDao`, `WorkoutDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `ExtendedCatalog`. `SeedExercises.kt` is generated. |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout + the input sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`. |
+| `ui/common/` | Formatting, shared components, `WorkoutReport`, `ExerciseNames` (displayed exercise names). |
+| `ui/theme/` | Colour tokens, typography, theme. |
+| `../catalog/` | The exercise catalogue as open data (CC0): `core.json`, `extended.json`, generator and import scripts. Shipped as an asset directory in the APK. See `catalog/README.md`. |
 
-Appens viktigaste query är `WorkoutDao.previousSessionSets` — set för en övning
-från senaste avslutade pass som innehåller den. Den driver både "Förra: 80 × 8"
-och förifyllningen av nya set.
+The app's most important query is `WorkoutDao.previousSessionSets` — the sets
+for an exercise from the latest finished workout that contains it. It drives
+both "Last: 80 × 8" and the pre-fill of new sets.
 
-### Id:n och `updatedAt`
+### Ids and `updatedAt`
 
-Alla fyra entiteterna har `id: String`, ett UUID som klienten genererar
-(`data/Ids.kt`): `newId()` för allt användaren skapar (pass, passövningar,
-set, egna övningar), och `catalogExerciseId(nameKey)` för katalogövningar — ett
-namnbaserat UUID ur `"tung:exercise:<nameKey>"`, så samma katalogövning har
-samma id på alla enheter. Seedningen i `TungDatabase` använder det, med
-`updatedAt = 0` för en orörd katalograd. Varje entitet har `updatedAt` (epoch
-millis), och det sätts av repositoryt vid varje insert och update; skärmar och
-ViewModels rör det aldrig. Varför: förberedelse för synk mot en server, och
-export/import mellan enheter utan id-kollisioner. Ingen query får sortera på
-id — ordning kommer från `position` eller tidsstämplar.
+All four entities have `id: String`, a UUID generated by the client
+(`data/Ids.kt`): `newId()` for everything the user creates (workouts, workout
+exercises, sets, custom exercises), and `catalogExerciseId(nameKey)` for
+catalogue exercises — a name-based UUID from `"tung:exercise:<nameKey>"`, so the
+same catalogue exercise has the same id on every device. The seeding in
+`TungDatabase` uses it, with `updatedAt = 0` for an untouched catalogue row.
+Every entity has `updatedAt` (epoch millis), and it is set by the repository on
+every insert and update; screens and ViewModels never touch it. Why:
+preparation for sync with a server, and export/import between devices without
+id collisions. No query may sort on id — order comes from `position` or
+timestamps.
 
-### Övningsnamn är resurser
+### Exercise names are resources
 
-Katalogövningarna har en stabil nyckel i `Exercise.nameKey` (`bench_press`,
-`back_squat` …) och visas via strängresursen `ex_<nameKey>`, så namnet följer
-telefonens språk. `name` lagras ändå, som svensk reserv. Egna övningar har
-`nameKey = null` och visar det användaren skrev. Allt som visar ett
-övningsnamn går via `exerciseDisplayName(nameKey, name)` eller
-`Exercise.displayName(context)` i `ui/common/ExerciseNames.kt`, som slår upp
-varje nyckel med `getIdentifier` en gång och cachar id:t. Sök i väljaren går
-mot det **visade** namnet (`domain.filterByDisplayName`), aldrig mot `name` i SQL.
+Catalogue exercises have a stable key in `Exercise.nameKey` (`bench_press`,
+`back_squat` …) and are shown via the string resource `ex_<nameKey>`, so the
+name follows the phone's language. `name` is stored anyway, as the English
+fallback. Custom exercises have `nameKey = null` and show what the user typed.
+Everything that shows an exercise name goes through
+`exerciseDisplayName(nameKey, name)` or `Exercise.displayName(context)` in
+`ui/common/ExerciseNames.kt`, which looks up each key with `getIdentifier` once
+and caches the id. Search in the picker matches the **displayed** name
+(`domain.filterByDisplayName`), never `name` in SQL.
 
-**Sanningen är `catalog/core.json`**, inte Kotlin eller strängarna.
-`data/SeedExercises.kt` och `ex_*`-raderna mellan `<!-- catalog:begin -->` och
-`<!-- catalog:end -->` i båda `strings.xml` genereras av
-`catalog/tools/gen_android.py`; redigera dem aldrig för hand. Lägga till en
-övning = lägg posten i `core.json` (sorterad på `key`, `sv` och `en`
-obligatoriska) och kör `python3 -I catalog/tools/gen_android.py`; tre filer
-uppdateras och alla fyra committas. `--check` skriver inget och avslutar med 1
-om något är inaktuellt, och `CatalogTest` jämför `core.json` med seedlistan.
-Engelska namn är gym-engelska (Lat pulldown, Skull crusher), inte ordagranna
-översättningar. En `key` byts aldrig när den väl finns: den bär övningens id.
+**The source of truth is `catalog/core.json`**, not Kotlin or the strings.
+`data/SeedExercises.kt` and the `ex_*` lines between `<!-- catalog:begin -->`
+and `<!-- catalog:end -->` in both `strings.xml` are generated by
+`catalog/tools/gen_android.py`; never edit them by hand. Adding an exercise =
+add the entry to `core.json` (sorted by `key`, `en` and `sv` required) and run
+`python3 -I catalog/tools/gen_android.py`; three files are updated
+(`SeedExercises.kt`, `values/strings.xml`, `values-sv/strings.xml`) and all
+four are committed. `--check` writes nothing and exits with 1 if anything is
+out of date, and `CatalogTest` compares `core.json` with the seed list.
+English names are gym English (Lat pulldown, Skull crusher), not literal
+translations. A `key` never changes once it exists: it carries the exercise's id.
 
-### Utökade katalogen
+### The extended catalogue
 
-`catalog/extended.json` (~600 övningar, bara engelska, ur free-exercise-db
-under Unlicense, byggd av `catalog/tools/import_free_exercise_db.py`) ligger
-**inte** i Room. `ExtendedCatalog` läser den från assets en gång, lazy på IO,
-och bara övningsväljaren söker i den: från två tecken visas träffarna under
-rubriken "Fler övningar", med samma `filterByDisplayName`. Fliken Övningar
-visar den aldrig. När en sådan övning väljs gör
-`ExerciseRepository.getOrCreateExtended` get-or-create (insert med
-`OnConflictStrategy.IGNORE`) med det deterministiska id:t
+`catalog/extended.json` (~600 exercises, English only, from free-exercise-db
+under the Unlicense, built by `catalog/tools/import_free_exercise_db.py`) is
+**not** in Room. `ExtendedCatalog` reads it from assets once, lazily on IO,
+and only the exercise picker searches it: from two characters the matches are
+shown under the heading "More exercises", with the same `filterByDisplayName`.
+The Exercises tab never shows it. When such an exercise is picked,
+`ExerciseRepository.getOrCreateExtended` does a get-or-create (insert with
+`OnConflictStrategy.IGNORE`) with the deterministic id
 `extendedExerciseId(fedId)` = `catalogExerciseId("ext:" + fedId)`,
-`nameKey = null`, engelska namnet i `name` och `isCustom = false`. Samma övning
-får alltså samma rad på alla enheter, och därefter är den en vanlig övning
-(den syns i fliken och bland kärnträffarna, och försvinner ur "Fler övningar").
+`nameKey = null`, the English name in `name` and `isCustom = false`. The same
+exercise thus gets the same row on every device, and after that it is an
+ordinary exercise (it shows in the tab and among the core matches, and
+disappears from "More exercises").
 
-Ett set räknas (`domain.isLogged`) när det är bockat **och** har reps > 0.
-"Avsluta pass" raderar allt annat, sedan övningar utan set, och ett pass utan
-ett enda räknat set raderas helt i stället för att sparas tomt.
+A set counts (`domain.isLogged`) when it is ticked **and** has reps > 0.
+"Finish workout" deletes everything else, then exercises without sets, and a
+workout without a single counted set is deleted entirely instead of being
+saved empty.
 
-## Bygga
+## Building
 
 ```sh
 cd /home/xup/tung
@@ -91,61 +115,62 @@ export PATH=$JAVA_HOME/bin:$PATH
 ./gradlew assembleDebug testDebugUnitTest --no-daemon
 ```
 
-APK: `app/build/outputs/apk/debug/app-debug.apk`. Första bygget laddar ner
-beroenden och tar några minuter.
+APK: `app/build/outputs/apk/debug/app-debug.apk`. The first build downloads
+dependencies and takes a few minutes.
 
-## Design: siffrorna är innehållet
+## Design: the numbers are the content
 
-Appen används med en hand, mellan set, i dålig belysning, med trötta ögon.
-Vikt och reps är det enda som spelar roll; allt annat är kuliss.
+The app is used with one hand, between sets, in poor light, with tired eyes.
+Weight and reps are the only things that matter; everything else is scenery.
 
-- Set-rader: siffror ~28sp, fet, tabulära (`tnum`). Inmatningsarket: 96sp.
-- Ett djärvt grepp: inmatningsarket (enormt tal, tumstora −/+, "Klar").
-  Resten är lugnt — inga kort-i-kort, inga ikoner som inte gör något, inga
-  avdelare där luft räcker, inga versala etiketter, inga illustrationer.
-- En hörnradie: 12dp (`TungCorner`) på knappar, ark och dialoger. 0 på listrader.
-- Rörelse bara som svar på handling (bocken fylls, arket glider upp).
-- Skärmen hålls tänd på Pågående pass (`view.keepScreenOn`).
-- Mörkt/ljust följer systemet. Dynamiska färger är **av**.
-- Typsnitt: Archivo (variabel, OFL) — en familj.
+- Set rows: numbers ~28sp, bold, tabular (`tnum`). Input sheet: 96sp.
+- One bold move: the input sheet (huge number, thumb-sized −/+, "Done").
+  The rest is calm — no cards in cards, no icons that do nothing, no
+  dividers where space is enough, no all-caps labels, no illustrations.
+- One corner radius: 12dp (`TungCorner`) on buttons, sheets and dialogs. 0 on list rows.
+- Motion only in response to an action (the check fills, the sheet slides up).
+- The screen is kept on during the active workout (`view.keepScreenOn`).
+- Dark/light follows the system. Dynamic colours are **off**.
+- Typeface: Archivo (variable, OFL) — one family.
 
-| Token | Mörkt | Ljust | Används till |
+| Token | Dark | Light | Used for |
 |---|---|---|---|
-| background | `#1A1D21` | `#F6F6F4` | Bakgrund, listrader |
-| raised | `#23272D` | `#FFFFFF` | Ark, dialoger, bottenbar, sekundärknapp |
-| border | `#2F343B` | `#E2E1DC` | Kantlinjer, swipe-bakgrund |
-| text | `#ECE7DD` (krita) | `#1A1D21` | Primärtext |
-| muted | `#9AA0A6` | `#5F6368` | Dämpad text, "Förra:" |
-| accent | `#F2C230` | `#B98900` | Fyllnad: primärknapp, bockat set |
-| accentText | `#F2C230` | `#8A6500` | Accent som text: "Nytt rekord", "Avsluta pass" |
+| background | `#1A1D21` | `#F6F6F4` | Background, list rows |
+| raised | `#23272D` | `#FFFFFF` | Sheets, dialogs, bottom bar, secondary button |
+| border | `#2F343B` | `#E2E1DC` | Borders, swipe background |
+| text | `#ECE7DD` (chalk) | `#1A1D21` | Primary text |
+| muted | `#9AA0A6` | `#5F6368` | Muted text, "Last:" |
+| accent | `#F2C230` | `#B98900` | Fill: primary button, ticked set |
+| accentText | `#F2C230` | `#8A6500` | Accent as text: "New record", "Finish workout" |
 
-Kontrast (WCAG): krita/grafit 13.8:1, gult/grafit 10.1:1, dämpat/grafit 6.4:1,
-dämpat/raised 5.7:1. I ljust läge klarar `#B98900` bara 3.2:1 mot vitt, så den
-används enbart som fyllnad (mörk text på den: 5.4:1); som text används
-`#8A6500` (4.9:1 mot `#F6F6F4`).
+Contrast (WCAG): chalk/graphite 13.8:1, yellow/graphite 10.1:1, muted/graphite
+6.4:1, muted/raised 5.7:1. In light mode `#B98900` only reaches 3.2:1 against
+white, so it is used only as a fill (dark text on it: 5.4:1); as text,
+`#8A6500` is used (4.9:1 against `#F6F6F4`).
 
-Kopia: svenska, aktiv form, bara första bokstaven versal. Knappar säger vad som
-händer ("Starta pass", "Lägg till övning", "Spara"). Fel säger vad som hände
-och vad man gör, utan "oj".
+Copy (English, and the same in each translation): active voice, only the first
+letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
+"Save"). Errors say what happened and what to do, without "oops".
 
-## Fällor
+## Traps
 
-- **IPv6/Maven:** Gradle når inte Maven över IPv6 här.
-  `gradle.properties` har `-Djava.net.preferIPv4Stack=true` både i
-  `org.gradle.jvmargs` och som `systemProp`. Ta inte bort dem.
-- **`local.properties`** med `sdk.dir=/home/xup/android/sdk` måste finnas och
-  gitignoreras. Saknas den hittar AGP ingen SDK.
-- **En gradle-process åt gången.** Maskinen delas; kör aldrig parallella byggen
-  och använd `--no-daemon` så att ingen daemon ligger kvar. `/tmp` är tmpfs —
-  lägg inget stort där.
-- **Wrappern är 8.11.1** och redan nedladdad. Kör inte `gradle wrapper` med en
-  annan version.
-- **Strängar bara i resurser.** Inga hårdkodade strängar i composables; allt i
-  `res/values/strings.xml` (svenska) och `res/values-en/strings.xml`
-  (engelska). Övningsnamnen också — se "Övningsnamn är resurser".
-- **`res/font/` tar bara typsnittsfiler.** Därför ligger OFL-licensen i
-  `assets/licenses/`, inte bredvid `.ttf`-filen.
-- Inga `!!`, ingen `GlobalScope`, inga blockerande DB-anrop på main. DAO:erna
-  är `suspend` eller `Flow`.
-- `exportSchema = false` och ingen migrering: ändras schemat måste `version`
-  höjas och en `Migration` skrivas innan appen används på riktigt.
+- **IPv6/Maven:** Gradle cannot reach Maven over IPv6 here.
+  `gradle.properties` has `-Djava.net.preferIPv4Stack=true` both in
+  `org.gradle.jvmargs` and as a `systemProp`. Do not remove them.
+- **`local.properties`** with `sdk.dir=/home/xup/android/sdk` must exist and
+  be gitignored. Without it AGP finds no SDK.
+- **One gradle process at a time.** The machine is shared; never run parallel
+  builds, and use `--no-daemon` so that no daemon is left behind. `/tmp` is
+  tmpfs — put nothing large there.
+- **The wrapper is 8.11.1** and already downloaded. Do not run `gradle wrapper`
+  with another version.
+- **Strings only in resources.** No hard-coded strings in composables;
+  everything goes in `res/values/strings.xml` (English, the default) and
+  `res/values-sv/strings.xml` (Swedish), with the same names in both. The
+  exercise names too — see "Exercise names are resources".
+- **`res/font/` takes only font files.** That is why the OFL licence is in
+  `assets/licenses/`, not next to the `.ttf` file.
+- No `!!`, no `GlobalScope`, no blocking DB calls on main. The DAOs are
+  `suspend` or `Flow`.
+- `exportSchema = false` and no migration: if the schema changes, `version`
+  must be raised and a `Migration` written before the app is used for real.

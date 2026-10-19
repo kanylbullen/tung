@@ -7,8 +7,7 @@ calmer, faster, and yours.
 
 Early days: the app logs workouts and keeps history, locally on the phone.
 Everything below the "Today" line works now. Everything below "Direction" is
-planned and described in detail in [`docs/architecture.md`](docs/architecture.md)
-(in Swedish for now).
+planned and described in detail in [`docs/architecture.md`](docs/architecture.md).
 
 ## Principles
 
