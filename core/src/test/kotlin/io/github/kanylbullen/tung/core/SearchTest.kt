@@ -1,4 +1,4 @@
-package io.github.kanylbullen.tung.domain
+package io.github.kanylbullen.tung.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

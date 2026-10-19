@@ -2,10 +2,11 @@ package io.github.kanylbullen.tung
 
 import android.app.Application
 import android.content.Context
+import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.data.ExerciseRepository
-import io.github.kanylbullen.tung.data.ExtendedCatalog
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.WorkoutRepository
+import io.github.kanylbullen.tung.data.fromAssets
 
 /** Hand-rolled dependency container. No DI framework — there is one database. */
 class AppContainer(context: Context) {

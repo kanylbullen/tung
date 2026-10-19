@@ -6,7 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
-import io.github.kanylbullen.tung.domain.LoggedSet
+import io.github.kanylbullen.tung.core.LoggedSet
 
 @Entity(tableName = "exercise", indices = [Index("name")])
 data class Exercise(
@@ -18,9 +18,9 @@ data class Exercise(
      * (see `ui/common/ExerciseNames.kt`). Null for custom exercises.
      */
     val nameKey: String? = null,
-    /** One of [io.github.kanylbullen.tung.domain.MuscleGroup] keys. */
+    /** One of [io.github.kanylbullen.tung.core.MuscleGroup] keys. */
     val muscleGroup: String,
-    /** One of [io.github.kanylbullen.tung.domain.Equipment] keys. */
+    /** One of [io.github.kanylbullen.tung.core.Equipment] keys. */
     val equipment: String,
     val isCustom: Boolean,
     /** Epoch millis of the last write; set by the repository. */

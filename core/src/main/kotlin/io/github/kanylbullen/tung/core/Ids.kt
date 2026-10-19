@@ -1,4 +1,4 @@
-package io.github.kanylbullen.tung.data
+package io.github.kanylbullen.tung.core
 
 import java.util.UUID
 

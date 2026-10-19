@@ -93,7 +93,7 @@ interface WorkoutDao {
     @Query("DELETE FROM set_entry WHERE id = :id")
     suspend fun deleteSet(id: String)
 
-    /** Removes sets that were never ticked or have no reps — see [io.github.kanylbullen.tung.domain.isLogged]. */
+    /** Removes sets that were never ticked or have no reps — see [io.github.kanylbullen.tung.core.isLogged]. */
     @Query(
         """
         DELETE FROM set_entry

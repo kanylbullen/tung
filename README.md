@@ -72,14 +72,14 @@ Gradle wrapper fetches the rest.
 export JAVA_HOME=/path/to/jdk-21
 export ANDROID_HOME=/path/to/android-sdk
 echo "sdk.dir=$ANDROID_HOME" > local.properties   # once, gitignored
-./gradlew assembleDebug testDebugUnitTest
+./gradlew assembleDebug test
 ```
 
-The APK ends up in `app/build/outputs/apk/debug/app-debug.apk`. The unit
-tests are plain JVM tests of the domain logic (volume, best set, records,
-pre-fill, weight parsing, search) and report under
-`app/build/reports/tests/testDebugUnitTest/`. CI runs the same command on
-every pull request.
+The APK ends up in `app/build/outputs/apk/debug/app-debug.apk`. The domain
+logic (volume, best set, records, pre-fill, weight parsing, search) lives in
+the Android-free `core/` module, and `test` runs its plain JVM tests together
+with the app's; reports land under `core/build/reports/tests/test/` and
+`app/build/reports/tests/`. CI runs the same command on every pull request.
 
 If Gradle cannot reach Maven on a machine that prefers IPv6, add
 `-Djava.net.preferIPv4Stack=true` to `org.gradle.jvmargs` in

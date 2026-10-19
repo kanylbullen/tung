@@ -2,15 +2,15 @@ package io.github.kanylbullen.tung.ui.exercises
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.ExtendedCatalog
+import io.github.kanylbullen.tung.core.ExtendedExercise
+import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.filterByDisplayName
+import io.github.kanylbullen.tung.core.normalizeForSearch
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.data.ExerciseRepository
-import io.github.kanylbullen.tung.data.ExtendedCatalog
-import io.github.kanylbullen.tung.data.ExtendedExercise
 import io.github.kanylbullen.tung.data.WorkoutRepository
-import io.github.kanylbullen.tung.domain.Equipment
-import io.github.kanylbullen.tung.domain.MuscleGroup
-import io.github.kanylbullen.tung.domain.filterByDisplayName
-import io.github.kanylbullen.tung.domain.normalizeForSearch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

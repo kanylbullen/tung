@@ -54,9 +54,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
-import io.github.kanylbullen.tung.data.ExtendedExercise
-import io.github.kanylbullen.tung.domain.Equipment
-import io.github.kanylbullen.tung.domain.MuscleGroup
+import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.ExtendedExercise
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.displayName

@@ -1,4 +1,4 @@
-package io.github.kanylbullen.tung.domain
+package io.github.kanylbullen.tung.core
 
 /** Sum of weight × reps. Bodyweight sets at 0 kg contribute nothing, by design. */
 fun totalVolume(sets: List<LoggedSet>): Double = sets.sumOf { it.volume }

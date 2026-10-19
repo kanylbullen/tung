@@ -1,14 +1,14 @@
 package io.github.kanylbullen.tung.ui.common
 
+import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.bestSet
+import io.github.kanylbullen.tung.core.isLogged
+import io.github.kanylbullen.tung.core.isNewRecord
+import io.github.kanylbullen.tung.core.totalVolume
 import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.data.toLogged
-import io.github.kanylbullen.tung.domain.LoggedSet
-import io.github.kanylbullen.tung.domain.bestSet
-import io.github.kanylbullen.tung.domain.isLogged
-import io.github.kanylbullen.tung.domain.isNewRecord
-import io.github.kanylbullen.tung.domain.totalVolume
 
 data class ExerciseReport(
     val workoutExerciseId: String,

@@ -1,4 +1,4 @@
-package io.github.kanylbullen.tung.domain
+package io.github.kanylbullen.tung.core
 
 /** Stored as [key] in the database; the order here is the order in lists. */
 enum class MuscleGroup(val key: String) {

@@ -1,7 +1,7 @@
 package io.github.kanylbullen.tung.ui.workout
 
-import io.github.kanylbullen.tung.domain.LoggedSet
-import io.github.kanylbullen.tung.domain.isLogged
+import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.isLogged
 
 data class ActiveSetUi(
     val id: String,

@@ -8,9 +8,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import io.github.kanylbullen.tung.R
-import io.github.kanylbullen.tung.domain.Equipment
-import io.github.kanylbullen.tung.domain.MuscleGroup
-import io.github.kanylbullen.tung.domain.formatWeight
+import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.formatWeight
 import kotlinx.coroutines.delay
 import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
