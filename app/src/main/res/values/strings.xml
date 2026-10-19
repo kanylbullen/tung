@@ -193,6 +193,48 @@
     <string name="routine_no_target_reps">No target reps</string>
     <string name="routine_not_found">This routine no longer exists.</string>
 
+    <!-- Programs -->
+    <string name="programs_title">Programs</string>
+    <string name="programs_entry_hint">Routines on fixed weekdays or in rotation</string>
+    <string name="programs_entry_active">Active: %1$s</string>
+    <string name="programs_empty">No programs. A program puts your routines on fixed weekdays or in a rotation, and Home shows the one for today.</string>
+    <string name="program_new">New program</string>
+    <string name="program_create">Create</string>
+    <string name="program_name">Name</string>
+    <string name="program_error_name">Enter a name for the program.</string>
+    <string name="program_mode_fixed">Fixed days</string>
+    <string name="program_mode_fixed_hint">Each routine on the weekdays you pick</string>
+    <string name="program_mode_rotating">Rotating</string>
+    <string name="program_mode_rotating_hint">Day 1, 2, 3 in order, whatever the date</string>
+    <string name="program_active">Active</string>
+    <string name="program_activate">Activate</string>
+    <string name="program_activate_description">Activate %1$s</string>
+    <string name="program_deactivate">Deactivate</string>
+    <plurals name="program_day_count">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="program_day_of">Day %1$d of %2$d</string>
+    <string name="program_no_weekdays">No weekdays</string>
+    <string name="program_weekday_description">%1$s on %2$s</string>
+    <string name="program_days_empty">No days yet. Add your routines in the order you train them.</string>
+    <string name="program_add_day">Add day</string>
+    <string name="program_pick_routine">Choose a routine</string>
+    <string name="program_no_routines">No routines yet. Save a finished workout as a routine first.</string>
+    <string name="program_day_menu">Options for %1$s</string>
+    <string name="program_remove_day">Remove day</string>
+    <string name="program_rename_title">Rename program</string>
+    <string name="program_delete">Delete program</string>
+    <string name="program_delete_title">Delete program?</string>
+    <string name="program_delete_body">The program will be deleted. Its routines, and the workouts you did from it, are kept.</string>
+    <string name="program_not_found">This program no longer exists.</string>
+    <string name="today_fixed">Today: %1$s</string>
+    <string name="today_rotating">%1$s: %2$s</string>
+    <string name="today_rest">Rest day</string>
+    <string name="today_start_description">Start today’s routine, %1$s</string>
+    <string name="today_choose_another">Choose another</string>
+    <string name="today_choose_title">Choose a day</string>
+
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->

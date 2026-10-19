@@ -49,7 +49,7 @@ Multiplatform; that is a later step if a non-JVM client ever needs it.
 
 What belongs there: pure functions and plain data shapes that are calculated
 the same on every client — volume, best set, records, pre-fill (`LoggedSet`,
-`isLogged`), routine targets and start sets (`Routines.kt`), weight/reps parsing and formatting, diacritic-insensitive search,
+`isLogged`), routine targets and start sets (`Routines.kt`), the program day suggestion (`Programs.kt`), weight/reps parsing and formatting, diacritic-insensitive search,
 `MuscleGroup`/`Equipment`, the id helpers (`Ids.kt`), the rest timer and the
 current set (`RestTimer.kt`, `LogSet.kt`), and the catalogue models
 with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
@@ -70,9 +70,9 @@ only dependencies are `kotlinx-serialization-json` and
 
 | Directory | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`). `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`). `SeedExercises.kt` is generated. |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver`, `RestAlerts` (vibration + notification). |
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share; programs list + one program). |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `ExerciseNames` (displayed exercise names). |
 | `ui/theme/` | Colour tokens, typography, theme. |
 | `../catalog/` | The exercise catalogue as open data (CC0): `core.json`, `extended.json`, generator and import scripts. Shipped as an asset directory in the APK. See `catalog/README.md`. |
@@ -100,6 +100,37 @@ second, and the Start buttons are disabled while it exists.
 `Workout.routineId` is indexed but deliberately **not** a foreign key:
 deleting a routine (which cascades to its `RoutineExercise` rows) never
 touches history.
+
+### Programs
+
+A `Program` is an ordered list of routines with a `mode`: `"fixed"` (each day
+on chosen weekdays) or `"rotating"` (day 1, 2, 3 in order, whatever the date);
+`core.ProgramMode` reads the key. Its days are `ProgramDay` rows: a
+`routineId`, a `position`, and `weekdays`, a bitmask of ISO weekdays with
+Monday in bit 0 (`core.weekdaysToMask`/`maskToWeekdays`), so one day can fall
+on several weekdays; it is kept but unused in rotating mode. Both foreign keys
+of `ProgramDay` cascade: deleting a program deletes its days, and deleting a
+routine removes the days that used it, because a day without a routine has
+nothing to start. `ProgramRepository` closes the position gap when a day is
+removed, so rotating days keep counting 1, 2, 3. At most one program is
+`isActive`: `ProgramRepository.activate` deactivates every other program in
+the same transaction.
+
+Home's "Today" shows only while a program is active and has days.
+`core.suggestedDay` picks the day: fixed mode, the first day by position whose
+weekdays include today, else null and Home says "Rest day" with no Start;
+rotating mode, the day after the last completed one by position, wrapping to
+the first, and the first when nothing is completed or the completed day is
+gone. "Last completed" is the latest *finished* workout whose
+`Workout.programDayId` is a day of this program
+(`ProgramDao.observeLastCompletedDayId`). Starting from Today, or from the
+"Choose another" sheet that overrides the suggestion, calls
+`RoutineRepository.start(routineId, programDayId)`, so the workout records
+both ids. `programDayId` is indexed and, like `routineId`, **not** a foreign
+key: removing a day or deleting a program never touches history. "Today" is
+`LocalDate.now(AppContainer.clock)`: the system clock in the app, a settable
+one (`FlowTestApp.today`) in the flow tests. Programs are reached from a row
+at the top of the Routines screen (`ui/routines/Program*`).
 
 ### Log set and rest timer
 
@@ -150,9 +181,9 @@ singleton, and Robolectric makes a new application for every flow test.
 
 ### Ids and `updatedAt`
 
-All six entities have `id: String`, a UUID generated by the client
+All eight entities have `id: String`, a UUID generated by the client
 (`Ids.kt` in `core`): `newId()` for everything the user creates (workouts, workout
-exercises, sets, custom exercises, routines, routine exercises), and `catalogExerciseId(nameKey)` for
+exercises, sets, custom exercises, routines, routine exercises, programs, program days), and `catalogExerciseId(nameKey)` for
 catalogue exercises — a name-based UUID from `"tung:exercise:<nameKey>"`, so the
 same catalogue exercise has the same id on every device. The seeding in
 `TungDatabase` uses it, with `updatedAt = 0` for an untouched catalogue row.
@@ -240,8 +271,9 @@ part of `./gradlew test`. Only them:
 
 - `FlowTestApp` (named in `src/test/resources/robolectric.properties`)
   overrides `TungApp.createContainer()` to hand `AppContainer` an in-memory
-  `TungDatabase.buildInMemory`, same schema and seed. That is the only test
-  seam in production code.
+  `TungDatabase.buildInMemory`, same schema and seed, and a settable
+  `Clock` (`FlowTestApp.today`) for Home's "Today". Those two
+  `AppContainer` parameters are the only test seams in production code.
 - Assertions are on semantics, with text from the English string resources
   (`str(R.string.…)`), never on pixels. Room works on its own threads, so wait
   (`waitForText`, `assertShown`) rather than assert right after a tap.
@@ -334,5 +366,6 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
 - `exportSchema = false` and no migration: if the schema changes, `version`
   must be raised and a `Migration` written before the app is used for real.
   Until the first release the schema changes at `version = 1` (last:
-  `Exercise.restSeconds`), so a dev install must be wiped (uninstall or
-  clear data) after pulling such a change, or Room throws on open.
+  `Program`, `ProgramDay` and `Workout.programDayId`), so a dev install must
+  be wiped (uninstall or clear data) after pulling such a change, or Room
+  throws on open.

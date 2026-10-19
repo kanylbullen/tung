@@ -10,25 +10,31 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.data.ExerciseRepository
+import io.github.kanylbullen.tung.data.ProgramRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.data.fromAssets
 import io.github.kanylbullen.tung.timer.RestTimerController
+import java.time.Clock
 
 /**
  * Hand-rolled dependency container. No DI framework — there is one database.
  *
  * [createDatabase] is the one seam: the app uses the file-backed default, the
- * JVM flow tests hand in an in-memory database.
+ * JVM flow tests hand in an in-memory database. [clock] says what day it is
+ * for Home's "Today"; the app uses the system clock and zone, the flow tests
+ * one they can set to a given weekday.
  */
 class AppContainer(
     context: Context,
+    val clock: Clock = Clock.systemDefaultZone(),
     createDatabase: (Context) -> TungDatabase = TungDatabase::build,
 ) {
     private val database: TungDatabase by lazy { createDatabase(context) }
     val workoutRepository: WorkoutRepository by lazy { WorkoutRepository(database) }
     val routineRepository: RoutineRepository by lazy { RoutineRepository(database) }
+    val programRepository: ProgramRepository by lazy { ProgramRepository(database) }
     val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database.exerciseDao()) }
     val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog.fromAssets(context) }
 

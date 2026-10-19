@@ -15,6 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,9 +43,17 @@ fun HomeScreen(
 ) {
     val container = appContainer()
     val vm: HomeViewModel = viewModel(
-        factory = factoryOf { HomeViewModel(container.workoutRepository, container.routineRepository) }
+        factory = factoryOf {
+            HomeViewModel(
+                container.workoutRepository,
+                container.routineRepository,
+                container.programRepository,
+                container.clock,
+            )
+        }
     )
     val state by vm.state.collectAsStateWithLifecycle()
+    var choosingDay by rememberSaveable { mutableStateOf(false) }
     // "Last: 3 days ago" changes at most at midnight; a minute is plenty.
     val today = rememberNow(intervalMillis = 60_000L)
 
@@ -82,6 +93,17 @@ fun HomeScreen(
                         modifier = Modifier.heightIn(min = 72.dp),
                     )
                 }
+            }
+        }
+
+        state.today?.let { program ->
+            item(key = "today") {
+                TodaySection(
+                    today = program,
+                    startEnabled = !state.loading && state.activeWorkout == null,
+                    onStart = { day -> vm.startDay(day, onOpenWorkout) },
+                    onChooseAnother = { choosingDay = true },
+                )
             }
         }
 
@@ -146,5 +168,17 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    val program = state.today
+    if (choosingDay && program != null) {
+        ChooseDaySheet(
+            today = program,
+            onDismiss = { choosingDay = false },
+            onChoose = { day ->
+                choosingDay = false
+                vm.startDay(day, onOpenWorkout)
+            },
+        )
     }
 }
