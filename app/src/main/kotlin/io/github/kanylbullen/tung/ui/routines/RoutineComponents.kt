@@ -104,7 +104,10 @@ fun defaultRoutineName(report: WorkoutReport): String {
     return if (names.isEmpty()) weekday else stringResource(R.string.routine_default_name, weekday, names)
 }
 
-/** Asks for a routine name; used both to save a workout as a routine and to rename one. */
+/**
+ * Asks for a name; used to save a workout as a routine and to rename a routine
+ * or a program. [errorText] is shown when Save is tapped with no name.
+ */
 @Composable
 fun RoutineNameDialog(
     title: String,
@@ -112,6 +115,7 @@ fun RoutineNameDialog(
     confirmLabel: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
+    errorText: String = stringResource(R.string.routine_error_name),
 ) {
     var name by rememberSaveable { mutableStateOf(initialName) }
     var showError by remember { mutableStateOf(false) }
@@ -135,7 +139,7 @@ fun RoutineNameDialog(
                 singleLine = true,
                 isError = showError,
                 supportingText = if (showError) {
-                    { Text(stringResource(R.string.routine_error_name)) }
+                    { Text(errorText) }
                 } else {
                     null
                 },

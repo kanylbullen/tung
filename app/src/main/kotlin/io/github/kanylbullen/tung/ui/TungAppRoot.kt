@@ -35,6 +35,8 @@ import io.github.kanylbullen.tung.ui.exercises.ExercisesScreen
 import io.github.kanylbullen.tung.ui.history.HistoryScreen
 import io.github.kanylbullen.tung.ui.history.WorkoutDetailScreen
 import io.github.kanylbullen.tung.ui.home.HomeScreen
+import io.github.kanylbullen.tung.ui.routines.ProgramDetailScreen
+import io.github.kanylbullen.tung.ui.routines.ProgramsScreen
 import io.github.kanylbullen.tung.ui.routines.RoutineDetailScreen
 import io.github.kanylbullen.tung.ui.routines.RoutinesScreen
 import io.github.kanylbullen.tung.ui.summary.SummaryScreen
@@ -53,12 +55,16 @@ private object Routes {
     const val ROUTINES = "routines"
     const val ARG_ROUTINE = "routineId"
     const val ROUTINE = "routine/{$ARG_ROUTINE}"
+    const val PROGRAMS = "programs"
+    const val ARG_PROGRAM = "programId"
+    const val PROGRAM = "program/{$ARG_PROGRAM}"
 
     fun workout(id: String) = "workout/$id"
     fun picker(id: String) = "picker/$id"
     fun detail(id: String) = "detail/$id"
     fun summary(id: String) = "summary/$id"
     fun routine(id: String) = "routine/$id"
+    fun program(id: String) = "program/$id"
 }
 
 private data class Tab(val route: String, @StringRes val label: Int)
@@ -137,7 +143,21 @@ fun TungAppRoot(openWorkoutId: String? = null, onWorkoutOpened: () -> Unit = {})
                     onBack = { nav.popBackStack() },
                     onOpenRoutine = { id -> nav.navigate(Routes.routine(id)) },
                     onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) { popUpTo(Routes.HOME) } },
+                    onShowPrograms = { nav.navigate(Routes.PROGRAMS) },
                 )
+            }
+            composable(Routes.PROGRAMS) {
+                ProgramsScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenProgram = { id -> nav.navigate(Routes.program(id)) },
+                )
+            }
+            composable(
+                Routes.PROGRAM,
+                arguments = listOf(navArgument(Routes.ARG_PROGRAM) { type = NavType.StringType }),
+            ) { entry ->
+                val id = entry.arguments?.getString(Routes.ARG_PROGRAM) ?: return@composable
+                ProgramDetailScreen(programId = id, onBack = { nav.popBackStack() })
             }
             composable(
                 Routes.ROUTINE,

@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.ui.routines
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kanylbullen.tung.data.ProgramRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.RoutineSummaryRow
 import io.github.kanylbullen.tung.data.WorkoutRepository
@@ -16,18 +17,22 @@ data class RoutinesUiState(
     val routines: List<RoutineSummaryRow> = emptyList(),
     /** False while a workout is in progress: there is at most one, and Home offers to resume it. */
     val canStart: Boolean = false,
+    /** The active program's name, shown on the Programs entry; null when none is active. */
+    val activeProgram: String? = null,
 )
 
 class RoutinesViewModel(
     private val routines: RoutineRepository,
     workouts: WorkoutRepository,
+    programs: ProgramRepository,
 ) : ViewModel() {
 
     val state: StateFlow<RoutinesUiState> = combine(
         routines.observeRoutines(),
         workouts.observeActiveWorkout(),
-    ) { list, active ->
-        RoutinesUiState(loading = false, routines = list, canStart = active == null)
+        programs.observeActiveProgram(),
+    ) { list, active, program ->
+        RoutinesUiState(loading = false, routines = list, canStart = active == null, activeProgram = program?.name)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RoutinesUiState())
 
     fun start(routineId: String, onReady: (String) -> Unit) {

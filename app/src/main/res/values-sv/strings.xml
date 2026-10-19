@@ -193,6 +193,48 @@
     <string name="routine_no_target_reps">Inget mål för reps</string>
     <string name="routine_not_found">Rutinen finns inte längre.</string>
 
+    <!-- Programs -->
+    <string name="programs_title">Program</string>
+    <string name="programs_entry_hint">Rutiner på fasta veckodagar eller rullande</string>
+    <string name="programs_entry_active">Aktivt: %1$s</string>
+    <string name="programs_empty">Inga program. Ett program lägger dina rutiner på fasta veckodagar eller i rullande ordning, och Hem visar dagens.</string>
+    <string name="program_new">Nytt program</string>
+    <string name="program_create">Skapa</string>
+    <string name="program_name">Namn</string>
+    <string name="program_error_name">Skriv ett namn på programmet.</string>
+    <string name="program_mode_fixed">Fasta dagar</string>
+    <string name="program_mode_fixed_hint">Varje rutin på de veckodagar du väljer</string>
+    <string name="program_mode_rotating">Rullande</string>
+    <string name="program_mode_rotating_hint">Dag 1, 2, 3 i tur och ordning, oavsett datum</string>
+    <string name="program_active">Aktivt</string>
+    <string name="program_activate">Aktivera</string>
+    <string name="program_activate_description">Aktivera %1$s</string>
+    <string name="program_deactivate">Avaktivera</string>
+    <plurals name="program_day_count">
+        <item quantity="one">%d dag</item>
+        <item quantity="other">%d dagar</item>
+    </plurals>
+    <string name="program_day_of">Dag %1$d av %2$d</string>
+    <string name="program_no_weekdays">Inga veckodagar</string>
+    <string name="program_weekday_description">%1$s på %2$s</string>
+    <string name="program_days_empty">Inga dagar än. Lägg till dina rutiner i den ordning du tränar dem.</string>
+    <string name="program_add_day">Lägg till dag</string>
+    <string name="program_pick_routine">Välj en rutin</string>
+    <string name="program_no_routines">Inga rutiner än. Spara ett avslutat pass som rutin först.</string>
+    <string name="program_day_menu">Val för %1$s</string>
+    <string name="program_remove_day">Ta bort dagen</string>
+    <string name="program_rename_title">Byt namn på program</string>
+    <string name="program_delete">Radera program</string>
+    <string name="program_delete_title">Radera program?</string>
+    <string name="program_delete_body">Programmet raderas. Dess rutiner, och passen du har gjort från det, finns kvar.</string>
+    <string name="program_not_found">Programmet finns inte längre.</string>
+    <string name="today_fixed">Idag: %1$s</string>
+    <string name="today_rotating">%1$s: %2$s</string>
+    <string name="today_rest">Vilodag</string>
+    <string name="today_start_description">Starta dagens rutin, %1$s</string>
+    <string name="today_choose_another">Välj en annan</string>
+    <string name="today_choose_title">Välj en dag</string>
+
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
