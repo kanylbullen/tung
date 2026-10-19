@@ -4,16 +4,26 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.data.ExerciseRepository
+import io.github.kanylbullen.tung.data.ExtendedCatalog
+import io.github.kanylbullen.tung.data.ExtendedExercise
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.domain.Equipment
 import io.github.kanylbullen.tung.domain.MuscleGroup
 import io.github.kanylbullen.tung.domain.filterByDisplayName
+import io.github.kanylbullen.tung.domain.normalizeForSearch
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import java.text.Collator
 import java.util.Locale
@@ -26,8 +36,10 @@ data class ExerciseGroup(val muscleGroup: MuscleGroup, val exercises: List<Named
 data class ExercisesUiState(
     val loading: Boolean = true,
     val groups: List<ExerciseGroup> = emptyList(),
+    /** Picker only: matches from the extended catalogue, shown under "Fler övningar". */
+    val more: List<ExtendedExercise> = emptyList(),
 ) {
-    val isEmpty: Boolean get() = groups.isEmpty()
+    val isEmpty: Boolean get() = groups.isEmpty() && more.isEmpty()
 }
 
 /**
@@ -37,10 +49,15 @@ data class ExercisesUiState(
  * [displayName] gives the name shown on screen (see `ui/common/ExerciseNames.kt`);
  * search and sort both work on it, so "bench" finds Bench press on an English
  * phone and "bank" finds Bänkpress on a Swedish one.
+ *
+ * In the picker, a query of [ExtendedCatalog.MIN_QUERY_LENGTH] characters or
+ * more also searches the extended catalogue ([ExercisesUiState.more], English
+ * names). The tab never shows it.
  */
 class ExercisesViewModel(
     private val exercises: ExerciseRepository,
     private val workouts: WorkoutRepository,
+    private val extendedCatalog: ExtendedCatalog,
     private val workoutId: String?,
     private val displayName: (Exercise) -> String,
 ) : ViewModel() {
@@ -53,18 +70,36 @@ class ExercisesViewModel(
 
     val isPicker: Boolean get() = workoutId != null
 
-    val state: StateFlow<ExercisesUiState> = combine(exercises.observeExercises(), _query, locale) { all, q, loc ->
-        val collator = Collator.getInstance(loc).apply { strength = Collator.SECONDARY }
-        val byGroup = filterByDisplayName(all.map { it to displayName(it) }, q)
-            .map { (exercise, name) -> NamedExercise(exercise, name) }
-            .groupBy { MuscleGroup.fromKey(it.exercise.muscleGroup) }
-        ExercisesUiState(
-            loading = false,
-            groups = MuscleGroup.entries.mapNotNull { group ->
-                byGroup[group]?.let { list -> ExerciseGroup(group, list.sortedWith(compareBy(collator) { it.displayName })) }
-            },
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExercisesUiState())
+    /**
+     * The extended catalogue, read the first time the picker's query is long
+     * enough to search it; empty before that, in the tab, and if it cannot be read.
+     */
+    private val extended: Flow<List<ExtendedExercise>> =
+        if (workoutId == null) {
+            flowOf(emptyList())
+        } else {
+            _query.filter { normalizeForSearch(it).length >= ExtendedCatalog.MIN_QUERY_LENGTH }
+                .take(1)
+                .map { extendedCatalog.all() }
+                .catch { emit(emptyList()) }
+                .onStart { emit(emptyList()) }
+        }
+
+    val state: StateFlow<ExercisesUiState> =
+        combine(exercises.observeExercises(), _query, locale, extended) { all, q, loc, ext ->
+            val collator = Collator.getInstance(loc).apply { strength = Collator.SECONDARY }
+            val byGroup = filterByDisplayName(all.map { it to displayName(it) }, q)
+                .map { (exercise, name) -> NamedExercise(exercise, name) }
+                .groupBy { MuscleGroup.fromKey(it.exercise.muscleGroup) }
+            val existingIds = all.mapTo(HashSet()) { it.id }
+            ExercisesUiState(
+                loading = false,
+                groups = MuscleGroup.entries.mapNotNull { group ->
+                    byGroup[group]?.let { list -> ExerciseGroup(group, list.sortedWith(compareBy(collator) { it.displayName })) }
+                },
+                more = ExtendedCatalog.search(ext, existingIds, q).sortedWith(compareBy(collator) { it.displayName }),
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExercisesUiState())
 
     fun setQuery(value: String) {
         _query.value = value
@@ -77,6 +112,16 @@ class ExercisesViewModel(
     fun pick(exerciseId: String, onDone: () -> Unit) {
         val id = workoutId ?: return
         viewModelScope.launch {
+            workouts.addExercise(id, exerciseId)
+            onDone()
+        }
+    }
+
+    /** Picker only: adds an extended-catalogue exercise, creating its Room row the first time. */
+    fun pickExtended(entry: ExtendedExercise, onDone: () -> Unit) {
+        val id = workoutId ?: return
+        viewModelScope.launch {
+            val exerciseId = exercises.getOrCreateExtended(entry)
             workouts.addExercise(id, exerciseId)
             onDone()
         }

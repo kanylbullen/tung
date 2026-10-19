@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.data
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
@@ -12,4 +13,8 @@ interface ExerciseDao {
 
     @Insert
     suspend fun insert(exercise: Exercise)
+
+    /** Inserts unless a row with the same id exists; an existing row is left untouched. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(exercise: Exercise)
 }

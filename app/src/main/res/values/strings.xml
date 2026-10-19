@@ -83,6 +83,7 @@
     <string name="exercises_no_match">Ingen övning heter så. Skapa den längst ned.</string>
     <string name="exercises_create">Skapa övning</string>
     <string name="exercises_custom">Egen</string>
+    <string name="picker_more">Fler övningar</string>
     <string name="create_title">Skapa övning</string>
     <string name="create_name">Namn</string>
     <string name="create_muscle">Muskelgrupp</string>

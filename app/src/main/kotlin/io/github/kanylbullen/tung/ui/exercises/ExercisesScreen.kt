@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.data.ExtendedExercise
 import io.github.kanylbullen.tung.domain.Equipment
 import io.github.kanylbullen.tung.domain.MuscleGroup
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
@@ -80,7 +81,12 @@ fun ExercisesScreen(
     val appContext = LocalContext.current.applicationContext
     val vm: ExercisesViewModel = viewModel(
         factory = factoryOf {
-            ExercisesViewModel(container.exerciseRepository, container.workoutRepository, workoutId) {
+            ExercisesViewModel(
+                container.exerciseRepository,
+                container.workoutRepository,
+                container.extendedCatalog,
+                workoutId,
+            ) {
                 it.displayName(appContext)
             }
         }
@@ -131,18 +137,21 @@ fun ExercisesScreen(
             }
             state.groups.forEach { group ->
                 item(key = "group-${group.muscleGroup.key}") {
-                    Text(
-                        muscleGroupLabel(group.muscleGroup),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Tung.colors.muted,
-                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 4.dp),
-                    )
+                    SectionHeader(muscleGroupLabel(group.muscleGroup))
                 }
                 items(group.exercises, key = { "ex-${it.exercise.id}" }) { named ->
                     ExerciseRow(
                         exercise = named,
                         onClick = if (vm.isPicker) ({ vm.pick(named.exercise.id, onPicked) }) else null,
                     )
+                }
+            }
+            if (state.more.isNotEmpty()) {
+                item(key = "more") {
+                    SectionHeader(stringResource(R.string.picker_more))
+                }
+                items(state.more, key = { "ext-${it.id}" }) { entry ->
+                    ExtendedRow(entry, onClick = { vm.pickExtended(entry, onPicked) })
                 }
             }
             item(key = "create") {
@@ -209,7 +218,36 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 )
 
 @Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        color = Tung.colors.muted,
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
 private fun ExerciseRow(exercise: NamedExercise, onClick: (() -> Unit)?) {
+    val detail = buildList {
+        add(equipmentLabel(Equipment.fromKey(exercise.exercise.equipment)))
+        if (exercise.exercise.isCustom) add(stringResource(R.string.exercises_custom))
+    }.joinToString(stringResource(R.string.row_separator))
+    NameRow(exercise.displayName, detail, onClick)
+}
+
+/** The extended list is not grouped, so the row names the muscle group as well as the equipment. */
+@Composable
+private fun ExtendedRow(entry: ExtendedExercise, onClick: () -> Unit) {
+    val detail = listOf(
+        muscleGroupLabel(MuscleGroup.fromKey(entry.muscleGroup)),
+        equipmentLabel(Equipment.fromKey(entry.equipment)),
+    ).joinToString(stringResource(R.string.row_separator))
+    NameRow(entry.displayName, detail, onClick)
+}
+
+@Composable
+private fun NameRow(name: String, detail: String, onClick: (() -> Unit)?) {
     val base = Modifier.fillMaxWidth()
     Row(
         modifier = (if (onClick != null) base.clickable(onClick = onClick) else base)
@@ -218,15 +256,11 @@ private fun ExerciseRow(exercise: NamedExercise, onClick: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            exercise.displayName,
+            name,
             style = MaterialTheme.typography.bodyLarge,
             color = Tung.colors.text,
             modifier = Modifier.weight(1f),
         )
-        val detail = buildList {
-            add(equipmentLabel(Equipment.fromKey(exercise.exercise.equipment)))
-            if (exercise.exercise.isCustom) add(stringResource(R.string.exercises_custom))
-        }.joinToString(stringResource(R.string.row_separator))
         Text(detail, style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     }
 }

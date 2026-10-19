@@ -14,3 +14,10 @@ fun newId(): String = UUID.randomUUID().toString()
  */
 fun catalogExerciseId(nameKey: String): String =
     UUID.nameUUIDFromBytes("tung:exercise:$nameKey".toByteArray(Charsets.UTF_8)).toString()
+
+/**
+ * The id an exercise from the extended catalogue (`catalog/extended.json`) gets
+ * when it is first picked: derived from its free-exercise-db id, so it is the
+ * same on every device and never collides with a core key.
+ */
+fun extendedExerciseId(sourceId: String): String = catalogExerciseId("ext:$sourceId")
