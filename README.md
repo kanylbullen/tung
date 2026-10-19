@@ -26,3 +26,15 @@ Enhetstesterna (rena JVM-tester av domänlogiken) rapporteras under
 
 Typsnittet Archivo ligger i `app/src/main/res/font/` under SIL Open Font
 License; licenstexten följer med i APK:n som `assets/licenses/archivo-OFL.txt`.
+
+## Licens
+
+Koden är fri programvara under **GNU AGPL-3.0-or-later**, se `LICENSE`.
+Det betyder att den som kör en ändrad version som tjänst måste erbjuda
+källkoden till användarna. Övningskatalogen (namn, muskelgrupper,
+utrustning) är öppen data under CC0 och får användas utan villkor.
+Din egen träningsdata är din: den lämnar aldrig enheten om du inte slår
+på synk, och den går alltid att exportera.
+
+Riktningen för projektet, med API, MCP-server, självhosting och klocka,
+finns i `docs/architecture.md`.
