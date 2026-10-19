@@ -48,6 +48,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kanylbullen.tung.R
@@ -249,7 +250,13 @@ private fun ApplyToAllRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) 
 }
 
 @Composable
-private fun StepButton(symbol: String, description: String, modifier: Modifier, onClick: () -> Unit) {
+internal fun StepButton(
+    symbol: String,
+    description: String,
+    modifier: Modifier,
+    fontSize: TextUnit = 56.sp,
+    onClick: () -> Unit,
+) {
     Surface(
         onClick = onClick,
         shape = TungCorner,
@@ -260,7 +267,7 @@ private fun StepButton(symbol: String, description: String, modifier: Modifier, 
             .semantics { contentDescription = description },
     ) {
         Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(symbol, fontSize = 56.sp, fontWeight = FontWeight.Bold, style = Tung.numbers.set)
+            Text(symbol, fontSize = fontSize, fontWeight = FontWeight.Bold, style = Tung.numbers.set)
         }
     }
 }

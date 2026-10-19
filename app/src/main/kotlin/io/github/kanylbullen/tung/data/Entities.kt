@@ -25,6 +25,11 @@ data class Exercise(
     val isCustom: Boolean,
     /** Epoch millis of the last write; set by the repository. */
     val updatedAt: Long,
+    /**
+     * Rest between sets of this exercise, in seconds; 0 means no rest timer.
+     * Null follows the user's default (90 s unless changed).
+     */
+    val restSeconds: Int? = null,
 )
 
 @Entity(tableName = "workout", indices = [Index("endedAt"), Index("startedAt"), Index("routineId")])

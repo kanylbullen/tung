@@ -48,4 +48,12 @@ class ExerciseRepository(
         )
         return id
     }
+
+    /**
+     * The rest timer for [exerciseId]: seconds between sets, 0 for none, null to
+     * follow the default. An ordinary update, catalogue rows included, so
+     * `updatedAt` moves.
+     */
+    suspend fun setRestSeconds(exerciseId: String, restSeconds: Int?) =
+        dao.updateRestSeconds(exerciseId, restSeconds, clock())
 }

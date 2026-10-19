@@ -58,6 +58,26 @@
     <string name="workout_keep_training">Keep training</string>
     <string name="workout_discarded">The workout was not saved because no sets were ticked.</string>
     <string name="workout_not_found">This workout no longer exists. Go back and start a new one.</string>
+    <string name="workout_log_set">Log set · %1$s × %2$s</string>
+    <string name="workout_rest_timer">Rest timer…</string>
+
+    <!-- Rest timer -->
+    <string name="rest_title">Rest timer</string>
+    <string name="rest_between_sets">Rest between sets of %1$s</string>
+    <string name="rest_off">Off</string>
+    <string name="rest_minus">−30 s</string>
+    <string name="rest_plus">+30 s</string>
+    <string name="rest_shorter">30 seconds shorter</string>
+    <string name="rest_longer">30 seconds longer</string>
+    <string name="rest_hint">Step down to Off for no timer on this exercise.</string>
+    <string name="rest_remaining">%1$s left</string>
+    <string name="rest_skip">Skip</string>
+    <string name="rest_add">+30 s</string>
+    <string name="rest_add_description">Add 30 seconds</string>
+    <string name="rest_channel_name">Rest timer</string>
+    <string name="rest_channel_description">Tells you when the rest between sets is over.</string>
+    <string name="rest_over">Rest over</string>
+    <string name="rest_over_text">Time for the next set.</string>
 
     <!-- Number input sheet -->
     <string name="input_weight_title">Weight</string>
