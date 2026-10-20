@@ -142,7 +142,7 @@ class ProgramFlowTest : FlowTest() {
         waitForText(str(R.string.program_active))
         val toggle = str(R.string.program_weekday_description, "Push day", weekdayFull(weekday))
         clickDescription(toggle)
-        compose.waitUntil(5_000) { count("SELECT weekdays FROM program_day") == 1 shl (weekday - 1) }
+        waitUntil(5_000) { count("SELECT weekdays FROM program_day") == 1 shl (weekday - 1) }
         assertShown(hasContentDescription(toggle) and isOn())
         screenshot("2-program-wednesday")
 

@@ -61,7 +61,7 @@ class RoutineFlowTest : FlowTest() {
         waitGone(isDialog())
         // The toast follows the write, which Room does on its own thread, and is shown
         // from the main looper, which only runs when the test idles it.
-        compose.waitUntil(5_000) {
+        waitUntil(5_000) {
             compose.waitForIdle()
             ShadowToast.getTextOfLatestToast() == str(R.string.routine_saved, "Push day")
         }
@@ -150,7 +150,7 @@ class RoutineFlowTest : FlowTest() {
         waitForText(benchPress)
         assertShown(hasText(app.resources.getQuantityString(R.plurals.routine_target_reps, 8, 8)))
         clickDescription(str(R.string.routine_more_sets, benchPress))
-        compose.waitUntil(5_000) { count("SELECT targetSets FROM routine_exercise") == 3 }
+        waitUntil(5_000) { count("SELECT targetSets FROM routine_exercise") == 3 }
         assertShown(hasText("3"))
         screenshot("2-routine")
 

@@ -654,6 +654,16 @@ part of `./gradlew test`. Only them:
 - Assertions are on semantics, with text from the English string resources
   (`str(R.string.…)`), never on pixels. Room works on its own threads, so wait
   (`waitForText`, `assertShown`) rather than assert right after a tap.
+- **Wait with `FlowTest.waitUntil`, never `compose.waitUntil`** (issue #28).
+  Under Robolectric the test thread is the main thread and the main looper
+  runs only when the test idles it; `compose.waitUntil` just advances
+  Compose's clock and sleeps. Work that hops to a background thread and back
+  to Main (a DataStore `edit` runs its transform on the caller's dispatcher,
+  Room hands the transaction thread back to the caller) and returns after
+  the last click or `onAllNodes` stays queued for the whole wait when the
+  condition reads only the database or an alarm, however long the timeout.
+  `waitUntil` idles the looper before every check, and on timeout prints
+  every thread's stack and whether the looper had work left.
 - Each test also saves PNGs of the screens it passes through to
   `app/build/reports/flow-screenshots/<test>-<step>.png`; CI uploads them as
   the `flow-screenshots` artifact. Only `testDebugUnitTest` writes them (the

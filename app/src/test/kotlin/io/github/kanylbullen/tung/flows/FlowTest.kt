@@ -2,9 +2,11 @@ package io.github.kanylbullen.tung.flows
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.os.Looper
 import androidx.compose.ui.platform.ViewRootForTest
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -30,6 +32,7 @@ import org.junit.Rule
 import org.junit.rules.TestName
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
@@ -70,14 +73,44 @@ abstract class FlowTest {
 
     // --- waiting: Room works on its own threads, so the UI catches up asynchronously ---
 
+    /**
+     * Waits until [condition] holds, letting the main looper run between checks.
+     *
+     * `compose.waitUntil` alone does not: between checks it only advances
+     * Compose's own clock and sleeps. Under Robolectric the test thread *is*
+     * the main thread, and the main looper runs only when the test idles it,
+     * which Compose does only from its own calls (a click, `onAllNodes`, a
+     * screenshot). Work that goes to a background thread and comes back to
+     * Main (a DataStore edit runs its transform on the caller's dispatcher,
+     * Room hands a transaction thread back to the caller) and returns after
+     * the last such call sits in the queue for the whole wait, however long,
+     * when [condition] reads only the database or an alarm. So this idles
+     * the looper before every check.
+     *
+     * On timeout every thread's stack and the looper's state go to stderr,
+     * so a CI failure shows whether anything was stuck. Use this, not
+     * `compose.waitUntil`.
+     */
+    protected fun waitUntil(timeoutMillis: Long = 5_000, condition: () -> Boolean) {
+        try {
+            compose.waitUntil(timeoutMillis) {
+                shadowOf(Looper.getMainLooper()).idle()
+                condition()
+            }
+        } catch (e: ComposeTimeoutException) {
+            System.err.println(threadDump("${testName.methodName}: ${e.message}"))
+            throw e
+        }
+    }
+
     protected fun waitFor(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
-        compose.waitUntil(timeoutMillis) {
+        waitUntil(timeoutMillis) {
             compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
     protected fun waitGone(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
-        compose.waitUntil(timeoutMillis) {
+        waitUntil(timeoutMillis) {
             compose.onAllNodes(matcher).fetchSemanticsNodes().isEmpty()
         }
     }
@@ -87,7 +120,7 @@ abstract class FlowTest {
      * after a navigation a node can exist for a frame before it is placed.
      */
     protected fun assertShown(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
-        compose.waitUntil(timeoutMillis) {
+        waitUntil(timeoutMillis) {
             runCatching { compose.onNode(matcher).assertIsDisplayed() }.isSuccess
         }
     }
@@ -206,4 +239,16 @@ abstract class FlowTest {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
         }
     }
+}
+
+/** Every live thread with its state and stack, for a test that timed out. */
+internal fun threadDump(title: String): String = buildString {
+    appendLine("=== thread dump: $title")
+    appendLine("main looper idle: ${shadowOf(Looper.getMainLooper()).isIdle}")
+    Thread.getAllStackTraces().entries.sortedBy { it.key.name }.forEach { (thread, stack) ->
+        appendLine("\"${thread.name}\" daemon=${thread.isDaemon} state=${thread.state}")
+        stack.forEach { appendLine("    at $it") }
+        appendLine()
+    }
+    appendLine("=== end of thread dump")
 }
