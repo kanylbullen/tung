@@ -255,6 +255,16 @@
     <string name="sync_signed_in_as">Signed in as %1$s</string>
     <string name="sync_sign_out">Sign out</string>
     <string name="sync_sign_out_hint">Signing out keeps your training on this phone.</string>
+    <string name="link_watch_title">Watch</string>
+    <string name="link_watch_intro">Log on the watch without the phone: link it to this account with a code, no password on the wrist.</string>
+    <string name="link_watch">Link a watch</string>
+    <string name="link_watch_busy">Getting a code…</string>
+    <string name="link_watch_valid_for">Valid for %1$s</string>
+    <string name="link_watch_hint">On the watch: Settings, Link to a server, then type this code.</string>
+    <string name="link_watch_done">Done</string>
+    <string name="link_watch_expired">The code has expired.</string>
+    <string name="link_watch_new_code">New code</string>
+    <string name="link_watch_error_old_server">This server cannot link watches yet. Update tung-server.</string>
     <string name="sync_now">Sync now</string>
     <string name="sync_syncing">Syncing…</string>
     <string name="sync_status_never">Last sync: never</string>

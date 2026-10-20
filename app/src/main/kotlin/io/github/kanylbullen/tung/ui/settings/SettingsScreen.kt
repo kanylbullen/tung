@@ -25,6 +25,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -37,6 +40,7 @@ import io.github.kanylbullen.tung.sync.AccountState
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.appContainer
+import io.github.kanylbullen.tung.ui.common.clockText
 import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localDate
 import io.github.kanylbullen.tung.ui.common.rememberNow
@@ -82,7 +86,10 @@ fun SettingsScreen(onBack: () -> Unit) {
             val account = state.account
             when (account?.signedIn) {
                 null -> Unit
-                true -> SignedIn(account, onSyncNow = vm::syncNow, onSignOut = vm::signOut)
+                true -> {
+                    SignedIn(account, onSyncNow = vm::syncNow, onSignOut = vm::signOut)
+                    WatchLink(state.watchLink, onLink = vm::linkWatch, onClose = vm::closeWatchLink)
+                }
                 false -> SignInForm(
                     form = state.form,
                     lastError = account.sync.lastError,
@@ -115,6 +122,45 @@ private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: ()
     )
     SecondaryButton(text = stringResource(R.string.sync_sign_out), onClick = onSignOut)
     Text(stringResource(R.string.sync_sign_out_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+}
+
+/**
+ * "Link a watch": a six-digit code from the server, shown large with what is
+ * left of its ten minutes, for the watch to type on its number pad.
+ */
+@Composable
+private fun WatchLink(link: WatchLinkState, onLink: () -> Unit, onClose: () -> Unit) {
+    Text(stringResource(R.string.link_watch_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
+    val code = link.code
+    if (code == null) {
+        Text(stringResource(R.string.link_watch_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+        link.error?.let {
+            Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
+        }
+        SecondaryButton(text = stringResource(if (link.busy) R.string.link_watch_busy else R.string.link_watch), onClick = onLink)
+        return
+    }
+    val now = rememberNow(intervalMillis = 1_000L)
+    val left = ((code.expiresAt - now).coerceAtLeast(0L) + 999L) / 1_000L
+    val spoken = code.code.toList().joinToString(" ")
+    Text(
+        text = code.code.chunked(3).joinToString(" "),
+        style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+        color = if (left > 0) Tung.colors.text else Tung.colors.muted,
+        modifier = Modifier.semantics { contentDescription = spoken },
+    )
+    if (left > 0) {
+        Text(
+            stringResource(R.string.link_watch_valid_for, clockText(left * 1_000L)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Tung.colors.muted,
+        )
+        Text(stringResource(R.string.link_watch_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+        SecondaryButton(text = stringResource(R.string.link_watch_done), onClick = onClose)
+    } else {
+        Text(stringResource(R.string.link_watch_expired), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
+        SecondaryButton(text = stringResource(R.string.link_watch_new_code), onClick = onLink)
+    }
 }
 
 @Composable

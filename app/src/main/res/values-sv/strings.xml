@@ -254,6 +254,16 @@
     <string name="sync_signed_in_as">Inloggad som %1$s</string>
     <string name="sync_sign_out">Logga ut</string>
     <string name="sync_sign_out_hint">Din träning finns kvar på telefonen när du loggar ut.</string>
+    <string name="link_watch_title">Klocka</string>
+    <string name="link_watch_intro">Logga på klockan utan telefonen: länka den till det här kontot med en kod, inget lösenord på handleden.</string>
+    <string name="link_watch">Länka en klocka</string>
+    <string name="link_watch_busy">Hämtar en kod…</string>
+    <string name="link_watch_valid_for">Giltig i %1$s</string>
+    <string name="link_watch_hint">På klockan: Inställningar, Länka till en server, skriv sedan koden.</string>
+    <string name="link_watch_done">Klar</string>
+    <string name="link_watch_expired">Koden har gått ut.</string>
+    <string name="link_watch_new_code">Ny kod</string>
+    <string name="link_watch_error_old_server">Den här servern kan inte länka klockor än. Uppdatera tung-server.</string>
     <string name="sync_now">Synka nu</string>
     <string name="sync_syncing">Synkar…</string>
     <string name="sync_status_never">Senaste synk: aldrig</string>
