@@ -24,6 +24,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
+import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.install
 import io.ktor.server.application.log
 import io.ktor.server.auth.Authentication
@@ -40,6 +41,11 @@ import io.ktor.server.plugins.ratelimit.RateLimit
 import io.ktor.server.request.path
 import io.ktor.server.routing.routing
 import io.ktor.util.AttributeKey
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.slf4j.event.Level
 import kotlin.system.exitProcess
@@ -103,6 +109,21 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     val serverCatalogue = ServerCatalogue.fromClasspath()
     val commands = CommandService(db, serverCatalogue, exercises, workouts, notifier = push)
     val oauth = OAuthStore(db)
+    // Registration is open, so unused clients are deleted: once at start, then daily (OAuthStore.sweepUnusedClients).
+    val oauthSweep = launch(Dispatchers.IO) {
+        while (isActive) {
+            try {
+                val deleted = oauth.sweepUnusedClients()
+                if (deleted > 0) log.info("Deleted {} OAuth client(s) unused for 90 days", deleted)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.warn("The sweep of unused OAuth clients failed; it runs again in 24 h", e)
+            }
+            delay(OAuthStore.CLIENT_SWEEP_INTERVAL_MS)
+        }
+    }
+    monitor.subscribe(ApplicationStopping) { oauthSweep.cancel() }
     val mcp = TungMcp(commands, McpReads(db, serverCatalogue, workouts, routines))
     val mcpTransport = ExchangeTransport().also { runBlocking { mcp.server.connect(it) } }
     val mcpSessions = McpSessions()
