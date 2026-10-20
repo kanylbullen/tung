@@ -34,6 +34,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.ui.ai.AssistantScreen
 import io.github.kanylbullen.tung.ui.exercises.ExercisesScreen
 import io.github.kanylbullen.tung.ui.exercises.PickerTarget
 import io.github.kanylbullen.tung.ui.history.HistoryScreen
@@ -65,6 +66,7 @@ private object Routes {
     const val ARG_PROGRAM = "programId"
     const val PROGRAM = "program/{$ARG_PROGRAM}"
     const val SETTINGS = "settings"
+    const val ASSISTANT = "assistant"
 
     fun workout(id: String) = "workout/$id"
     fun picker(id: String) = "picker/$id"
@@ -151,6 +153,15 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                     onShowHistory = { nav.navigateToTab(Routes.HISTORY) },
                     onShowRoutines = { nav.navigate(Routes.ROUTINES) },
                     onShowSettings = { nav.navigate(Routes.SETTINGS) },
+                    onShowAssistant = { nav.navigate(Routes.ASSISTANT) },
+                )
+            }
+            composable(Routes.ASSISTANT) {
+                AssistantScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                    onProgramSaved = { nav.navigate(Routes.ROUTINES) { popUpTo(Routes.HOME) } },
+                    onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) { popUpTo(Routes.HOME) } },
                 )
             }
             composable(Routes.SETTINGS) {

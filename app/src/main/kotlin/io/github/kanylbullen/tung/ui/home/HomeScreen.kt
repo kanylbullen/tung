@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,6 +46,7 @@ fun HomeScreen(
     onShowHistory: () -> Unit,
     onShowRoutines: () -> Unit,
     onShowSettings: () -> Unit,
+    onShowAssistant: () -> Unit,
 ) {
     val container = appContainer()
     val vm: HomeViewModel = viewModel(
@@ -185,6 +187,11 @@ fun HomeScreen(
                 }
             }
         }
+
+        // Last and quiet: the assistant is a second opinion, not the way to train.
+        item(key = "assistant") {
+            AssistantEntry(onClick = onShowAssistant)
+        }
     }
 
     val program = state.today
@@ -197,5 +204,22 @@ fun HomeScreen(
                 vm.startDay(day, onOpenWorkout)
             },
         )
+    }
+}
+
+/** The way to the in-app assistant: a plain row, like Programs on the Routines screen. */
+@Composable
+private fun AssistantEntry(onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .heightIn(min = 64.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
+        Text(stringResource(R.string.ai_entry_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     }
 }

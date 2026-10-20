@@ -1,0 +1,127 @@
+package io.github.kanylbullen.tung.core.ai
+
+import kotlinx.serialization.json.Json
+
+/**
+ * The three questions the in-app assistant asks, the same three the MCP
+ * server ships as prompts ("Suggest a program", "Next workout", "Where have I
+ * got stuck"). Each is answered by one model call, on a tap, never in the
+ * background.
+ */
+sealed interface AiRequest {
+    /** A stable name, for logs and tests. */
+    val key: String
+
+    /** A program: one routine per training day, for `save_routine_plan`, `create_program` and `add_program_day`. */
+    data object Program : AiRequest {
+        override val key = "program"
+    }
+
+    /** Today's workout as one plan, for `apply_plan`. */
+    data object NextWorkout : AiRequest {
+        override val key = "next_workout"
+    }
+
+    /** Where the user has stopped progressing; shown, never applied. */
+    data object Plateaus : AiRequest {
+        override val key = "plateaus"
+    }
+}
+
+/** What is sent as text: a [system] message (the rules and the answer's shape) and a [user] message (the question and the data). */
+data class AiPrompt(val system: String, val user: String)
+
+/** The context's JSON in the user message: compact, every field written. */
+internal val AiContextJson = Json { encodeDefaults = true }
+
+/**
+ * The prompt for [request] over [context]. English, like the MCP prompts it
+ * follows; [language] (a BCP 47 tag, the app's locale) is the language the
+ * model writes its text fields in. The model is told to answer with one JSON
+ * object in the shape [parseAiAnswer] reads and nothing else.
+ */
+fun buildAiPrompt(request: AiRequest, context: AiContext, language: String = "en"): AiPrompt {
+    val system = listOf(SYSTEM_INTRO, schemaFor(request), rules(language)).joinToString("\n\n")
+    val user = taskFor(request) + "\n\nMy training data (JSON):\n" + AiContextJson.encodeToString(AiContext.serializer(), context)
+    return AiPrompt(system = system, user = user)
+}
+
+private const val SYSTEM_INTRO =
+    "You are the training assistant inside Tung, a strength training log. You get the user's training data as JSON: " +
+        "finished workouts newest first (each exercise by catalogue key and name, with its logged sets, weight_kg in kilograms " +
+        "and reps), routines (workout templates with target_sets and target_reps), programs (fixed: each day on its ISO " +
+        "weekdays, 1 Monday to 7 Sunday; rotating: the days in order, continuing after last_completed_day), today's date and " +
+        "weekday, and catalogue_keys, the exercises you may use. You answer one question.\n\n" +
+        "Answer with exactly one JSON object and nothing else: no Markdown, no code fence, no text before or after it. " +
+        "The object has this shape:"
+
+private fun rules(language: String): String =
+    "Rules:\n" +
+        "- Name each exercise by its catalogue key: \"key\": \"bench_press\", taken from catalogue_keys. Only when no key " +
+        "fits, give its usual English name instead: \"name\": \"Cable fly\". An exercise that is not in the catalogue is " +
+        "dropped, so prefer keys.\n" +
+        "- Weights are in kilograms. Base every number on the history; never invent history the data does not show.\n" +
+        "- Write the text fields (names, rationale, observation, suggestion) in the language with the tag \"$language\".\n" +
+        "- Keep text short and plain."
+
+private fun schemaFor(request: AiRequest): String = when (request) {
+    AiRequest.Program ->
+        """
+        {
+          "rationale": "One paragraph: why this program, and how to progress week to week.",
+          "program_name": "A short name for the program",
+          "routines": [
+            {
+              "name": "A short name for the training day",
+              "exercises": [
+                { "key": "bench_press", "target_sets": 3, "target_reps": 8 }
+              ]
+            }
+          ]
+        }
+        One routine per training day, in the order they are trained. target_sets is 1 to 20; target_reps is 1 to 999, or
+        null for none.
+        """.trimIndent()
+    AiRequest.NextWorkout ->
+        """
+        {
+          "rationale": "One paragraph: why this workout today, and why these numbers.",
+          "exercises": [
+            { "key": "back_squat", "sets": [ { "weight_kg": 100, "reps": 5 } ] }
+          ]
+        }
+        Exercises in the order they are done. Each has 1 to 50 sets; weight_kg is 0 to 999, reps 1 to 999.
+        """.trimIndent()
+    AiRequest.Plateaus ->
+        """
+        {
+          "plateaus": [
+            {
+              "key": "bench_press",
+              "since": "2026-08-01",
+              "observation": "What the numbers show, with the numbers.",
+              "suggestion": "One concrete change, and why."
+            }
+          ]
+        }
+        since is the ISO date of the session from which there has been no progress. An empty list means no plateaus.
+        """.trimIndent()
+}
+
+private fun taskFor(request: AiRequest): String = when (request) {
+    AiRequest.Program ->
+        "Suggest a training program for me: one routine per training day, each a list of exercises with target sets and " +
+            "reps. Build on my history: keep the lifts I do, base it on what I lift now, and choose the number of days from " +
+            "how often I train. With no history, make a balanced three-day full-body program for a beginner."
+    AiRequest.NextWorkout ->
+        "What should I train today? If a program is active, take today's day: in a fixed program the day whose weekdays " +
+            "include today's weekday, in a rotating one the day after last_completed_day (the first if there is none). " +
+            "Without an active program, look at my history and routines and pick what is due. For each exercise suggest " +
+            "weight and reps per set from my history: a small step up where I hit my target reps last time, the same where " +
+            "I did not."
+    AiRequest.Plateaus ->
+        "Find where I have stopped progressing. For each exercise I train regularly, follow the best set per session " +
+            "(the heaviest weight for the reps, or an estimated one-rep max) over time. Name the exercises with no progress " +
+            "for four weeks or more, since when, the numbers that show it, and one concrete change for each (a deload, " +
+            "another rep range, a variation, more or less volume) and why."
+}

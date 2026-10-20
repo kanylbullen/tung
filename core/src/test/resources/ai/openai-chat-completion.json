@@ -1,0 +1,20 @@
+{
+  "id": "chatcmpl-AQ3x9yZ2kLmN0pQrStUvWx",
+  "object": "chat.completion",
+  "created": 1760950000,
+  "model": "gpt-4o-mini-2024-07-18",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"rationale\":\"Two upper and one lower day around the lifts you already do.\",\"program_name\":\"Three-day split\",\"routines\":[{\"name\":\"Push\",\"exercises\":[{\"key\":\"bench_press\",\"target_sets\":3,\"target_reps\":8},{\"key\":\"overhead_press\",\"target_sets\":3,\"target_reps\":10}]},{\"name\":\"Legs\",\"exercises\":[{\"key\":\"back_squat\",\"target_sets\":5,\"target_reps\":5}]}]}",
+        "refusal": null
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": { "prompt_tokens": 1834, "completion_tokens": 112, "total_tokens": 1946 },
+  "system_fingerprint": "fp_0aa8d3e20b"
+}

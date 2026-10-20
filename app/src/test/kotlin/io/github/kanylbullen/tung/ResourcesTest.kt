@@ -50,4 +50,16 @@ class ResourcesTest {
         assertEquals(coreNames("en"), exerciseNames(strings("values")))
         assertEquals(coreNames("sv"), exerciseNames(strings("values-sv")))
     }
+
+    /** Both secrets are encrypted under Keystore keys a backup cannot carry, so neither file may be backed up. */
+    @Test
+    fun theSyncTokenAndTheAssistantKeyAreNeverBackedUp() {
+        val legacy = repoFile("app/src/main/res/xml/backup_rules.xml").readText()
+        val modern = repoFile("app/src/main/res/xml/data_extraction_rules.xml").readText()
+        for (file in listOf("sync_token.xml", "ai_key.xml")) {
+            val exclude = """<exclude domain="sharedpref" path="$file" />"""
+            assertEquals(file, 1, legacy.split(exclude).size - 1)
+            assertEquals(file, 2, modern.split(exclude).size - 1)
+        }
+    }
 }
