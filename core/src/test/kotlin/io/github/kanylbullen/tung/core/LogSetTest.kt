@@ -45,6 +45,51 @@ class LogSetTest {
     }
 
     @Test
+    fun anExplicitSelectionWins() {
+        val sets = listOf(listOf(false, false), listOf(false, false))
+        assertEquals(SetIndex(0, 1), currentSet(sets, selected = SetIndex(0, 1), lastTouchedExercise = 1))
+        assertEquals(SetIndex(1, 1), currentSet(sets, selected = SetIndex(1, 1), lastTouchedExercise = null))
+    }
+
+    @Test
+    fun aTickedOrMissingSelectionFallsBackToTheTouchedExercise() {
+        val sets = listOf(listOf(true, false), listOf(false))
+        assertEquals(SetIndex(1, 0), currentSet(sets, selected = SetIndex(0, 0), lastTouchedExercise = 1))
+        assertEquals(SetIndex(1, 0), currentSet(sets, selected = SetIndex(0, 5), lastTouchedExercise = 1))
+        assertEquals(SetIndex(1, 0), currentSet(sets, selected = SetIndex(4, 0), lastTouchedExercise = 1))
+        assertEquals(SetIndex(0, 1), currentSet(sets, selected = SetIndex(0, 0), lastTouchedExercise = null))
+    }
+
+    @Test
+    fun loggingStaysInTheExerciseWhileItHasOpenSets() {
+        // Set 1 of three just logged; set 2 is next.
+        assertEquals(SetIndex(1, 1), nextCurrentAfterLogging(listOf(listOf(false), listOf(true, false, false)), SetIndex(1, 0)))
+        // The last set logged and the next one added after it.
+        assertEquals(SetIndex(0, 2), nextCurrentAfterLogging(listOf(listOf(true, true, false), listOf(false)), SetIndex(0, 1)))
+        // A skipped earlier set of the same exercise comes before the next exercise.
+        assertEquals(SetIndex(0, 0), nextCurrentAfterLogging(listOf(listOf(false, true), listOf(false)), SetIndex(0, 1)))
+    }
+
+    @Test
+    fun loggingTheLastOpenSetMovesToTheNextExerciseInListOrder() {
+        val sets = listOf(listOf(false), listOf(true, true), listOf(true, false))
+        // Not the first exercise with an open set (0), but the next one after it (2).
+        assertEquals(SetIndex(2, 1), nextCurrentAfterLogging(sets, SetIndex(1, 1)))
+    }
+
+    @Test
+    fun loggingTheLastOpenSetWrapsToTheStart() {
+        val sets = listOf(listOf(true, false), listOf(true), listOf(true, true))
+        assertEquals(SetIndex(0, 1), nextCurrentAfterLogging(sets, SetIndex(2, 1)))
+    }
+
+    @Test
+    fun loggingTheVeryLastOpenSetLeavesNoCurrentSet() {
+        assertNull(nextCurrentAfterLogging(listOf(listOf(true), listOf(true, true)), SetIndex(1, 1)))
+        assertNull(nextCurrentAfterLogging(emptyList(), SetIndex(0, 0)))
+    }
+
+    @Test
     fun theLastSetOfAFreeExerciseAddsTheNext() {
         assertTrue(addsNextSet(wasLast = true, setCount = 1, targetSets = null))
         assertTrue(addsNextSet(wasLast = true, setCount = 7, targetSets = null))
