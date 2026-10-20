@@ -1,0 +1,13 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{24} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- Errors and warnings only: a request log line per test request drowns the failures. -->
+    <root level="WARN">
+        <appender-ref ref="STDOUT"/>
+    </root>
+    <!-- One expected warning per test that hits an unreachable database or a failing statement. -->
+    <logger name="Exposed" level="ERROR"/>
+</configuration>
