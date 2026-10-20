@@ -118,6 +118,11 @@
     <string name="exercises_create">Create exercise</string>
     <string name="exercises_custom">Custom</string>
     <string name="picker_more">More exercises</string>
+    <string name="picker_suggested">Suggested</string>
+    <string name="picker_reason_often_after">Often after %1$s</string>
+    <string name="picker_reason_pairs_with">Pairs with %1$s</string>
+    <string name="picker_reason_not_yet_today">Not trained yet today</string>
+    <string name="picker_reason_often_together">Often together</string>
     <string name="create_title">Create exercise</string>
     <string name="create_name">Name</string>
     <string name="create_muscle">Muscle group</string>
@@ -134,6 +139,28 @@
     <string name="muscle_glutes">Glutes</string>
     <string name="muscle_core">Core</string>
     <string name="muscle_fullbody">Full body</string>
+    <!-- Muscles (core.Muscle), lower case: they are used inside sentences such as "Pairs with %1$s". -->
+    <string name="muscle_name_chest">chest</string>
+    <string name="muscle_name_lats">lats</string>
+    <string name="muscle_name_upper_back">upper back</string>
+    <string name="muscle_name_lower_back">lower back</string>
+    <string name="muscle_name_traps">traps</string>
+    <string name="muscle_name_front_delts">front delts</string>
+    <string name="muscle_name_side_delts">side delts</string>
+    <string name="muscle_name_rear_delts">rear delts</string>
+    <string name="muscle_name_biceps">biceps</string>
+    <string name="muscle_name_triceps">triceps</string>
+    <string name="muscle_name_forearms">forearms</string>
+    <string name="muscle_name_quads">quads</string>
+    <string name="muscle_name_hamstrings">hamstrings</string>
+    <string name="muscle_name_glutes">glutes</string>
+    <string name="muscle_name_calves">calves</string>
+    <string name="muscle_name_adductors">adductors</string>
+    <string name="muscle_name_abductors">abductors</string>
+    <string name="muscle_name_abs">abs</string>
+    <string name="muscle_name_obliques">obliques</string>
+    <string name="muscle_name_hip_flexors">hip flexors</string>
+    <string name="muscle_name_neck">neck</string>
 
     <string name="equipment_barbell">Barbell</string>
     <string name="equipment_dumbbell">Dumbbells</string>

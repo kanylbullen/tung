@@ -46,6 +46,21 @@ interface WorkoutDao {
     )
     fun observeFinishedWorkouts(): Flow<List<WorkoutSummaryRow>>
 
+    /**
+     * The exercises of the latest [limit] finished workouts, newest workout
+     * first and each in position order: what the picker's suggestions learn
+     * from (`core.picker.suggest`).
+     */
+    @Query(
+        """
+        SELECT w.id AS workoutId, w.startedAt AS startedAt, we.exerciseId AS exerciseId
+        FROM workout_exercise we JOIN workout w ON we.workoutId = w.id
+        WHERE w.id IN (SELECT id FROM workout WHERE endedAt IS NOT NULL ORDER BY startedAt DESC LIMIT :limit)
+        ORDER BY w.startedAt DESC, we.position ASC
+        """
+    )
+    suspend fun recentExerciseOrder(limit: Int): List<WorkoutExerciseOrderRow>
+
     // --- exercises within a workout ---
 
     @Transaction
