@@ -1,0 +1,77 @@
+package io.github.kanylbullen.tung.server
+
+import org.jetbrains.exposed.sql.Table
+
+// Exposed DSL mappings of the Flyway schema (db/migration). Flyway owns the
+// schema; these objects only describe it, nothing here creates tables.
+
+object Users : Table("users") {
+    val id = text("id")
+    val email = text("email")
+    val passwordHash = text("password_hash")
+    val createdAt = long("created_at")
+    override val primaryKey = PrimaryKey(id)
+}
+
+object ApiTokens : Table("api_tokens") {
+    val id = text("id")
+    val userId = text("user_id")
+    val name = text("name")
+    val tokenHash = text("token_hash")
+    val scope = text("scope")
+    val createdAt = long("created_at")
+    val lastUsedAt = long("last_used_at").nullable()
+    val revokedAt = long("revoked_at").nullable()
+    override val primaryKey = PrimaryKey(id)
+}
+
+object Exercises : Table("exercises") {
+    /** Null for the catalogue. */
+    val userId = text("user_id").nullable()
+    val id = text("id")
+    val nameKey = text("name_key").nullable()
+    val name = text("name")
+    val muscleGroup = text("muscle_group")
+    val equipment = text("equipment")
+    val isCustom = bool("is_custom")
+    val restSeconds = integer("rest_seconds").nullable()
+    val updatedAt = long("updated_at")
+    val deletedAt = long("deleted_at").nullable()
+}
+
+object Workouts : Table("workouts") {
+    val userId = text("user_id")
+    val id = text("id")
+    val startedAt = long("started_at")
+    val endedAt = long("ended_at").nullable()
+    val note = text("note").nullable()
+    val routineId = text("routine_id").nullable()
+    val programDayId = text("program_day_id").nullable()
+    val updatedAt = long("updated_at")
+    val deletedAt = long("deleted_at").nullable()
+    override val primaryKey = PrimaryKey(userId, id)
+}
+
+object WorkoutExercises : Table("workout_exercises") {
+    val userId = text("user_id")
+    val id = text("id")
+    val workoutId = text("workout_id")
+    val exerciseId = text("exercise_id")
+    val position = integer("position")
+    val updatedAt = long("updated_at")
+    val deletedAt = long("deleted_at").nullable()
+    override val primaryKey = PrimaryKey(userId, id)
+}
+
+object Sets : Table("sets") {
+    val userId = text("user_id")
+    val id = text("id")
+    val workoutExerciseId = text("workout_exercise_id")
+    val position = integer("position")
+    val weightKg = double("weight_kg")
+    val reps = integer("reps")
+    val completed = bool("completed")
+    val updatedAt = long("updated_at")
+    val deletedAt = long("deleted_at").nullable()
+    override val primaryKey = PrimaryKey(userId, id)
+}

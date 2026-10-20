@@ -1,0 +1,172 @@
+package io.github.kanylbullen.tung.server
+
+import kotlinx.serialization.Serializable
+
+// Request and response bodies. Property names are camelCase here and
+// snake_case on the wire (ApiJson's naming strategy); openapi.yaml describes
+// the wire format and must change with these classes.
+
+@Serializable
+data class Credentials(val email: String, val password: String)
+
+@Serializable
+data class UserDto(val id: String, val email: String, val createdAt: Long)
+
+@Serializable
+data class SessionDto(val token: String, val user: UserDto)
+
+@Serializable
+data class TokenDto(
+    val id: String,
+    val name: String,
+    val scope: String,
+    val createdAt: Long,
+    val lastUsedAt: Long?,
+    /** True for the token this request was made with. */
+    val current: Boolean,
+)
+
+@Serializable
+data class TokenList(val tokens: List<TokenDto>)
+
+@Serializable
+data class NewToken(val name: String, val scope: String)
+
+/** The plaintext [token] is in this response and nowhere else, ever. */
+@Serializable
+data class CreatedToken(val id: String, val name: String, val scope: String, val createdAt: Long, val token: String)
+
+@Serializable
+data class ExerciseDto(
+    val id: String,
+    val nameKey: String?,
+    val name: String,
+    val muscleGroup: String,
+    val equipment: String,
+    val isCustom: Boolean,
+    val restSeconds: Int?,
+    val updatedAt: Long,
+)
+
+@Serializable
+data class ExerciseList(val exercises: List<ExerciseDto>)
+
+@Serializable
+data class NewExercise(
+    val id: String? = null,
+    val name: String,
+    val muscleGroup: String,
+    val equipment: String,
+    val restSeconds: Int? = null,
+)
+
+@Serializable
+data class SetDto(
+    val id: String,
+    val position: Int,
+    val weightKg: Double,
+    val reps: Int,
+    val completed: Boolean,
+    val updatedAt: Long,
+)
+
+@Serializable
+data class WorkoutExerciseDto(
+    val id: String,
+    val exerciseId: String,
+    val position: Int,
+    val updatedAt: Long,
+    val sets: List<SetDto>,
+)
+
+@Serializable
+data class WorkoutDto(
+    val id: String,
+    val startedAt: Long,
+    val endedAt: Long?,
+    val note: String?,
+    val routineId: String?,
+    val programDayId: String?,
+    val updatedAt: Long,
+    val exercises: List<WorkoutExerciseDto>,
+)
+
+@Serializable
+data class WorkoutPage(
+    val workouts: List<WorkoutDto>,
+    /** Pass as `before` for the next page; null on the last page. */
+    val nextBefore: Long?,
+)
+
+@Serializable
+data class SetInput(
+    val id: String,
+    val position: Int,
+    val weightKg: Double,
+    val reps: Int,
+    val completed: Boolean = false,
+    val updatedAt: Long? = null,
+)
+
+@Serializable
+data class WorkoutExerciseInput(
+    val id: String,
+    val exerciseId: String,
+    val position: Int,
+    val updatedAt: Long? = null,
+    val sets: List<SetInput> = emptyList(),
+)
+
+@Serializable
+data class WorkoutInput(
+    val id: String? = null,
+    val startedAt: Long,
+    val endedAt: Long? = null,
+    val note: String? = null,
+    val routineId: String? = null,
+    val programDayId: String? = null,
+    val updatedAt: Long? = null,
+    val exercises: List<WorkoutExerciseInput> = emptyList(),
+)
+
+@Serializable
+data class FinishInput(val endedAt: Long? = null)
+
+@Serializable
+data class FinishResult(
+    /** The finished workout; null when it was discarded. */
+    val workout: WorkoutDto?,
+    /** True when the workout had no logged set and was deleted instead of saved, as in the app. */
+    val discarded: Boolean,
+)
+
+@Serializable
+data class LastSetDto(val id: String, val position: Int, val weightKg: Double, val reps: Int)
+
+@Serializable
+data class LastSession(
+    val exerciseId: String,
+    /** The workout the sets come from; null when the exercise has no finished history. */
+    val workoutId: String?,
+    val startedAt: Long?,
+    val sets: List<LastSetDto>,
+)
+
+@Serializable
+data class ExportTokenDto(val name: String, val scope: String, val createdAt: Long)
+
+@Serializable
+data class ExportDocument(
+    val format: String = "tung-export",
+    val version: Int = 1,
+    val exportedAt: Long,
+    val user: UserDto,
+    /** The user's own exercises: custom ones and their copies of catalogue exercises. */
+    val exercises: List<ExerciseDto>,
+    val workouts: List<WorkoutDto>,
+    /** Names and scopes only; never a token or its hash. */
+    val tokens: List<ExportTokenDto>,
+)
+
+@Serializable
+data class Health(val status: String)

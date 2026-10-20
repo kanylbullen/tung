@@ -1,0 +1,729 @@
+openapi: 3.1.0
+info:
+  title: Tung API
+  version: 0.1.0
+  summary: The open API of tung-server, the optional backend of the Tung strength-training log.
+  description: |
+    Everything the server can do, over HTTP. The app, the coming MCP server and
+    any third party use this same surface; there are no private endpoints.
+
+    **Auth.** Register or log in to get a session token, or create named API
+    tokens for scripts and agents under `/api/v1/tokens`. Send a token as
+    `Authorization: Bearer tung_…`. A token with scope `read` can only make GET
+    requests. OAuth 2.1 arrives with MCP; OIDC may follow.
+
+    **Ids and `updated_at`.** Training data keeps the ids the client generated
+    (lower-case UUIDs). Every row has `updated_at` (epoch milliseconds), and a
+    write replaces a stored row only when its `updated_at` is strictly newer;
+    equal or older writes are ignored row by row. Deletes are tombstones.
+    All timestamps are epoch milliseconds.
+
+    **Errors** are `{"error": {"code": "…", "message": "…"}}`.
+  license:
+    name: AGPL-3.0-or-later
+    identifier: AGPL-3.0-or-later
+servers:
+  - url: /
+tags:
+  - name: health
+    description: Liveness for load balancers and container health checks.
+  - name: auth
+    description: Accounts and session tokens.
+  - name: tokens
+    description: Named API tokens for scripts and agents.
+  - name: exercises
+    description: The catalogue and the user's own exercises.
+  - name: workouts
+    description: Workouts with their exercises and sets.
+  - name: export
+    description: All of the user's data in one document.
+  - name: meta
+    description: This specification.
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      summary: Liveness and database check
+      operationId: health
+      security: []
+      responses:
+        "200":
+          description: The server and its database are up.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: The database cannot be reached.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /openapi.yaml:
+    get:
+      tags: [meta]
+      summary: This specification
+      operationId: openapi
+      security: []
+      responses:
+        "200":
+          description: The OpenAPI document. Swagger UI for it is at `/docs`.
+          content:
+            application/yaml:
+              schema: { type: string }
+
+  /api/v1/auth/register:
+    post:
+      tags: [auth]
+      summary: Create an account
+      description: Creates the user and returns a session token (scope `write`, name `session`). Rate-limited per client address.
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credentials" }
+      responses:
+        "201":
+          description: Account created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Log in
+      description: Returns a new session token. Rate-limited per client address.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credentials" }
+      responses:
+        "200":
+          description: Logged in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Log out
+      description: Revokes the token the request was made with.
+      operationId: logout
+      responses:
+        "204": { description: Revoked. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/me:
+    get:
+      tags: [auth]
+      summary: The current user
+      operationId: me
+      responses:
+        "200":
+          description: The user the token belongs to.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/tokens:
+    get:
+      tags: [tokens]
+      summary: List active tokens
+      description: Session tokens and named API tokens that are not revoked. Never includes a token's value.
+      operationId: listTokens
+      responses:
+        "200":
+          description: The tokens.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [tokens]
+      summary: Create an API token
+      description: The plaintext token is in this response only; the server keeps its SHA-256.
+      operationId: createToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewToken" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreatedToken" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/tokens/{id}:
+    delete:
+      tags: [tokens]
+      summary: Revoke a token
+      operationId: revokeToken
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Revoked. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/exercises:
+    get:
+      tags: [exercises]
+      summary: List exercises
+      description: The shared catalogue plus the user's own exercises, sorted by name. A user's copy of a catalogue exercise (made when its rest time is changed) replaces the catalogue row.
+      operationId: listExercises
+      responses:
+        "200":
+          description: The exercises.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExerciseList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [exercises]
+      summary: Create a custom exercise
+      operationId: createExercise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewExercise" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Exercise" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/exercises/{id}:
+    patch:
+      tags: [exercises]
+      summary: Change an exercise
+      description: An own exercise takes `name` and `rest_seconds`; a catalogue exercise only `rest_seconds`. Omitted fields are left as they are.
+      operationId: updateExercise
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExercisePatch" }
+      responses:
+        "200":
+          description: The exercise after the change.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Exercise" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/exercises/{id}/last:
+    get:
+      tags: [exercises]
+      summary: Last time
+      description: The completed sets of this exercise from the most recent finished workout that contains it, in order. This drives "Last 80 × 8" and the pre-fill of new sets in the app.
+      operationId: lastSession
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+        - name: exclude_workout_id
+          in: query
+          description: Skip this workout, normally the one in progress.
+          schema: { type: string }
+      responses:
+        "200":
+          description: The previous session's sets; `sets` is empty and `workout_id` null when there is none.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LastSession" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/workouts:
+    get:
+      tags: [workouts]
+      summary: List workouts
+      description: Newest first, with exercises and sets nested. Page with `before`.
+      operationId: listWorkouts
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: before
+          in: query
+          description: Only workouts that started before this time (epoch ms); pass the previous page's `next_before`.
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: A page of workouts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkoutPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/workouts/{id}:
+    get:
+      tags: [workouts]
+      summary: Get a workout
+      operationId: getWorkout
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "200":
+          description: The workout.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workout" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [workouts]
+      summary: Create or replace a workout
+      description: |
+        Full nested upsert by the client's ids. Each row (the workout, each
+        exercise, each set) is written only if its `updated_at` is newer than
+        the stored one; a missing `updated_at` means now. Exercises and sets
+        stored under this workout but missing from the body are deleted when
+        they are older than the body's workout `updated_at`.
+      operationId: putWorkout
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutInput" }
+      responses:
+        "200":
+          description: The workout as stored after the merge.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workout" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [workouts]
+      summary: Delete a workout
+      description: Tombstones the workout with its exercises and sets.
+      operationId: deleteWorkout
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/workouts/{id}/finish:
+    post:
+      tags: [workouts]
+      summary: Finish a workout
+      description: |
+        As in the app: sets that are not logged (completed with reps > 0) are
+        dropped, then exercises without sets; a workout without one logged set
+        is discarded instead of saved. Finishing a finished workout returns it
+        unchanged. The body is optional.
+      operationId: finishWorkout
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinishInput" }
+      responses:
+        "200":
+          description: The result.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinishResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/export:
+    get:
+      tags: [export]
+      summary: Export everything
+      description: One JSON document with all of the user's data, served as an attachment.
+      operationId: export
+      responses:
+        "200":
+          description: The export.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename=tung-export-YYYY-MM-DD.json
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Export" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+security:
+  - bearer: []
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: A session token from register/login or an API token, both `tung_…`.
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Uuid" }
+
+  responses:
+    BadRequest:
+      description: The request is invalid.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: No token, an unknown or revoked token, or wrong credentials.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: The token is read-only (`insufficient_scope`).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Not found, or it belongs to another user.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Conflicts with stored data.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: Too many requests from this address; see `Retry-After`.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Uuid:
+      type: string
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      examples: ["0b1c9f5e-8c7a-4d2b-9f1e-3a5c7e9b1d2f"]
+    Millis:
+      type: integer
+      format: int64
+      minimum: 0
+      description: Epoch milliseconds.
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, examples: ["not_found"] }
+            message: { type: string }
+
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ok, database_unavailable] }
+
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 1024 }
+
+    User:
+      type: object
+      required: [id, email, created_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        email: { type: string }
+        created_at: { $ref: "#/components/schemas/Millis" }
+
+    Session:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string, examples: ["tung_3q2-…"] }
+        user: { $ref: "#/components/schemas/User" }
+
+    Token:
+      type: object
+      required: [id, name, scope, created_at, last_used_at, current]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        name: { type: string }
+        scope: { type: string, enum: [read, write] }
+        created_at: { $ref: "#/components/schemas/Millis" }
+        last_used_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+          description: Updated at most once a minute.
+        current: { type: boolean, description: True for the token this request was made with. }
+
+    TokenList:
+      type: object
+      required: [tokens]
+      properties:
+        tokens:
+          type: array
+          items: { $ref: "#/components/schemas/Token" }
+
+    NewToken:
+      type: object
+      required: [name, scope]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        scope: { type: string, enum: [read, write] }
+
+    CreatedToken:
+      type: object
+      required: [id, name, scope, created_at, token]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        name: { type: string }
+        scope: { type: string, enum: [read, write] }
+        created_at: { $ref: "#/components/schemas/Millis" }
+        token: { type: string, description: Shown once. }
+
+    Exercise:
+      type: object
+      required: [id, name_key, name, muscle_group, equipment, is_custom, rest_seconds, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        name_key:
+          type: [string, "null"]
+          description: The catalogue key (`bench_press`); null for custom exercises.
+        name: { type: string, description: "The English name of a catalogue exercise, or what the user typed." }
+        muscle_group: { $ref: "#/components/schemas/MuscleGroup" }
+        equipment: { $ref: "#/components/schemas/Equipment" }
+        is_custom: { type: boolean }
+        rest_seconds:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 3600
+          description: Rest between sets; 0 is off, null follows the user's default.
+        updated_at: { $ref: "#/components/schemas/Millis" }
+
+    ExerciseList:
+      type: object
+      required: [exercises]
+      properties:
+        exercises:
+          type: array
+          items: { $ref: "#/components/schemas/Exercise" }
+
+    NewExercise:
+      type: object
+      required: [name, muscle_group, equipment]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid", description: Optional client-generated id. }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        muscle_group: { $ref: "#/components/schemas/MuscleGroup" }
+        equipment: { $ref: "#/components/schemas/Equipment" }
+        rest_seconds: { type: [integer, "null"], minimum: 0, maximum: 3600 }
+
+    ExercisePatch:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        rest_seconds: { type: [integer, "null"], minimum: 0, maximum: 3600 }
+
+    MuscleGroup:
+      type: string
+      enum: [chest, back, shoulders, biceps, triceps, legs, glutes, core, fullbody]
+    Equipment:
+      type: string
+      enum: [barbell, dumbbell, machine, cable, bodyweight, other]
+
+    Set:
+      type: object
+      required: [id, position, weight_kg, reps, completed, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        position: { type: integer, minimum: 0 }
+        weight_kg: { type: number, minimum: 0, maximum: 999 }
+        reps: { type: integer, minimum: 0, maximum: 999 }
+        completed: { type: boolean }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+
+    WorkoutExercise:
+      type: object
+      required: [id, exercise_id, position, updated_at, sets]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        exercise_id: { $ref: "#/components/schemas/Uuid" }
+        position: { type: integer, minimum: 0 }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        sets:
+          type: array
+          items: { $ref: "#/components/schemas/Set" }
+
+    Workout:
+      type: object
+      required: [id, started_at, ended_at, note, routine_id, program_day_id, updated_at, exercises]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        started_at: { $ref: "#/components/schemas/Millis" }
+        ended_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+          description: Null while the workout is in progress.
+        note: { type: [string, "null"] }
+        routine_id: { type: [string, "null"] }
+        program_day_id: { type: [string, "null"] }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        exercises:
+          type: array
+          items: { $ref: "#/components/schemas/WorkoutExercise" }
+
+    WorkoutPage:
+      type: object
+      required: [workouts, next_before]
+      properties:
+        workouts:
+          type: array
+          items: { $ref: "#/components/schemas/Workout" }
+        next_before:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+          description: Pass as `before` for the next page; null on the last page.
+
+    SetInput:
+      type: object
+      required: [id, position, weight_kg, reps]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        position: { type: integer, minimum: 0 }
+        weight_kg: { type: number, minimum: 0, maximum: 999 }
+        reps: { type: integer, minimum: 0, maximum: 999 }
+        completed: { type: boolean, default: false }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+
+    WorkoutExerciseInput:
+      type: object
+      required: [id, exercise_id, position]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        exercise_id: { $ref: "#/components/schemas/Uuid", description: A catalogue exercise or one of the user's own. }
+        position: { type: integer, minimum: 0 }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        sets:
+          type: array
+          maxItems: 200
+          items: { $ref: "#/components/schemas/SetInput" }
+
+    WorkoutInput:
+      type: object
+      required: [started_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid", description: Must equal the path id if given. }
+        started_at: { $ref: "#/components/schemas/Millis" }
+        ended_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+        note: { type: [string, "null"], maxLength: 10000 }
+        routine_id: { type: [string, "null"] }
+        program_day_id: { type: [string, "null"] }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        exercises:
+          type: array
+          maxItems: 200
+          items: { $ref: "#/components/schemas/WorkoutExerciseInput" }
+
+    FinishInput:
+      type: object
+      properties:
+        ended_at: { $ref: "#/components/schemas/Millis", description: Defaults to now. }
+
+    FinishResult:
+      type: object
+      required: [workout, discarded]
+      properties:
+        workout:
+          oneOf: [{ $ref: "#/components/schemas/Workout" }, { type: "null" }]
+        discarded: { type: boolean, description: True when the workout had no logged set and was deleted instead. }
+
+    LastSet:
+      type: object
+      required: [id, position, weight_kg, reps]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        position: { type: integer }
+        weight_kg: { type: number }
+        reps: { type: integer }
+
+    LastSession:
+      type: object
+      required: [exercise_id, workout_id, started_at, sets]
+      properties:
+        exercise_id: { $ref: "#/components/schemas/Uuid" }
+        workout_id: { type: [string, "null"] }
+        started_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+        sets:
+          type: array
+          items: { $ref: "#/components/schemas/LastSet" }
+
+    Export:
+      type: object
+      required: [format, version, exported_at, user, exercises, workouts, tokens]
+      properties:
+        format: { type: string, const: tung-export }
+        version: { type: integer, const: 1 }
+        exported_at: { $ref: "#/components/schemas/Millis" }
+        user: { $ref: "#/components/schemas/User" }
+        exercises:
+          type: array
+          description: The user's own exercises (custom ones and copies of catalogue exercises); the catalogue itself is open data in the repository.
+          items: { $ref: "#/components/schemas/Exercise" }
+        workouts:
+          type: array
+          items: { $ref: "#/components/schemas/Workout" }
+        tokens:
+          type: array
+          description: Names and scopes of active tokens; never their values.
+          items:
+            type: object
+            required: [name, scope, created_at]
+            properties:
+              name: { type: string }
+              scope: { type: string, enum: [read, write] }
+              created_at: { $ref: "#/components/schemas/Millis" }
