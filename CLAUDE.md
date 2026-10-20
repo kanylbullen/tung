@@ -553,8 +553,8 @@ goes through a command.
   a 404. Catalogue exercises have `user_id NULL`; a user's row with a
   catalogue id is their copy (made when they set its rest time) and shadows
   the catalogue for them. Every user table has `updated_at` and `deleted_at`.
-  Routines and programs (V2) mirror the app's entities; sync writes them and
-  the export reads them, no REST routes yet.
+  Routines and programs (V2) mirror the app's entities; sync and the command
+  handler write them, the export and the MCP read tools read them.
 - **The row rule:** a write replaces a stored row only when its `updated_at`
   is strictly newer; equal or older is ignored per row (`upsert … where
   updated_at < incoming`). `PUT /api/v1/workouts/{id}` applies it to the
@@ -597,13 +597,55 @@ goes through a command.
   StatusPages' handlers for Ktor's own 401/404/405/429 do not replace them.
 - **Tokens:** `tung_` + 32 random bytes, SHA-256 in `api_tokens`; sessions
   are tokens named `session`. A `read` token gets 403 on anything but GET.
-  No OAuth or OIDC yet; OAuth 2.1 comes with MCP.
+  `api_tokens.expires_at` (V5) is null except on OAuth tokens; `authenticate`
+  refuses expired ones. No OIDC.
 - **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST
   /api/v1/link/start` (write token) gives a six-digit code valid ten minutes,
   unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)
   claims it once and answers a new `write` token named `watch` and the user,
   else 404 `invalid_code`. 5 codes a minute per user, 10 claims a minute per
   address, counted in that file rather than by the RateLimit plugin.
+- **The server-side command handler** (`command/ServerCommandHandler.kt`,
+  built per user by `CommandService`) is the server's twin of the app's
+  `AppCommandHandler`: core's `validate`, then **one transaction** starting
+  with `lockUser`, names resolved by core over `ServerExerciseResolver`
+  (catalogue rows shadowed by the user's own, `core.json`'s names in every
+  language, the extended catalogue from `/catalog/extended.json`), and the
+  app's rules (one workout in progress, log set adds a set only after the
+  last and not past a routine's target, finish/delete via `WorkoutStore`'s
+  `finishIn`/`deleteIn`, pre-fill from `lastSessionIn`, i.e. `/last`'s query).
+  Its own changes stamp `GREATEST(now, updated_at + 1)`; deletes are
+  tombstones. Unlike the app it answers `Rejected` for ids that do not exist,
+  and refuses `log_set` on a set with 0 reps (the app opens the reps sheet).
+  **Every REST command (`POST /api/v1/commands/{name}`, `routes/CommandRoutes.kt`)
+  and every MCP tool that changes data goes through it**; do not write
+  training data from a route or a tool any other way. The JSON of each
+  command, its JSON Schema and the result's JSON are core's `CommandWire`
+  (`core/command/CommandWire.kt`), one table for all three.
+- **OAuth 2.1** (`oauth/`, `routes/OAuthRoutes.kt`, `V5__oauth.sql`): the
+  server is its own authorization server for MCP clients. Tables
+  `oauth_clients` (dynamic registration, redirect URIs as a JSON array,
+  matched exactly), `oauth_codes` (SHA-256 of the code, bound to client,
+  redirect URI, user, scope and the S256 challenge; five minutes, single use;
+  a reused code revokes the token it gave) and `oauth_refresh_tokens`
+  (SHA-256, rotating, `replaced_by`; a rotated one presented again revokes
+  the grant). **An access token is an `api_tokens` row** named
+  `mcp:<client name>`, scope `write` for `read write` and `read` for `read`,
+  `expires_at` 30 days ahead; a refresh gives the same row a new hash and 30
+  more days. Revoking that row ends the grant (refresh checks it). The issuer
+  is `TUNG_PUBLIC_URL`, else the request's own host (`publicBaseUrl`). OAuth
+  errors are `OAuthException` (RFC 6749 shape), handled in `Errors.kt`.
+- **MCP** (`mcp/`, `routes/McpRoutes.kt`): the official Kotlin SDK 0.5.0 for
+  the protocol types and `Server` (0.6+ needs Ktor 3.2 and Kotlin 2.2; its
+  Ktor engines are excluded), with streamable HTTP implemented here: one SDK
+  `Server` and one `ExchangeTransport` for all requests, because the SDK
+  handles a message inline, so `McpExchange` in the coroutine context carries
+  the request's principal in and the responses out. Sessions
+  (`Mcp-Session-Id`) are in memory with a 24 h idle TTL; GET is 405. The
+  initialize handler is ours, to negotiate the protocol version. Tools: one
+  per `CommandNames` entry (descriptions in `McpDescriptions`, which a test
+  keeps complete) plus the read tools in `McpReads`; a read token gets a tool
+  error from a command tool.
 - **Tests** (`./gradlew :server:test --no-daemon`) use a real Postgres from
   Testcontainers, so they need Docker; `./gradlew test` includes them.
   `server/build.gradle.kts` sets `api.version=1.44` for docker-java, because
