@@ -30,8 +30,11 @@ import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
 import io.github.kanylbullen.tung.server.push.ChangeNotifier
 import io.github.kanylbullen.tung.server.push.PushStore
 import io.github.kanylbullen.tung.server.push.sourceDevice
+import io.github.kanylbullen.tung.server.command.CommandService
 import io.github.kanylbullen.tung.server.routes.linkRoutes
+import io.github.kanylbullen.tung.server.routes.programRoutes
 import io.github.kanylbullen.tung.server.routes.pushRoutes
+import io.github.kanylbullen.tung.server.routes.routineRoutes
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
 import io.github.kanylbullen.tung.core.sync.SyncRequest
 import io.ktor.server.request.receiveChannel
@@ -56,10 +59,10 @@ private val RequireWriteScope = createRouteScopedPlugin("RequireWriteScope") {
     }
 }
 
-private fun ApplicationCall.user(): TokenPrincipal =
+internal fun ApplicationCall.user(): TokenPrincipal =
     principal<TokenPrincipal>() ?: throw unauthorized("unauthorized", "Send a valid API token as 'Authorization: Bearer tung_…'.")
 
-private fun ApplicationCall.pathId(name: String = "id"): String =
+internal fun ApplicationCall.pathId(name: String = "id"): String =
     parameters[name] ?: throw badRequest("Missing path parameter $name.")
 
 /**
@@ -76,6 +79,7 @@ fun Route.apiRoutes(
     sync: SyncStore,
     pushStore: PushStore,
     push: ChangeNotifier,
+    commands: CommandService,
 ) {
     /** After a REST write to training data: wake the user's other devices. */
     fun ApplicationCall.changed() = push.changed(user().userId, sourceDevice())
@@ -168,6 +172,9 @@ fun Route.apiRoutes(
                     call.respond(result)
                 }
             }
+
+            routineRoutes(routines, commands, push)
+            programRoutes(routines, commands, push)
 
             pushRoutes(pushStore)
 

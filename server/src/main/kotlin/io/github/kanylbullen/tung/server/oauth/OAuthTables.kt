@@ -2,7 +2,7 @@ package io.github.kanylbullen.tung.server.oauth
 
 import org.jetbrains.exposed.sql.Table
 
-// Exposed mappings of V5__oauth.sql; Flyway owns the schema.
+// Exposed mappings of V5__oauth.sql (and V8's last_used_at); Flyway owns the schema.
 
 object OAuthClients : Table("oauth_clients") {
     val id = text("id")
@@ -12,6 +12,8 @@ object OAuthClients : Table("oauth_clients") {
     val redirectUris = text("redirect_uris")
     val tokenEndpointAuthMethod = text("token_endpoint_auth_method")
     val createdAt = long("created_at")
+    /** V8: the last /oauth/authorize or /oauth/token call by this client; null when there was none since V8. */
+    val lastUsedAt = long("last_used_at").nullable()
     override val primaryKey = PrimaryKey(id)
 }
 

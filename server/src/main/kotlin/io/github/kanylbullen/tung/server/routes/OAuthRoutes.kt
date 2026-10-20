@@ -171,6 +171,7 @@ private sealed interface Checked {
 private suspend fun checkAuthorization(params: Parameters, store: OAuthStore): Checked {
     val clientId = params["client_id"] ?: return Checked.DeadEnd("The request names no app (client_id is missing).")
     val client = store.client(clientId) ?: return Checked.DeadEnd("This app is not registered with this Tung server.")
+    store.markUsed(client.id)
     val redirectUri = params["redirect_uri"] ?: client.redirectUris.singleOrNull()
         ?: return Checked.DeadEnd("The request has no redirect_uri.")
     if (redirectUri !in client.redirectUris) return Checked.DeadEnd("The redirect URI is not one this app registered.")
@@ -283,6 +284,7 @@ private suspend fun authenticateClient(call: ApplicationCall, form: Parameters, 
     if (!client.isPublic && !store.secretMatches(client, basic?.second ?: form["client_secret"])) {
         throw OAuthException("invalid_client", "Wrong or missing client_secret.")
     }
+    store.markUsed(client.id)
     return client
 }
 

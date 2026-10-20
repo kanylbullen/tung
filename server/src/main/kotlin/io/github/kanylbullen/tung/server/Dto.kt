@@ -198,6 +198,55 @@ data class ProgramDto(
 )
 
 @Serializable
+data class RoutineList(val routines: List<RoutineDto>)
+
+@Serializable
+data class ProgramList(val programs: List<ProgramDto>)
+
+@Serializable
+data class RoutineExerciseInput(
+    val id: String,
+    val exerciseId: String,
+    val position: Int,
+    val targetSets: Int,
+    val targetReps: Int? = null,
+    val updatedAt: Long? = null,
+)
+
+@Serializable
+data class RoutineInput(
+    /** Must equal the path id on PUT; on POST the new routine's id, made by the server when absent. */
+    val id: String? = null,
+    val name: String,
+    /** Null keeps the stored value: it is set when a workout is started from the routine. */
+    val lastUsedAt: Long? = null,
+    val updatedAt: Long? = null,
+    val exercises: List<RoutineExerciseInput> = emptyList(),
+)
+
+@Serializable
+data class ProgramDayInput(
+    val id: String,
+    val routineId: String,
+    val position: Int,
+    /** ISO weekdays as bits, Monday in bit 0. */
+    val weekdays: Int = 0,
+    val updatedAt: Long? = null,
+)
+
+@Serializable
+data class ProgramInput(
+    /** Must equal the path id on PUT; on POST the new program's id, made by the server when absent. */
+    val id: String? = null,
+    val name: String,
+    /** core's `ProgramMode` key: `fixed` or `rotating`. */
+    val mode: String,
+    val isActive: Boolean = false,
+    val updatedAt: Long? = null,
+    val days: List<ProgramDayInput> = emptyList(),
+)
+
+@Serializable
 data class ExportTokenDto(val name: String, val scope: String, val createdAt: Long)
 
 @Serializable

@@ -61,6 +61,8 @@ caller's own: another user's ids answer 404.
 | `GET /api/v1/workouts?limit&before` | Newest first, exercises and sets nested. |
 | `GET/PUT/DELETE /api/v1/workouts/{id}` | `PUT` is a full nested upsert by the client's ids. |
 | `POST /api/v1/workouts/{id}/finish` | Drops unlogged sets, as the app does. |
+| `GET/POST /api/v1/routines`, `GET/PUT/DELETE /api/v1/routines/{id}` | Routines with their exercises. `POST`/`PUT` by the same `updated_at` rule as workouts; `DELETE` also removes the program days that use the routine, as the app does. |
+| `GET/POST /api/v1/programs`, `GET/PUT/DELETE /api/v1/programs/{id}` | Programs with their days. At most one program is active: the newest activation wins. |
 | `POST /api/v1/sync` | Push changed rows, pull everything changed since your cursor. See "Sync". |
 | `GET/POST /api/v1/push/endpoints`, `DELETE /api/v1/push/endpoints/{id}` | Where the server wakes a device when another client changes your data. See "Push". |
 | `GET /api/v1/export` | Everything you have (exercises, workouts, routines, programs), as one JSON attachment. |
@@ -90,7 +92,8 @@ limited to 5 a minute per user, claims to 10 a minute per client address
 made.
 
 **Writes go by `updated_at`.** Training data keeps the ids the client
-generated. Every row (workout, workout exercise, set) carries `updated_at`,
+generated. Every row (workout, workout exercise, set; routine, routine
+exercise, program, program day) carries `updated_at`,
 and a write replaces the stored row only when it is strictly newer; equal or
 older writes are ignored row by row, so replays are harmless and a stale
 device cannot overwrite a newer edit. Deletes are tombstones (`deleted_at`).
@@ -135,6 +138,12 @@ The answer has the same shape: `{"cursor": …, "changes": {…}}`.
   exist at the end fails the whole request with 409 `missing_parent`, naming
   the rows. A live child of a tombstoned parent is fine: the parent row still
   exists.
+- **One active program.** Two devices can each activate a different
+  program offline. After a push that carried programs, the server keeps the
+  active program with the newest `updated_at` (a tie goes to the one just
+  pushed) and switches the others off with a newer `updated_at`, so the
+  device that lost gets the correction on its next pull. `PUT` and `POST
+  /api/v1/programs` apply the same rule.
 - **`started_by`** on a workout says who started it: `phone`, `watch`,
   `agent` (a REST command or an MCP tool; the server stamps it) or `server`
   (reserved), null when unknown. It is set when the workout is made and never
@@ -213,6 +222,18 @@ page with a CSRF token), and swap the code at `/oauth/token`. Codes live five
 minutes and work once; access tokens live 30 days; refresh tokens rotate on
 every use, and one presented twice revokes the grant. Codes, secrets and
 refresh tokens are stored as SHA-256.
+
+**Unused clients expire.** Registration is open, and a client that loses
+its `client_id` simply registers again, so the server cleans up: every
+`/oauth/authorize` and `/oauth/token` call by a client stamps its
+`last_used_at` (migration V8), and once at start and then every 24 hours the
+server deletes the clients not used for 90 days (counting from registration
+when never used) that hold no live grant, meaning no access token of theirs
+that is unrevoked and either unexpired or still refreshable. Their codes and
+refresh tokens go with them; the expired `mcp:<client>` tokens stay in your
+token list until you revoke them. A client connected and in use is never
+touched, and one that is deleted just registers again on its next connect.
+There is nothing to configure.
 
 **Tools.** One per command, with the same name and fields as
 `/api/v1/commands/{name}`: `start_workout`, `start_routine`, `add_exercise`,
@@ -306,8 +327,7 @@ endpoint is in flight at a time; the timeout is 5 s. Endpoints live in
 
 The app's server setting and sync client (the app half of
 [#25](https://github.com/kanylbullen/tung/issues/25)), paging of large sync
-answers, read routes for routines and programs (sync, the export and the MCP
-read tools carry them), a server-to-client MCP event stream (GET `/mcp`
+answers, a server-to-client MCP event stream (GET `/mcp`
 answers 405; the server sends nothing unasked), OIDC, password reset, email
 verification and account deletion.
 

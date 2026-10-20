@@ -33,7 +33,10 @@ import java.sql.Types
  * 2. a live child whose parent does not exist fails the request with 409
  *    `missing_parent` naming the rows (the deferred foreign keys would too, at
  *    commit, without the names);
- * 3. the answer is every row of the user's with `seq > cursor`, plus the
+ * 3. when programs were pushed, at most one stays active
+ *    ([resolveActivePrograms]: the newest `updated_at` wins, the others are
+ *    switched off with a server stamp and so come back to their device);
+ * 4. the answer is every row of the user's with `seq > cursor`, plus the
  *    stored version of every pushed row (so a push that lost to a newer row
  *    brings that row back), and `cursor` = the highest `seq` in it.
  *
@@ -55,6 +58,11 @@ class SyncStore(private val db: Db, catalogue: List<CoreExercise>) {
                 val connection = connection.connection as Connection
                 for (table in TABLES) table.write(connection, userId, changes)
                 checkParents(connection, userId, changes)
+                // Two devices may each have activated a program offline: keep one, and the loser's next pull corrects it.
+                if (changes.programs.isNotEmpty()) {
+                    val pushedActive = changes.programs.filter { it.deletedAt == null && it.isActive == true }.map { it.id }.toSet()
+                    resolveActivePrograms(userId, pushedActive, System.currentTimeMillis())
+                }
                 read(connection, userId, request.cursor, changes)
             }
         } catch (e: SQLException) {
