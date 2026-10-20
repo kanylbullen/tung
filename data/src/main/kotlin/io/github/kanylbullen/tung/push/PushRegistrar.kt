@@ -89,13 +89,18 @@ class PushRegistrar(
                 distributors,
                 store.data.first()[CHOSEN_DISTRIBUTOR],
             )
-            val previous = store.data.first()[TRANSPORT]
-            if (previous == PushTransport.UNIFIED_PUSH && choice !is PushChoice.UnifiedPush) environment.unregisterUnifiedPush()
+            val prefs = store.data.first()
+            val previous = prefs[TRANSPORT]
+            // Leaving a distributor (for FCM, none, or another distributor): it forgets this app, and its endpoint is dropped.
+            val leftDistributor = previous == PushTransport.UNIFIED_PUSH &&
+                (choice as? PushChoice.UnifiedPush)?.distributor != prefs[ENDPOINT_DISTRIBUTOR]
+            if (leftDistributor) environment.unregisterUnifiedPush()
             store.edit {
-                if (choice.transport != previous) {
+                if (choice.transport != previous || leftDistributor) {
                     it.remove(ENDPOINT)
                     registered = null
                 }
+                if (choice is PushChoice.UnifiedPush) it[ENDPOINT_DISTRIBUTOR] = choice.distributor else it.remove(ENDPOINT_DISTRIBUTOR)
                 val transport = choice.transport
                 if (transport == null) it.remove(TRANSPORT) else it[TRANSPORT] = transport
             }
@@ -193,5 +198,8 @@ class PushRegistrar(
         val ENDPOINT = stringPreferencesKey("push_endpoint")
         val ENDPOINT_ID = stringPreferencesKey("push_endpoint_id")
         val CHOSEN_DISTRIBUTOR = stringPreferencesKey("push_distributor")
+
+        /** The distributor [ENDPOINT] came from, while the transport is UnifiedPush. */
+        val ENDPOINT_DISTRIBUTOR = stringPreferencesKey("push_endpoint_distributor")
     }
 }

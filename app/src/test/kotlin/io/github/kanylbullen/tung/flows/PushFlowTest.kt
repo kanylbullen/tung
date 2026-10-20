@@ -131,6 +131,9 @@ class PushFlowTest : FlowTest() {
         clickInDialog("Other push")
         waitUntil { app.push.registeredWith.lastOrNull() == "org.example.otherpush" }
         waitForText(str(R.string.push_status_unifiedpush, "Other push"))
+        // Leaving ntfy unregisters there, and its endpoint is not sent again for the new distributor.
+        assertEquals(1, app.push.unregistered)
+        assertEquals(1, fake.pushRegistrations.size)
     }
 
     /** No transport at all: Settings says so, and nothing is registered. */
