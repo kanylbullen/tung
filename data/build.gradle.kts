@@ -55,6 +55,9 @@ android {
 
 ksp {
     arg("room.generateKotlin", "true")
+    // Every schema version is committed (data/schemas/), so a Migration can be tested against
+    // the exact schema an installed phone has (CLAUDE.md, "Schema").
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

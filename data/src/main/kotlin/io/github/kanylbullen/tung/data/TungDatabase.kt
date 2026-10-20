@@ -24,7 +24,7 @@ private const val CATALOG_UPDATED_AT = 0L
         Tombstone::class,
     ],
     version = 1,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class TungDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
