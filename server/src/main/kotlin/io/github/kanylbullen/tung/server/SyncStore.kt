@@ -183,12 +183,20 @@ class SyncStore(private val db: Db, catalogue: List<CoreExercise>) {
             columns = listOf(
                 "started_at" to Types.BIGINT, "ended_at" to Types.BIGINT, "note" to Types.VARCHAR,
                 "routine_id" to Types.VARCHAR, "program_day_id" to Types.VARCHAR, "started_by" to Types.VARCHAR,
+                "avg_heart_rate" to Types.INTEGER, "max_heart_rate" to Types.INTEGER, "active_calories" to Types.INTEGER,
+                "health_connect_id" to Types.VARCHAR,
             ),
-            // Set when the workout is made and never changed: a row from a client that does not know the field keeps it.
-            keepWhenNull = setOf("started_by"),
+            // started_by is set when the workout is made and never changed; the Health Connect values (V9)
+            // come from one phone. A row from a client that does not know them, or has none, keeps them.
+            keepWhenNull = setOf("started_by", "avg_heart_rate", "max_heart_rate", "active_calories", "health_connect_id"),
             rows = { it.workouts },
             id = { it.id }, updatedAt = { it.updatedAt }, deletedAt = { it.deletedAt },
-            values = { listOf(it.startedAt, it.endedAt, it.note, it.routineId, it.programDayId, it.startedBy) },
+            values = {
+                listOf(
+                    it.startedAt, it.endedAt, it.note, it.routineId, it.programDayId, it.startedBy,
+                    it.avgHeartRate, it.maxHeartRate, it.activeCalories, it.healthConnectId,
+                )
+            },
             map = { r ->
                 SyncWorkout(
                     id = r.getString("id"),
@@ -200,6 +208,10 @@ class SyncStore(private val db: Db, catalogue: List<CoreExercise>) {
                     updatedAt = r.getLong("updated_at"),
                     deletedAt = r.longOrNull("deleted_at"),
                     startedBy = r.getString("started_by"),
+                    avgHeartRate = r.intOrNull("avg_heart_rate"),
+                    maxHeartRate = r.intOrNull("max_heart_rate"),
+                    activeCalories = r.intOrNull("active_calories"),
+                    healthConnectId = r.getString("health_connect_id"),
                 )
             },
         )

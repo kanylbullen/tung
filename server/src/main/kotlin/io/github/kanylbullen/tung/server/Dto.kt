@@ -93,6 +93,12 @@ data class WorkoutDto(
     val exercises: List<WorkoutExerciseDto>,
     /** Who started it, one of core's `StartedBy` values; null when unknown. */
     val startedBy: String? = null,
+    /** From Health Connect on the phone that finished it (V9); null when not read. Read only here: they arrive by sync. */
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null,
+    val activeCalories: Int? = null,
+    /** The Health Connect session written for it; null when none was. */
+    val healthConnectId: String? = null,
 )
 
 @Serializable
