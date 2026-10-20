@@ -68,7 +68,7 @@
 | App | Kotlin, Jetpack Compose, Room | Already built; native gives the best one-handed input |
 | Server | Kotlin, Ktor, Postgres, one Docker image | Shares domain code with the app in a `core` module (volume, records and prefill are calculated the same on both sides). One binary is the simplest to self-host |
 | MCP | Built into the server over streamable HTTP, the official Kotlin SDK | One container, one auth, one deploy. Registered in the MCP registry as `io.github.kanylbullen/tung` when it is stable |
-| Watch | Wear OS, Compose for Wear OS, own `wear/` module in the same repo; Data Layer to the phone, no server contact of its own | Same language and same `core` module as the app. Burnwatch already has a Wear module on this machine to start from |
+| Watch | Wear OS, Compose for Wear OS, own `wear/` module in the same repo; its own log and sync with the server when linked with a code, the Data Layer to the phone otherwise | Same language and the same `core` and `data` modules as the app. Burnwatch already has a Wear module on this machine to start from |
 | Auth | Email + password in the server, API tokens for clients and agents; OIDC as an option later | Self-hosters should not need an identity provider. Tokens are how MCP clients and scripts connect |
 | Identities | UUIDs generated on the client; catalogue exercises get deterministic UUIDs from `nameKey` | Two devices can create data offline without collisions, and the catalogue has the same id everywhere |
 | Sync | Per row: `updatedAt`, last write wins, tombstones for deletions | Training data rarely changes on two devices at the same time; simplicity beats CRDT here |
@@ -283,10 +283,12 @@ exercise that is not in the catalogue is discarded, not shown.
    export. `docker compose` with Postgres. No sync yet; API first.
 6. **Sync in the app:** server URL in settings, push/pull of changes since the
    last sync, tombstones.
-6b. **Standalone watch:** the sync client from the previous step moves into
-   `core/` so the watch uses it too; `wear/` gets its own local log and a
-   server setting, `standalone=true`, and keeps the Data Layer transport for
-   phones where the companion works. Setup of the Galaxy Watch is done once
+6b. **Standalone watch:** the sync client from the previous step moves, with
+   Room and the repositories, into a shared Android library `data/` (not
+   `core/`: it needs Room and WorkManager) so the watch uses it too; `wear/`
+   gets its own local log, a server it links to with a six-digit code from
+   the phone (`/api/v1/link/start` and `/claim`), `standalone=true`, and keeps
+   the Data Layer transport for phones where the companion works (issue #30). Setup of the Galaxy Watch is done once
    against a stock phone, then the watch is reached over Wi-Fi adb.
 7. **MCP:** tools over the API: `log_set`, `last_time`, `start_workout`,
    `finish_workout`, `history`, `save_routine`, plus prompts for program,

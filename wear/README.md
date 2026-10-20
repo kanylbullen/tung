@@ -1,14 +1,51 @@
-# Tung for Wear OS (v0)
+# Tung for Wear OS
 
-The watch app mirrors the workout in progress on the phone and sends what you
-do on the wrist back to it: log a set, change weight or reps with the bezel or
-crown, skip or extend the rest, finish, or start a workout or a routine. The
-workout lives in the phone's database; the watch keeps no log of its own yet.
+The watch app logs a workout from the wrist: log a set, change weight or reps
+with the bezel or crown, skip or extend the rest, finish, or start a workout
+or a routine. It works in one of two modes, chosen automatically:
+
+- **Standalone**, once the watch is linked to a tung-server. The watch keeps
+  its own log in its own database, runs every command itself through the same
+  command handler as the phone (so routine targets, one workout in progress and
+  finishing behave exactly as on the phone), runs the rest timer itself, and
+  syncs with the server over its own Wi-Fi (or whatever network it has): every
+  15 minutes, after a finished workout and when the app is opened. "Last time"
+  comes from the watch's database, which after a sync holds the phone's
+  history too. No phone needed after the one-time setup.
+- **Companion**, when the watch is not linked. It mirrors the workout in
+  progress on the paired phone over the Wearable Data Layer and sends your
+  taps to the phone, as before: the workout lives in the phone's database.
+
+If the watch is linked **and** a phone is paired, standalone wins and the
+phone's Data Layer state is ignored: the watch and the phone meet through the
+server, so log a workout on one of them at a time and let sync carry it.
 
 Built for Wear OS 3 and later (API 30+, Galaxy Watch 4 and newer), round
 screens.
 
-## Pairing
+## Linking the watch to a server
+
+Typing a password on a watch is no good, so the watch signs in with a code:
+
+1. On the phone, sign in to your server (Settings, Sync), then tap **Link a
+   watch**. The phone shows a six-digit code, valid for ten minutes.
+2. On the watch, open Tung, scroll to **Settings** and tap **Link to**
+   followed by your server's name. The watch knows the server because the phone publishes
+   it over the Data Layer; that is the normal way.
+3. Type the code on the number pad. The sixth digit links the watch; it gets
+   its own token (named `watch` under the account's tokens) and switches to
+   standalone.
+
+Without a paired phone to learn the server from (a Galaxy Watch set up once
+on a stock phone, then used on its own), **Choose server** lists the servers
+the watch used before and has a field to type one; a bare host name means
+`https://`. The code still comes from any signed-in phone: the phone does not
+have to be the watch's paired one.
+
+Settings on a linked watch shows the account, **Sync now** with the last sync,
+and **Sign out**, which forgets the token and keeps the watch's data.
+
+## Pairing (companion mode)
 
 The Wearable Data Layer only connects apps that have the **same application
 id and the same signing key**. Both `app/` and `wear/` use
@@ -17,9 +54,9 @@ default debug keystore (`~/.android/debug.keystore`). So install a phone APK
 and a watch APK built on the same machine (or taken from the same CI run);
 two debug builds from different machines will not see each other.
 
-The phone app is required (`com.google.android.wearable.standalone = false`).
-The watch must be paired with the phone in the usual way (Galaxy Wearable or
-the Wear OS app).
+The phone app is optional (`com.google.android.wearable.standalone = true`):
+a linked watch needs no phone. For companion mode the watch must be paired
+with the phone in the usual way (Galaxy Wearable or the Wear OS app).
 
 ## Installing
 
@@ -60,16 +97,27 @@ adb connect 127.0.0.1:4444
 adb -s 127.0.0.1:4444 install -r wear/build/outputs/apk/debug/wear-debug.apk
 ```
 
-Open Tung on the phone once after installing, so it publishes its state.
+Open Tung on the phone once after installing, so it publishes its state (and
+its server, for linking).
 
-## Protocol
+## How it is built
+
+`wear/` depends on `data/`, the Android library it shares with the phone:
+`TungWearApp` builds a `TungContainer` (its own Room database, repositories,
+command handler, sync client and worker). `WatchViewModel` picks a backend by
+mode: `LocalWatchBackend` (the watch's database through `WatchStateSource`,
+taps through `LocalWatchCommands` → `Command` → the command handler) or
+`PhoneLink` (the Data Layer). The screens get the same `WatchWorkoutState`
+and send the same `WatchCommand`s either way.
+
+## Protocol (companion mode)
 
 Shared classes in `core/src/main/kotlin/io/github/kanylbullen/tung/core/wear/WatchProtocol.kt`,
 JSON with kotlinx-serialization (`type` tags the command; unknown fields are ignored).
 
 | Direction | Transport | Path | Payload |
 |---|---|---|---|
-| Phone → watch | DataItem (synced and kept by the Data Layer) | `/tung/active_workout`, key `json` | `WatchWorkoutState`: `workoutId` (null = no workout), `startedAt`, `exercises` (`workoutExerciseId`, localised `name`, `sets` with `setId`, `position`, `weightKg`, `reps`, `completed`, and `lastTime`), `currentSetId`, `rest` (`endsAtMillis`, `durationMillis`) or null, `routines` (`id`, `name`, `exerciseCount`), `updatedAt`, `version` |
+| Phone → watch | DataItem (synced and kept by the Data Layer) | `/tung/active_workout`, key `json` | `WatchWorkoutState`: `workoutId` (null = no workout), `startedAt`, `exercises` (`workoutExerciseId`, localised `name`, `sets` with `setId`, `position`, `weightKg`, `reps`, `completed`, and `lastTime`), `currentSetId`, `rest` (`endsAtMillis`, `durationMillis`) or null, `routines` (`id`, `name`, `exerciseCount`), `serverUrl` (the server the phone is signed in to, or null; never a token), `updatedAt`, `version` |
 | Watch → phone | Message (not queued) | `/tung/cmd` | One `WatchCommand`: `log_set(setId)`, `set_weight(setId, kg)`, `set_reps(setId, reps)`, `select_set(setId)`, `start_workout`, `start_routine(routineId)`, `finish_workout`, `skip_rest`, `add_rest_30`; each with `commandId` (UUID) and `sentAt` |
 
 The phone applies a command through its repositories (`WearSyncService` →
@@ -78,14 +126,13 @@ watch shows its change at once and replaces that guess with the phone's state
 when it arrives. A message that cannot be delivered shows "Phone not
 reachable"; the local change stays until the phone's next state.
 
-## Not in v0
+## Not yet
 
-- **Logging without the phone.** The watch cannot log while the phone is out
-  of reach. The next step is a small log on the watch with its own UUIDs and
-  `updatedAt`, merged by the phone with the same rules as server sync (see
-  `docs/architecture.md`).
 - Adding exercises from the watch: "Start workout" starts an empty workout;
-  exercises are added on the phone, or start a routine instead.
+  add exercises on the phone (in standalone mode they arrive with the next
+  sync), or start a routine instead.
+- Merging a companion watch's log through the phone: a phone that cannot
+  reach a server still cannot carry a standalone watch's sets.
 - An ongoing activity, a tile, heart rate.
-- The rest buzzes on the watch only while the watch app is on screen; the
-  phone buzzes as well.
+- The notification permission on the watch: on Wear OS 4 and later a rest
+  that ends while the app is in the background buzzes but posts nothing.

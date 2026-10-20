@@ -32,17 +32,25 @@ Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26. For sync only:
 Ktor client 3.0.3 (OkHttp engine, kotlinx JSON), WorkManager 2.10.0,
 androidx.security-crypto 1.0.0 (the stable release) and lifecycle-process.
 
-**No Hilt/Koin.** `AppContainer` in `TungApp.kt` holds the database and the
-repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
+**No Hilt/Koin.** `TungContainer` (in `data/`, built by `TungApp` and by the
+watch's `TungWearApp`) holds the database and the repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
 (`ui/common/Containers.kt`) and get repositories (for reads), `container.commands`
 (for every change, see "Commands") and nav arguments in the constructor;
 the active workout's factory also passes `createSavedStateHandle()`, for the rest timer.
 
 ## Layers
 
-Four Gradle modules: `core/` (plain Kotlin on the JVM) and `app/` (Android),
-with `app` depending on `project(":core")`, plus `wear/` and `server/`
-(sections "Wear" and "Server"), which depend on `core` too.
+Five Gradle modules:
+
+| Module | Kind | Depends on | Holds |
+|---|---|---|---|
+| `core/` | plain Kotlin, JVM | — | Domain rules, commands, sync and watch protocols |
+| `data/` | Android library | `core` | Room, repositories, the CommandHandler, sync client, rest timer, `TungContainer` |
+| `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
+| `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
+| `server/` | Ktor server | `core` | tung-server |
+
+Sections "Wear" and "Server" cover the last two.
 
 ### `core/` — domain logic without Android
 
@@ -63,27 +71,60 @@ extended-catalogue search), the command surface (`core/command/`, see
 "Commands"), and the sync protocol with its pure rules (`core/sync/`, see
 "Sync"). Core gets the catalogue as a `String` or an
 `InputStream`; where the bytes come from (APK assets, a file) is the caller's
-business. Room entities stay in the app and map to core's shapes
+business. Room entities live in `data/` and map to core's shapes
 (`SetEntry.toLogged()`); core never depends on Room.
 
 **The rule: no `android.*` or `androidx.*` imports in `core/`.** Anything that
-needs a `Context`, resources, Room or Compose stays in the app; if a function
-is mixed, split it and move the pure part. `NoAndroidImportsTest` (in
+needs a `Context`, resources or Room goes in `data/`, Compose in the apps; if
+a function is mixed, split it and move the pure part. `NoAndroidImportsTest` (in
 `core/src/test`) scans `core/src/main` and fails on such an import. Core's
 only dependencies are `kotlinx-serialization-json` and
 `kotlinx-coroutines-core`.
 
-### `app/` — the Android app
+### `data/` — the shared Android data layer
+
+An Android library (`com.android.library`, namespace
+`io.github.kanylbullen.tung.data`, minSdk 26) with everything below the
+screens, so the phone and the watch run the same code on their own
+databases. The packages are the ones the files had in `app/`:
+
+| Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
+|---|---|
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
+| `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
+| `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
+| `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
+| `ui/common/` | `ExerciseNames` and `Exercise.displayName(context)`; the composable `exerciseDisplayName` stays in `app/`. |
+
+`../catalog` (`core.json`, `extended.json`) is an asset directory of the
+library, so both APKs get it from there. The library's own strings are only
+what library code shows (the "Rest over" notification), in
+`data/src/main/res/values{,-sv}/`; screens' strings stay in each app.
+
+- **`app` and `wear` never touch Room.** No DAO, no `TungDatabase`, no
+  `withTransaction` outside `data/`: the apps read the repositories' Flows
+  and change data through `container.commands` (see "Commands").
+- **`TungContainer(context, clock, createDatabase, createTokenStore)`** is the
+  one container. The application implements `TungHost` (`container`,
+  `isInForeground`, the notification icon, the intent "Rest over" opens), which
+  is how `SyncWorker` finds the container and `RestAlerts` knows what to show,
+  without the library knowing either app.
+- **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`, `SyncClientTest` and
+  `LinkClientTest` in `data/src/test` (Robolectric with the default
+  application). `FakeSyncServer` and `MemoryTokenStore` are Kotlin test
+  fixtures (`data/src/testFixtures`, `testImplementation(testFixtures(project(":data")))`
+  in the apps), which needs `android.experimental.enableTestFixturesKotlinSupport`
+  in `gradle.properties`.
+
+### `app/` — the phone app
 
 | Directory | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"). `SeedExercises.kt` is generated. |
-| `sync/` | Sync with tung-server: `SyncClient` (Ktor), `SyncStore` (Room side), `SyncAccount` (sign in/out, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
-| `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver`, `RestAlerts` (vibration + notification). |
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share; programs list + one program), `settings` (server and account, from Home's gear). |
-| `ui/common/` | Formatting, shared components, `WorkoutReport`, `ExerciseNames` (displayed exercise names). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"). |
+| `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`. |
 | `ui/theme/` | Colour tokens, typography, theme. |
-| `../catalog/` | The exercise catalogue as open data (CC0): `core.json`, `extended.json`, generator and import scripts. Shipped as an asset directory in the APK. See `catalog/README.md`. |
+| `wear/` | The phone's side of the Data Layer for a companion watch (section "Wear"). |
+| `../catalog/` | The exercise catalogue as open data (CC0): `core.json`, `extended.json`, generator and import scripts. Shipped as an asset directory of `data/`. See `catalog/README.md`. |
 
 The app's most important query is `WorkoutDao.previousSessionSets` — the sets
 for an exercise from the latest finished workout that contains it. It drives
@@ -136,7 +177,7 @@ gone. "Last completed" is the latest *finished* workout whose
 `RoutineRepository.start(routineId, programDayId)`, so the workout records
 both ids. `programDayId` is indexed and, like `routineId`, **not** a foreign
 key: removing a day or deleting a program never touches history. "Today" is
-`LocalDate.now(AppContainer.clock)`: the system clock in the app, a settable
+`LocalDate.now(container.clock)`: the system clock in the app, a settable
 one (`FlowTestApp.today`) in the flow tests. Programs are reached from a row
 at the top of the Routines screen (`ui/routines/Program*`).
 
@@ -200,15 +241,15 @@ late in the background. `USE_EXACT_ALARM` is not used: Play reserves it for
 alarm-clock, timer and calendar apps. `RestTimerReceiver` gets the broadcast
 and calls `RestAlerts.restOver`: vibrate (`VibratorManager` on 31+, `Vibrator`
 below), and post "Rest over" on channel `rest_timer` only when no activity is
-started (`TungApp.isInForeground`). With the workout on screen the countdown
+started (`TungHost.isInForeground`). With the workout on screen the countdown
 reaching zero calls the same function, so the alert is on time even with an
 inexact alarm; it alerts once per `endsAt`. Tapping the notification opens
-`MainActivity` with `EXTRA_OPEN_WORKOUT`, which `TungAppRoot` navigates to. No
+`TungHost.openWorkoutIntent`: on the phone `MainActivity` with `EXTRA_OPEN_WORKOUT`, which `TungAppRoot` navigates to. No
 foreground service. `POST_NOTIFICATIONS` is asked for once, the first time a
 timer starts on Android 13+ (flag in DataStore); denied, the countdown and the
 vibration still work.
 
-The DataStore is built in `AppContainer` with `PreferenceDataStoreFactory`,
+The DataStore is built in `TungContainer` with `PreferenceDataStoreFactory`,
 not the `preferencesDataStore` delegate: the delegate is a process-wide
 singleton, and Robolectric makes a new application for every flow test.
 
@@ -234,21 +275,23 @@ Catalogue exercises have a stable key in `Exercise.nameKey` (`bench_press`,
 name follows the phone's language. `name` is stored anyway, as the English
 fallback. Custom exercises have `nameKey = null` and show what the user typed.
 Everything that shows an exercise name goes through
-`exerciseDisplayName(nameKey, name)` or `Exercise.displayName(context)` in
-`ui/common/ExerciseNames.kt`, which looks up each key with `getIdentifier` once
-and caches the id. Search in the picker matches the **displayed** name
+`exerciseDisplayName(nameKey, name)` (app) or `Exercise.displayName(context)`
+(`data/.../ui/common/ExerciseNames.kt`), which looks up each key with
+`getIdentifier` in the running app's package once and caches the id. The
+`ex_*` strings are generated into both apps, so the watch names exercises in
+its own language too. Search in the picker matches the **displayed** name
 (`core.filterByDisplayName`), never `name` in SQL.
 
 **The source of truth is `catalog/core.json`**, not Kotlin or the strings.
-`data/SeedExercises.kt` and the `ex_*` lines between `<!-- catalog:begin -->`
-and `<!-- catalog:end -->` in both `strings.xml` are generated by
+`data/src/main/kotlin/.../data/SeedExercises.kt` and the `ex_*` lines between
+`<!-- catalog:begin -->` and `<!-- catalog:end -->` in the `strings.xml` of
+`app/` and `wear/` (English and Swedish each) are generated by
 `catalog/tools/gen_android.py`; never edit them by hand. Adding an exercise =
 add the entry to `core.json` (sorted by `key`, `en` and `sv` required) and run
-`python3 -I catalog/tools/gen_android.py`; three files are updated
-(`SeedExercises.kt`, `values/strings.xml`, `values-sv/strings.xml`) and all
-four are committed. `--check` writes nothing and exits with 1 if anything is
+`python3 -I catalog/tools/gen_android.py`; five files are updated
+(`SeedExercises.kt` and four `strings.xml`) and all six are committed. `--check` writes nothing and exits with 1 if anything is
 out of date. `CatalogTest` (in `core`) checks `core.json` and `extended.json`
-as data, and `SeedExercisesTest` (in `app`) compares `core.json` with the seed list.
+as data, and `SeedExercisesTest` (in `data`) compares `core.json` with the seed list.
 English names are gym English (Lat pulldown, Skull crusher), not literal
 translations. A `key` never changes once it exists: it carries the exercise's id.
 
@@ -295,7 +338,8 @@ its signal to commands, never a new path into the database
   the touched exercise, scroll requests. That is why `LogSet` takes the set
   the screen shows as current, and why the ViewModel selects a set itself
   (`SelectCurrent` exists for other callers and only resolves).
-- **One handler.** `data/AppCommandHandler.kt` maps each command onto the
+- **One handler.** `data/AppCommandHandler.kt` (module `data/`, so the phone
+  and a standalone watch run the same one) maps each command onto the
   existing repositories, which keep their transactions and rules. It runs
   `validate(command)` first (pure, in core: weight 0–999 kg, reps 0–999,
   planned sets 1–50, a routine's target sets 1–20, rest 0–3600 s, weekday
@@ -334,8 +378,9 @@ its signal to commands, never a new path into the database
 
 ## Sync
 
-The app half of issue #25: the phone and a tung-server exchange changed rows
-over `POST /api/v1/sync`. The protocol is `core/.../core/sync/SyncProtocol.kt`
+The client half of issue #25, in `data/src/main/kotlin/io/github/kanylbullen/tung/sync/`
+and shared by the phone and a standalone watch: the device and a tung-server
+exchange changed rows over `POST /api/v1/sync`. The protocol is `core/.../core/sync/SyncProtocol.kt`
 (shared with the server, snake_case on the wire, one list per table, a
 tombstone is a row with `deleted_at`); the pure rules are next to it:
 `SyncPlanner` (what to push, in chunks of at most `SYNC_MAX_ROWS`, parents
@@ -380,8 +425,8 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   (`ProcessLifecycleOwner`). Exponential backoff from 30 s; network and 5xx
   retry, 401 and other 4xx do not. Sign-out cancels both. "Sync now" in
   Settings calls `syncOnce` directly, so the screen sees the result.
-  WorkManager is initialised on demand (`TungApp` is a
-  `Configuration.Provider`; the manifest removes its startup initializer).
+  WorkManager is initialised on demand (`TungApp` and `TungWearApp` are
+  `Configuration.Provider`s; each manifest removes its startup initializer).
 - **Account.** Settings (gear on Home) takes the server URL, email and
   password and calls `/api/v1/auth/login` or `/register`. The session token is
   in `EncryptedSharedPreferences` (`sync_token`, excluded from backups because
@@ -390,7 +435,14 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   (`SyncSettings`). Signing in resets the cursor to 0 and marks every row
   dirty, so a new account receives everything; signing out cancels the work,
   forgets the token, calls `/logout` and keeps all local data.
-- **Network.** `INTERNET` is the app's only network permission and the
+- **Link codes** (issue #30): a signed-in device asks for a six-digit code
+  (`SyncAccount.startLink` → `POST /api/v1/link/start`, the phone's "Link a
+  watch") and a device that cannot type a password trades it for its own
+  token (`SyncAccount.signInWithCode` → `POST /api/v1/link/claim`, the
+  watch). After the claim it is the same as a password sign-in: token stored,
+  cursor 0, everything dirty, work scheduled. `SyncSettings.recentServers`
+  keeps the last five servers for the watch's server list.
+- **Network.** `INTERNET` is each app's only network permission and the
   server URL its only destination. The network security config permits
   cleartext because it cannot express "private IPs only"; `checkServerUrl` is
   that gate.
@@ -400,47 +452,80 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
 ## Wear
 
 `wear/` is the Wear OS app (Compose for Wear OS 1.4, minSdk 30, Galaxy Watch 4
-and later). v0 mirrors the phone: the workout lives in the phone's Room
-database, the watch shows it and sends commands. Same `applicationId` as the
-phone (`io.github.kanylbullen.tung`; the Data Layer only pairs apps with the
-same id and signing key), its own namespace `io.github.kanylbullen.tung.wear`,
-`standalone = false`. Install and pairing: `wear/README.md`.
+and later). Same `applicationId` as the phone (`io.github.kanylbullen.tung`;
+the Data Layer only pairs apps with the same id and signing key), its own
+namespace `io.github.kanylbullen.tung.wear`, `standalone = true`. It depends
+on `data/` and builds its own `TungContainer` (`TungWearApp`, a `TungHost`
+and WorkManager `Configuration.Provider`). Install and pairing: `wear/README.md`.
+
+**Two modes, chosen automatically** (`WatchMode.kt`, from the token store):
+
+- **Standalone** when the watch has a server token. Its own Room database is
+  the log; `WatchViewModel` uses `LocalWatchBackend`: the state is
+  `WatchStateSource` over the watch's database (so "Last time" is the
+  watch's own history, which after a sync is the phone's too), and every tap
+  goes through `LocalWatchCommands`, which turns it into a core `Command` for
+  the shared `CommandHandler`. Routine target sets, one workout in progress
+  and finish semantics are therefore the phone's. View state is kept as the
+  phone's workout screen keeps it: the current-set selection in a
+  `WearSelectionHolder`, the rest timer in the watch's `RestTimerController`
+  (DataStore + alarm, `RestAlerts` buzzes once per rest). Sync is the
+  phone's: `SyncWorker` periodic while signed in, after `FinishWorkout`, and
+  when the app comes to the foreground, over whatever network the watch has.
+- **Companion** when it has no token: v0, unchanged. The watch mirrors the
+  phone over the Data Layer (`PhoneLink`) and sends it commands. Without a
+  paired phone it shows the hint to open the phone or link the watch.
+- **Both available:** standalone wins and the Data Layer state is ignored;
+  the watch and the phone then meet through the server.
+
+**Linking** (no password on the wrist): Settings, from the start screen
+(`ui/SettingsScreen.kt`, `AccountViewModel`), shows the account, "Sync now"
+with the last sync and "Sign out", or the way in. The server is normally the
+one the phone publishes in its Data Layer state (`WatchWorkoutState.serverUrl`,
+filled by the phone's publisher), offered as "Link to <host>"; otherwise a
+list of recent servers (`SyncSettings.recentServers`) and a text field, where
+a bare host means https (`checkWatchServerInput`). Then a six-digit number pad
+(`ui/LinkCodeScreen.kt`, `LinkCodeInput`) whose sixth digit claims the code
+the phone's Settings shows ("Link a watch"), through
+`SyncAccount.signInWithCode`.
 
 **Protocol** (`core/.../core/wear/WatchProtocol.kt`, JSON, shared by both
-sides): the phone writes a `WatchWorkoutState` as the DataItem
-`/tung/active_workout`; the watch sends a `WatchCommand` as a message to
-`/tung/cmd`. State is a **DataItem** because the Data Layer syncs and keeps it:
-a watch that was out of range, or just started, reads the latest state with no
-request. Commands are **messages** because they are actions, not state: a
-DataItem would replay or coalesce them. Messages are not queued, so a failed
-send shows "Phone not reachable" and the watch keeps its optimistic change
-(`wear/.../Optimistic.kt`) until the phone's next state replaces it.
+sides) for companion mode: the phone writes a `WatchWorkoutState` as the
+DataItem `/tung/active_workout`; the watch sends a `WatchCommand` as a message
+to `/tung/cmd`. State is a **DataItem** because the Data Layer syncs and keeps
+it: a watch that was out of range, or just started, reads the latest state
+with no request. Commands are **messages** because they are actions, not
+state: a DataItem would replay or coalesce them. Messages are not queued, so a
+failed send shows "Phone not reachable" and the watch keeps its optimistic
+change (`wear/.../Optimistic.kt`) until the phone's next state replaces it.
+Standalone mode applies no optimistic change: the command runs locally and
+the next state shows what it did.
 
 **Phone side** (`app/.../wear/`): `WearSyncService` (a `WearableListenerService`,
 started by the system on a message) hands the JSON to `WearCommandHandler`,
 which applies it through `WorkoutRepository`/`RoutineRepository` and
 `RestTimerController`, checks every set id against the workout in progress and
-drops repeated `commandId`s, then publishes once. `WearStatePublisher` (in
-`AppContainer`, started from `TungApp.onCreate` when Play services is present)
-observes the active workout, its sets, the rest stored in DataStore and the
-routines, and writes the DataItem on change, debounced 100 ms and skipped when
-nothing changed. The watch's current-set selection is kept in the publisher
-(`WearSelectionHolder`), by `core.currentSet` and `nextCurrentAfterLogging`.
+drops repeated `commandId`s, then publishes once. `WearStatePublisher` (on
+`TungApp`, started from `TungApp.onCreate` when Play services is present)
+writes `WatchStateSource`'s state (data's, the same builder a standalone
+watch uses) as the DataItem on change, debounced 100 ms and skipped when
+nothing changed, with the phone's server URL in it.
 
-**Limitations of v0.** The publisher only runs while the app's process does;
+**Limitations.** The publisher only runs while the phone app's process does;
 the DataItem keeps the last state when Android kills it, and the service
-restarts the process for the next command. The workout screen's ViewModel
-does not see the watch: with the workout open on the phone, a set logged on
-the watch shows at once (Room), but the screen keeps its own rest countdown
-and current-set selection, and the watch does not see a selection made on the
-phone. Both go away when the screens and the watch share the command handler.
-No logging without the phone yet (the architecture's watch log with merge is
-the next step).
+restarts the process for the next command. The phone's workout screen does
+not see a companion watch's selection or rest. The phone's
+`WearCommandHandler` still writes through the repositories rather than the
+`CommandHandler` (its rules match; moving it is a follow-up). A standalone
+watch cannot add exercises: start a routine, or add them on the phone and
+sync. The watch does not ask for the notification permission, so on Wear OS
+4+ a rest that ends with the app in the background only buzzes.
 
 **File boundaries.** Watch code only in `wear/`; the protocol only in
-`core/.../core/wear/`; the phone's watch code only in `app/.../wear/` plus the
-service in the manifest and the two lines in `AppContainer`/`TungApp`. The
-watch never reaches Room or the server; everything goes through a command.
+`core/.../core/wear/`; what both devices share in `data/`; the phone's
+companion code only in `app/.../wear/` plus the service in the manifest and
+the publisher on `TungApp`. The watch never reaches Room directly; everything
+goes through a command.
 
 ## Server
 
@@ -513,6 +598,12 @@ watch never reaches Room or the server; everything goes through a command.
 - **Tokens:** `tung_` + 32 random bytes, SHA-256 in `api_tokens`; sessions
   are tokens named `session`. A `read` token gets 403 on anything but GET.
   No OAuth or OIDC yet; OAuth 2.1 comes with MCP.
+- **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST
+  /api/v1/link/start` (write token) gives a six-digit code valid ten minutes,
+  unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)
+  claims it once and answers a new `write` token named `watch` and the user,
+  else 404 `invalid_code`. 5 codes a minute per user, 10 claims a minute per
+  address, counted in that file rather than by the RateLimit plugin.
 - **Tests** (`./gradlew :server:test --no-daemon`) use a real Postgres from
   Testcontainers, so they need Docker; `./gradlew test` includes them.
   `server/build.gradle.kts` sets `api.version=1.44` for docker-java, because
@@ -528,12 +619,14 @@ export PATH=$JAVA_HOME/bin:$PATH
 ./gradlew assembleDebug test --no-daemon
 ```
 
-`test` runs `:core:test` and the app's unit tests (AGP runs them for both the
-debug and the release variant). Only the core tests, fast and without AGP:
-`./gradlew :core:test --no-daemon`. Results land in
-`core/build/test-results/test/` and `app/build/test-results/testDebugUnitTest/`.
+`test` runs `:core:test`, the unit tests of `data`, `app` and `wear` (AGP
+runs them for both the debug and the release variant) and `:server:test`.
+Only the core tests, fast and without AGP: `./gradlew :core:test --no-daemon`.
+Results land in `core/build/test-results/test/` and
+`<module>/build/test-results/testDebugUnitTest/`.
 
-APK: `app/build/outputs/apk/debug/app-debug.apk`. The first build downloads
+APKs: `app/build/outputs/apk/debug/app-debug.apk` and
+`wear/build/outputs/apk/debug/wear-debug.apk` (`:wear:assembleDebug`). The first build downloads
 dependencies and takes a few minutes.
 
 ## Flow tests
@@ -549,13 +642,14 @@ part of `./gradlew test`. Only them:
 ```
 
 - `FlowTestApp` (named in `src/test/resources/robolectric.properties`)
-  overrides `TungApp.createContainer()` to hand `AppContainer` an in-memory
+  overrides `TungApp.createContainer()` to hand `TungContainer` an in-memory
   `TungDatabase.buildInMemory`, same schema and seed, and a settable
   `Clock` (`FlowTestApp.today`) for Home's "Today", and a `TokenStore` in
   memory (`FlowTestApp.tokens`), because Robolectric has no Android Keystore.
-  Those three `AppContainer` parameters are the only test seams in production
-  code. Sync tests talk to `FakeSyncServer` (`src/test/.../sync/`, the
-  protocol on a MockWebServer), and `SyncFlowTest` installs WorkManager's test
+  Those three `TungContainer` parameters are the only test seams in production
+  code. Sync tests talk to `FakeSyncServer` (data's test fixtures,
+  `data/src/testFixtures/.../sync/`, the protocol and the link routes on a
+  MockWebServer), and `SyncFlowTest` installs WorkManager's test
   instance (`WorkManagerTestInitHelper`) before it signs in.
 - Assertions are on semantics, with text from the English string resources
   (`str(R.string.…)`), never on pixels. Room works on its own threads, so wait

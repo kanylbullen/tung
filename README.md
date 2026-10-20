@@ -36,6 +36,12 @@ planned and described in detail in [`docs/architecture.md`](docs/architecture.md
 - Sync, if you want it: sign in to a tung-server in Settings and the phone
   syncs row by row in the background, newest write wins and deletions as
   tombstones; without a server it works exactly as before.
+- A Wear OS app: start a session or a routine and log sets from the wrist
+  with the bezel or crown, rest timer included. Linked to your server with a
+  six-digit code from the phone (no password on the watch), it keeps its own
+  log and syncs over Wi-Fi, so the phone can stay in the locker or at home;
+  unlinked, it mirrors the phone's workout over Bluetooth. See
+  [`wear/README.md`](wear/README.md).
 
 Stack: Kotlin, Jetpack Compose, Material 3, Room. minSdk 26, targetSdk 35.
 The app needs no backend and has no analytics; its only network use is the
@@ -47,7 +53,8 @@ An optional server in [`server/`](server/README.md), not yet connected to
 the app:
 
 - Accounts with email and password, and API tokens (read or write) for
-  scripts and agents.
+  scripts and agents; six-digit link codes so a watch signs in without a
+  password.
 - A REST API over exercises and workouts, with "last time" for any exercise
   and a full JSON export. Every endpoint is in the OpenAPI spec, served with
   Swagger UI at `/docs`; a test fails if a route is missing from it.
@@ -69,9 +76,6 @@ through `core/`.
   structured plan validated against the catalogue.
 - **Our hosted instance**, the same image self-hosters run, with OAuth 2.1
   for hosted assistants.
-- **Wear OS app** to start a session and enter sets from the wrist while the
-  phone stays in the locker. The watch syncs with the phone using the same
-  rules the phone uses with the server.
 - **AI in the app** as a second option for people without an assistant:
   bring your own key (OpenAI-compatible or Anthropic, including a local
   Ollama), an operator key on self-hosted servers, or a small free monthly
