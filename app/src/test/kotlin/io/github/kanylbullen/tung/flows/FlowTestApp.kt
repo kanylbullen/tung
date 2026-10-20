@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.flows
 import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungDatabase
+import io.github.kanylbullen.tung.health.FakeHealthConnect
 import io.github.kanylbullen.tung.push.FakePushEnvironment
 import io.github.kanylbullen.tung.sync.MemoryTokenStore
 import java.time.Clock
@@ -14,7 +15,8 @@ import java.time.ZoneId
  * `robolectric.properties`). Identical to [TungApp] except that the database
  * lives in memory, seeded with the same catalogue, that Home's "today"
  * comes from [today], and that the sync token is kept in [tokens] instead of
- * EncryptedSharedPreferences (the assistant's API key likewise, in [aiKeys]), and that its push transports are [push]. Robolectric creates a new application per test, so every
+ * EncryptedSharedPreferences (the assistant's API key likewise, in [aiKeys]), that its push transports are [push], and that
+ * Health Connect is [healthConnect]. Robolectric creates a new application per test, so every
  * test starts with an empty history.
  */
 class FlowTestApp : TungApp() {
@@ -36,12 +38,16 @@ class FlowTestApp : TungApp() {
     /** The push transports this "device" has: none unless a test sets its fields (it is read when push refreshes). */
     val push = FakePushEnvironment()
 
+    /** Health Connect: available, nothing granted, nothing to read, until a test says otherwise. */
+    val healthConnect = FakeHealthConnect()
+
     override fun createContainer(): TungContainer = TungContainer(
         this,
         clock = SettableClock(),
         createDatabase = { database },
         createTokenStore = { tokens },
         createPushEnvironment = { push },
+        createHealthConnect = { healthConnect },
         createAiKeyStore = { aiKeys },
     )
 

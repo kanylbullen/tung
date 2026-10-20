@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.core.command.CommandNames
+import io.github.kanylbullen.tung.core.sync.SyncChanges
+import io.github.kanylbullen.tung.core.sync.SyncWorkout
 import io.github.kanylbullen.tung.server.mcp.McpDescriptions
 import io.github.kanylbullen.tung.server.mcp.TungMcp
 import io.ktor.client.HttpClient
@@ -134,6 +136,29 @@ class McpTest {
         assertEquals(workoutId, history.single().jsonObject["id"]!!.str)
         val last = client.toolOk(token, "last_time", """{"exercise": "Bänkpress"}""")
         assertEquals(listOf(60.0 to 8), last["sets"]!!.jsonArray.map { it.jsonObject }.map { it["weight_kg"]!!.str.toDouble() to it["reps"]!!.str.toInt() })
+    }
+
+    /** Heart rate and calories from the phone's Health Connect (V9) are in the history an assistant reads. */
+    @Test
+    fun historyShowsHeartRateAndCaloriesWhenThePhoneReadThem() = tungTest {
+        val token = client.register()
+        val withVitals = id()
+        val without = id()
+        client.synced(
+            token,
+            changes = SyncChanges(
+                workouts = listOf(
+                    SyncWorkout(withVitals, 1_700_000_000_000, 1_700_003_600_000, null, null, null, 1_000, avgHeartRate = 128, maxHeartRate = 171, activeCalories = 342),
+                    SyncWorkout(without, 1_600_000_000_000, 1_600_003_600_000, null, null, null, 1_000),
+                ),
+            ),
+        )
+        val history = client.toolOk(token, "history")["workouts"]!!.jsonArray.map { it.jsonObject }.associateBy { it["id"]!!.str }
+        val read = history.getValue(withVitals)
+        assertEquals("128", read["avg_heart_rate"]!!.str)
+        assertEquals("171", read["max_heart_rate"]!!.str)
+        assertEquals("342", read["active_calories"]!!.str)
+        assertFalse("avg_heart_rate" in history.getValue(without), "left out when not read")
     }
 
     @Test

@@ -32,6 +32,26 @@ interface WorkoutDao {
     @Query("DELETE FROM workout WHERE id = :id")
     suspend fun deleteWorkout(id: String)
 
+    /**
+     * Remembers the Health Connect session written for the workout, only if
+     * none is stored yet: the id is written once (CLAUDE.md, "Health Connect").
+     * @return 1 if it was stored, 0 if the workout is gone or already had one.
+     */
+    @Query("UPDATE workout SET healthConnectId = :healthConnectId, updatedAt = :updatedAt, dirty = 1 WHERE id = :id AND healthConnectId IS NULL")
+    suspend fun setHealthConnectId(id: String, healthConnectId: String, updatedAt: Long): Int
+
+    /** Stores what Health Connect had for the workout; a null keeps the stored value. */
+    @Query(
+        """
+        UPDATE workout SET avgHeartRate = COALESCE(:avgHeartRate, avgHeartRate),
+            maxHeartRate = COALESCE(:maxHeartRate, maxHeartRate),
+            activeCalories = COALESCE(:activeCalories, activeCalories),
+            updatedAt = :updatedAt, dirty = 1
+        WHERE id = :id
+        """,
+    )
+    suspend fun setVitals(id: String, avgHeartRate: Int?, maxHeartRate: Int?, activeCalories: Int?, updatedAt: Long)
+
     @Query(
         """
         SELECT w.id, w.startedAt, w.endedAt,

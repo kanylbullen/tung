@@ -224,6 +224,20 @@ class WorkoutRepository(
         }
     }
 
+    /**
+     * Remembers the Health Connect session written for [workoutId]. Never
+     * replaces one already stored, so a workout keeps the first session's id.
+     * @return true if [healthConnectId] was stored.
+     */
+    suspend fun setHealthConnectId(workoutId: String, healthConnectId: String): Boolean =
+        dao.setHealthConnectId(workoutId, healthConnectId, clock()) == 1
+
+    /** Heart rate and calories read from Health Connect for [workoutId]; a null leaves that column as it is. */
+    suspend fun setVitals(workoutId: String, avgHeartRate: Int?, maxHeartRate: Int?, activeCalories: Int?) {
+        if (avgHeartRate == null && maxHeartRate == null && activeCalories == null) return
+        dao.setVitals(workoutId, avgHeartRate, maxHeartRate, activeCalories, clock())
+    }
+
     /** Deletes the workout with its exercises and sets, with a tombstone for each. */
     suspend fun deleteWorkout(workoutId: String) = db.withTransaction { deleteWorkoutAt(workoutId, clock()) }
 

@@ -177,12 +177,20 @@ abstract class FlowTest {
     }
 
     /** Opens the number sheet from the cell described as [cellDescription], types [text] and taps Done. */
-    protected fun enterInSheet(cellDescription: String, fieldDescription: String, text: String) {
+    /**
+     * Opens the cell's input sheet, types [text], confirms, and waits until the
+     * cell reads [cellAfter]. The sheet closes before the command behind Done
+     * has written and the row has re-read it (issue #37): a tick clicked in
+     * that gap sees reps 0 and opens the reps sheet again, so waiting only for
+     * the sheet to be gone is not enough.
+     */
+    protected fun enterInSheet(cellDescription: String, fieldDescription: String, text: String, cellAfter: String) {
         clickDescription(cellDescription)
         waitForDescription(fieldDescription)
         compose.onNode(hasContentDescription(fieldDescription)).performTextReplacement(text)
         compose.onNode(hasText(str(R.string.input_done))).performClick()
         waitGone(hasContentDescription(fieldDescription))
+        waitForDescription(cellAfter)
     }
 
     /** Taps "Finish workout" in the top bar and confirms it in the dialog. */

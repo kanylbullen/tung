@@ -1410,7 +1410,7 @@ components:
 
     Workout:
       type: object
-      required: [id, started_at, ended_at, note, routine_id, program_day_id, updated_at, exercises, started_by]
+      required: [id, started_at, ended_at, note, routine_id, program_day_id, updated_at, exercises, started_by, avg_heart_rate, max_heart_rate, active_calories, health_connect_id]
       properties:
         id: { $ref: "#/components/schemas/Uuid" }
         started_at: { $ref: "#/components/schemas/Millis" }
@@ -1427,6 +1427,24 @@ components:
         started_by:
           oneOf: [{ $ref: "#/components/schemas/StartedBy" }, { type: "null" }]
           description: Who started the workout; null when unknown (workouts from before the field).
+        avg_heart_rate:
+          type: [integer, "null"]
+          minimum: 20
+          maximum: 300
+          description: Average heart rate over the workout in bpm, read from Health Connect on the phone that finished it; null when not read. Arrives by sync only.
+        max_heart_rate:
+          type: [integer, "null"]
+          minimum: 20
+          maximum: 300
+          description: Maximum heart rate over the workout in bpm, as `avg_heart_rate`.
+        active_calories:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 20000
+          description: Active kilocalories over the workout, as `avg_heart_rate`.
+        health_connect_id:
+          type: [string, "null"]
+          description: The id of the exercise session the phone wrote to Health Connect for this workout; null when none was. While set, no device writes it again.
 
     WorkoutPage:
       type: object
@@ -1787,6 +1805,25 @@ components:
         started_by:
           oneOf: [{ $ref: "#/components/schemas/StartedBy" }, { type: "null" }]
           description: Who started the workout. Set when it is made and never changed; a row with null keeps the stored value.
+        avg_heart_rate:
+          type: [integer, "null"]
+          minimum: 20
+          maximum: 300
+          description: From Health Connect on the phone (bpm). A row with null keeps the stored value.
+        max_heart_rate:
+          type: [integer, "null"]
+          minimum: 20
+          maximum: 300
+          description: From Health Connect on the phone (bpm). A row with null keeps the stored value.
+        active_calories:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 20000
+          description: Active kilocalories from Health Connect on the phone. A row with null keeps the stored value.
+        health_connect_id:
+          type: [string, "null"]
+          maxLength: 200
+          description: The Health Connect session written for the workout, so no device writes it twice. A row with null keeps the stored value.
 
     SyncWorkoutExercise:
       type: object

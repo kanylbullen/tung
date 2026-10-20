@@ -531,8 +531,20 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   server URL its only destination. The network security config permits
   cleartext because it cannot express "private IPs only"; `checkServerUrl` is
   that gate.
-- **Schema.** Still `version = 1` with no migration: `dirty` and
-  `tombstones` change the schema, so a dev install must be wiped.
+- **Schema.** Installed phones are upgraded in place and never wiped; a PR
+  that needs a wipe is a bug. **Every schema change** (a column, a table, an
+  index) raises `TungDatabase`'s `version` by one, commits the new
+  `data/schemas/io.github.kanylbullen.tung.data.TungDatabase/<n>.json` (KSP
+  writes it on build; `exportSchema = true`, `room.schemaLocation` in
+  `data/build.gradle.kts`), adds a `Migration` to `ALL_MIGRATIONS`
+  (`data/.../data/Migrations.kt`, registered in both `TungDatabase.build` and
+  `buildInMemory`) and a case in `MigrationTest`, which creates the old
+  version from its committed JSON with `MigrationTestHelper` under
+  Robolectric (the schemas are a test asset directory), runs the migration,
+  validates against the new schema and reads the old rows back.
+  `everyVersionHasASchemaAndAMigration` fails when a version has no JSON or no
+  migration. Version 1 is the schema as it was on 2026-10-20; version 2
+  (issue #45) added the Health Connect columns on `workout`.
 
 ## Wear
 
@@ -650,7 +662,6 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   is reserved. Synced as the additive, nullable `started_by`; a null from a
   peer never erases a stored value (app `SyncMapping`, server `COALESCE`). The
   notification's sub-text says "Started by your assistant" for `agent`.
-  Room schema still `version = 1`: wipe a dev install.
 - **The watch** (`wear/.../WatchOngoing.kt`): `WatchOngoingActivity` runs the
   same notifier over the state the watch shows (`watchOngoing(state)`, pure:
   the watch's own database standalone through the shared `LocalWatchBackend`,
@@ -695,6 +706,83 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   read, 5 s in all; `FcmSender` uses the
   HTTP v1 API with a hand-rolled service-account JWT; FCM is off without
   `TUNG_FCM_SERVICE_ACCOUNT_JSON`.
+
+## Health Connect
+
+Issue #45; the design is `docs/architecture.md`, "Health Connect". The phone
+only: the watch's `TungContainer` gets no gateway, and the server never talks
+to Health Connect, it stores what the phone syncs.
+
+- **Where it lives.** `data/.../health/`: `HealthConnectGateway` (interface:
+  `availability`, `permissions(access)`, `hasPermissions(access)`, the
+  permission sheet's `ActivityResultContract`, `writeSession`, `readVitals`),
+  `AndroidHealthConnectGateway` (the real one, over
+  `androidx.health.connect:connect-client:1.1.0-beta01`, the newest that builds
+  with compileSdk 35 and AGP 8.7; 1.1.0 needs compileSdk 36), and
+  `HealthConnectRecorder`, which does the work. `FakeHealthConnect` is in
+  data's test fixtures. `TungContainer(createHealthConnect = …)` is the seam:
+  `TungApp` passes `::AndroidHealthConnectGateway`, the watch nothing (null),
+  `FlowTestApp` the fake. The pure parts are in core, `core/health/`:
+  `HEALTH_CONNECT_SEGMENTS` (catalogue key → `HealthSegmentType`, named after
+  `ExerciseSegment.EXERCISE_SEGMENT_TYPE_*`; data maps each entry to the
+  library's constant in an exhaustive `when`, and
+  `HealthConnectSegmentTypesTest` builds a strength-training record with every
+  type, because Health Connect throws on a segment the session type does not
+  allow), `planHealthSession` and `aggregateVitals`.
+- **Two opt-ins**, `health_connect_write` and `health_connect_read` in the
+  `settings` DataStore (`HealthConnectSettings`), both off by default and not
+  synced: Settings' last section (`ui/settings/HealthConnectSection.kt`, one
+  call in `SettingsScreen`) has a switch for each, which turns on only after
+  Health Connect's permission sheet granted its permissions
+  (`WRITE_EXERCISE`; `READ_HEART_RATE` + `READ_ACTIVE_CALORIES_BURNED`, all
+  declared in the phone's manifest) and shows off when a permission was
+  revoked. Unavailable or outdated Health Connect: no switches, a hint.
+  `HealthPermissionsActivity` is the privacy text Health Connect opens
+  (`ACTION_SHOW_PERMISSIONS_RATIONALE`, and the `VIEW_PERMISSION_USAGE` alias
+  on Android 14+); the manifest also has the `<queries>` entry for
+  `com.google.android.apps.healthdata`.
+- **When.** `AppCommandHandler`'s `onWorkoutFinished(workoutId)` (null when the
+  workout was discarded) → `TungContainer.workoutFinished`: the recorder runs
+  first, then the sync request, so what it stored goes up in the same sync.
+  Only `FinishWorkout` through the phone's `CommandHandler`; a companion
+  watch's finish (`WearCommandHandler`) and a workout finished elsewhere and
+  synced here are not written or read.
+- **Write.** One `ExerciseSessionRecord`, `EXERCISE_TYPE_STRENGTH_TRAINING`,
+  titled with the routine's name or "Workout" (data's
+  `health_session_title`). Tung keeps no time per set, so the interval is split
+  evenly into one slot per logged set in workout order; a set whose exercise
+  has a type becomes a segment over its slot with its reps, **a set without
+  one is left unsegmented** (no `OTHER_WORKOUT` filler).
+- **Written once.** The record id goes into `Workout.healthConnectId` through
+  `WorkoutRepository.setHealthConnectId` (`WHERE healthConnectId IS NULL`,
+  stamps `updatedAt` and `dirty`), and nothing is written for a workout that
+  has one, from this phone or synced from another. The recorder is behind a
+  mutex, and the record's `clientRecordId` is `tung:workout:<id>`, so even a
+  crash between the insert and the update cannot make a second session.
+- **Read.** Heart-rate samples and active-calories records over
+  `[startedAt, endedAt]` (paged); core's `aggregateVitals` takes the rounded
+  mean and the max of samples inside the interval in 20–300 bpm, and calories
+  prorated by overlap, summed per source app with the largest source winning
+  (two apps often write the same burn). Stored with
+  `WorkoutRepository.setVitals` (a null keeps a column). Read once, right
+  after finishing: heart rate a watch syncs into Health Connect later is not
+  picked up.
+- **Columns.** `Workout.avgHeartRate`, `maxHeartRate`, `activeCalories` (kcal),
+  `healthConnectId`, all nullable (Room version 2, `MIGRATION_1_2`). Synced as
+  `avg_heart_rate`, `max_heart_rate`, `active_calories`, `health_connect_id`,
+  additive and nullable like `started_by`, and like it **a null from a peer
+  never erases a stored value** (app `SyncMapping`, server `keepWhenNull`, i.e.
+  `COALESCE`). Server: `V9__health.sql`, validated in sync (20–300, 0–20000,
+  an id of at most 200 characters), shown by `WorkoutDto` (REST, export) and
+  MCP's `history`; `PUT /workouts/{id}` does not take them and leaves them.
+  The workout detail shows "Heart rate 128 avg · 171 max · 342 kcal" as one
+  muted line when there is anything.
+- **Tests.** Core: `HealthConnectSegmentsTest` (every mapped key is a
+  catalogue key, the slots), `HealthVitalsTest`. Data: `MigrationTest`,
+  `HealthConnectRecorderTest` (write once, the routine title, vitals, no
+  opt-in, a revoked permission, unavailable), `SyncMappingHealthTest`,
+  `HealthConnectSegmentTypesTest`. Server: `HealthColumnsTest`, and MCP
+  history in `McpTest`. Flows: `HealthConnectFlowTest`.
 
 ## In-app AI (BYOK)
 
@@ -951,8 +1039,11 @@ part of `./gradlew test`. Only them:
   `Clock` (`FlowTestApp.today`) for Home's "Today", and a `TokenStore` in
   memory (`FlowTestApp.tokens`), because Robolectric has no Android Keystore,
   and the push transports (`FlowTestApp.push`, a `FakePushEnvironment` from
-  data's test fixtures, none by default). Those four `TungContainer`
-  parameters are the only test seams in production code. Sync tests talk to `FakeSyncServer` (data's test fixtures,
+  data's test fixtures, none by default), and Health Connect
+  (`FlowTestApp.healthConnect`, a `FakeHealthConnect` from data's test
+  fixtures: available, nothing granted, nothing to read by default), and the
+  assistant's API key in memory (`FlowTestApp.aiKeys`). Those six
+  `TungContainer` parameters are the only test seams in production code. Sync tests talk to `FakeSyncServer` (data's test fixtures,
   `data/src/testFixtures/.../sync/`, the protocol and the link routes on a
   MockWebServer), and `SyncFlowTest` installs WorkManager's test
   instance (`WorkManagerTestInitHelper`) before it signs in.
@@ -1066,9 +1157,6 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
   `assets/licenses/`, not next to the `.ttf` file.
 - No `!!`, no `GlobalScope`, no blocking DB calls on main. The DAOs are
   `suspend` or `Flow`.
-- `exportSchema = false` and no migration: if the schema changes, `version`
-  must be raised and a `Migration` written before the app is used for real.
-  Until the first release the schema changes at `version = 1` (last:
-  `dirty` on all eight entities and the `tombstones` table), so a dev install must
-  be wiped (uninstall or clear data) after pulling such a change, or Room
-  throws on open.
+- **A schema change without a migration crashes every installed phone** on
+  open. Version + 1, the committed schema JSON, a `Migration` and a
+  `MigrationTest` case, always; see "Sync", "Schema".

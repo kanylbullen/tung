@@ -18,4 +18,7 @@
     <string name="ongoing_started_by_agent">Startat av din assistent</string>
     <string name="ongoing_log_set">Logga set</string>
     <string name="ongoing_finish">Avsluta</string>
+
+    <!-- The title of a session written to Health Connect when the workout has no routine (health/HealthConnectRecorder.kt) -->
+    <string name="health_session_title">Träningspass</string>
 </resources>

@@ -46,7 +46,8 @@ class AppCommandHandler(
     private val programs: ProgramRepository,
     private val resolver: ExerciseResolver,
     private val extendedCatalog: ExtendedCatalog,
-    private val onWorkoutFinished: () -> Unit = {},
+    /** After every `FinishWorkout`: the kept workout's id, or null when it had nothing logged and was discarded. */
+    private val onWorkoutFinished: (workoutId: String?) -> Unit = {},
     /** Stamped on every workout this handler creates (`core.StartedBy`): `phone` on the phone, `watch` on a standalone watch. */
     private val startedBy: String? = null,
 ) : CommandHandler {
@@ -55,7 +56,7 @@ class AppCommandHandler(
         (validate(command) as? Validation.Invalid)?.let { return Rejected(it.reasons) }
         val result = perform(command)
         // A finished (or discarded) workout is worth syncing at once, whoever sent the command.
-        if (command is Command.FinishWorkout && result is Done) onWorkoutFinished()
+        if (command is Command.FinishWorkout && result is Done) onWorkoutFinished(result.ids[WORKOUT_ID])
         return result
     }
 

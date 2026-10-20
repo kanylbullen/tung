@@ -78,7 +78,7 @@ class SyncFlowTest : FlowTest() {
         clickDescription(str(R.string.action_back))
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
-        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(R.string.input_field_reps), "8")
+        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(R.string.input_field_reps), "8", str(R.string.workout_edit_reps, "8"))
         clickDescription(str(R.string.workout_mark_done, 1))
         waitForDescription(str(R.string.workout_mark_undone, 1))
         finishWorkout()

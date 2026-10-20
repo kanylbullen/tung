@@ -107,12 +107,23 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
         },
     ) { padding ->
         val report = state.report
+        val health = report?.workout?.let { healthLine(it.avgHeartRate, it.maxHeartRate, it.activeCalories) }
         LazyColumn(contentPadding = padding, modifier = Modifier.fillMaxSize()) {
             if (report != null && !deleting) {
                 item(key = "stats") {
                     StatRow {
                         Stat(durationText(report.durationMillis), stringResource(R.string.stat_duration), Modifier.weight(1f))
                         Stat(localVolume(report.totalVolumeKg), stringResource(R.string.stat_volume), Modifier.weight(1f))
+                    }
+                }
+                health?.let { line ->
+                    item(key = "health") {
+                        Text(
+                            line,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Tung.colors.muted,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                        )
                     }
                 }
                 report.exercises.forEach { exercise ->
@@ -183,4 +194,15 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
             },
         )
     }
+}
+
+/** "Heart rate 128 avg · 171 max · 342 kcal" from Health Connect's values on the workout; null when it has none. */
+@Composable
+private fun healthLine(avgHeartRate: Int?, maxHeartRate: Int?, activeCalories: Int?): String? {
+    val heartRate = when {
+        avgHeartRate != null && maxHeartRate != null -> stringResource(R.string.detail_heart_rate, avgHeartRate, maxHeartRate)
+        else -> (avgHeartRate ?: maxHeartRate)?.let { stringResource(R.string.detail_heart_rate_one, it) }
+    }
+    val calories = activeCalories?.let { stringResource(R.string.detail_calories, it) }
+    return listOfNotNull(heartRate, calories).takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }

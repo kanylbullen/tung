@@ -77,8 +77,12 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
 
             val workoutUpdatedAt = input.updatedAt ?: now
             Workouts.upsert(
-                // started_by is set once: a body without it keeps the stored value.
-                onUpdateExclude = if (input.startedBy == null) listOf(Workouts.startedBy) else null,
+                // started_by is set once: a body without it keeps the stored value. The Health Connect
+                // columns (V9) arrive by sync only; a PUT never carries them and must not null them.
+                onUpdateExclude = listOfNotNull(
+                    Workouts.startedBy.takeIf { input.startedBy == null },
+                    Workouts.avgHeartRate, Workouts.maxHeartRate, Workouts.activeCalories, Workouts.healthConnectId,
+                ),
                 where = { Workouts.updatedAt less workoutUpdatedAt },
             ) {
                 it[Workouts.userId] = userId
@@ -378,6 +382,10 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
                 updatedAt = it[Workouts.updatedAt],
                 exercises = exercisesByWorkout[it[Workouts.id]].orEmpty(),
                 startedBy = it[Workouts.startedBy],
+                avgHeartRate = it[Workouts.avgHeartRate],
+                maxHeartRate = it[Workouts.maxHeartRate],
+                activeCalories = it[Workouts.activeCalories],
+                healthConnectId = it[Workouts.healthConnectId],
             )
         }
     }
