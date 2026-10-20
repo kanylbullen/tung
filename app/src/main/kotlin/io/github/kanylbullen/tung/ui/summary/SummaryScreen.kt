@@ -53,7 +53,7 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 fun SummaryScreen(workoutId: String, onDone: () -> Unit) {
     val container = appContainer()
     val vm: SummaryViewModel = viewModel(
-        factory = factoryOf { SummaryViewModel(workoutId, container.workoutRepository, container.routineRepository) }
+        factory = factoryOf { SummaryViewModel(workoutId, container.workoutRepository, container.commands) }
     )
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current

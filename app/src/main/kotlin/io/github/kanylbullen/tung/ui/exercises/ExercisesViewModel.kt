@@ -6,11 +6,15 @@ import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.core.command.CommandIds
+import io.github.kanylbullen.tung.core.command.ExerciseRef
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.filterByDisplayName
 import io.github.kanylbullen.tung.core.normalizeForSearch
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.data.ExerciseRepository
-import io.github.kanylbullen.tung.data.WorkoutRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -55,8 +59,8 @@ data class ExercisesUiState(
  * names). The tab never shows it.
  */
 class ExercisesViewModel(
-    private val exercises: ExerciseRepository,
-    private val workouts: WorkoutRepository,
+    exercises: ExerciseRepository,
+    private val commands: CommandHandler,
     private val extendedCatalog: ExtendedCatalog,
     private val workoutId: String?,
     private val displayName: (Exercise) -> String,
@@ -112,7 +116,7 @@ class ExercisesViewModel(
     fun pick(exerciseId: String, onDone: () -> Unit) {
         val id = workoutId ?: return
         viewModelScope.launch {
-            workouts.addExercise(id, exerciseId)
+            commands.execute(Command.AddExercise(id, ExerciseRef.ById(exerciseId)))
             onDone()
         }
     }
@@ -121,8 +125,7 @@ class ExercisesViewModel(
     fun pickExtended(entry: ExtendedExercise, onDone: () -> Unit) {
         val id = workoutId ?: return
         viewModelScope.launch {
-            val exerciseId = exercises.getOrCreateExtended(entry)
-            workouts.addExercise(id, exerciseId)
+            commands.execute(Command.AddExercise(id, ExerciseRef.Extended(entry.id)))
             onDone()
         }
     }
@@ -130,9 +133,9 @@ class ExercisesViewModel(
     /** Creates a custom exercise; in picker mode it also goes straight into the workout. */
     fun create(name: String, muscleGroup: MuscleGroup, equipment: Equipment, onDone: (addedToWorkout: Boolean) -> Unit) {
         viewModelScope.launch {
-            val newId = exercises.createExercise(name, muscleGroup, equipment)
+            val newId = commands.execute(Command.CreateExercise(name, muscleGroup, equipment)).id(CommandIds.EXERCISE_ID)
             val target = workoutId
-            if (target != null) workouts.addExercise(target, newId)
+            if (target != null && newId != null) commands.execute(Command.AddExercise(target, ExerciseRef.ById(newId)))
             _query.value = ""
             onDone(target != null)
         }

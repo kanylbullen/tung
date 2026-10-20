@@ -126,7 +126,7 @@ fun ActiveWorkoutScreen(
                 ActiveWorkoutViewModel(
                     workoutId = workoutId,
                     repo = container.workoutRepository,
-                    exerciseRepo = container.exerciseRepository,
+                    commands = container.commands,
                     restTimer = container.restTimer,
                     savedState = createSavedStateHandle(),
                 )

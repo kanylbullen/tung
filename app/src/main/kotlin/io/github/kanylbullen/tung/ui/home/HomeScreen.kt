@@ -48,6 +48,7 @@ fun HomeScreen(
                 container.workoutRepository,
                 container.routineRepository,
                 container.programRepository,
+                container.commands,
                 container.clock,
             )
         }

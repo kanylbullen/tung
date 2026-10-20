@@ -44,7 +44,7 @@ fun RoutinesScreen(
     val container = appContainer()
     val vm: RoutinesViewModel = viewModel(
         factory = factoryOf {
-            RoutinesViewModel(container.routineRepository, container.workoutRepository, container.programRepository)
+            RoutinesViewModel(container.routineRepository, container.workoutRepository, container.programRepository, container.commands)
         }
     )
     val state by vm.state.collectAsStateWithLifecycle()

@@ -71,7 +71,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
     val container = appContainer()
     val vm: ProgramDetailViewModel = viewModel(
-        factory = factoryOf { ProgramDetailViewModel(programId, container.programRepository, container.routineRepository) }
+        factory = factoryOf { ProgramDetailViewModel(programId, container.programRepository, container.routineRepository, container.commands) }
     )
     val state by vm.state.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }

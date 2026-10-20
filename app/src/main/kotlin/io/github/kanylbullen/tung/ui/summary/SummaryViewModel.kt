@@ -2,7 +2,10 @@ package io.github.kanylbullen.tung.ui.summary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kanylbullen.tung.data.RoutineRepository
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.core.command.CommandIds
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.ui.common.WorkoutReport
 import io.github.kanylbullen.tung.ui.common.buildWorkoutReport
@@ -23,7 +26,7 @@ data class SummaryUiState(
 class SummaryViewModel(
     private val workoutId: String,
     repo: WorkoutRepository,
-    private val routines: RoutineRepository,
+    private val commands: CommandHandler,
 ) : ViewModel() {
     val state: StateFlow<SummaryUiState> =
         combine(repo.observeWorkout(workoutId), repo.observeExercises(workoutId)) { w, e -> w to e }
@@ -37,6 +40,6 @@ class SummaryViewModel(
 
     /** Saves this workout as a new routine; [onSaved] gets false if there was nothing to save. */
     fun saveAsRoutine(name: String, onSaved: (Boolean) -> Unit) {
-        viewModelScope.launch { onSaved(routines.saveFromWorkout(workoutId, name) != null) }
+        viewModelScope.launch { onSaved(commands.execute(Command.SaveRoutine(workoutId, name)).id(CommandIds.ROUTINE_ID) != null) }
     }
 }

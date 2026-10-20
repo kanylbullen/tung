@@ -79,24 +79,26 @@ class WorkoutRepository(
 
     /**
      * "Apply to all sets" for weight: writes [weightKg] to [setId] and to every
-     * set of the workout exercise that is not ticked. Ticked sets stay as logged;
+     * set of its workout exercise that is not ticked. Ticked sets stay as logged;
      * the set being edited gets the value even if it is ticked.
      */
-    suspend fun updateWeightForOpenSets(workoutExerciseId: String, setId: String, weightKg: Double) =
+    suspend fun updateWeightForOpenSets(setId: String, weightKg: Double) =
         db.withTransaction {
             val now = clock()
-            openSetIds(workoutExerciseId, setId).forEach { dao.updateWeight(it, weightKg, now) }
+            openSetIds(setId).forEach { dao.updateWeight(it, weightKg, now) }
         }
 
     /** "Apply to all sets" for reps; see [updateWeightForOpenSets]. */
-    suspend fun updateRepsForOpenSets(workoutExerciseId: String, setId: String, reps: Int) =
+    suspend fun updateRepsForOpenSets(setId: String, reps: Int) =
         db.withTransaction {
             val now = clock()
-            openSetIds(workoutExerciseId, setId).forEach { dao.updateReps(it, reps, now) }
+            openSetIds(setId).forEach { dao.updateReps(it, reps, now) }
         }
 
-    private suspend fun openSetIds(workoutExerciseId: String, setId: String): List<String> =
-        dao.getSets(workoutExerciseId).filter { it.id == setId || !it.completed }.map { it.id }
+    private suspend fun openSetIds(setId: String): List<String> {
+        val set = dao.getSet(setId) ?: return emptyList()
+        return dao.getSets(set.workoutExerciseId).filter { it.id == setId || !it.completed }.map { it.id }
+    }
 
     suspend fun setCompleted(setId: String, completed: Boolean) = dao.setCompleted(setId, completed, clock())
 
@@ -120,6 +122,15 @@ class WorkoutRepository(
     }
 
     suspend fun deleteSet(setId: String) = dao.deleteSet(setId)
+
+    suspend fun getSet(setId: String): SetEntry? = dao.getSet(setId)
+
+    suspend fun getWorkout(workoutId: String): Workout? = dao.getWorkout(workoutId)
+
+    suspend fun getExercisesWithSets(workoutId: String): List<WorkoutExerciseWithSets> = dao.getExercisesWithSets(workoutId)
+
+    suspend fun getSets(workoutExerciseId: String): List<SetEntry> = dao.getSets(workoutExerciseId)
+
 
     suspend fun previousSessionSets(exerciseId: String, excludeWorkoutId: String): List<LoggedSet> =
         dao.previousSessionSets(exerciseId, excludeWorkoutId).map { it.toLogged() }

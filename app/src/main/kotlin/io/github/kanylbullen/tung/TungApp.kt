@@ -8,7 +8,11 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import io.github.kanylbullen.tung.core.CoreCatalog
 import io.github.kanylbullen.tung.core.ExtendedCatalog
+import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.data.AppCommandHandler
+import io.github.kanylbullen.tung.data.AppExerciseResolver
 import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.ProgramRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
@@ -38,12 +42,38 @@ class AppContainer(
     val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database.exerciseDao()) }
     val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog.fromAssets(context) }
 
+    /** The core catalogue's names in every language, by key, from `core.json`; read the first time a name is resolved. */
+    private val catalogueNames: Map<String, List<String>> by lazy {
+        context.assets.open(CORE_CATALOG_ASSET).use { CoreCatalog.parse(it.reader().readText()) }
+            .associate { it.key to it.name.values.toList() }
+    }
+
+    /**
+     * Every change to training data goes through here: the screens' ViewModels
+     * call [CommandHandler.execute] and never a repository for a mutation.
+     * Reads stay on the repositories' Flows.
+     */
+    val commands: CommandHandler by lazy {
+        AppCommandHandler(
+            db = database,
+            workouts = workoutRepository,
+            exercises = exerciseRepository,
+            routines = routineRepository,
+            programs = programRepository,
+            resolver = AppExerciseResolver(database.exerciseDao(), { catalogueNames }, extendedCatalog),
+            extendedCatalog = extendedCatalog,
+        )
+    }
+
     /** Small settings and state outside Room: the rest timer and its default. One instance per file. */
     private val settings: DataStore<Preferences> by lazy {
         PreferenceDataStoreFactory.create { context.preferencesDataStoreFile("settings") }
     }
     val restTimer: RestTimerController by lazy { RestTimerController(context, settings) }
 }
+
+/** `catalog/core.json`, shipped as an asset like the extended catalogue. */
+private const val CORE_CATALOG_ASSET = "core.json"
 
 open class TungApp : Application() {
     val container: AppContainer by lazy { createContainer() }
