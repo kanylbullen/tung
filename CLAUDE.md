@@ -606,7 +606,12 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   device)`; `PushService` debounces 2 s per user, sends to every other active
   endpoint (one in flight per endpoint), revokes on 404/410 and logs and
   drops other failures. A request without the header counts as a client of
-  its own. `UnifiedPushSender` POSTs `{"type":"sync"}`; `FcmSender` uses the
+  its own. `UnifiedPushSender` POSTs `{"type":"sync"}`, behind
+  `EndpointGuard` at registration and at every send (https only, and no
+  loopback, link-local, private, CGNAT or multicast address, literal or
+  resolved, unless `TUNG_PUSH_ALLOW_PRIVATE=true`; `ServerConfig.pushResolver`
+  is the DNS seam tests replace), no redirects, at most 1 KiB of the answer
+  read, 5 s in all; `FcmSender` uses the
   HTTP v1 API with a hand-rolled service-account JWT; FCM is off without
   `TUNG_FCM_SERVICE_ACCOUNT_JSON`.
 

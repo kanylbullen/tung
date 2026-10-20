@@ -528,10 +528,13 @@ paths:
         (the device id sent as `X-Tung-Device` with its writes), debounced
         2 s per user. FCM: `endpoint` is the registration token (sent only
         when the server has a Firebase service account). UnifiedPush:
-        `endpoint` is the distributor's URL, which the server POSTs to; it
-        must be `https://` (`http://` only to localhost or a private IP
-        address). An endpoint that answers 404 or 410 (FCM `UNREGISTERED`)
-        is revoked.
+        `endpoint` is the distributor's URL, which the server POSTs to. It
+        must be `https://` and its host, literal or resolved, must not be a
+        loopback, link-local, private, carrier-grade NAT or multicast
+        address, else 400 `invalid_endpoint`; an instance with
+        `TUNG_PUSH_ALLOW_PRIVATE=true` (a distributor on its LAN) allows
+        both. An endpoint that answers 404 or 410 (FCM `UNREGISTERED`) is
+        revoked.
 
         One endpoint per `device_id`: registering again from the same device
         replaces its transport and endpoint, keeps its id and undoes a

@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.server.push.FCM_BASE_URL
 import io.github.kanylbullen.tung.server.push.FcmServiceAccount
+import io.github.kanylbullen.tung.server.push.HostResolver
 import java.io.File
 
 /** A configuration problem the operator has to fix; main prints the message and exits. */
@@ -29,6 +30,14 @@ data class ServerConfig(
     val fcmBaseUrl: String = FCM_BASE_URL,
     /** How long changes are collected before one push goes out per user. Not an environment variable: tests shorten it. */
     val pushDebounceMillis: Long = DEFAULT_PUSH_DEBOUNCE_MILLIS,
+    /**
+     * `TUNG_PUSH_ALLOW_PRIVATE`: UnifiedPush endpoints may be plain http and
+     * private, loopback or link-local addresses (a distributor on the LAN of a
+     * self-hosted instance). Off by default: the server never calls inward.
+     */
+    val pushAllowPrivate: Boolean = false,
+    /** How endpoint host names are resolved for that check. Not an environment variable: tests hand in a table. */
+    val pushResolver: HostResolver = HostResolver.SYSTEM,
 ) {
     companion object {
         const val DEFAULT_PORT = 8080
@@ -54,6 +63,11 @@ data class ServerConfig(
                 "true", "1", "yes" -> true
                 else -> throw ConfigException("TUNG_TRUST_PROXY must be true or false, got '$raw'.")
             }
+            val pushAllowPrivate = when (val raw = value("TUNG_PUSH_ALLOW_PRIVATE")?.lowercase()) {
+                null, "false", "0", "no" -> false
+                "true", "1", "yes" -> true
+                else -> throw ConfigException("TUNG_PUSH_ALLOW_PRIVATE must be true or false, got '$raw'.")
+            }
             return ServerConfig(
                 databaseUrl = url,
                 databaseUser = value("DATABASE_USER"),
@@ -62,6 +76,7 @@ data class ServerConfig(
                 publicUrl = publicUrl,
                 trustProxy = trustProxy,
                 fcmServiceAccount = value(FCM_ENV)?.let(::fcmServiceAccount),
+                pushAllowPrivate = pushAllowPrivate,
             )
         }
 

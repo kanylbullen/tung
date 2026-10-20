@@ -39,6 +39,7 @@ from [`catalog/core.json`](../catalog/core.json) on every start.
 | `PORT` | `8080` | |
 | `TUNG_PUBLIC_URL` | | The public base URL, e.g. `https://tung.example.org`, exactly as clients reach it (scheme, host, port, no trailing slash). It is the OAuth issuer and the base of every OAuth and MCP URL, and is named as the server in `/openapi.yaml`. Set it whenever the server is used beyond localhost; see "MCP". |
 | `TUNG_FCM_SERVICE_ACCOUNT_JSON` | | A Firebase service-account key for FCM push: the path to the JSON file (inside the container) or the JSON itself (starting with `{`). Empty: FCM push is off. An unreadable or invalid key stops the server at start. See "Push". |
+| `TUNG_PUSH_ALLOW_PRIVATE` | `false` | `true` lets UnifiedPush endpoints be plain `http://` and private, loopback or link-local addresses: for a self-hosted instance whose push distributor (ntfy) is on the same LAN. Leave `false` on any instance others can register on: the server would then POST to addresses inside your network. See "Push". |
 | `TUNG_TRUST_PROXY` | `false` | `true` behind a reverse proxy that sets `X-Forwarded-For`/`Forwarded`, so the rate limit and the log see the client. Leave `false` when clients reach the server directly, or they can spoof their address. |
 
 ## API
@@ -246,9 +247,20 @@ Two transports; the app picks one per device and registers it:
 
 - **UnifiedPush** needs nothing on the server. The device's distributor
   (ntfy is the usual one, and self-hostable) gives it a URL, the app
-  registers that URL, and the server POSTs to it. The server must be able to
-  reach the URL: `https://`, or `http://` only to localhost or a private IP
-  address (a distributor on your home network).
+  registers that URL, and the server POSTs to it. Because that URL comes
+  from a user, the server refuses to be pointed inward (SSRF): by default an
+  endpoint must be `https://`, and its host, an IP literal or every address
+  its name resolves to, must not be loopback, link-local (including the
+  cloud metadata address 169.254.169.254), private (10/8, 172.16/12,
+  192.168/16, fc00::/7), carrier-grade NAT (100.64/10), multicast or
+  broadcast. That is checked at registration (400 `invalid_endpoint`) and
+  again before every push, redirects are never followed, the body is always
+  `{"type":"sync"}`, at most 1 KiB of the answer is read, and a push gives up
+  after 5 s. A distributor on your own LAN (`http://192.168.1.20:2586/…`)
+  needs `TUNG_PUSH_ALLOW_PRIVATE=true`, which lifts both rules; set it only
+  on an instance where you trust everyone who can register. One gap remains:
+  a name that resolves to a public address when checked and to a private one
+  a moment later (DNS rebinding).
 - **FCM** needs a Firebase project. Create one, download a service-account
   key (Project settings, Service accounts, Generate new private key), and set
   `TUNG_FCM_SERVICE_ACCOUNT_JSON` to the path of that file inside the

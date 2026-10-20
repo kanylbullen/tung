@@ -47,6 +47,10 @@ class FakeHttp : AutoCloseable {
     @Volatile
     var respond: (Request) -> Pair<Int, String> = { 200 to "" }
 
+    /** Extra response headers per request (a redirect's Location). */
+    @Volatile
+    var responseHeaders: (Request) -> Map<String, String> = { emptyMap() }
+
     private val server = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0).apply {
         createContext("/") { exchange ->
             val request = Request(
@@ -57,6 +61,7 @@ class FakeHttp : AutoCloseable {
             )
             requests += request
             val (status, body) = respond(request)
+            responseHeaders(request).forEach { (name, value) -> exchange.responseHeaders.add(name, value) }
             val bytes = body.toByteArray()
             exchange.sendResponseHeaders(status, if (bytes.isEmpty()) -1 else bytes.size.toLong())
             if (bytes.isNotEmpty()) exchange.responseBody.use { it.write(bytes) }
@@ -79,6 +84,8 @@ class FakeHttp : AutoCloseable {
  */
 fun pushTest(
     debounceMillis: Long = 100,
+    /** The fake distributors listen on 127.0.0.1, which only an instance that allows private endpoints calls. */
+    allowPrivate: Boolean = true,
     fcm: FcmServiceAccount? = null,
     fcmBaseUrl: String = FCM_BASE_URL,
     block: suspend ApplicationTestBuilder.(PushService) -> Unit,
@@ -86,7 +93,14 @@ fun pushTest(
     environment { config = MapApplicationConfig() }
     var push: PushService? = null
     application {
-        module(TestDatabase.config().copy(pushDebounceMillis = debounceMillis, fcmServiceAccount = fcm, fcmBaseUrl = fcmBaseUrl))
+        module(
+            TestDatabase.config().copy(
+                pushDebounceMillis = debounceMillis,
+                fcmServiceAccount = fcm,
+                fcmBaseUrl = fcmBaseUrl,
+                pushAllowPrivate = allowPrivate,
+            ),
+        )
         push = attributes[PushServiceKey]
     }
     startApplication()

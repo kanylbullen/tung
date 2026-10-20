@@ -1,12 +1,15 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.server.push.EndpointGuard
 import io.github.kanylbullen.tung.server.push.FcmSender
 import io.github.kanylbullen.tung.server.push.FcmServiceAccount
 import io.github.kanylbullen.tung.server.push.PushOutcome
 import io.github.kanylbullen.tung.server.push.UnifiedPushSender
+import io.github.kanylbullen.tung.server.push.isInternal
 import io.github.kanylbullen.tung.server.push.pushHttpClient
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.net.InetAddress
 import java.net.ServerSocket
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,7 +33,7 @@ class PushSenderTest {
                 else -> 503 to ""
             }
         }
-        val sender = UnifiedPushSender(pushHttpClient())
+        val sender = UnifiedPushSender(pushHttpClient(), EndpointGuard(allowPrivate = true))
         runBlocking {
             assertEquals(PushOutcome.Sent, sender.send("${distributor.url}/ok"))
             assertEquals(PushOutcome.Gone, sender.send("${distributor.url}/gone"))
@@ -42,6 +45,49 @@ class PushSenderTest {
             assertIs<PushOutcome.Failed>(unreachable)
             assertTrue("secret-capability" !in unreachable.reason, unreachable.reason)
         }
+    }
+
+    @Test
+    fun aRedirectIsNotFollowedAndOnlyTheFixedBodyIsSent() = FakeHttp().use { distributor ->
+        distributor.respond = { request -> if (request.path == "/moved") 307 to "" else 200 to "" }
+        distributor.responseHeaders = { request -> if (request.path == "/moved") mapOf("Location" to "${distributor.url}/target") else emptyMap() }
+        val sender = UnifiedPushSender(pushHttpClient(), EndpointGuard(allowPrivate = true))
+        runBlocking { assertIs<PushOutcome.Failed>(sender.send("${distributor.url}/moved")) }
+        assertEquals(1, distributor.to("/moved").size)
+        assertEquals("""{"type":"sync"}""", distributor.to("/moved").single().body)
+        assertEquals(emptyList(), distributor.to("/target"), "the redirect was followed")
+    }
+
+    @Test
+    fun aLongAnswerIsNotReadToTheEnd() = FakeHttp().use { distributor ->
+        distributor.respond = { 200 to "x".repeat(4 * 1024 * 1024) }
+        val sender = UnifiedPushSender(pushHttpClient(), EndpointGuard(allowPrivate = true))
+        runBlocking { assertEquals(PushOutcome.Sent, sender.send("${distributor.url}/big")) }
+    }
+
+    @Test
+    fun theGuardIsCheckedAgainAtSendTime() = FakeHttp().use { distributor ->
+        // Registered while it was allowed (or resolved elsewhere); now the instance refuses private addresses.
+        val sender = UnifiedPushSender(pushHttpClient(), EndpointGuard(allowPrivate = false, resolver = TestResolver))
+        runBlocking {
+            val outcome = sender.send("${distributor.url}/up/secret")
+            assertIs<PushOutcome.Failed>(outcome)
+            assertTrue("secret" !in outcome.reason, outcome.reason)
+            assertIs<PushOutcome.Failed>(sender.send("https://internal.example.org/up/secret"))
+        }
+        assertEquals(emptyList(), distributor.requests, "nothing reached the internal address")
+    }
+
+    @Test
+    fun internalAddresses() {
+        val internal = listOf(
+            "0.0.0.0", "10.1.2.3", "127.0.0.1", "100.64.0.1", "100.127.255.254", "169.254.169.254", "172.16.0.1",
+            "172.31.255.255", "192.168.0.1", "224.0.0.251", "255.255.255.255", "::", "::1", "fe80::1", "fc00::1",
+            "fd12:3456::1", "fec0::1", "ff02::1", "::ffff:10.0.0.1", "::10.0.0.1",
+        )
+        val public = listOf("8.8.8.8", "100.63.255.255", "100.128.0.1", "172.15.0.1", "172.32.0.1", "192.169.0.1", "2606:4700::1111")
+        internal.forEach { assertTrue(isInternal(InetAddress.getByName(it)), "$it is internal") }
+        public.forEach { assertTrue(!isInternal(InetAddress.getByName(it)), "$it is public") }
     }
 
     @Test

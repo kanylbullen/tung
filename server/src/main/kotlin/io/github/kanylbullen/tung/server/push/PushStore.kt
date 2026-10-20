@@ -1,6 +1,5 @@
 package io.github.kanylbullen.tung.server.push
 
-import io.github.kanylbullen.tung.core.sync.isLocalHost
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.sync.PushEndpoint
 import io.github.kanylbullen.tung.core.sync.PushEndpointRequest
@@ -15,8 +14,13 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.net.URI
 import java.sql.Connection
+
+/** The error code of an endpoint the server refuses to call (SSRF guard, or not a usable URL). */
+const val INVALID_ENDPOINT = "invalid_endpoint"
 
 const val MAX_DEVICE_ID = 128
 const val MAX_ENDPOINT = 4096
@@ -32,7 +36,11 @@ data class Target(val id: String, val deviceId: String, val transport: String, v
  * deleted. Registering again from the same device replaces its transport
  * and endpoint in place, keeps the id and clears `revoked_at`.
  */
-class PushStore(private val db: Db, private val clock: () -> Long = System::currentTimeMillis) {
+class PushStore(
+    private val db: Db,
+    private val guard: EndpointGuard = EndpointGuard(),
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
 
     /** The registered endpoint and whether it is new (201) rather than replaced (200). */
     data class Registered(val endpoint: PushEndpoint, val created: Boolean)
@@ -42,6 +50,12 @@ class PushStore(private val db: Db, private val clock: () -> Long = System::curr
         val transport = request.transport.trim()
         val endpoint = request.endpoint.trim()
         validatePushEndpoint(deviceId, transport, endpoint)
+        if (transport == PushTransport.UNIFIED_PUSH) {
+            // May resolve the host: off the request thread.
+            withContext(Dispatchers.IO) { guard.refusal(endpoint) }?.let {
+                throw badRequest("The server will not send pushes to this endpoint: $it.", INVALID_ENDPOINT)
+            }
+        }
         val now = clock()
         return db.tx {
             val connection = connection.connection as Connection
@@ -143,10 +157,10 @@ class PushStore(private val db: Db, private val clock: () -> Long = System::curr
 /**
  * The shape of a registration: a device id of 1 to [MAX_DEVICE_ID]
  * characters, a known transport, and an endpoint of 1 to [MAX_ENDPOINT]
- * characters: an FCM token without spaces, or for UnifiedPush an `https://`
- * URL (`http://` only to localhost or a private IP literal, as core's
- * `isLocalHost` decides, for a distributor on the home network). A query is
- * allowed, since distributors put one in their URLs (ntfy's `?up=1`).
+ * characters: an FCM token without spaces, or for UnifiedPush an http(s)
+ * URL without user info or fragment; whether the server may call it is
+ * [EndpointGuard]'s, checked in [PushStore.register]. A query is allowed,
+ * since distributors put one in their URLs (ntfy's `?up=1`).
  */
 fun validatePushEndpoint(deviceId: String, transport: String, endpoint: String) {
     if (deviceId.isEmpty() || deviceId.length > MAX_DEVICE_ID) throw badRequest("device_id must be 1 to $MAX_DEVICE_ID characters.")
@@ -161,11 +175,9 @@ fun validatePushEndpoint(deviceId: String, transport: String, endpoint: String) 
             val scheme = uri?.scheme?.lowercase()
             val host = uri?.host
             if (uri == null || host == null || (scheme != "https" && scheme != "http") || uri.rawUserInfo != null || uri.rawFragment != null) {
-                throw badRequest("endpoint must be the distributor's https:// URL for a unifiedpush endpoint.")
+                throw badRequest("endpoint must be the distributor's https:// URL for a unifiedpush endpoint.", INVALID_ENDPOINT)
             }
-            if (scheme == "http" && !isLocalHost(host)) {
-                throw badRequest("endpoint must use https://; plain http:// is only allowed to localhost or a private IP address.")
-            }
+            // https only, and never to an internal address, unless the instance allows it: EndpointGuard, in register.
         }
     }
 }

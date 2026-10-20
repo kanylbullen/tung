@@ -8,6 +8,7 @@ import io.github.kanylbullen.tung.server.mcp.TungMcp
 import io.github.kanylbullen.tung.core.sync.PushTransport
 import io.github.kanylbullen.tung.server.oauth.OAuthStore
 import io.github.kanylbullen.tung.server.push.DisabledPushSender
+import io.github.kanylbullen.tung.server.push.EndpointGuard
 import io.github.kanylbullen.tung.server.push.FcmSender
 import io.github.kanylbullen.tung.server.push.PushService
 import io.github.kanylbullen.tung.server.push.PushStore
@@ -69,12 +70,14 @@ val PushServiceKey = AttributeKey<PushService>("PushService")
  */
 fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     // Push (issue #34): an empty "sync now" to the user's other devices after every change.
-    val pushStore = PushStore(db)
+    // Never to an internal address unless the instance allows it (TUNG_PUSH_ALLOW_PRIVATE): at registration and at every send.
+    val pushGuard = EndpointGuard(config.pushAllowPrivate, config.pushResolver)
+    val pushStore = PushStore(db, pushGuard)
     val pushHttp = pushHttpClient()
     val push = PushService(
         pushStore,
         listOf(
-            UnifiedPushSender(pushHttp),
+            UnifiedPushSender(pushHttp, pushGuard),
             config.fcmServiceAccount?.let { FcmSender(it, pushHttp, config.fcmBaseUrl) } ?: DisabledPushSender(PushTransport.FCM),
         ),
         config.pushDebounceMillis,

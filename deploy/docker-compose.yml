@@ -23,6 +23,8 @@ services:
       TUNG_TRUST_PROXY: ${TUNG_TRUST_PROXY:-false}
       # Optional FCM push key (path inside the container, or inline JSON); empty = FCM off. See server/README.md, "Push".
       TUNG_FCM_SERVICE_ACCOUNT_JSON: ${TUNG_FCM_SERVICE_ACCOUNT_JSON:-}
+      # UnifiedPush to http:// and private addresses (a distributor on the LAN); keep false on a shared instance.
+      TUNG_PUSH_ALLOW_PRIVATE: ${TUNG_PUSH_ALLOW_PRIVATE:-false}
       PORT: "8080"
     ports:
       - "${TUNG_BIND:-127.0.0.1}:${TUNG_PORT:-8080}:8080"

@@ -42,7 +42,7 @@ class PushEndpointsTest {
         assertEquals(FCM to "fcm-token-xyz", second.transport to second.endpoint)
         assertEquals(first.createdAt, second.createdAt)
 
-        client.registered(token, "watch-1", UNIFIED_PUSH, "http://192.168.1.20:8080/upWatch")
+        client.registered(token, "watch-1", UNIFIED_PUSH, "https://ntfy.sh/upWatch")
         assertEquals(listOf("phone-1", "watch-1"), client.endpoints(token).map { it.deviceId })
 
         assertEquals(HttpStatusCode.NoContent, client.deleteEndpoint(token, first.id).status)
@@ -93,11 +93,45 @@ class PushEndpointsTest {
             assertEquals(HttpStatusCode.BadRequest, response.status, "$device / $transport / $endpoint: ${response.bodyAsText()}")
         }
         assertEquals(emptyList(), client.endpoints(token))
+    }
 
-        // Plain http is fine on the home network and on this machine.
-        client.registered(token, "a", UNIFIED_PUSH, "http://localhost:2586/upA")
-        client.registered(token, "b", UNIFIED_PUSH, "http://10.1.2.3/upB")
-        client.registered(token, "c", UNIFIED_PUSH, "http://[fd00::1]:2586/upC")
+    /** SSRF: the endpoints the server must never be made to call, by default. */
+    private val inward = listOf(
+        "http://10.0.0.5/upA",
+        "https://127.0.0.1/upB",
+        "https://169.254.169.254/latest/meta-data",
+        "https://internal.example.org/upC", // a name with one private address among its addresses
+        "https://[fd00::1]:2586/upD",
+        "https://[::1]/upE",
+        "https://[fe80::1]/upF",
+        "https://100.64.0.1/upG",
+        "https://172.20.1.1/upH",
+        "https://192.168.1.20:8080/upI",
+        "https://[::ffff:192.168.1.1]/upJ",
+        "https://224.0.0.1/upK",
+        "http://localhost:2586/upL",
+    )
+
+    @Test
+    fun privateAndPlainHttpEndpointsAreRefusedByDefault() = tungTest {
+        val token = client.register()
+        for (endpoint in inward + "https://does-not-resolve.example.org/up") {
+            val response = client.registerEndpoint(token, "phone", UNIFIED_PUSH, endpoint)
+            assertEquals(HttpStatusCode.BadRequest, response.status, "$endpoint: ${response.bodyAsText()}")
+            assertEquals("invalid_endpoint", response.errorCode(), endpoint)
+            assertTrue(endpoint !in response.bodyAsText(), "the endpoint is not echoed: ${response.bodyAsText()}")
+        }
+        assertEquals(emptyList(), client.endpoints(token))
+        // A public host over https is fine, and FCM tokens are not URLs at all.
+        client.registered(token, "phone", UNIFIED_PUSH, "https://ntfy.sh/upOk?up=1")
+        client.registered(token, "tablet", FCM, "fcm-token")
+    }
+
+    @Test
+    fun anInstanceThatAllowsPrivateEndpointsTakesThem() = tungTest(pushAllowPrivate = true) {
+        val token = client.register()
+        inward.forEachIndexed { i, endpoint -> client.registered(token, "device-$i", UNIFIED_PUSH, endpoint) }
+        assertEquals(inward.size, client.endpoints(token).size)
     }
 
     @Test

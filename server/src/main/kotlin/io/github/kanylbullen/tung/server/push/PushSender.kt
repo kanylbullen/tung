@@ -2,7 +2,11 @@ package io.github.kanylbullen.tung.server.push
 
 import io.github.kanylbullen.tung.core.sync.PushMessage
 import io.github.kanylbullen.tung.core.sync.PushTransport
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.net.URI
@@ -14,6 +18,9 @@ import java.time.Duration
 
 /** How long one push may take, connecting and answering each. */
 val PUSH_TIMEOUT: Duration = Duration.ofSeconds(5)
+
+/** The most of a distributor's answer that is read; the status is all that matters. */
+const val MAX_RESPONSE_BYTES = 1024
 
 /** What became of one push. */
 sealed interface PushOutcome {
@@ -60,11 +67,18 @@ internal val PUSH_BODY: String = Json { encodeDefaults = true }.encodeToString(P
  * sent, 404 and 410 mean the distributor dropped the endpoint, anything
  * else (or no answer within [PUSH_TIMEOUT]) failed.
  */
-class UnifiedPushSender(private val http: HttpClient) : PushSender {
+class UnifiedPushSender(private val http: HttpClient, private val guard: EndpointGuard) : PushSender {
     override val transport = PushTransport.UNIFIED_PUSH
     override val enabled = true
 
+    /**
+     * Checks [endpoint] with the [guard] again (its name may resolve
+     * elsewhere since it was registered), then POSTs the fixed body, follows
+     * no redirect (the client's policy), reads at most [MAX_RESPONSE_BYTES]
+     * of the answer and gives up after [PUSH_TIMEOUT] in all.
+     */
     override suspend fun send(endpoint: String): PushOutcome {
+        withContext(Dispatchers.IO) { guard.refusal(endpoint) }?.let { return PushOutcome.Failed("refused: $it") }
         val request = try {
             HttpRequest.newBuilder(URI(endpoint))
                 .timeout(PUSH_TIMEOUT)
@@ -75,7 +89,12 @@ class UnifiedPushSender(private val http: HttpClient) : PushSender {
             return PushOutcome.Failed("the endpoint is not a usable URL")
         }
         val status = try {
-            http.sendAsync(request, HttpResponse.BodyHandlers.discarding()).await().statusCode()
+            withTimeoutOrNull(PUSH_TIMEOUT.toMillis()) {
+                val response = http.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream()).await()
+                // The answer is not needed; at most 1 KiB of it is read so the connection ends cleanly.
+                runInterruptible(Dispatchers.IO) { response.body().use { it.readNBytes(MAX_RESPONSE_BYTES) } }
+                response.statusCode()
+            } ?: return PushOutcome.Failed("no answer within ${PUSH_TIMEOUT.seconds} s")
         } catch (e: HttpTimeoutException) {
             return PushOutcome.Failed("no answer within ${PUSH_TIMEOUT.seconds} s")
         } catch (e: IOException) {
