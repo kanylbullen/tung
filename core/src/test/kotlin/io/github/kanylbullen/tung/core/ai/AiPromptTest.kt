@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.core.ai
 
 import io.github.kanylbullen.tung.core.ProgramMode
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -111,5 +112,18 @@ class AiPromptTest {
         val set = o.getValue("history").jsonArray[0].jsonObject.getValue("exercises").jsonArray[0].jsonObject.getValue("sets").jsonArray[0].jsonObject
         assertEquals(setOf("weight_kg", "reps"), set.keys)
         assertTrue("last_completed_day" in o.getValue("programs").jsonArray[0].jsonObject)
+    }
+
+    /** The transcript goes in as a JSON string, so quotes in it cannot break out of the sentence around it. */
+    @Test
+    fun freeTextCarriesTheTranscriptAndAsksForAWorkoutPlan() {
+        val c = context()
+        val heard = "bänkpress tre set \"åtta\" sedan curls"
+        val prompt = buildAiPrompt(AiRequest.FreeText(heard), c, language = "sv")
+        assertTrue(prompt.user.contains(Json.encodeToString(String.serializer(), heard)))
+        assertTrue(prompt.user.contains("did not understand"))
+        assertEquals(buildAiPrompt(AiRequest.NextWorkout, c, language = "sv").system, prompt.system)
+        assertEquals(c, Json.decodeFromString(AiContext.serializer(), prompt.user.substringAfter("My training data (JSON):\n")))
+        assertEquals("free_text", AiRequest.FreeText(heard).key)
     }
 }

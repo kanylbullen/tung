@@ -171,4 +171,14 @@ class AiAnswerTest {
         val none = proposal(AiRequest.Plateaus, """{"plateaus": []}""") as AiProposal.Plateaus
         assertTrue(none.plateaus.isEmpty())
     }
+
+    @Test
+    fun aFreeTextAnswerIsAWorkoutPlan() {
+        val p = proposal(
+            AiRequest.FreeText("deadlift then bench"),
+            """{"rationale": "As you said.", "exercises": [{"key": "deadlift", "sets": [{"weight_kg": 140, "reps": 3}]}, {"key": "bench_press", "sets": [{"reps": 8}]}]}""",
+        ) as AiProposal.NextWorkout
+        assertEquals(listOf(catalogExerciseId("deadlift"), catalogExerciseId("bench_press")), p.exercises.map { it.exercise.id })
+        assertEquals(listOf(PlannedSet(null, 8)), p.exercises[1].sets)
+    }
 }

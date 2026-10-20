@@ -1,12 +1,14 @@
 package io.github.kanylbullen.tung.core.ai
 
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
 /**
- * The three questions the in-app assistant asks, the same three the MCP
- * server ships as prompts ("Suggest a program", "Next workout", "Where have I
- * got stuck"). Each is answered by one model call, on a tap, never in the
- * background.
+ * The questions the in-app assistant asks: the three the MCP server ships as
+ * prompts ("Suggest a program", "Next workout", "Where have I got stuck"),
+ * and [FreeText], what the user said to the workout's microphone that the
+ * voice grammar did not understand. Each is answered by one model call, on a
+ * tap, never in the background.
  */
 sealed interface AiRequest {
     /** A stable name, for logs and tests. */
@@ -25,6 +27,16 @@ sealed interface AiRequest {
     /** Where the user has stopped progressing; shown, never applied. */
     data object Plateaus : AiRequest {
         override val key = "plateaus"
+    }
+
+    /**
+     * Words the user said in the active workout that the voice grammar
+     * (`core/voice/`) did not understand, such as "bench, then three sets of
+     * curls at twelve kilos". Answered as one workout plan, in the shape of
+     * [NextWorkout] and read by the same parser, for `apply_plan`.
+     */
+    data class FreeText(val text: String) : AiRequest {
+        override val key = "free_text"
     }
 }
 
@@ -82,7 +94,7 @@ private fun schemaFor(request: AiRequest): String = when (request) {
         One routine per training day, in the order they are trained. target_sets is 1 to 20; target_reps is 1 to 999, or
         null for none.
         """.trimIndent()
-    AiRequest.NextWorkout ->
+    AiRequest.NextWorkout, is AiRequest.FreeText ->
         """
         {
           "rationale": "One paragraph: why this workout today, and why these numbers.",
@@ -119,6 +131,12 @@ private fun taskFor(request: AiRequest): String = when (request) {
             "Without an active program, look at my history and routines and pick what is due. For each exercise suggest " +
             "weight and reps per set from my history: a small step up where I hit my target reps last time, the same where " +
             "I did not."
+    is AiRequest.FreeText ->
+        "During my workout I said this to the app, which did not understand it: " +
+            AiContextJson.encodeToString(String.serializer(), request.text) + ". It is speech recognised on my phone, so " +
+            "words may be misheard. Turn it into the workout it describes: the exercises I named, in the order I said them, " +
+            "with the sets, weights and reps I said. Where I left a number out, take it from my history. If it does not " +
+            "describe exercises at all, answer with an empty exercises list."
     AiRequest.Plateaus ->
         "Find where I have stopped progressing. For each exercise I train regularly, follow the best set per session " +
             "(the heaviest weight for the reps, or an estimated one-rep max) over time. Name the exercises with no progress " +
