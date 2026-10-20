@@ -50,6 +50,13 @@ class AssistantViewModel(private val ai: AiService, private val settings: AiSett
             s.copy(configured = config.configured, alwaysShowPayload = always)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AssistantUiState())
 
+    private val askedOnce = mutableSetOf<AiRequest>()
+
+    /** [ask], but only the first time for [request]: a request the screen makes on arrival is not repeated on rotation. */
+    fun askOnce(request: AiRequest, language: String) {
+        if (askedOnce.add(request)) ask(request, language)
+    }
+
     fun ask(request: AiRequest, language: String) {
         if (local.value.busy != null) return
         local.value = local.value.copy(busy = request, proposal = null, failure = null, saveFailed = false)

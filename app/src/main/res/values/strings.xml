@@ -406,6 +406,35 @@
     <string name="ai_error_url_https">Use https://. Plain http only works for localhost and addresses on your own network.</string>
     <string name="ai_error_model">Enter the model\'s name.</string>
 
+    <!-- Voice: the active workout's microphone (CLAUDE.md, "Voice"). -->
+    <string name="voice_mic">Voice input</string>
+    <string name="voice_mic_idle">Not listening</string>
+    <string name="voice_mic_listening">Listening</string>
+    <string name="voice_mic_tap">Say weight and reps</string>
+    <string name="voice_mic_stop">Stop listening</string>
+    <string name="voice_hands_free_start">Turn on hands-free mode</string>
+    <string name="voice_hands_free_chip">Listening</string>
+    <string name="voice_hands_free_description">Hands-free mode is on: listening between sets</string>
+    <string name="voice_hands_free_stop">Turn off hands-free mode</string>
+    <string name="voice_listening">Listening…</string>
+    <string name="voice_echo_values">%1$s × %2$s</string>
+    <string name="voice_echo_logged">%1$s × %2$s logged</string>
+    <string name="voice_echo_next">Next: %1$s, set %2$d</string>
+    <string name="voice_echo_set_added">Set added to %1$s</string>
+    <string name="voice_echo_rest">Rest started</string>
+    <string name="voice_echo_rest_off">The rest timer is off for %1$s</string>
+    <string name="voice_echo_no_set">There is no set to log</string>
+    <string name="voice_echo_no_previous">There is no earlier set to copy</string>
+    <string name="voice_echo_no_next">There is no other set to move to</string>
+    <string name="voice_echo_not_understood">Didn\'t catch that: \'%1$s\'</string>
+    <string name="voice_echo_heard_nothing">Didn\'t hear anything</string>
+    <string name="voice_echo_unavailable">Speech recognition is not available on this phone</string>
+    <string name="voice_echo_permission">Tung needs the microphone to hear you. Allow it in the system settings.</string>
+    <string name="voice_echo_network">Speech recognition needs a network on this phone</string>
+    <string name="voice_echo_failed">Speech recognition failed. Try again.</string>
+    <string name="voice_ask_assistant">Ask the assistant</string>
+    <string name="ai_voice_heard">You said: \'%1$s\'</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bench press</string>

@@ -10,6 +10,8 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungHost
+import io.github.kanylbullen.tung.voice.AndroidSpeechInput
+import io.github.kanylbullen.tung.voice.SpeechInput
 import io.github.kanylbullen.tung.wear.DataLayerStateWriter
 import io.github.kanylbullen.tung.wear.WearCommandHandler
 import io.github.kanylbullen.tung.wear.WearStatePublisher
@@ -79,4 +81,11 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
 
     /** Overridden only by the test application of the flow tests. */
     protected open fun createContainer(): TungContainer = TungContainer(this)
+
+    /**
+     * Speech to text for the active workout's microphone (CLAUDE.md, "Voice"):
+     * the phone's recogniser. Overridden by the flow tests' application with a
+     * scripted fake; not a container seam, because nothing in `data/` hears.
+     */
+    open fun createSpeechInput(): SpeechInput = AndroidSpeechInput(this)
 }
