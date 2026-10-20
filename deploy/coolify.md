@@ -129,5 +129,10 @@ Then in Claude Code: `claude mcp add --transport http tung https://tung.xuper.fu
 ## Rollback
 
 The devserver stack (`/home/xup/tung/deploy`, port 8080 on `192.168.12.114`)
-stays up until the Coolify instance has synced the phone once and MCP works;
-then it is stopped (`docker compose down`, volume kept for a week).
+was stopped on 2026-10-20 once the Coolify instance had synced the phone and
+MCP worked, and its database volume was deleted the same day at the owner's
+request. What it held (1 user, 2 test workouts) survives as
+`/home/xup/tung-backups/devserver-tung-20261020T1557.dump` (pg_dump custom
+format). Rolling back now means `docker compose up -d` here and `pg_restore`
+of that file, or simply pointing clients back at the Coolify instance's
+nightly backup.
