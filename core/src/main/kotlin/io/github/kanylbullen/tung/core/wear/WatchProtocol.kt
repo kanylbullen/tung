@@ -69,6 +69,8 @@ data class WatchWorkoutState(
     /** Epoch millis on the phone when this state was built. */
     val updatedAt: Long,
     val version: Int = WatchProtocol.VERSION,
+    /** Who started the workout in progress (`core.StartedBy`), or null. Additive, like [WatchExercise.targetSets]. */
+    val startedBy: String? = null,
 ) {
     val isActive: Boolean get() = workoutId != null
 
@@ -86,6 +88,11 @@ data class WatchExercise(
     val sets: List<WatchSet>,
     /** The sets of the latest finished session with this exercise, in order. */
     val lastTime: List<WatchLastSet> = emptyList(),
+    /**
+     * The routine's target sets for this exercise, or null outside a routine;
+     * the Ongoing Activity's "set n of m". Additive: an older peer leaves it out.
+     */
+    val targetSets: Int? = null,
 )
 
 @Serializable

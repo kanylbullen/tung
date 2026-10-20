@@ -75,6 +75,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    // The Ongoing Activity of a workout in progress (WatchOngoing.kt), on data's notification.
+    implementation("androidx.wear:wear-ongoing:1.0.0")
+    implementation("androidx.core:core-ktx:1.15.0")
     // TungWearApp is WorkManager's Configuration.Provider (sync in the background), and
     // syncs when the app comes to the foreground, as the phone does.
     implementation("androidx.work:work-runtime-ktx:2.10.0")

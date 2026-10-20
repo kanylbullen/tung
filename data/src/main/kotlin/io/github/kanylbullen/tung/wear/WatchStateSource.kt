@@ -15,6 +15,7 @@ import io.github.kanylbullen.tung.data.RoutineSummaryRow
 import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
+import io.github.kanylbullen.tung.ongoing.routineTargets
 import io.github.kanylbullen.tung.timer.RestTimerController
 import io.github.kanylbullen.tung.ui.common.displayName
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -90,7 +91,10 @@ class WatchStateSource(
                 combine(
                     workouts.observeExercises(workout.id),
                     restChanges.map { restTimer.stored(workout.id) },
-                ) { exercises, rest -> ActiveParts(workout, exercises.sortedBy { it.workoutExercise.position }, rest) }
+                    routineTargets(routines, workout.routineId),
+                ) { exercises, rest, targets ->
+                    ActiveParts(workout, exercises.sortedBy { it.workoutExercise.position }, rest, targets)
+                }
             }
         }
 
@@ -110,6 +114,7 @@ class WatchStateSource(
                 name = e.exercise.displayName(appContext),
                 sets = e.sortedSets.map { WatchSet(it.id, it.position, it.weightKg, it.reps, it.completed) },
                 lastTime = lastTime(workoutId, e.exercise.id).map { it.toWatch() },
+                targetSets = parts.targets[e.exercise.id],
             )
         }
         return WatchWorkoutState(
@@ -120,6 +125,7 @@ class WatchStateSource(
             rest = parts.rest?.takeIf { it.isRunningAt(now) }?.toWatch(),
             routines = watchRoutines,
             updatedAt = now,
+            startedBy = parts.workout.startedBy,
         )
     }
 
@@ -133,6 +139,7 @@ class WatchStateSource(
         val workout: Workout,
         val exercises: List<WorkoutExerciseWithSets>,
         val rest: RestTimer?,
+        val targets: Map<String, Int>,
     )
 
     companion object {
