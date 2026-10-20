@@ -60,6 +60,12 @@ data class WatchWorkoutState(
     /** A running rest, or null. */
     val rest: WatchRest? = null,
     val routines: List<WatchRoutine> = emptyList(),
+    /**
+     * The tung-server the phone is signed in to, or null. A standalone watch
+     * offers it as the server to link to, so the user never types a URL on
+     * the wrist. Not a secret: the token is never in the Data Layer.
+     */
+    val serverUrl: String? = null,
     /** Epoch millis on the phone when this state was built. */
     val updatedAt: Long,
     val version: Int = WatchProtocol.VERSION,

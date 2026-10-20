@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ex_* are looked up by name (getIdentifier) in ui/common/ExerciseNames.kt, so the resource shrinker must keep them. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/ex_*" />

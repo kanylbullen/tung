@@ -35,6 +35,12 @@ class FakeSyncServer : Dispatcher() {
     /** The token register and login hand out, and the one sync accepts. */
     var token = "tung_fake_session"
 
+    /** The code `POST /api/v1/link/start` hands out, and the one `/link/claim` accepts once. */
+    @Volatile var linkCode = "042917"
+
+    /** Whether [linkCode] has been claimed. */
+    @Volatile var linkClaimed = false
+
     /** Every sync request as received, before any auth check. */
     val syncRequests = CopyOnWriteArrayList<SyncRequest>()
     val authPaths = CopyOnWriteArrayList<String>()
@@ -91,6 +97,26 @@ class FakeSyncServer : Dispatcher() {
         "/api/v1/auth/logout" -> {
             authPaths += request.path
             MockResponse().setResponseCode(204)
+        }
+        "/api/v1/link/start" -> {
+            authPaths += request.path
+            if (request.getHeader("Authorization") != "Bearer $token") {
+                json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
+            } else {
+                json(201, """{"code":"$linkCode","expires_at":${System.currentTimeMillis() + 10 * 60_000L}}""")
+            }
+        }
+        "/api/v1/link/claim" -> {
+            authPaths += request.path
+            val sent = Regex("\"code\"\\s*:\\s*\"([^\"]*)\"").find(request.body.readUtf8())?.groupValues?.get(1)
+            synchronized(this) {
+                if (sent == linkCode && !linkClaimed) {
+                    linkClaimed = true
+                    json(200, """{"token":"$token","user":{"id":"u","email":"lifter@example.org","created_at":0}}""")
+                } else {
+                    json(404, """{"error":{"code":"invalid_code","message":"That code is not valid."}}""")
+                }
+            }
         }
         SYNC_PATH -> sync(request)
         else -> json(404, """{"error":{"code":"not_found","message":"No such route."}}""")

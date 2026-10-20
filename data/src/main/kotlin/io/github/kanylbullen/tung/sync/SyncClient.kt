@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.IOException
@@ -88,6 +89,43 @@ enum class AuthFailure {
     NETWORK,
 
     /** 5xx, or an answer that is not what the API returns. */
+    SERVER,
+}
+
+/** What `POST /api/v1/link/start` gave: a six-digit [code] to show, valid until [expiresAt] (epoch millis). */
+data class LinkCode(val code: String, val expiresAt: Long)
+
+/** What `POST /api/v1/link/claim` gave: a token for [email]'s account, or why not. */
+sealed interface LinkClaimResult {
+    data class Success(val token: String, val email: String) : LinkClaimResult
+    data class Failed(val failure: LinkFailure) : LinkClaimResult
+}
+
+sealed interface LinkStartResult {
+    data class Success(val code: LinkCode) : LinkStartResult
+    data class Failed(val failure: LinkFailure) : LinkStartResult
+}
+
+enum class LinkFailure {
+    /** 404 `invalid_code` on claim: unknown, expired or already used. */
+    INVALID_CODE,
+
+    /** No server or token on this device, so it cannot ask for a code. */
+    NOT_SIGNED_IN,
+
+    /** 401 on start: the token is no longer valid. */
+    SIGNED_OUT,
+
+    /** 429. */
+    RATE_LIMITED,
+
+    /** Another 404 or a 405: not tung-server, or one from before link codes. */
+    NOT_A_SERVER,
+
+    /** No connection, refused, timed out. */
+    NETWORK,
+
+    /** 5xx, another 4xx, or an answer that is not what the API returns. */
     SERVER,
 }
 
@@ -221,6 +259,70 @@ class SyncClient(
             }
         }
 
+    /**
+     * `POST /api/v1/link/start` with this device's token: a code another
+     * device (a watch) can trade for a token of the same account. Stores nothing.
+     */
+    suspend fun startLink(): LinkStartResult = withContext(Dispatchers.IO) {
+        val baseUrl = settings.serverUrl() ?: return@withContext LinkStartResult.Failed(LinkFailure.NOT_SIGNED_IN)
+        val token = tokens.read() ?: return@withContext LinkStartResult.Failed(LinkFailure.NOT_SIGNED_IN)
+        try {
+            val response = http.post(baseUrl + LINK_START_PATH) { bearerAuth(token) }
+            if (response.status.isSuccess()) {
+                val body = response.body<LinkCodeBody>()
+                LinkStartResult.Success(LinkCode(body.code, body.expiresAt))
+            } else {
+                LinkStartResult.Failed(
+                    when (response.status.value) {
+                        401 -> LinkFailure.SIGNED_OUT
+                        429 -> LinkFailure.RATE_LIMITED
+                        404, 405 -> LinkFailure.NOT_A_SERVER
+                        else -> LinkFailure.SERVER
+                    },
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            LinkStartResult.Failed(LinkFailure.NETWORK)
+        } catch (e: Exception) {
+            LinkStartResult.Failed(LinkFailure.SERVER)
+        }
+    }
+
+    /**
+     * `POST /api/v1/link/claim {code}` at [baseUrl], without a token: a valid
+     * code comes back as a token for its account. Stores nothing; [SyncAccount] does.
+     */
+    suspend fun claimLink(baseUrl: String, code: String): LinkClaimResult = withContext(Dispatchers.IO) {
+        try {
+            val response = http.post(baseUrl + LINK_CLAIM_PATH) {
+                contentType(ContentType.Application.Json)
+                setBody(LinkClaimBody(code))
+            }
+            if (response.status.isSuccess()) {
+                val session = response.body<Session>()
+                LinkClaimResult.Success(session.token, session.user?.email.orEmpty())
+            } else {
+                val errorCode = runCatching { response.body<ErrorBody>().error.code }.getOrNull()
+                LinkClaimResult.Failed(
+                    when {
+                        errorCode == "invalid_code" -> LinkFailure.INVALID_CODE
+                        response.status.value == 429 -> LinkFailure.RATE_LIMITED
+                        response.status.value == 404 || response.status.value == 405 -> LinkFailure.NOT_A_SERVER
+                        else -> LinkFailure.SERVER
+                    },
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            LinkClaimResult.Failed(LinkFailure.NETWORK)
+        } catch (e: Exception) {
+            LinkClaimResult.Failed(LinkFailure.SERVER)
+        }
+    }
+
     /** `POST /api/v1/auth/logout`: revokes the token on the server. Best effort; signing out locally never waits on it. */
     suspend fun logout(baseUrl: String, token: String) {
         withContext(Dispatchers.IO) {
@@ -253,6 +355,12 @@ class SyncClient(
     private data class Credentials(val email: String, val password: String)
 
     @Serializable
+    private data class LinkCodeBody(val code: String, @SerialName("expires_at") val expiresAt: Long)
+
+    @Serializable
+    private data class LinkClaimBody(val code: String)
+
+    @Serializable
     private data class Session(val token: String, val user: SessionUser? = null)
 
     @Serializable
@@ -268,5 +376,7 @@ class SyncClient(
         const val LOGIN_PATH = "/api/v1/auth/login"
         const val REGISTER_PATH = "/api/v1/auth/register"
         const val LOGOUT_PATH = "/api/v1/auth/logout"
+        const val LINK_START_PATH = "/api/v1/link/start"
+        const val LINK_CLAIM_PATH = "/api/v1/link/claim"
     }
 }

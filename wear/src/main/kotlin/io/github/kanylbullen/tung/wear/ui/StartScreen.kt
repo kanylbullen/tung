@@ -20,14 +20,20 @@ import androidx.wear.compose.material.TimeText
 import io.github.kanylbullen.tung.core.wear.WatchRoutine
 import io.github.kanylbullen.tung.wear.R
 
-/** No workout in progress: start an empty one or one of the routines. */
+/**
+ * No workout in progress: start an empty one or one of the routines, or open
+ * Settings (the account, and linking the watch to a server). [standalone]:
+ * the workout will live on the watch, not on the phone.
+ */
 @Composable
 fun StartScreen(
     routines: List<WatchRoutine>,
+    standalone: Boolean,
     neverHeardFromPhone: Boolean,
     phoneUnreachable: Boolean,
     onStartWorkout: () -> Unit,
     onStartRoutine: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
     Scaffold(
@@ -42,6 +48,16 @@ fun StartScreen(
                         color = TungColors.muted,
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.body2,
+                    )
+                }
+            }
+            if (standalone) {
+                item {
+                    Text(
+                        text = stringResource(R.string.mode_standalone),
+                        color = TungColors.muted,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.caption2,
                     )
                 }
             }
@@ -67,6 +83,14 @@ fun StartScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
+            }
+            item {
+                Chip(
+                    label = { Text(stringResource(R.string.settings_title)) },
+                    onClick = onSettings,
+                    colors = raisedChipColors(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

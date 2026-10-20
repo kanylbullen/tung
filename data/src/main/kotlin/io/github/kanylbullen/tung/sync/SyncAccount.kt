@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.sync
 
+import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,15 +56,41 @@ class SyncAccount(
      */
     suspend fun signIn(serverUrl: String, email: String, password: String, create: Boolean): AuthResult {
         val result = client.authenticate(serverUrl, email.trim(), password, create)
-        if (result is AuthResult.Success) {
-            withContext(Dispatchers.IO) {
-                tokens.write(result.token)
-                settings.signedIn(serverUrl, result.email)
-                store.markEverythingDirty()
-            }
-            signedIn.value = true
-            scheduler.schedulePeriodic()
-            scheduler.enqueueNow()
+        if (result is AuthResult.Success) storeSession(serverUrl, result.token, result.email)
+        return result
+    }
+
+    private suspend fun storeSession(serverUrl: String, token: String, email: String) {
+        withContext(Dispatchers.IO) {
+            tokens.write(token)
+            settings.signedIn(serverUrl, email)
+            store.markEverythingDirty()
+        }
+        signedIn.value = true
+        scheduler.schedulePeriodic()
+        scheduler.enqueueNow()
+    }
+
+    /**
+     * Signs in with a link code from another device (the watch's way in, no
+     * password): [code] is traded for a token at [serverUrl], an address
+     * `core.sync.checkServerUrl` accepted, and from there on it is the same
+     * as [signIn].
+     */
+    suspend fun signInWithCode(serverUrl: String, code: String): LinkClaimResult {
+        val result = client.claimLink(serverUrl, code)
+        if (result is LinkClaimResult.Success) storeSession(serverUrl, result.token, result.email)
+        return result
+    }
+
+    /** A code for another device to sign in with ([signInWithCode] there); this device must be signed in. */
+    suspend fun startLink(): LinkStartResult {
+        val result = client.startLink()
+        if (result is LinkStartResult.Failed && result.failure == LinkFailure.SIGNED_OUT) {
+            // Same as a 401 during sync: the token is dead, so this device is signed out.
+            withContext(Dispatchers.IO) { tokens.write(null) }
+            settings.signedOut(SyncFailure.SIGNED_OUT)
+            signedOutByServer()
         }
         return result
     }

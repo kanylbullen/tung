@@ -9,7 +9,7 @@
         <item quantity="one">%d exercise</item>
         <item quantity="other">%d exercises</item>
     </plurals>
-    <string name="open_phone_hint">Open Tung on the phone to see your workout here.</string>
+    <string name="open_phone_hint">Open Tung on the phone to see your workout here, or link the watch to a server in Settings.</string>
     <string name="phone_unreachable">Phone not reachable</string>
 
     <!-- Active workout -->
@@ -52,6 +52,45 @@
     <string name="input_minus_reps">Decrease by one rep</string>
     <string name="input_plus_reps">Increase by one rep</string>
     <string name="input_done">Done</string>
+
+    <!-- Standalone mode, settings and linking (WatchMode.kt, ui/SettingsScreen.kt, ui/LinkCodeScreen.kt) -->
+    <string name="mode_standalone">Logs on the watch</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_signed_in">Linked as %1$s</string>
+    <string name="settings_server">Server: %1$s</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_syncing">Syncing…</string>
+    <string name="sync_last">Last sync %1$s</string>
+    <string name="sync_never">Not synced yet</string>
+    <string name="sync_error_network">No connection. Tries again later.</string>
+    <string name="sync_error_server">The server had a problem. Tries again later.</string>
+    <string name="sync_error_signed_out">Signed out by the server. Link the watch again.</string>
+    <string name="sync_error_rejected">The server refused the sync.</string>
+    <string name="sign_out">Sign out</string>
+    <string name="standalone_explainer">Link the watch to your Tung server to log without the phone.</string>
+    <string name="link_to_server">Link to %1$s</string>
+    <string name="link_choose_server">Choose server</string>
+    <string name="link_a_server">Link to a server</string>
+    <string name="servers_title">Server</string>
+    <string name="server_from_phone">From your phone</string>
+    <string name="server_other">Other server</string>
+    <string name="server_use">Use this server</string>
+    <string name="server_typing_hint">Easier: sign in on the phone first, and the watch offers its server.</string>
+    <string name="server_error_url">That is not a server address.</string>
+    <string name="server_error_https">Use https, or a local address.</string>
+    <string name="link_title">Code from the phone</string>
+    <string name="link_title_server">Code for %1$s</string>
+    <string name="link_digits_description">Code, %1$d of 6 digits</string>
+    <string name="link_digit_blank">·</string>
+    <string name="link_delete">Delete digit</string>
+    <string name="link_delete_symbol">⌫</string>
+    <string name="link_submit">Link</string>
+    <string name="link_submit_symbol">✓</string>
+    <string name="link_error_code">Wrong or expired code. Get a new one on the phone.</string>
+    <string name="link_error_rate">Too many tries. Wait a minute.</string>
+    <string name="link_error_not_server">That server cannot link watches. Update tung-server.</string>
+    <string name="link_error_network">No connection to the server.</string>
+    <string name="link_error_server">The server had a problem. Try again.</string>
 
     <!-- Exercise names of the core catalogue, for a standalone watch's own log. -->
     <!-- catalog:begin -->

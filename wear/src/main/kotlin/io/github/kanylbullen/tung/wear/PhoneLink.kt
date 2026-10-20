@@ -20,10 +20,10 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * The watch's end of the Data Layer: reads the phone's state DataItem and
- * sends commands as messages.
+ * The watch's end of the Data Layer, its [WatchBackend] in companion mode:
+ * reads the phone's state DataItem and sends commands as messages.
  */
-class PhoneLink(context: Context) {
+class PhoneLink(context: Context) : WatchBackend {
     private val appContext = context.applicationContext
     private val dataClient by lazy { Wearable.getDataClient(appContext) }
     private val messageClient by lazy { Wearable.getMessageClient(appContext) }
@@ -33,7 +33,7 @@ class PhoneLink(context: Context) {
      * The phone's state: first whatever the Data Layer already holds (null if
      * the phone has never published), then every change while collected.
      */
-    fun states(): Flow<WatchWorkoutState?> = callbackFlow {
+    override fun states(): Flow<WatchWorkoutState?> = callbackFlow {
         val listener = DataClient.OnDataChangedListener { events ->
             val states = events.filter { it.type == DataEvent.TYPE_CHANGED && it.dataItem.uri.path == WatchProtocol.STATE_PATH }
                 .mapNotNull { decode(it.dataItem) }
@@ -56,7 +56,7 @@ class PhoneLink(context: Context) {
     }
 
     /** Sends [command] to every connected node (normally the one phone). True if any took it. */
-    suspend fun send(command: WatchCommand): Boolean {
+    override suspend fun send(command: WatchCommand): Boolean {
         val bytes = WatchProtocol.encodeCommand(command).toByteArray(Charsets.UTF_8)
         return try {
             val nodes = nodeClient.connectedNodes.awaitResult()

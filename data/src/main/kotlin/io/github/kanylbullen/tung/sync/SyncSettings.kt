@@ -20,6 +20,14 @@ class SyncSettings(private val store: DataStore<Preferences>) {
 
     val serverUrl: Flow<String?> = store.data.map { it[SERVER_URL] }
     val email: Flow<String?> = store.data.map { it[EMAIL] }
+    /**
+     * Servers this device has signed in to, most recent first, at most
+     * [RECENT_LIMIT]: what a watch offers so nobody types a URL twice.
+     */
+    val recentServers: Flow<List<String>> = store.data.map { prefs ->
+        prefs[RECENT]?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
+    }
+
     val state: Flow<SyncState> = store.data.map { SyncState(it[CURSOR] ?: 0L, it[LAST_SYNC_AT], it[LAST_ERROR]) }
 
     suspend fun serverUrl(): String? = serverUrl.first()
@@ -28,6 +36,8 @@ class SyncSettings(private val store: DataStore<Preferences>) {
 
     /** A new sign-in: the server and the account, and sync starts over from cursor 0. */
     suspend fun signedIn(serverUrl: String, email: String) = store.edit {
+        val recent = it[RECENT]?.split('\n')?.filter { url -> url.isNotBlank() && url != serverUrl }.orEmpty()
+        it[RECENT] = (listOf(serverUrl) + recent).take(RECENT_LIMIT).joinToString("\n")
         it[SERVER_URL] = serverUrl
         it[EMAIL] = email
         it[CURSOR] = 0L
@@ -51,6 +61,8 @@ class SyncSettings(private val store: DataStore<Preferences>) {
     suspend fun recordFailure(failure: SyncFailure) = store.edit { it[LAST_ERROR] = failure.key }
 
     private companion object {
+        const val RECENT_LIMIT = 5
+        val RECENT = stringPreferencesKey("sync_recent_servers")
         val SERVER_URL = stringPreferencesKey("sync_server_url")
         val EMAIL = stringPreferencesKey("sync_email")
         val CURSOR = longPreferencesKey("sync_cursor")

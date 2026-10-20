@@ -12,7 +12,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TungWearTheme {
-                WatchApp(viewModel<WatchViewModel>())
+                WatchApp(viewModel<WatchViewModel>(), viewModel<AccountViewModel>())
             }
         }
     }

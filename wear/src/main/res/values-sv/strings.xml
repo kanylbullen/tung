@@ -9,7 +9,7 @@
         <item quantity="one">%d övning</item>
         <item quantity="other">%d övningar</item>
     </plurals>
-    <string name="open_phone_hint">Öppna Tung i telefonen för att se passet här.</string>
+    <string name="open_phone_hint">Öppna Tung i telefonen för att se passet här, eller länka klockan till en server under Inställningar.</string>
     <string name="phone_unreachable">Telefonen nås inte</string>
 
     <!-- Active workout -->
@@ -52,6 +52,45 @@
     <string name="input_minus_reps">Minska med en rep</string>
     <string name="input_plus_reps">Öka med en rep</string>
     <string name="input_done">Klar</string>
+
+    <!-- Standalone mode, settings and linking (WatchMode.kt, ui/SettingsScreen.kt, ui/LinkCodeScreen.kt) -->
+    <string name="mode_standalone">Loggar på klockan</string>
+    <string name="settings_title">Inställningar</string>
+    <string name="settings_signed_in">Länkad som %1$s</string>
+    <string name="settings_server">Server: %1$s</string>
+    <string name="sync_now">Synka nu</string>
+    <string name="sync_syncing">Synkar…</string>
+    <string name="sync_last">Senast synkad %1$s</string>
+    <string name="sync_never">Inte synkad än</string>
+    <string name="sync_error_network">Ingen anslutning. Försöker igen senare.</string>
+    <string name="sync_error_server">Servern hade problem. Försöker igen senare.</string>
+    <string name="sync_error_signed_out">Utloggad av servern. Länka klockan igen.</string>
+    <string name="sync_error_rejected">Servern nekade synken.</string>
+    <string name="sign_out">Logga ut</string>
+    <string name="standalone_explainer">Länka klockan till din Tung-server för att logga utan telefonen.</string>
+    <string name="link_to_server">Länka till %1$s</string>
+    <string name="link_choose_server">Välj server</string>
+    <string name="link_a_server">Länka till en server</string>
+    <string name="servers_title">Server</string>
+    <string name="server_from_phone">Från telefonen</string>
+    <string name="server_other">Annan server</string>
+    <string name="server_use">Använd servern</string>
+    <string name="server_typing_hint">Enklare: logga in på telefonen först, så föreslår klockan dess server.</string>
+    <string name="server_error_url">Det är ingen serveradress.</string>
+    <string name="server_error_https">Använd https, eller en lokal adress.</string>
+    <string name="link_title">Kod från telefonen</string>
+    <string name="link_title_server">Kod för %1$s</string>
+    <string name="link_digits_description">Kod, %1$d av 6 siffror</string>
+    <string name="link_digit_blank">·</string>
+    <string name="link_delete">Radera siffra</string>
+    <string name="link_delete_symbol">⌫</string>
+    <string name="link_submit">Länka</string>
+    <string name="link_submit_symbol">✓</string>
+    <string name="link_error_code">Fel eller för gammal kod. Hämta en ny på telefonen.</string>
+    <string name="link_error_rate">För många försök. Vänta en minut.</string>
+    <string name="link_error_not_server">Den servern kan inte länka klockor. Uppdatera tung-server.</string>
+    <string name="link_error_network">Ingen anslutning till servern.</string>
+    <string name="link_error_server">Servern hade problem. Försök igen.</string>
 
     <!-- Exercise names of the core catalogue, for a standalone watch's own log. -->
     <!-- catalog:begin -->
