@@ -112,8 +112,9 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
   ongoing notification open), which
   is how `SyncWorker` finds the container and `RestAlerts` knows what to show,
   without the library knowing either app.
-- **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`, `SyncClientTest` and
-  `LinkClientTest` in `data/src/test` (Robolectric with the default
+- **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`,
+  `RoutineEditingCommandsTest` (the routine-editing commands through
+  `AppCommandHandler`), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
   application). `FakeSyncServer` and `MemoryTokenStore` are Kotlin test
   fixtures (`data/src/testFixtures`, `testImplementation(testFixtures(project(":data")))`
   in the apps), which needs `android.experimental.enableTestFixturesKotlinSupport`
@@ -153,6 +154,24 @@ second, and the Start buttons are disabled while it exists.
 deleting a routine (which cascades to its `RoutineExercise` rows) never
 touches history.
 
+**Editing a saved routine** (routine detail, `ui/routines/RoutineDetail*`),
+each a command:
+
+- **"+ Exercise"** opens the workout's picker with a routine target
+  (`PickerTarget.Routine`, route `routine/{id}/add`); a tap runs
+  `AddRoutineExercise`, appended last (`maxPosition + 1`) with 3 target sets
+  and no target reps unless the command says otherwise. That picker has no
+  "Suggested" section: its reasons are about today's workout.
+- **Target sets** −/+ in the row (`AdjustTargetSets`, 1–20). **Target reps**:
+  tapping the row's "8 reps per set" / "No target reps" opens the reps sheet
+  (`repsSpec`, minimum 1) for `SetTargetReps`; "Clear target reps" in the
+  row's menu sets null.
+- **Remove** in the row's menu (`RemoveRoutineExercise`): tombstone, delete,
+  and the positions after it close up, in one transaction.
+- Move up/down, rename and delete as before. An edit never touches a workout
+  already started from the routine, except that Log set there reads the
+  target sets live (`WorkoutDao.routineTargetSets`).
+
 ### Programs
 
 A `Program` is an ordered list of routines with a `mode`: `"fixed"` (each day
@@ -166,7 +185,10 @@ routine removes the days that used it, because a day without a routine has
 nothing to start. `ProgramRepository` closes the position gap when a day is
 removed, so rotating days keep counting 1, 2, 3. At most one program is
 `isActive`: `ProgramRepository.activate` deactivates every other program in
-the same transaction.
+the same transaction. The mode is chosen at creation and switched on the
+program's screen ("Mode", the same two radio rows as the new-program
+dialog, `ProgramModeChoice`) with `SetProgramMode`; days, their order and
+their weekdays are kept, so switching back restores the schedule.
 
 Home's "Today" shows only while a program is active and has days.
 `core.suggestedDay` picks the day: fixed mode, the first day by position whose
@@ -395,7 +417,8 @@ its signal to commands, never a new path into the database
   and a standalone watch run the same one) maps each command onto the
   existing repositories, which keep their transactions and rules. It runs
   `validate(command)` first (pure, in core: weight 0–999 kg, reps 0–999,
-  planned sets 1–50, a routine's target sets 1–20, rest 0–3600 s, weekday
+  planned sets 1–50, a routine's target sets 1–20 and target reps 1–999
+  (or none), rest 0–3600 s, weekday
   1–7, no blank names or ids, no empty plans) and returns `Rejected(reasons)`
   without touching anything when it fails. A new mutation = a new `Command`
   data class, a name in `CommandNames`, a branch in `validate` and in the
@@ -420,6 +443,14 @@ its signal to commands, never a new path into the database
   nothing ticked. A number the plan leaves out comes from the pre-fill rule
   (`plannedSetValues`). `SaveRoutinePlan(RoutinePlan)` does the same for a
   routine.
+- **Routine and program editing**: `RenameRoutine`, `DeleteRoutine`,
+  `MoveRoutineExercise`, `AdjustTargetSets`, `AddRoutineExercise` (resolved
+  like `AddExercise`: an unknown name is `NeedsAnswers`; returns
+  `routineExerciseId` and `exerciseId`), `RemoveRoutineExercise`,
+  `SetTargetReps` (null clears it; on the wire `target_reps` is required, so
+  clearing is explicit), and for programs `SetProgramMode` next to the day
+  commands. Wire names: `add_routine_exercise`, `remove_routine_exercise`,
+  `set_target_reps`, `set_program_mode`.
 - **`CommandNames` are stable.** Each command has a snake_case wire name
   (`log_set`, `apply_plan`, …): the future REST route and MCP tool name.
   Clients and saved prompts outside the repository will call them, so a name
@@ -781,7 +812,9 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   (`Mcp-Session-Id`) are in memory with a 24 h idle TTL; GET is 405. The
   initialize handler is ours, to negotiate the protocol version. Tools: one
   per `CommandNames` entry (descriptions in `McpDescriptions`, which a test
-  keeps complete) plus the read tools in `McpReads`; a read token gets a tool
+  keeps complete; the commands table and the name enum of
+  `/api/v1/commands/{name}` in `openapi.yaml` list the same names) plus the
+  read tools in `McpReads`; a read token gets a tool
   error from a command tool.
 - **Tests** (`./gradlew :server:test --no-daemon`) use a real Postgres from
   Testcontainers, so they need Docker; `./gradlew test` includes them.
