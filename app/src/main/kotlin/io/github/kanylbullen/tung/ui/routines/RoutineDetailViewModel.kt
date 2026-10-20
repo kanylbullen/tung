@@ -2,6 +2,8 @@ package io.github.kanylbullen.tung.ui.routines
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.data.RoutineRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +29,8 @@ data class RoutineDetailUiState(
 
 class RoutineDetailViewModel(
     private val routineId: String,
-    private val repo: RoutineRepository,
+    repo: RoutineRepository,
+    private val commands: CommandHandler,
 ) : ViewModel() {
 
     val state: StateFlow<RoutineDetailUiState> = combine(
@@ -54,21 +57,21 @@ class RoutineDetailViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RoutineDetailUiState())
 
     fun rename(name: String) {
-        viewModelScope.launch { repo.rename(routineId, name) }
+        viewModelScope.launch { commands.execute(Command.RenameRoutine(routineId, name)) }
     }
 
     fun delete(onDeleted: () -> Unit) {
         viewModelScope.launch {
-            repo.delete(routineId)
+            commands.execute(Command.DeleteRoutine(routineId))
             onDeleted()
         }
     }
 
     fun move(routineExerciseId: String, delta: Int) {
-        viewModelScope.launch { repo.move(routineExerciseId, delta) }
+        viewModelScope.launch { commands.execute(Command.MoveRoutineExercise(routineExerciseId, delta)) }
     }
 
     fun changeSets(routineExerciseId: String, delta: Int) {
-        viewModelScope.launch { repo.adjustTargetSets(routineExerciseId, delta) }
+        viewModelScope.launch { commands.execute(Command.AdjustTargetSets(routineExerciseId, delta)) }
     }
 }

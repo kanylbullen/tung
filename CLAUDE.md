@@ -31,7 +31,8 @@ Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26.
 
 **No Hilt/Koin.** `AppContainer` in `TungApp.kt` holds the database and the
 repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
-(`ui/common/Containers.kt`) and get repository and nav arguments in the constructor;
+(`ui/common/Containers.kt`) and get repositories (for reads), `container.commands`
+(for every change, see "Commands") and nav arguments in the constructor;
 the active workout's factory also passes `createSavedStateHandle()`, for the rest timer.
 
 ## Layers
@@ -54,7 +55,8 @@ the same on every client — volume, best set, records, pre-fill (`LoggedSet`,
 current set (`RestTimer.kt`, `LogSet.kt`), and the catalogue models
 with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
 `ExtendedCatalog`/`ExtendedExercise` for `extended.json`, including the
-extended-catalogue search). Core gets the catalogue as a `String` or an
+extended-catalogue search), and the command surface (`core/command/`, see
+"Commands"). Core gets the catalogue as a `String` or an
 `InputStream`; where the bytes come from (APK assets, a file) is the caller's
 business. Room entities stay in the app and map to core's shapes
 (`SetEntry.toLogged()`); core never depends on Room.
@@ -70,7 +72,7 @@ only dependencies are `kotlinx-serialization-json` and
 
 | Directory | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`). `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"). `SeedExercises.kt` is generated. |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver`, `RestAlerts` (vibration + notification). |
 | `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share; programs list + one program). |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `ExerciseNames` (displayed exercise names). |
@@ -163,7 +165,8 @@ above in view. Requests: the new set after + Set, the new current set after
 Log set (the set it added, or the next exercise's), the new current set when a
 tick moves it to another exercise, and the new exercise's header to the top
 after Add exercise.
-Tapping the button calls `WorkoutRepository.logSet`, one transaction:
+Tapping the button executes `Command.LogSet(workoutId, setId)` with the set
+the screen shows as current, which calls `WorkoutRepository.logSet`, one transaction:
 tick the set and, **only if it was the last set of its exercise**, add the next
 set pre-filled by the usual rule (a copy of the set just logged). A workout
 started from a routine is not padded past the routine's `targetSets` for that
@@ -263,6 +266,64 @@ A set counts (`core.isLogged`) when it is ticked **and** has reps > 0.
 "Finish workout" deletes everything else, then exercises without sets, and a
 workout without a single counted set is deleted entirely instead of being
 saved empty.
+
+## Commands
+
+Everything that changes training data is a **command** (`core/command/`,
+package `io.github.kanylbullen.tung.core.command`): `Command` is a sealed
+interface of plain data classes (`StartWorkout`, `AddExercise`, `SetWeight`,
+`LogSet`, `FinishWorkout`, `ApplyPlan`, `SaveRoutine`, `CreateProgram`, …),
+each carrying only what its caller knows. The app's buttons call them today;
+the REST API, the MCP tools, voice and camera will call the same ones, so a
+button and an MCP call cannot drift apart. A new input is a translator from
+its signal to commands, never a new path into the database
+(`docs/architecture.md`, "One command surface").
+
+- **The rule: a ViewModel never calls a repository for a mutation.** It calls
+  `container.commands.execute(command)` (a `CommandHandler`). Reads stay on
+  the repositories' Flows. Where a ViewModel needs an id back (the new set to
+  scroll to, the started workout to navigate to) it takes it from
+  `CommandResult.Done.ids`, under the keys in `CommandIds` (`id(key)` reads
+  one). View state stays in the ViewModel: the rest timer, the selection and
+  the touched exercise, scroll requests. That is why `LogSet` takes the set
+  the screen shows as current, and why the ViewModel selects a set itself
+  (`SelectCurrent` exists for other callers and only resolves).
+- **One handler.** `data/AppCommandHandler.kt` maps each command onto the
+  existing repositories, which keep their transactions and rules. It runs
+  `validate(command)` first (pure, in core: weight 0–999 kg, reps 0–999,
+  planned sets 1–50, a routine's target sets 1–20, rest 0–3600 s, weekday
+  1–7, no blank names or ids, no empty plans) and returns `Rejected(reasons)`
+  without touching anything when it fails. A new mutation = a new `Command`
+  data class, a name in `CommandNames`, a branch in `validate` and in the
+  handler (both `when`s are exhaustive, so the compiler points at them).
+- **Exercises by reference.** A command names an exercise with an
+  `ExerciseRef`: `ById` (the picker), `ByKey` (`bench_press`), `Extended`
+  (an extended-catalogue id; the handler creates the row the first time) or
+  `ByName` (words from a voice or a model). Resolution is core's
+  (`resolveRef`, `resolvePlan`, `matchExerciseName`) over an
+  `ExerciseResolver`, an interface core defines and the app implements in
+  `data/AppExerciseResolver.kt` over Room, `core.json`'s names in every
+  language (so "Bänkpress" resolves on an English phone) and the extended
+  catalogue. **Only an exact name resolves** (after
+  `normalizeExerciseName`: the picker's normalisation plus punctuation as
+  spaces), and only when one exercise has it; a row beats an extended entry
+  of the same name. Anything else is `NeedsAnswers` with up to five
+  suggestions, never a guess.
+- **`ApplyPlan(WorkoutPlan)`** applies a whole dictated or recognised workout:
+  every exercise is resolved first, and if any is unknown nothing is written.
+  Then one Room transaction (`WorkoutRepository.applyPlan`): the workout in
+  progress or a new one, the exercises appended in order, the planned sets,
+  nothing ticked. A number the plan leaves out comes from the pre-fill rule
+  (`plannedSetValues`). `SaveRoutinePlan(RoutinePlan)` does the same for a
+  routine.
+- **`CommandNames` are stable.** Each command has a snake_case wire name
+  (`log_set`, `apply_plan`, …): the future REST route and MCP tool name.
+  Clients and saved prompts outside the repository will call them, so a name
+  never changes once it exists, like a catalogue key; rename the Kotlin class
+  freely, but add a new command rather than rename a wire name. The
+  `CommandIds` keys are stable for the same reason. `CommandNamesTest` fails
+  when a command has no name (the commands are nested in `Command` so it can
+  list them with plain Java reflection).
 
 ## Building
 

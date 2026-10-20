@@ -61,7 +61,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 fun RoutineDetailScreen(routineId: String, onBack: () -> Unit) {
     val container = appContainer()
     val vm: RoutineDetailViewModel = viewModel(
-        factory = factoryOf { RoutineDetailViewModel(routineId, container.routineRepository) }
+        factory = factoryOf { RoutineDetailViewModel(routineId, container.routineRepository, container.commands) }
     )
     val state by vm.state.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }

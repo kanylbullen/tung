@@ -144,6 +144,10 @@ dictated or recognised at once ("deadlift, bench press and biceps curl, five
 sets of ten, 50, 60 and 20 kg"). A plan names exercises by catalogue key;
 anything that does not resolve is returned as a question, not guessed.
 
+Implemented in `core/command/` with the app's handler in
+`data/AppCommandHandler.kt` (#21); `CLAUDE.md`, "Commands", is the
+reference for the rules.
+
 ## Voice
 
 Dictation is the first native AI feature, because it is the one that works

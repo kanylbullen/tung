@@ -6,9 +6,12 @@ import androidx.lifecycle.viewModelScope
 import io.github.kanylbullen.tung.core.DEFAULT_REST_SECONDS
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.RestTimer
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.core.command.CommandIds
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
-import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.timer.RestTimerController
@@ -29,8 +32,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActiveWorkoutViewModel(
     private val workoutId: String,
+    /** Reads only: the workout and its sets as Flows, and last session's sets. */
     private val repo: WorkoutRepository,
-    private val exerciseRepo: ExerciseRepository,
+    /** Every change to the workout goes through a command. */
+    private val commands: CommandHandler,
     private val restTimer: RestTimerController,
     private val savedState: SavedStateHandle,
     private val clock: () -> Long = System::currentTimeMillis,
@@ -134,7 +139,10 @@ class ActiveWorkoutViewModel(
 
     fun addSet(workoutExerciseId: String) {
         touch(workoutExerciseId)
-        launch { repo.addSet(workoutExerciseId)?.let { requestScroll(ScrollRequest(setId = it, mode = ScrollMode.IntoView, seq = 0)) } }
+        launch {
+            commands.execute(Command.AddSet(workoutExerciseId)).id(CommandIds.SET_ID)
+                ?.let { requestScroll(ScrollRequest(setId = it, mode = ScrollMode.IntoView, seq = 0)) }
+        }
     }
 
     /** A tap on an exercise's header: its first un-ticked set becomes the current set. */
@@ -158,24 +166,24 @@ class ActiveWorkoutViewModel(
 
     fun setWeight(workoutExerciseId: String, setId: String, weightKg: Double) {
         touch(workoutExerciseId)
-        launch { repo.updateWeight(setId, weightKg) }
+        launch { commands.execute(Command.SetWeight(setId, weightKg)) }
     }
 
     fun setReps(workoutExerciseId: String, setId: String, reps: Int) {
         touch(workoutExerciseId)
-        launch { repo.updateReps(setId, reps) }
+        launch { commands.execute(Command.SetReps(setId, reps)) }
     }
 
     /** "Apply to all sets": [setId] and every un-ticked set of the exercise get the weight. */
     fun setWeightForOpenSets(workoutExerciseId: String, setId: String, weightKg: Double) {
         touch(workoutExerciseId)
-        launch { repo.updateWeightForOpenSets(workoutExerciseId, setId, weightKg) }
+        launch { commands.execute(Command.SetWeight(setId, weightKg, applyToOpenSets = true)) }
     }
 
     /** "Apply to all sets": [setId] and every un-ticked set of the exercise get the reps. */
     fun setRepsForOpenSets(workoutExerciseId: String, setId: String, reps: Int) {
         touch(workoutExerciseId)
-        launch { repo.updateRepsForOpenSets(workoutExerciseId, setId, reps) }
+        launch { commands.execute(Command.SetReps(setId, reps, applyToOpenSets = true)) }
     }
 
     /** The tick on the row. Ticking (not un-ticking) starts the rest timer too. */
@@ -185,18 +193,19 @@ class ActiveWorkoutViewModel(
         } else {
             touch(exercise.workoutExerciseId)
         }
-        launch { repo.setCompleted(setId, completed) }
+        launch { commands.execute(Command.TickSet(setId, completed)) }
         if (completed) startRest(exercise)
     }
 
     /**
      * "Log set": ticks [set], adds the next set when [set] was the exercise's
-     * last ([WorkoutRepository.logSet]) and starts the rest timer.
+     * last ([Command.LogSet], on the set this screen shows as current) and
+     * starts the rest timer.
      */
     fun logSet(exercise: ActiveExerciseUi, set: ActiveSetUi) {
         val before = state.value
         launch {
-            val added = repo.logSet(set.id)
+            val added = commands.execute(Command.LogSet(workoutId, set.id)).id(CommandIds.ADDED_SET_ID)
             advanceAfterLogging(before, set.id, added, scrollAlways = true)
         }
         startRest(exercise)
@@ -216,18 +225,19 @@ class ActiveWorkoutViewModel(
     }
 
     /** The rest timer of an exercise, in seconds; 0 turns it off. */
-    fun setRestSeconds(exerciseId: String, seconds: Int) = launch { exerciseRepo.setRestSeconds(exerciseId, seconds) }
+    fun setRestSeconds(exerciseId: String, seconds: Int) = launch { commands.execute(Command.SetRest(exerciseId, seconds)) }
 
-    fun deleteSet(setId: String) = launch { repo.deleteSet(setId) }
+    fun deleteSet(setId: String) = launch { commands.execute(Command.RemoveSet(setId)) }
 
-    fun removeExercise(workoutExerciseId: String) = launch { repo.removeExercise(workoutExerciseId) }
+    fun removeExercise(workoutExerciseId: String) = launch { commands.execute(Command.RemoveExercise(workoutExerciseId)) }
 
     fun finish() = launch {
         finishing.value = true
         setRest(null)
         // Directly as well: the screen leaves right after, and the collector goes with it.
         restTimer.set(workoutId, null)
-        val saved = repo.finishWorkout(workoutId)
+        // FinishWorkout returns the workout's id only when it was kept.
+        val saved = commands.execute(Command.FinishWorkout(workoutId)).id(CommandIds.WORKOUT_ID) != null
         eventChannel.send(ActiveWorkoutEvent.Finished(workoutId, saved))
     }
 

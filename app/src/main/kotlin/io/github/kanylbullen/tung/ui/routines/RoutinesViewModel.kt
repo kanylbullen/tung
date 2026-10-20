@@ -2,6 +2,10 @@ package io.github.kanylbullen.tung.ui.routines
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.core.command.CommandIds
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.data.ProgramRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.RoutineSummaryRow
@@ -22,9 +26,10 @@ data class RoutinesUiState(
 )
 
 class RoutinesViewModel(
-    private val routines: RoutineRepository,
+    routines: RoutineRepository,
     workouts: WorkoutRepository,
     programs: ProgramRepository,
+    private val commands: CommandHandler,
 ) : ViewModel() {
 
     val state: StateFlow<RoutinesUiState> = combine(
@@ -36,6 +41,6 @@ class RoutinesViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RoutinesUiState())
 
     fun start(routineId: String, onReady: (String) -> Unit) {
-        viewModelScope.launch { routines.start(routineId)?.let(onReady) }
+        viewModelScope.launch { commands.execute(Command.StartRoutine(routineId)).id(CommandIds.WORKOUT_ID)?.let(onReady) }
     }
 }

@@ -57,7 +57,7 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
     val container = appContainer()
     val vm: WorkoutDetailViewModel = viewModel(
         factory = factoryOf {
-            WorkoutDetailViewModel(workoutId, container.workoutRepository, container.routineRepository)
+            WorkoutDetailViewModel(workoutId, container.workoutRepository, container.commands)
         }
     )
     val state by vm.state.collectAsStateWithLifecycle()

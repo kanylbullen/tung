@@ -65,7 +65,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 @Composable
 fun ProgramsScreen(onBack: () -> Unit, onOpenProgram: (String) -> Unit) {
     val container = appContainer()
-    val vm: ProgramsViewModel = viewModel(factory = factoryOf { ProgramsViewModel(container.programRepository) })
+    val vm: ProgramsViewModel = viewModel(factory = factoryOf { ProgramsViewModel(container.programRepository, container.commands) })
     val state by vm.state.collectAsStateWithLifecycle()
     var creating by rememberSaveable { mutableStateOf(false) }
 

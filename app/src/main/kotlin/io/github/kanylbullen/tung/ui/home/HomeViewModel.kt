@@ -4,6 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kanylbullen.tung.core.PlanDay
 import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.core.command.CommandIds
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.maskToWeekdays
 import io.github.kanylbullen.tung.core.rotatingLabel
 import io.github.kanylbullen.tung.core.suggestedDay
@@ -68,9 +72,10 @@ private data class ActiveProgram(val program: Program, val days: List<ProgramDay
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
-    private val workouts: WorkoutRepository,
-    private val routines: RoutineRepository,
+    workouts: WorkoutRepository,
+    routines: RoutineRepository,
     programs: ProgramRepository,
+    private val commands: CommandHandler,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -114,18 +119,21 @@ class HomeViewModel(
 
     /** Starts a workout, or resumes the one in progress, and hands back its id. */
     fun startOrResume(onReady: (String) -> Unit) {
-        viewModelScope.launch { onReady(workouts.startOrResumeWorkout()) }
+        viewModelScope.launch { start(Command.StartWorkout())?.let(onReady) }
     }
 
     /** Starts a workout from a routine and hands back its id. */
     fun startRoutine(routineId: String, onReady: (String) -> Unit) {
-        viewModelScope.launch { routines.start(routineId)?.let(onReady) }
+        viewModelScope.launch { start(Command.StartRoutine(routineId))?.let(onReady) }
     }
 
     /** Starts a workout from a program day, which the workout records, and hands back its id. */
     fun startDay(day: ProgramDayUi, onReady: (String) -> Unit) {
-        viewModelScope.launch { routines.start(day.routineId, programDayId = day.id)?.let(onReady) }
+        viewModelScope.launch { start(Command.StartRoutine(day.routineId, programDayId = day.id))?.let(onReady) }
     }
+
+    /** The workout a start command started or resumed; null if it did not (a routine that is gone). */
+    private suspend fun start(command: Command): String? = commands.execute(command).id(CommandIds.WORKOUT_ID)
 
     private companion object {
         const val RECENT_COUNT = 5

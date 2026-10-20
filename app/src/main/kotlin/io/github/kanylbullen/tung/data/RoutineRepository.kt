@@ -63,6 +63,35 @@ class RoutineRepository(
     }
 
     /**
+     * Creates a routine called [name] from a plan rather than a workout: the
+     * [exercises] in order, each an exercise id with its target sets (kept
+     * within the allowed range) and target reps. The exercise rows must exist.
+     *
+     * @return the new routine's id.
+     */
+    suspend fun createFromPlan(name: String, exercises: List<Triple<String, Int, Int?>>): String = db.withTransaction {
+        val trimmed = name.trim()
+        require(trimmed.isNotEmpty()) { "a routine needs a name" }
+        val now = clock()
+        val routine = Routine(id = newId(), name = trimmed, updatedAt = now, lastUsedAt = null)
+        dao.insertRoutine(routine)
+        exercises.forEachIndexed { position, (exerciseId, targetSets, targetReps) ->
+            dao.insertRoutineExercise(
+                RoutineExercise(
+                    id = newId(),
+                    routineId = routine.id,
+                    exerciseId = exerciseId,
+                    position = position,
+                    targetSets = clampTargetSets(targetSets),
+                    targetReps = targetReps,
+                    updatedAt = now,
+                ),
+            )
+        }
+        routine.id
+    }
+
+    /**
      * Starts a workout from [routineId]: the routine's exercises in order, each
      * with its target number of sets, unticked and pre-filled from the previous
      * session position by position ([routineStartSets]). Marks the routine used.

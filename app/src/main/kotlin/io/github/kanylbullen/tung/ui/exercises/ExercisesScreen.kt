@@ -83,7 +83,7 @@ fun ExercisesScreen(
         factory = factoryOf {
             ExercisesViewModel(
                 container.exerciseRepository,
-                container.workoutRepository,
+                container.commands,
                 container.extendedCatalog,
                 workoutId,
             ) {

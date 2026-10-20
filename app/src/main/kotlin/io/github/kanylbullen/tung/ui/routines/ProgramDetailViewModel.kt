@@ -3,6 +3,8 @@ package io.github.kanylbullen.tung.ui.routines
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.maskToWeekdays
 import io.github.kanylbullen.tung.data.ProgramRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
@@ -33,8 +35,9 @@ data class ProgramDetailUiState(
 
 class ProgramDetailViewModel(
     private val programId: String,
-    private val programs: ProgramRepository,
+    programs: ProgramRepository,
     routines: RoutineRepository,
+    private val commands: CommandHandler,
 ) : ViewModel() {
 
     val state: StateFlow<ProgramDetailUiState> = combine(
@@ -57,37 +60,37 @@ class ProgramDetailViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProgramDetailUiState())
 
     fun rename(name: String) {
-        viewModelScope.launch { programs.rename(programId, name) }
+        viewModelScope.launch { commands.execute(Command.RenameProgram(programId, name)) }
     }
 
     fun activate() {
-        viewModelScope.launch { programs.activate(programId) }
+        viewModelScope.launch { commands.execute(Command.ActivateProgram(programId)) }
     }
 
     fun deactivate() {
-        viewModelScope.launch { programs.deactivate(programId) }
+        viewModelScope.launch { commands.execute(Command.DeactivateProgram(programId)) }
     }
 
     fun delete(onDeleted: () -> Unit) {
         viewModelScope.launch {
-            programs.delete(programId)
+            commands.execute(Command.DeleteProgram(programId))
             onDeleted()
         }
     }
 
     fun addDay(routineId: String) {
-        viewModelScope.launch { programs.addDay(programId, routineId) }
+        viewModelScope.launch { commands.execute(Command.AddProgramDay(programId, routineId)) }
     }
 
     fun removeDay(dayId: String) {
-        viewModelScope.launch { programs.removeDay(dayId) }
+        viewModelScope.launch { commands.execute(Command.RemoveProgramDay(dayId)) }
     }
 
     fun moveDay(dayId: String, delta: Int) {
-        viewModelScope.launch { programs.moveDay(dayId, delta) }
+        viewModelScope.launch { commands.execute(Command.MoveProgramDay(dayId, delta)) }
     }
 
     fun toggleWeekday(dayId: String, weekday: Int) {
-        viewModelScope.launch { programs.toggleWeekday(dayId, weekday) }
+        viewModelScope.launch { commands.execute(Command.ToggleProgramWeekday(dayId, weekday)) }
     }
 }

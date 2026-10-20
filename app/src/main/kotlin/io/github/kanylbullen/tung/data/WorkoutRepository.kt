@@ -3,6 +3,8 @@ package io.github.kanylbullen.tung.data
 import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.addsNextSet
+import io.github.kanylbullen.tung.core.command.PlannedSet
+import io.github.kanylbullen.tung.core.command.plannedSetValues
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.prefillSet
 import kotlinx.coroutines.flow.Flow
@@ -79,24 +81,26 @@ class WorkoutRepository(
 
     /**
      * "Apply to all sets" for weight: writes [weightKg] to [setId] and to every
-     * set of the workout exercise that is not ticked. Ticked sets stay as logged;
+     * set of its workout exercise that is not ticked. Ticked sets stay as logged;
      * the set being edited gets the value even if it is ticked.
      */
-    suspend fun updateWeightForOpenSets(workoutExerciseId: String, setId: String, weightKg: Double) =
+    suspend fun updateWeightForOpenSets(setId: String, weightKg: Double) =
         db.withTransaction {
             val now = clock()
-            openSetIds(workoutExerciseId, setId).forEach { dao.updateWeight(it, weightKg, now) }
+            openSetIds(setId).forEach { dao.updateWeight(it, weightKg, now) }
         }
 
     /** "Apply to all sets" for reps; see [updateWeightForOpenSets]. */
-    suspend fun updateRepsForOpenSets(workoutExerciseId: String, setId: String, reps: Int) =
+    suspend fun updateRepsForOpenSets(setId: String, reps: Int) =
         db.withTransaction {
             val now = clock()
-            openSetIds(workoutExerciseId, setId).forEach { dao.updateReps(it, reps, now) }
+            openSetIds(setId).forEach { dao.updateReps(it, reps, now) }
         }
 
-    private suspend fun openSetIds(workoutExerciseId: String, setId: String): List<String> =
-        dao.getSets(workoutExerciseId).filter { it.id == setId || !it.completed }.map { it.id }
+    private suspend fun openSetIds(setId: String): List<String> {
+        val set = dao.getSet(setId) ?: return emptyList()
+        return dao.getSets(set.workoutExerciseId).filter { it.id == setId || !it.completed }.map { it.id }
+    }
 
     suspend fun setCompleted(setId: String, completed: Boolean) = dao.setCompleted(setId, completed, clock())
 
@@ -120,6 +124,52 @@ class WorkoutRepository(
     }
 
     suspend fun deleteSet(setId: String) = dao.deleteSet(setId)
+
+    suspend fun getSet(setId: String): SetEntry? = dao.getSet(setId)
+
+    suspend fun getWorkout(workoutId: String): Workout? = dao.getWorkout(workoutId)
+
+    suspend fun getExercisesWithSets(workoutId: String): List<WorkoutExerciseWithSets> = dao.getExercisesWithSets(workoutId)
+
+    suspend fun getSets(workoutExerciseId: String): List<SetEntry> = dao.getSets(workoutExerciseId)
+
+    /**
+     * A whole planned workout in one transaction: the workout in progress, or
+     * a new one, gets each of [exercises] appended in order with its planned
+     * sets, none ticked. A number the plan leaves out comes from the pre-fill
+     * rule ([plannedSetValues]). The exercise rows must exist.
+     *
+     * @return the workout's id.
+     */
+    suspend fun applyPlan(exercises: List<Pair<String, List<PlannedSet>>>): String = db.withTransaction {
+        val workoutId = startOrResumeWorkout()
+        exercises.forEach { (exerciseId, planned) ->
+            val now = clock()
+            val workoutExercise = WorkoutExercise(
+                id = newId(),
+                workoutId = workoutId,
+                exerciseId = exerciseId,
+                position = dao.maxExercisePosition(workoutId) + 1,
+                updatedAt = now,
+            )
+            dao.insertWorkoutExercise(workoutExercise)
+            val previous = dao.previousSessionSets(exerciseId, workoutId).map { it.toLogged() }
+            plannedSetValues(planned, previous).forEachIndexed { position, values ->
+                dao.insertSet(
+                    SetEntry(
+                        id = newId(),
+                        workoutExerciseId = workoutExercise.id,
+                        position = position,
+                        weightKg = values.weightKg,
+                        reps = values.reps,
+                        completed = false,
+                        updatedAt = now,
+                    ),
+                )
+            }
+        }
+        workoutId
+    }
 
     suspend fun previousSessionSets(exerciseId: String, excludeWorkoutId: String): List<LoggedSet> =
         dao.previousSessionSets(exerciseId, excludeWorkoutId).map { it.toLogged() }
