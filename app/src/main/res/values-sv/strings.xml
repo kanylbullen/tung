@@ -176,6 +176,10 @@
     <string name="detail_delete_body">Passet och alla dess set raderas. Det går inte att ångra.</string>
     <string name="detail_delete_confirm">Radera</string>
     <string name="detail_set_line">%1$s kg × %2$d</string>
+    <!-- Health Connect's values on a finished workout, one muted line: "Heart rate 128 avg · 171 max · 342 kcal" -->
+    <string name="detail_heart_rate">Puls %1$d snitt · %2$d max</string>
+    <string name="detail_heart_rate_one">Puls %1$d</string>
+    <string name="detail_calories">%1$d kcal</string>
 
     <!-- Summary -->
     <string name="summary_title">Pass klart</string>
@@ -334,6 +338,22 @@
     <string name="sync_error_not_a_server">Ingen Tung-server svarar på den adressen. Kontrollera den och försök igen.</string>
     <string name="sync_error_unreachable">Kunde inte nå servern. Kontrollera adressen och din uppkoppling.</string>
     <string name="sync_error_server_auth">Servern fick ett fel. Försök igen om en stund.</string>
+
+    <!-- Settings: Health Connect (ui/settings/HealthConnectSection.kt) -->
+    <string name="health_title">Health Connect</string>
+    <string name="health_write">Spara pass i Health Connect</string>
+    <string name="health_write_hint">Varje avslutat pass sparas där som ett styrkepass, så att andra hälsoappar visar det.</string>
+    <string name="health_read">Läs puls och kalorier</string>
+    <string name="health_read_hint">Efter ett pass läses snittpuls, maxpuls och aktiva kalorier från Health Connect och sparas med passet.</string>
+    <string name="health_unavailable">Health Connect finns inte på den här telefonen.</string>
+    <string name="health_needs_update">Installera eller uppdatera Health Connect för att använda det här.</string>
+    <string name="health_denied">Health Connect gav inte behörigheten. Du kan ge den i Health Connects inställningar och försöka igen.</string>
+    <!-- What Tung does with Health Connect data (HealthPermissionsActivity), shown by Health Connect -->
+    <string name="health_rationale_title">Tung och Health Connect</string>
+    <string name="health_rationale_write">Om du slår på ”Spara pass i Health Connect” i Inställningar sparar Tung varje pass du avslutar där som ett styrkepass, med ett segment för varje set av en övning som Health Connect känner till. Inget annat skrivs.</string>
+    <string name="health_rationale_read">Om du slår på ”Läs puls och kalorier” läser Tung din puls och dina aktiva kalorier under tiden för varje pass du avslutar, och sparar snittpuls, maxpuls och kalorier med passet. Inget utanför dina pass läses.</string>
+    <string name="health_rationale_where">Värdena stannar i Tung på den här telefonen. Om du synkar med en Tung-server du valt i Inställningar sparas de där med passet, som resten av det. Tung har ingen analys och skickar dem ingen annanstans.</string>
+    <string name="health_rationale_off">Du kan slå av båda i Tungs inställningar och ta bort behörigheterna i Health Connect när du vill.</string>
 
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->

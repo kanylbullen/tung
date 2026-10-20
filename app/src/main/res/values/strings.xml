@@ -177,6 +177,10 @@
     <string name="detail_delete_body">The workout and all its sets will be deleted. This cannot be undone.</string>
     <string name="detail_delete_confirm">Delete</string>
     <string name="detail_set_line">%1$s kg × %2$d</string>
+    <!-- Health Connect's values on a finished workout, one muted line: "Heart rate 128 avg · 171 max · 342 kcal" -->
+    <string name="detail_heart_rate">Heart rate %1$d avg · %2$d max</string>
+    <string name="detail_heart_rate_one">Heart rate %1$d</string>
+    <string name="detail_calories">%1$d kcal</string>
 
     <!-- Summary -->
     <string name="summary_title">Workout done</string>
@@ -338,6 +342,22 @@
     <string name="sync_error_not_a_server">No Tung server answers at that address. Check it and try again.</string>
     <string name="sync_error_unreachable">Could not reach the server. Check the address and your connection.</string>
     <string name="sync_error_server_auth">The server had a problem. Try again in a while.</string>
+
+    <!-- Settings: Health Connect (ui/settings/HealthConnectSection.kt) -->
+    <string name="health_title">Health Connect</string>
+    <string name="health_write">Write workouts to Health Connect</string>
+    <string name="health_write_hint">Each finished workout is saved there as a strength-training session, so other health apps show it.</string>
+    <string name="health_read">Read heart rate and calories</string>
+    <string name="health_read_hint">After a workout, its average and maximum heart rate and active calories are read from Health Connect and saved with it.</string>
+    <string name="health_unavailable">Health Connect is not available on this phone.</string>
+    <string name="health_needs_update">Install or update Health Connect to use it here.</string>
+    <string name="health_denied">Health Connect did not give the permission. You can grant it in Health Connect\'s settings and try again.</string>
+    <!-- What Tung does with Health Connect data (HealthPermissionsActivity), shown by Health Connect -->
+    <string name="health_rationale_title">Tung and Health Connect</string>
+    <string name="health_rationale_write">If you turn on “Write workouts to Health Connect” in Settings, Tung saves each workout you finish there as a strength-training session, with a segment for each set of an exercise Health Connect knows. Nothing else is written.</string>
+    <string name="health_rationale_read">If you turn on “Read heart rate and calories”, Tung reads your heart rate and active calories for the time of each workout you finish, and saves the average and maximum heart rate and the calories with that workout. Nothing outside your workouts is read.</string>
+    <string name="health_rationale_where">These values stay in Tung on this phone. If you sync with a Tung server you chose in Settings, they are stored there with the workout, like the rest of it. Tung has no analytics and sends them nowhere else.</string>
+    <string name="health_rationale_off">You can turn either off in Tung\'s Settings and revoke the permissions in Health Connect at any time.</string>
 
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->

@@ -132,10 +132,12 @@ class HealthConnectRecorderTest {
     fun vitalsAreReadAggregatedAndStored() = runBlocking {
         optIn(HealthAccess.READ)
         val workoutId = finishedWorkout()
-        gateway.samples = HealthSamples(
-            heartRate = listOf(HeartRateSample(START + 60_000, 110), HeartRateSample(START + 120_000, 150)),
-            calories = listOf(CaloriesRecord(START, START + 45 * 60_000L, 250.4, "watch")),
-        )
+        gateway.samples = { _, _ ->
+            HealthSamples(
+                heartRate = listOf(HeartRateSample(START + 60_000, 110), HeartRateSample(START + 120_000, 150)),
+                calories = listOf(CaloriesRecord(START, START + 45 * 60_000L, 250.4, "watch")),
+            )
+        }
 
         recorder.onWorkoutFinished(workoutId)
 
@@ -152,7 +154,7 @@ class HealthConnectRecorderTest {
     fun nothingHappensWithoutTheOptIns() = runBlocking {
         gateway.granted += gateway.permissions(HealthAccess.WRITE) + gateway.permissions(HealthAccess.READ)
         val workoutId = finishedWorkout()
-        gateway.samples = HealthSamples(heartRate = listOf(HeartRateSample(START + 60_000, 110)))
+        gateway.samples = { _, _ -> HealthSamples(heartRate = listOf(HeartRateSample(START + 60_000, 110))) }
 
         recorder.onWorkoutFinished(workoutId)
 

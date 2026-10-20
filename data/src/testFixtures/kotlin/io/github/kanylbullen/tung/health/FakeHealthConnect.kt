@@ -12,8 +12,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * Health Connect for the data and flow tests, which run where there is none.
  * Grants what is asked for when [grantOnRequest] (the permission sheet answers
  * at once, through [ActivityResultContract.getSynchronousResult], so no
- * activity is started), records every session written in [written], and hands
- * [samples] to every read.
+ * activity is started), records every session written in [written], and
+ * answers every read with [samples] for the interval asked for.
  */
 class FakeHealthConnect(
     @Volatile var availability: HealthAvailability = HealthAvailability.AVAILABLE,
@@ -29,13 +29,19 @@ class FakeHealthConnect(
     /** How many times [readVitals] ran. */
     val reads = AtomicInteger()
 
-    /** What every read returns. */
-    @Volatile var samples: HealthSamples = HealthSamples()
+    /** What a read of [startMillis]..[endMillis] returns; nothing by default. */
+    @Volatile var samples: (startMillis: Long, endMillis: Long) -> HealthSamples = { _, _ -> HealthSamples() }
+
+    /** How many times [availability] was asked: the recorder asks first, so a test can wait for it to have run. */
+    val availabilityChecks = AtomicInteger()
 
     /** How many times the permission sheet was shown. */
     val permissionRequests = AtomicInteger()
 
-    override fun availability(): HealthAvailability = availability
+    override fun availability(): HealthAvailability {
+        availabilityChecks.incrementAndGet()
+        return availability
+    }
 
     override fun permissions(access: HealthAccess): Set<String> = when (access) {
         HealthAccess.WRITE -> setOf(WRITE_EXERCISE)
@@ -65,7 +71,7 @@ class FakeHealthConnect(
 
     override suspend fun readVitals(startMillis: Long, endMillis: Long): HealthSamples {
         reads.incrementAndGet()
-        return samples
+        return samples(startMillis, endMillis)
     }
 
     companion object {

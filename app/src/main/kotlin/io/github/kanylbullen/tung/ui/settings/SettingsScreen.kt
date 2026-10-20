@@ -110,6 +110,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     onCreate = { vm.signIn(create = true) },
                 )
             }
+            HealthConnectSection()
         }
     }
 }
