@@ -690,8 +690,9 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   a 404. Catalogue exercises have `user_id NULL`; a user's row with a
   catalogue id is their copy (made when they set its rest time) and shadows
   the catalogue for them. Every user table has `updated_at` and `deleted_at`.
-  Routines and programs (V2) mirror the app's entities; sync and the command
-  handler write them, the export and the MCP read tools read them.
+  Routines and programs (V2) mirror the app's entities; sync, the command
+  handler and their REST routes write them, the export, the REST routes and
+  the MCP read tools read them.
 - **The row rule:** a write replaces a stored row only when its `updated_at`
   is strictly newer; equal or older is ignored per row (`upsert … where
   updated_at < incoming`). `PUT /api/v1/workouts/{id}` applies it to the
@@ -700,6 +701,30 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   workout `updated_at`. Deletes are tombstones, never `DELETE`. Server-made
   changes (finish, delete, PATCH) stamp `max(now, stored + 1)`. Sync uses
   exactly this rule; do not add a write path that bypasses it.
+- **Routines and programs over REST** (`routes/RoutineRoutes.kt`,
+  `routes/ProgramRoutes.kt`, writes in `RoutineStore.kt`, issue #42):
+  `GET/POST /api/v1/routines`, `GET/PUT/DELETE /api/v1/routines/{id}` and the
+  same for `/programs`, nested like the workouts API (exercises, days).
+  `POST` and `PUT` are the row rule exactly as `PUT /workouts/{id}`: per
+  routine and per routine exercise (program and day), missing children
+  tombstoned only when older than the body's parent `updated_at`; `POST`
+  takes the body's id or makes one and is 409 `already_exists` for an id the
+  user has or had; a missing `last_used_at` keeps the stored one; exercise
+  ids must be visible (`unknown_exercise`), day routines live
+  (`unknown_routine`). `DELETE` is core's `delete_routine`/`delete_program`
+  through the command handler, so the cascades (routine exercises, the
+  program days that use a routine) are the app's and there is no third
+  write path. Writes call `ChangeNotifier.changed` (the handler does it for
+  deletes).
+- **At most one active program, across devices.** Two devices can each
+  activate a program offline and push `is_active = true`.
+  `resolveActivePrograms` (`RoutineStore.kt`) runs inside the sync
+  transaction after a push that carried programs, and after `POST`/`PUT
+  /programs`: of the user's live active programs the newest `updated_at`
+  stays active (a tie goes to a row just written, then the lowest id) and the
+  others get `is_active = false` with `GREATEST(now, updated_at + 1)`, so the
+  trigger gives them a new `seq` and the losing device gets the correction
+  on its next pull (or in the same answer when its own push lost).
 - **Sync** (`POST /api/v1/sync`, `SyncStore.kt`, validation in
   `SyncValidation.kt`, protocol types in `core/.../sync/SyncProtocol.kt`,
   shared with the app): one transaction per request. Every pushed row goes
@@ -772,6 +797,18 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   more days. Revoking that row ends the grant (refresh checks it). The issuer
   is `TUNG_PUBLIC_URL`, else the request's own host (`publicBaseUrl`). OAuth
   errors are `OAuthException` (RFC 6749 shape), handled in `Errors.kt`.
+  **Unused clients expire** (V8, issue #42): `oauth_clients.last_used_at` is
+  stamped (`OAuthStore.markUsed`) on every `/oauth/authorize` call naming the
+  client and every `/oauth/token` call it authenticates; a coroutine on the
+  application scope (`Application.module`, cancelled at `ApplicationStopping`)
+  runs `sweepUnusedClients` at start and every 24 h. It deletes clients whose
+  `COALESCE(last_used_at, created_at)` is over 90 days old and that have no
+  live grant: no unrevoked `api_tokens` row that is unexpired or has a
+  working refresh token, found through `oauth_refresh_tokens` (which names
+  both the client and the token row; `mcp:<client name>` is not unique).
+  Codes and refresh tokens cascade; the expired API tokens stay in the
+  user's list. `sweepUnusedClients(now)` takes the time, so a test ages a
+  client by passing a later `now` (`OAuthClientExpiryTest`).
 - **MCP** (`mcp/`, `routes/McpRoutes.kt`): the official Kotlin SDK 0.5.0 for
   the protocol types and `Server` (0.6+ needs Ktor 3.2 and Kotlin 2.2; its
   Ktor engines are excluded), with streamable HTTP implemented here: one SDK
