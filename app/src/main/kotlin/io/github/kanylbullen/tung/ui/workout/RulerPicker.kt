@@ -9,6 +9,8 @@ import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -26,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
@@ -48,18 +51,21 @@ private val RulerHeight = 72.dp
 /**
  * A horizontal ruler under the big number. Drag it and the value under the
  * accent line follows; release and it snaps to the nearest tick; fling it to
- * travel far. One haptic tick per step.
+ * travel far. One haptic tick per step. Tap it (press and lift without
+ * moving) and it jumps to [RulerScale.jumpTarget] for the value under the
+ * finger: the nearest 10 kg, or 5 reps.
  *
  * Built on [draggable] (horizontal only, so vertical swipes still reach the
  * sheet) and a plain float position animated with [animate], rather than a
- * `LazyRow`: the position maps 1:1 to the value, so a typed 82.3 sits exactly
- * between two ticks instead of being forced onto the grid, and one Canvas
- * draws only the ticks in view.
+ * `LazyRow`: the position is in ticks and every tick has the same width, so
+ * a typed 82.3 sits exactly between two ticks instead of being forced onto the
+ * grid, and one Canvas draws only the ticks in view. The scale is piecewise
+ * (1 kg ticks below 30 kg, 2.5 kg above), which only [RulerScale] needs to know.
  *
  * [value] is the sheet's current number (null while the text is not one).
  * When it changes from outside — typing, −/+ — the ruler moves to it and says
- * nothing back: the ruler never rewrites what was typed. Only a drag calls
- * [onValueChange], always with a value on the grid.
+ * nothing back: the ruler never rewrites what was typed. Only a drag or a tap
+ * calls [onValueChange], always with a value on the grid.
  */
 @Composable
 fun RulerPicker(
@@ -80,7 +86,7 @@ fun RulerPicker(
 
     // Position in ticks from zero; between ticks while moving or for an off-grid typed value.
     var position by remember(scale) { mutableFloatStateOf(scale.positionOf(value ?: 0.0).toFloat()) }
-    val holder = remember(scale) { RulerMotion(scale.snap(position.toDouble())) }
+    val holder = remember(scale) { RulerMotion(scale.snapTick(position.toDouble())) }
 
     fun emit(newValue: Double) {
         holder.lastEmitted = newValue
@@ -89,7 +95,7 @@ fun RulerPicker(
 
     /** After a move the person caused: tick and report when the nearest step changes. */
     fun moved() {
-        val tick = scale.snap(position.toDouble())
+        val tick = scale.snapTick(position.toDouble())
         if (tick != holder.tick) {
             holder.tick = tick
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -99,7 +105,7 @@ fun RulerPicker(
 
     fun settle(velocityPx: Float) {
         val velocity = -velocityPx / spacingPx // ticks per second
-        val target = scale.snap(Decay.calculateTargetValue(position, velocity).toDouble())
+        val target = scale.snapTick(Decay.calculateTargetValue(position, velocity).toDouble())
         val generation = ++holder.generation
         holder.job = scope.launch {
             try {
@@ -121,6 +127,28 @@ fun RulerPicker(
         }
     }
 
+    /** A tap at [x] pixels from the ruler's left edge, [width] wide: jump to the nearest ten (or five). */
+    fun jump(x: Float, width: Float) {
+        val now = scale.valueAt(position.toDouble())
+        val tapped = scale.valueAt((position + (x - width / 2f) / spacingPx).toDouble())
+        val target = scale.jumpTarget(tapped, toward = now)
+        val targetPosition = scale.positionOf(target).toFloat()
+        holder.generation++
+        holder.job?.cancel()
+        holder.driving = false
+        holder.tick = scale.snapTick(targetPosition.toDouble())
+        if (currentValue != target) {
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            emit(target)
+        }
+        if (abs(targetPosition - position) < 1e-4f) return
+        holder.job = scope.launch {
+            animate(position, targetPosition, animationSpec = tween(220, easing = FastOutSlowInEasing)) { p, _ ->
+                position = p
+            }
+        }
+    }
+
     // Typing or −/+ moved the number: follow it, unless it is our own echo.
     LaunchedEffect(scale, value) {
         val typed = value ?: return@LaunchedEffect
@@ -130,7 +158,7 @@ fun RulerPicker(
         }
         holder.lastEmitted = null
         val target = scale.positionOf(typed).toFloat()
-        holder.tick = scale.snap(target.toDouble())
+        holder.tick = scale.snapTick(target.toDouble())
         if (abs(target - position) < 1e-4f) return@LaunchedEffect
         holder.job?.cancel()
         holder.job = scope.launch {
@@ -151,6 +179,29 @@ fun RulerPicker(
         modifier = modifier
             .fillMaxWidth()
             .height(RulerHeight)
+            .pointerInput(scale) {
+                // A tap is a press that lifts without travelling past the touch slop in any
+                // direction. Nothing is consumed, so the drag below and the sheet's own
+                // vertical drag see every event; a drag that starts never ends in a tap.
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val slop = viewConfiguration.touchSlop
+                    var isTap = true
+                    while (true) {
+                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                        if (change == null) {
+                            isTap = false
+                            break
+                        }
+                        if ((change.position - down.position).getDistance() > slop) isTap = false
+                        if (!change.pressed) {
+                            if (change.isConsumed) isTap = false
+                            break
+                        }
+                    }
+                    if (isTap) jump(down.position.x, size.width.toFloat())
+                }
+            }
             .draggable(
                 state = rememberDraggableState { delta ->
                     position = (position - delta / spacingPx).coerceIn(0f, lastTick)

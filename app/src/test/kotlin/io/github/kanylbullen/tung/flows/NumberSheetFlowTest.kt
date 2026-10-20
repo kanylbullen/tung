@@ -26,7 +26,7 @@ class NumberSheetFlowTest : FlowTest() {
         }
 
     /**
-     * In the weight sheet, − and + move in 2.5 kg steps and never below zero,
+     * In the weight sheet, − and + move in 1 kg steps near zero and never below it,
      * "82,5" typed with a comma is saved as 82.5 kg, a weight over 999 shows the
      * error and cannot be confirmed, and a typed minus sign never gets in, so
      * nothing negative is saved.
@@ -40,11 +40,12 @@ class NumberSheetFlowTest : FlowTest() {
         waitForDescription(str(R.string.input_field_weight))
         field.assert(hasText("0"))
 
-        val plus = compose.onNode(hasContentDescription(str(R.string.input_plus_weight)))
-        val minus = compose.onNode(hasContentDescription(str(R.string.input_minus_weight)))
-        plus.performClick(); field.assert(hasText("2.5"))
-        plus.performClick(); field.assert(hasText("5"))
-        minus.performClick(); field.assert(hasText("2.5"))
+        // Below 30 kg the step is 1 kg (#17); it used to be 2.5 kg everywhere.
+        val plus = compose.onNode(hasContentDescription(plural(R.plurals.input_plus_weight, 1, "1")))
+        val minus = compose.onNode(hasContentDescription(plural(R.plurals.input_minus_weight, 1, "1")))
+        plus.performClick(); field.assert(hasText("1"))
+        plus.performClick(); field.assert(hasText("2"))
+        minus.performClick(); field.assert(hasText("1"))
         minus.performClick(); field.assert(hasText("0"))
         minus.performClick(); field.assert(hasText("0"))
 
@@ -139,9 +140,9 @@ class NumberSheetFlowTest : FlowTest() {
         field.performClick()
         field.performTextInput("80")
         field.assert(hasText("80"))
-        compose.onNode(hasContentDescription(str(R.string.input_plus_weight))).performClick()
+        compose.onNode(hasContentDescription(plural(R.plurals.input_plus_weight, 2, "2.5"))).performClick()
         field.assert(hasText("82.5"))
-        compose.onNode(hasContentDescription(str(R.string.input_minus_weight))).performClick()
+        compose.onNode(hasContentDescription(plural(R.plurals.input_minus_weight, 2, "2.5"))).performClick()
         field.assert(hasText("80"))
         done.performClick()
         waitForDescription(str(R.string.workout_edit_weight, "80"))

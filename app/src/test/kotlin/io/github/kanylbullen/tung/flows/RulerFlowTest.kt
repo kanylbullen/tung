@@ -1,10 +1,12 @@
 package io.github.kanylbullen.tung.flows
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
@@ -13,6 +15,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeUp
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.core.parseWeight
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -48,8 +51,8 @@ class RulerFlowTest : FlowTest() {
 
     /**
      * A horizontal swipe on the ruler moves the big number to a value on the
-     * 2.5 kg grid, and Done saves that value. A vertical swipe on the ruler
-     * leaves the number alone.
+     * grid (1 kg below 30, 2.5 kg above), and Done saves that value. A vertical
+     * swipe on the ruler leaves the number alone.
      */
     @Test
     fun swipingTheRulerSetsAWeightOnTheGrid() {
@@ -70,9 +73,71 @@ class RulerFlowTest : FlowTest() {
         val text = fieldText()
         val kg = checkNotNull(parseWeight(text)) { "the field holds '$text', not a weight" }
         assertNotEquals("the swipe did not move the number", 0.0, kg, 0.0)
-        assertEquals("$kg kg is not on the 2.5 grid", 0.0, kg % 2.5, 1e-9)
+        assertEquals("$kg kg is not on the ruler's grid", WEIGHT_RULER.snap(kg), kg, 0.0)
         assertShown(rulerAt(text))
         screenshot("2-after-swipe")
+
+        done.performClick()
+        waitForDescription(str(R.string.workout_edit_weight, text))
+        assertEquals(listOf(kg), activeSets().map { it.first })
+    }
+
+    /**
+     * − and + step by the ruler's local step: 1 kg below 30, 2.5 kg from 30
+     * up, so 20 + gives 21, 30 + gives 32.5 and 30 − gives 29 (#17).
+     */
+    @Test
+    fun stepsFollowTheLocalStep() {
+        startWorkoutFromHome()
+        addExercise("bench", str(R.string.ex_bench_press))
+        clickDescription(str(R.string.workout_edit_weight, "0"))
+        waitForDescription(str(R.string.input_field_weight))
+
+        field.performTextReplacement("20")
+        clickDescription(plural(R.plurals.input_plus_weight, 1, "1"))
+        field.assert(hasText("21"))
+        assertShown(rulerAt("21"))
+        screenshot("1-twenty-plus-one")
+
+        // At 30 the step up is 2.5 and the step down is 1, and the buttons say so.
+        field.performTextReplacement("30")
+        clickDescription(plural(R.plurals.input_plus_weight, 2, "2.5"))
+        field.assert(hasText("32.5"))
+        assertShown(rulerAt("32.5"))
+        screenshot("2-thirty-plus")
+
+        field.performTextReplacement("30")
+        clickDescription(plural(R.plurals.input_minus_weight, 1, "1"))
+        field.assert(hasText("29"))
+        assertShown(rulerAt("29"))
+        screenshot("3-thirty-minus")
+
+        done.performClick()
+        waitForDescription(str(R.string.workout_edit_weight, "29"))
+        assertEquals(listOf(29.0), activeSets().map { it.first })
+    }
+
+    /**
+     * A tap on the ruler, away from the centre line, jumps the number to the
+     * nearest multiple of 10 kg under the finger, and Done saves it.
+     */
+    @Test
+    fun tappingTheRulerJumpsToATen() {
+        startWorkoutFromHome()
+        addExercise("bench", str(R.string.ex_bench_press))
+        clickDescription(str(R.string.workout_edit_weight, "0"))
+        waitForDescription(str(R.string.input_field_weight))
+        assertShown(rulerAt("0"))
+
+        // About 120 dp right of the centre line: some 8 or 9 ticks of 1 kg, so 10 kg.
+        ruler.performTouchInput { click(Offset(centerX + width * 0.3f, centerY)) }
+        compose.waitForIdle()
+        val text = fieldText()
+        val kg = checkNotNull(parseWeight(text)) { "the field holds '$text', not a weight" }
+        assertNotEquals("the tap did not move the number", 0.0, kg, 0.0)
+        assertEquals("$kg kg is not a multiple of 10", 0.0, kg % 10.0, 1e-9)
+        assertShown(rulerAt(text))
+        screenshot("1-after-tap")
 
         done.performClick()
         waitForDescription(str(R.string.workout_edit_weight, text))
