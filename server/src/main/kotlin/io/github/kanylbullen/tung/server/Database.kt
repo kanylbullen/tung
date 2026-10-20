@@ -20,6 +20,13 @@ class Db(private val dataSource: HikariDataSource) : Closeable {
 
     suspend fun <T> tx(block: Transaction.() -> T): T = newSuspendedTransaction(Dispatchers.IO, database) { block() }
 
+    /**
+     * [tx] for a block that suspends, so code behind a suspending interface
+     * (core's `ExerciseResolver`) can run inside the same transaction. Exposed
+     * keeps the transaction in the coroutine context.
+     */
+    suspend fun <T> suspendingTx(block: suspend Transaction.() -> T): T = newSuspendedTransaction(Dispatchers.IO, database) { block() }
+
     override fun close() = dataSource.close()
 
     companion object {

@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
@@ -50,26 +51,36 @@ class Accounts(private val db: Db) {
     }
 
     suspend fun login(credentials: Credentials): SessionDto {
+        val user = verifyCredentials(credentials) ?: throw unauthorized("invalid_credentials", "Wrong email or password.")
+        val token = db.tx { insertToken(user.id, Tokens.SESSION_NAME, Tokens.SCOPE_WRITE, System.currentTimeMillis()) }
+        return SessionDto(token.token, user)
+    }
+
+    /**
+     * The user with these credentials, or null. Takes as long for an unknown
+     * email as for a wrong password. Login and the OAuth consent page use it.
+     */
+    suspend fun verifyCredentials(credentials: Credentials): UserDto? {
         val email = credentials.email.trim().lowercase()
         val user = db.tx { Users.selectAll().where { Users.email eq email }.singleOrNull() }
         val ok = withContext(Dispatchers.Default) {
             Passwords.verify(credentials.password, user?.get(Users.passwordHash) ?: Passwords.dummyHash) && user != null
         }
-        if (!ok || user == null) throw unauthorized("invalid_credentials", "Wrong email or password.")
-        val now = System.currentTimeMillis()
-        val userId = user[Users.id]
-        val token = db.tx { insertToken(userId, Tokens.SESSION_NAME, Tokens.SCOPE_WRITE, now) }
-        return SessionDto(token.token, UserDto(userId, user[Users.email], user[Users.createdAt]))
+        if (!ok || user == null) return null
+        return UserDto(user[Users.id], user[Users.email], user[Users.createdAt])
     }
 
-    /** The principal for a bearer token, or null when it is unknown or revoked. */
+    /** The principal for a bearer token, or null when it is unknown, revoked or expired. */
     suspend fun authenticate(token: String): TokenPrincipal? {
         if (!token.startsWith(Tokens.PREFIX)) return null
         val hash = Tokens.hash(token)
         val now = System.currentTimeMillis()
         return db.tx {
             val row = ApiTokens.selectAll()
-                .where { (ApiTokens.tokenHash eq hash) and ApiTokens.revokedAt.isNull() }
+                .where {
+                    (ApiTokens.tokenHash eq hash) and ApiTokens.revokedAt.isNull() and
+                        (ApiTokens.expiresAt.isNull() or (ApiTokens.expiresAt greater now))
+                }
                 .singleOrNull() ?: return@tx null
             val tokenId = row[ApiTokens.id]
             ApiTokens.update({
@@ -98,6 +109,7 @@ class Accounts(private val db: Db) {
                     scope = it[ApiTokens.scope],
                     createdAt = it[ApiTokens.createdAt],
                     lastUsedAt = it[ApiTokens.lastUsedAt],
+                    expiresAt = it[ApiTokens.expiresAt],
                     current = it[ApiTokens.id] == principal.tokenId,
                 )
             }

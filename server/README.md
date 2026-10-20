@@ -1,8 +1,9 @@
 # tung-server
 
 The optional backend for Tung: accounts, API tokens, a REST API over your
-workouts with an OpenAPI specification, row-level sync for the app, and a
-JSON export. One Ktor application with Postgres, shipped as one Docker image.
+workouts with an OpenAPI specification, row-level sync for the app, a JSON
+export, and an MCP server so an assistant (Claude, ChatGPT, Cursor) can read
+and log your training. One Ktor application with Postgres, shipped as one Docker image.
 The app works fully without it.
 
 API documentation is served by the server itself: Swagger UI at
@@ -36,7 +37,7 @@ from [`catalog/core.json`](../catalog/core.json) on every start.
 | `DATABASE_USER` | | |
 | `DATABASE_PASSWORD` | | |
 | `PORT` | `8080` | |
-| `TUNG_PUBLIC_URL` | | The public base URL, e.g. `https://tung.example.org`; named as the server in `/openapi.yaml`. |
+| `TUNG_PUBLIC_URL` | | The public base URL, e.g. `https://tung.example.org`, exactly as clients reach it (scheme, host, port, no trailing slash). It is the OAuth issuer and the base of every OAuth and MCP URL, and is named as the server in `/openapi.yaml`. Set it whenever the server is used beyond localhost; see "MCP". |
 | `TUNG_TRUST_PROXY` | `false` | `true` behind a reverse proxy that sets `X-Forwarded-For`/`Forwarded`, so the rate limit and the log see the client. Leave `false` when clients reach the server directly, or they can spoof their address. |
 
 ## API
@@ -60,14 +61,18 @@ caller's own: another user's ids answer 404.
 | `POST /api/v1/workouts/{id}/finish` | Drops unlogged sets, as the app does. |
 | `POST /api/v1/sync` | Push changed rows, pull everything changed since your cursor. See "Sync". |
 | `GET /api/v1/export` | Everything you have (exercises, workouts, routines, programs), as one JSON attachment. |
+| `POST /api/v1/commands/{name}` | Runs a command from core by its wire name (`start_workout`, `log_set`, `apply_plan`, `save_routine_plan`, …), the same ones the app's buttons and the MCP tools use. See "Commands". |
+| `/.well-known/oauth-*`, `/oauth/*` | The OAuth 2.1 authorization server for MCP clients. See "MCP". |
+| `POST /mcp` | The MCP server (streamable HTTP). See "MCP". |
 
 **Tokens.** Register and login return a session token; scripts and agents
 get their own named tokens from `/api/v1/tokens`. Both are `tung_` plus 32
 random bytes, sent as `Authorization: Bearer tung_…`, shown once and stored
 only as a SHA-256. A `read` token can only make GET requests. Passwords are
-hashed with Argon2id (Bouncy Castle; 19 MiB, 2 iterations). There is no OIDC
-and no OAuth yet: OAuth 2.1 arrives with the MCP server, which hosted
-assistants need.
+hashed with Argon2id (Bouncy Castle; 19 MiB, 2 iterations). MCP clients get
+their tokens through OAuth (see "MCP"); those are ordinary API tokens named
+`mcp:<client>` that expire after 30 days unless the client refreshes them
+(`expires_at` in the token list). There is no OIDC.
 
 **Linking a device.** A watch cannot reasonably take an email and a
 password, so a signed-in device (the phone's Settings, "Link a watch") calls
@@ -139,14 +144,97 @@ The answer has the same shape: `{"cursor": …, "changes": {…}}`.
 - One transaction per request. 10 000 sets in one request take about 3 s
   end to end on the dev server (`SyncTest.tenThousandSetsInOneRequest`).
 
+## Commands
+
+`POST /api/v1/commands/{name}` runs one command of core's command surface
+(`core/command/`) under its stable wire name, with the command's fields as a
+snake_case JSON body. It goes through the server's command handler, the same
+one every MCP tool uses: core's validation, the app's rules (one workout in
+progress, log set adds the next set but not past a routine's target, finish
+drops unlogged sets, …), one transaction, and the change reaches the phone on
+its next sync. A `write` token is needed.
+
+```sh
+curl -X POST https://tung.example.org/api/v1/commands/apply_plan \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"exercises": [{"exercise": {"key": "deadlift"}, "set_count": 5, "reps": 5, "weight_kg": 120},
+                     {"exercise": {"name": "Bänkpress"}, "sets": [{"weight_kg": 80, "reps": 8}]}]}'
+```
+
+The answer is `{"status": "done", "ids": {"workoutId": "…"}}` (200),
+`{"status": "needs_answers", "questions": [...]}` (200) when an exercise name
+did not resolve exactly (nothing is written; each question has up to five
+suggestions with the `ref` that picks it), or `{"status": "rejected",
+"reasons": [...]}` (422). Every command and its fields are in the OpenAPI
+spec.
+
+## MCP
+
+The server is an MCP server at `/mcp` (streamable HTTP; protocol versions
+2025-06-18, 2025-03-26 and 2024-11-05), with OAuth 2.1 built in, so an
+assistant can read your history and log for you.
+
+**Connect.** Add `https://tung.example.org/mcp` as a remote MCP server (a
+"custom connector" in Claude.ai or ChatGPT, `claude mcp add --transport http
+tung https://tung.example.org/mcp` in Claude Code, a `url` entry in Cursor's
+`mcp.json`). The client registers itself, opens Tung's login page in your
+browser, and you log in and allow it there; nothing to copy. Scripts and
+clients without OAuth can send an API token from `/api/v1/tokens` as
+`Authorization: Bearer tung_…` instead.
+
+**Scopes.** `read` lets the assistant read; `write` (the default) also lets it
+change your training data. With a read connection, tools that change data
+answer with an error and change nothing. Every connection is an API token
+named `mcp:<client>` in your token list: revoking it there (or with `DELETE
+/api/v1/tokens/{id}`) ends that client's access, refresh included.
+
+**Self-hosting.** Set `TUNG_PUBLIC_URL` to the URL clients use, e.g.
+`https://tung.example.org`: it is the OAuth issuer, and clients check that the
+issuer and endpoints they discover match the server they connected to. Without
+it the server uses the host each request reached, which is fine on localhost
+and breaks behind a proxy. Serve it over https; behind a reverse proxy also set
+`TUNG_TRUST_PROXY=true`.
+
+**How it works.** A 401 from `/mcp` carries `WWW-Authenticate: Bearer
+resource_metadata="…/.well-known/oauth-protected-resource"` (RFC 9728), which
+names this server as the authorization server
+(`/.well-known/oauth-authorization-server`, RFC 8414). Clients register at
+`/oauth/register` (RFC 7591; open, rate limited; redirect URIs must be https,
+http on localhost, or an app's own scheme, and are matched exactly), send you
+to `/oauth/authorize` (PKCE S256 required; a server-rendered login and consent
+page with a CSRF token), and swap the code at `/oauth/token`. Codes live five
+minutes and work once; access tokens live 30 days; refresh tokens rotate on
+every use, and one presented twice revokes the grant. Codes, secrets and
+refresh tokens are stored as SHA-256.
+
+**Tools.** One per command, with the same name and fields as
+`/api/v1/commands/{name}`: `start_workout`, `start_routine`, `add_exercise`,
+`remove_exercise`, `add_set`, `remove_set`, `set_weight`, `set_reps`,
+`tick_set`, `log_set`, `select_current`, `finish_workout`, `delete_workout`,
+`apply_plan`, `set_rest`, `create_exercise`, `save_routine`,
+`save_routine_plan`, `rename_routine`, `delete_routine`,
+`move_routine_exercise`, `adjust_target_sets`, `create_program`,
+`rename_program`, `activate_program`, `deactivate_program`, `delete_program`,
+`add_program_day`, `remove_program_day`, `move_program_day`,
+`toggle_program_weekday`. And the read tools: `history(limit, before)`,
+`last_time(exercise)`, `current_workout()`, `routines()`, `programs()`,
+`exercises(query)`. Weights are kilograms; exercises are named by catalogue
+key, id or exact name in any catalogue language, and an unknown name comes
+back as a question with suggestions, never a guess.
+
+**Prompts.** `suggest_program(goal, days_per_week, equipment)`,
+`next_workout()` and `plateaus()`: each tells the assistant to read your
+history first, to answer in your language, and to save a routine only after
+you confirm. **Resource:** `tung://catalog/core`, the core catalogue.
+
 ## Not in v0
 
 The app's server setting and sync client (the app half of
 [#25](https://github.com/kanylbullen/tung/issues/25)), paging of large sync
-answers, REST routes for routines and programs (sync and the export carry
-them), the command routes (`core/command/` exposed one to one under their
-wire names) and MCP, OAuth/OIDC, password reset, email verification and
-account deletion.
+answers, read routes for routines and programs (sync, the export and the MCP
+read tools carry them), a server-to-client MCP event stream (GET `/mcp`
+answers 405; the server sends nothing unasked), OIDC, password reset, email
+verification and account deletion.
 
 ## Develop
 

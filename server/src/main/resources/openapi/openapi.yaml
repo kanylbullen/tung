@@ -10,7 +10,8 @@ info:
     **Auth.** Register or log in to get a session token, or create named API
     tokens for scripts and agents under `/api/v1/tokens`. Send a token as
     `Authorization: Bearer tung_…`. A token with scope `read` can only make GET
-    requests. OAuth 2.1 arrives with MCP; OIDC may follow.
+    requests. MCP clients get their tokens through OAuth 2.1 (`/oauth/…`):
+    ordinary API tokens named `mcp:<client>` that expire unless refreshed.
 
     **Ids and `updated_at`.** Training data keeps the ids the client generated
     (lower-case UUIDs). Every row has `updated_at` (epoch milliseconds), and a
@@ -44,6 +45,12 @@ tags:
     description: All of the user's data in one document.
   - name: meta
     description: This specification.
+  - name: commands
+    description: The command surface from core, one to one under its wire names; the MCP tools run the same commands.
+  - name: oauth
+    description: OAuth 2.1 authorization server for MCP clients (discovery, dynamic registration, PKCE, rotating refresh tokens).
+  - name: mcp
+    description: The Model Context Protocol over streamable HTTP.
 
 paths:
   /healthz:
@@ -502,6 +509,365 @@ paths:
               schema: { $ref: "#/components/schemas/Export" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  # --- Commands, OAuth and MCP (issue #29) ---
+
+  /api/v1/commands/{name}:
+    post:
+      tags: [commands]
+      summary: Run a command
+      description: |
+        Runs one of core's commands (`core/command/`) by its stable wire name,
+        through the server-side command handler that the MCP tools use too:
+        validated like in the app, one transaction, and synced to the phone on
+        its next sync. Needs a `write` token. The body is the command's fields
+        (snake_case); an empty body is `{}`.
+
+        An exercise is `{"key": "bench_press"}`, `{"id": "…"}`,
+        `{"name": "Bänkpress"}` (exact names only, any catalogue language) or
+        `{"extended": "<free-exercise-db id>"}`; a bare string is read as a
+        name. A name that does not resolve is not guessed: the answer is
+        `needs_answers` with suggestions, and nothing is written.
+
+        | Command | Fields |
+        |---|---|
+        | `start_workout` | `routine_id`?, `program_day_id`? |
+        | `start_routine` | `routine_id`, `program_day_id`? |
+        | `add_exercise` | `workout_id`, `exercise` |
+        | `remove_exercise` | `workout_exercise_id` |
+        | `add_set` | `workout_exercise_id` |
+        | `remove_set` | `set_id` |
+        | `set_weight` | `set_id`, `weight_kg` (0–999), `apply_to_open_sets`? |
+        | `set_reps` | `set_id`, `reps` (0–999), `apply_to_open_sets`? |
+        | `tick_set` | `set_id`, `done` |
+        | `log_set` | `workout_id`, `set_id`? (default: the current set) |
+        | `select_current` | `set_id`? or `workout_exercise_id`? |
+        | `finish_workout` | `workout_id` |
+        | `delete_workout` | `workout_id` |
+        | `apply_plan` | `exercises`: [{`exercise`, `sets`: [{`weight_kg`?, `reps`?}] or `set_count` + `reps`? + `weight_kg`?}] |
+        | `set_rest` | `exercise_id`, `seconds` (0–3600 or null) |
+        | `create_exercise` | `name`, `muscle_group`, `equipment` |
+        | `save_routine` | `workout_id`, `name` |
+        | `save_routine_plan` | `name`, `exercises`: [{`exercise`, `target_sets` (1–20), `target_reps`?}] |
+        | `rename_routine` | `routine_id`, `name` |
+        | `delete_routine` | `routine_id` |
+        | `move_routine_exercise` | `routine_exercise_id`, `delta` |
+        | `adjust_target_sets` | `routine_exercise_id`, `delta` |
+        | `create_program` | `name`, `mode` (fixed, rotating) |
+        | `rename_program` | `program_id`, `name` |
+        | `activate_program` | `program_id` |
+        | `deactivate_program` | `program_id` |
+        | `delete_program` | `program_id` |
+        | `add_program_day` | `program_id`, `routine_id` |
+        | `remove_program_day` | `day_id` |
+        | `move_program_day` | `day_id`, `delta` |
+        | `toggle_program_weekday` | `day_id`, `weekday` (1 Monday … 7 Sunday) |
+
+        The JSON Schema of each body is in the MCP server's `tools/list`.
+      operationId: runCommand
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [start_workout, start_routine, add_exercise, remove_exercise, add_set, remove_set, set_weight, set_reps,
+              tick_set, log_set, select_current, finish_workout, delete_workout, apply_plan, set_rest, create_exercise,
+              save_routine, save_routine_plan, rename_routine, delete_routine, move_routine_exercise, adjust_target_sets,
+              create_program, rename_program, activate_program, deactivate_program, delete_program, add_program_day,
+              remove_program_day, move_program_day, toggle_program_weekday]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+            examples:
+              log_set: { value: { workout_id: "0b1c9f5e-8c7a-4d2b-9f1e-3a5c7e9b1d2f" } }
+              apply_plan:
+                value:
+                  exercises:
+                    - { exercise: { key: deadlift }, set_count: 5, reps: 10, weight_kg: 50 }
+                    - { exercise: { name: Bench press }, sets: [{ weight_kg: 60, reps: 10 }, { weight_kg: 62.5, reps: 8 }] }
+      responses:
+        "200":
+          description: The command ran (`done`), or names something that needs an answer first (`needs_answers`, nothing written).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommandResult" }
+        "400":
+          description: The body does not describe the command (`invalid_command`, naming every problem) or is not a JSON object.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: No command has that name (`unknown_command`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "422":
+          description: "Nothing ran (`rejected`): a value out of range, or an id that does not exist."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommandResult" }
+
+  /.well-known/oauth-authorization-server:
+    get:
+      tags: [oauth]
+      summary: Authorization server metadata (RFC 8414)
+      description: The issuer is `TUNG_PUBLIC_URL` (or, without it, the address the request reached).
+      operationId: oauthAuthorizationServer
+      security: []
+      responses:
+        "200":
+          description: The metadata.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthServerMetadata" }
+
+  /.well-known/oauth-protected-resource:
+    get:
+      tags: [oauth]
+      summary: Protected resource metadata (RFC 9728)
+      description: Describes `/mcp` and names this server as its authorization server. A 401 from `/mcp` points here.
+      operationId: oauthProtectedResource
+      security: []
+      responses:
+        "200":
+          description: The metadata.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthResourceMetadata" }
+
+  /.well-known/oauth-protected-resource/mcp:
+    get:
+      tags: [oauth]
+      summary: Protected resource metadata for /mcp (RFC 9728 path form)
+      operationId: oauthProtectedResourceMcp
+      security: []
+      responses:
+        "200":
+          description: The same metadata.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthResourceMetadata" }
+
+  /oauth/register:
+    post:
+      tags: [oauth]
+      summary: Register a client (RFC 7591)
+      description: |
+        Open dynamic client registration, shared rate limit with login. Redirect
+        URIs are matched exactly later: https, http only on localhost/127.0.0.1,
+        or an app's own scheme, no fragment. Public clients
+        (`token_endpoint_auth_method: none`, also the default here) get no secret.
+      operationId: oauthRegister
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OAuthClientRegistration" }
+      responses:
+        "201":
+          description: Registered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthClient" }
+        "400":
+          description: "`invalid_redirect_uri` or `invalid_client_metadata`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /oauth/authorize:
+    get:
+      tags: [oauth]
+      summary: Authorization request (login and consent page)
+      description: |
+        PKCE is required (`code_challenge` with `code_challenge_method=S256`).
+        Renders an HTML page with the client's name and the scope, where the
+        user logs in and allows or denies. An unknown client or a redirect URI
+        it did not register gets an error page; other errors go back to the
+        redirect URI as `error`, `error_description`, `state` and `iss`.
+      operationId: oauthAuthorize
+      security: []
+      parameters:
+        - { name: response_type, in: query, required: true, schema: { type: string, enum: [code] } }
+        - { name: client_id, in: query, required: true, schema: { type: string } }
+        - { name: redirect_uri, in: query, required: false, schema: { type: string }, description: "Required unless the client registered exactly one." }
+        - { name: code_challenge, in: query, required: true, schema: { type: string } }
+        - { name: code_challenge_method, in: query, required: true, schema: { type: string, enum: [S256] } }
+        - { name: state, in: query, required: false, schema: { type: string } }
+        - { name: scope, in: query, required: false, schema: { type: string }, description: "`read`, `write` or `read write`; anything else or nothing means `read write`." }
+        - { name: resource, in: query, required: false, schema: { type: string }, description: "RFC 8707 resource indicator; accepted and recorded." }
+      responses:
+        "200":
+          description: The login and consent page.
+          content:
+            text/html:
+              schema: { type: string }
+        "302": { description: "An error sent back to the client's redirect URI." }
+        "400":
+          description: An error page (unknown client, unregistered redirect URI).
+          content:
+            text/html:
+              schema: { type: string }
+    post:
+      tags: [oauth]
+      summary: Consent form submission
+      description: |
+        The page's form: the authorization request again, `email`, `password`,
+        `action` (`allow` or `deny`) and a CSRF token matched against a cookie.
+        Allow with the right credentials redirects with a single-use `code`
+        (five minutes) bound to the client, redirect URI, user, scope and code
+        challenge. Rate limited like login.
+      operationId: oauthConsent
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, additionalProperties: { type: string } }
+      responses:
+        "200":
+          description: The page again, with the error (wrong email or password).
+          content:
+            text/html:
+              schema: { type: string }
+        "302": { description: "Back to the redirect URI with `code`, `state` and `iss`, or with `error=access_denied`." }
+        "400":
+          description: An error page (expired form, unknown client).
+          content:
+            text/html:
+              schema: { type: string }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /oauth/token:
+    post:
+      tags: [oauth]
+      summary: Token endpoint
+      description: |
+        `authorization_code` (with `code_verifier`) or `refresh_token`. Public
+        clients send `client_id`; confidential ones also `client_secret`.
+        The access token is an ordinary API token (`mcp:<client name>` in the
+        token list) valid for 30 days; each refresh gives it a new value and
+        30 more days, and replaces the refresh token. A refresh token used
+        twice revokes the grant; a code used twice revokes what it was
+        exchanged for. Revoking the API token ends the client's access.
+      operationId: oauthToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type]
+              properties:
+                grant_type: { type: string, enum: [authorization_code, refresh_token] }
+                code: { type: string }
+                redirect_uri: { type: string }
+                code_verifier: { type: string }
+                refresh_token: { type: string }
+                client_id: { type: string }
+                client_secret: { type: string }
+      responses:
+        "200":
+          description: The tokens.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthTokens" }
+        "400":
+          description: "`invalid_request`, `invalid_grant` or `unsupported_grant_type`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
+        "401":
+          description: "`invalid_client`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
+
+  /mcp:
+    post:
+      tags: [mcp]
+      summary: MCP messages (streamable HTTP)
+      description: |
+        One JSON-RPC 2.0 message or a batch. Requests are answered with JSON
+        (or as one SSE event when the client accepts only
+        `text/event-stream`); notifications alone get 202. `initialize`
+        answers with an `Mcp-Session-Id`; a request carrying an id that has
+        ended gets 404 and should initialize again. Protocol versions
+        2025-06-18, 2025-03-26 and 2024-11-05. Tools: every command (as in
+        `POST /api/v1/commands/{name}`) plus `history`, `last_time`,
+        `current_workout`, `routines`, `programs` and `exercises`; prompts
+        `suggest_program`, `next_workout`, `plateaus`; resource
+        `tung://catalog/core`. A `read` token gets a tool error from tools
+        that change data.
+      operationId: mcpPost
+      parameters:
+        - { name: Mcp-Session-Id, in: header, required: false, schema: { type: string } }
+        - { name: MCP-Protocol-Version, in: header, required: false, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: [object, array] }
+      responses:
+        "200":
+          description: The JSON-RPC response (or batch of responses).
+          headers:
+            Mcp-Session-Id:
+              schema: { type: string }
+              description: On the answer to initialize.
+          content:
+            application/json:
+              schema: { type: [object, array] }
+            text/event-stream:
+              schema: { type: string }
+        "202": { description: "Notifications or responses only; nothing to answer." }
+        "400":
+          description: Not JSON (a JSON-RPC parse error) or an unsupported protocol version.
+        "401":
+          description: |
+            No valid token. `WWW-Authenticate: Bearer resource_metadata="<base>/.well-known/oauth-protected-resource"`
+            leads the client to the OAuth flow.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The session in `Mcp-Session-Id` has ended (`session_not_found`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+    get:
+      tags: [mcp]
+      summary: Server-to-client stream (not offered)
+      description: "Always 405 for an authenticated request: the server sends nothing unasked."
+      operationId: mcpGet
+      responses:
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "405":
+          description: No event stream.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      tags: [mcp]
+      summary: End a session
+      operationId: mcpDelete
+      parameters:
+        - { name: Mcp-Session-Id, in: header, required: true, schema: { type: string } }
+      responses:
+        "204": { description: "Ended." }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
 security:
   - bearer: []
 
@@ -630,6 +996,9 @@ components:
         last_used_at:
           oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
           description: Updated at most once a minute.
+        expires_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+          description: When the token stops working; null for tokens that never expire. Tokens issued through OAuth (`mcp:<client>`) expire 30 days after they were issued or last refreshed. Revoking one ends that client's access, refresh included.
         current: { type: boolean, description: True for the token this request was made with. }
 
     TokenList:
@@ -1067,3 +1436,107 @@ components:
           oneOf: [{ $ref: "#/components/schemas/Weekdays" }, { type: "null" }]
         updated_at: { $ref: "#/components/schemas/Millis" }
         deleted_at: { $ref: "#/components/schemas/SyncTombstone" }
+
+    # --- Commands, OAuth and MCP (issue #29) ---
+
+    CommandResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [done, needs_answers, rejected] }
+        ids:
+          type: object
+          additionalProperties: { type: string }
+          description: "With done: what the command created or acted on, under the stable keys of core's CommandIds: workoutId, workoutExerciseId, setId, addedSetId, exerciseId, routineId, programId, programDayId."
+        questions:
+          type: array
+          description: "With needs_answers: one per exercise that did not resolve. Ask, then send the command again with the chosen ref."
+          items:
+            type: object
+            required: [text, suggestions]
+            properties:
+              text: { type: string, description: "What was sent." }
+              suggestions:
+                type: array
+                maxItems: 5
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+                    names: { type: array, items: { type: string } }
+                    key: { type: [string, "null"] }
+                    extended: { type: [string, "null"] }
+                    ref: { type: object, description: "The exercise value that picks this suggestion, e.g. {\"key\": \"bench_press\"}." }
+        reasons:
+          type: array
+          items: { type: string }
+          description: "With rejected: every reason."
+
+    OAuthError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        error_description: { type: string }
+
+    OAuthServerMetadata:
+      type: object
+      properties:
+        issuer: { type: string }
+        authorization_endpoint: { type: string }
+        token_endpoint: { type: string }
+        registration_endpoint: { type: string }
+        response_types_supported: { type: array, items: { type: string } }
+        response_modes_supported: { type: array, items: { type: string } }
+        grant_types_supported: { type: array, items: { type: string } }
+        code_challenge_methods_supported: { type: array, items: { type: string } }
+        token_endpoint_auth_methods_supported: { type: array, items: { type: string } }
+        scopes_supported: { type: array, items: { type: string } }
+        authorization_response_iss_parameter_supported: { type: boolean }
+        service_documentation: { type: string }
+
+    OAuthResourceMetadata:
+      type: object
+      properties:
+        resource: { type: string, description: "<base>/mcp" }
+        authorization_servers: { type: array, items: { type: string } }
+        scopes_supported: { type: array, items: { type: string } }
+        bearer_methods_supported: { type: array, items: { type: string } }
+        resource_name: { type: string }
+        resource_documentation: { type: string }
+
+    OAuthClientRegistration:
+      type: object
+      required: [redirect_uris]
+      properties:
+        redirect_uris: { type: array, items: { type: string }, minItems: 1, maxItems: 10 }
+        client_name: { type: string, maxLength: 100 }
+        token_endpoint_auth_method: { type: string, enum: [none, client_secret_post] }
+        grant_types: { type: array, items: { type: string, enum: [authorization_code, refresh_token] } }
+        response_types: { type: array, items: { type: string, enum: [code] } }
+
+    OAuthClient:
+      type: object
+      required: [client_id, client_id_issued_at, client_name, redirect_uris, grant_types, response_types, token_endpoint_auth_method]
+      properties:
+        client_id: { type: string }
+        client_id_issued_at: { type: integer, description: "Epoch seconds." }
+        client_name: { type: string }
+        redirect_uris: { type: array, items: { type: string } }
+        grant_types: { type: array, items: { type: string } }
+        response_types: { type: array, items: { type: string } }
+        token_endpoint_auth_method: { type: string }
+        scope: { type: string }
+        client_secret: { type: string, description: "Confidential clients only, shown once." }
+        client_secret_expires_at: { type: integer, description: "0, never." }
+
+    OAuthTokens:
+      type: object
+      required: [access_token, token_type, expires_in, refresh_token, scope]
+      properties:
+        access_token: { type: string, description: "An API token, `tung_…`." }
+        token_type: { type: string, enum: [Bearer] }
+        expires_in: { type: integer, description: "Seconds (30 days)." }
+        refresh_token: { type: string, description: "`tungr_…`, single use." }
+        scope: { type: string, enum: [read, read write] }

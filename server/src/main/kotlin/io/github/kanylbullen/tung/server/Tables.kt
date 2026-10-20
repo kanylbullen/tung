@@ -24,6 +24,8 @@ object ApiTokens : Table("api_tokens") {
     val createdAt = long("created_at")
     val lastUsedAt = long("last_used_at").nullable()
     val revokedAt = long("revoked_at").nullable()
+    /** V5: set on tokens issued through OAuth; null never expires. */
+    val expiresAt = long("expires_at").nullable()
     override val primaryKey = PrimaryKey(id)
 }
 

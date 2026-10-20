@@ -1,6 +1,16 @@
 package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.core.CoreCatalog
+import io.github.kanylbullen.tung.server.command.CommandService
+import io.github.kanylbullen.tung.server.command.ServerCatalogue
+import io.github.kanylbullen.tung.server.mcp.McpReads
+import io.github.kanylbullen.tung.server.mcp.TungMcp
+import io.github.kanylbullen.tung.server.oauth.OAuthStore
+import io.github.kanylbullen.tung.server.routes.ExchangeTransport
+import io.github.kanylbullen.tung.server.routes.McpSessions
+import io.github.kanylbullen.tung.server.routes.commandRoutes
+import io.github.kanylbullen.tung.server.routes.mcpRoutes
+import io.github.kanylbullen.tung.server.routes.oauthRoutes
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.serialization.kotlinx.json.json
@@ -21,6 +31,7 @@ import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.ratelimit.RateLimit
 import io.ktor.server.request.path
 import io.ktor.server.routing.routing
+import kotlinx.coroutines.runBlocking
 import org.slf4j.event.Level
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
@@ -59,6 +70,14 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     val routines = RoutineStore(db)
     val sync = SyncStore(db, catalogue)
 
+    // Commands, OAuth and MCP (issue #29): every change an assistant or a script makes goes through the one command handler.
+    val serverCatalogue = ServerCatalogue.fromClasspath()
+    val commands = CommandService(db, serverCatalogue, exercises, workouts)
+    val oauth = OAuthStore(db)
+    val mcp = TungMcp(commands, McpReads(db, serverCatalogue, workouts, routines))
+    val mcpTransport = ExchangeTransport().also { runBlocking { mcp.server.connect(it) } }
+    val mcpSessions = McpSessions()
+
     install(ContentNegotiation) { json(ApiJson) }
     if (config.trustProxy) {
         // The last hop is the address our proxy saw; earlier entries come from the client and can be forged.
@@ -74,6 +93,11 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
         anyHost()
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)
+        // Streamable HTTP, for MCP clients that run in a browser.
+        allowHeader("Mcp-Session-Id")
+        allowHeader("MCP-Protocol-Version")
+        exposeHeader("Mcp-Session-Id")
+        exposeHeader(HttpHeaders.WWWAuthenticate)
         allowMethod(HttpMethod.Put)
         allowMethod(HttpMethod.Patch)
         allowMethod(HttpMethod.Delete)
@@ -93,6 +117,11 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     installErrorPages()
 
     routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync) }
+    routing {
+        commandRoutes(commands)
+        oauthRoutes(config, accounts, oauth)
+        mcpRoutes(config, accounts, mcp, mcpTransport, mcpSessions)
+    }
 
     log.info("tung-server ready{}", config.publicUrl?.let { " at $it" } ?: "")
 }

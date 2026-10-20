@@ -11,6 +11,8 @@
     <logger name="com.zaxxer.hikari" level="WARN"/>
     <logger name="org.flywaydb" level="INFO"/>
     <logger name="Exposed" level="WARN"/>
+    <!-- The MCP SDK logs every tool it registers at INFO. -->
+    <logger name="io.modelcontextprotocol" level="WARN"/>
     <logger name="org.testcontainers" level="WARN"/>
     <logger name="tc" level="WARN"/>
     <logger name="com.github.dockerjava" level="WARN"/>

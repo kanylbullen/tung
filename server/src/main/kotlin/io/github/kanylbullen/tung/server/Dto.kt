@@ -22,6 +22,8 @@ data class TokenDto(
     val scope: String,
     val createdAt: Long,
     val lastUsedAt: Long?,
+    /** When it stops working; null for tokens that never expire. Tokens issued through OAuth (MCP) have one, moved on by each refresh. */
+    val expiresAt: Long? = null,
     /** True for the token this request was made with. */
     val current: Boolean,
 )
