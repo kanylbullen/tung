@@ -119,7 +119,8 @@ object McpDescriptions {
 
     const val HISTORY =
         "The user's finished workouts, newest first: when (started_at and ended_at, epoch milliseconds), each exercise by name " +
-            "and catalogue key with its logged sets (weight_kg in kilograms, reps). limit 1 to 50, default 10; pass next_before as " +
+            "and catalogue key with its logged sets (weight_kg in kilograms, reps), and when the phone read them from Health Connect " +
+            "avg_heart_rate and max_heart_rate (bpm) and active_calories (kcal). limit 1 to 50, default 10; pass next_before as " +
             "before to read further back. Use it to see what the user trains and lifts before suggesting anything."
 
     const val LAST_TIME =

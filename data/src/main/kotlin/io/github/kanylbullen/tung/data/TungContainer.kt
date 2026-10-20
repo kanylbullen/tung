@@ -16,6 +16,9 @@ import io.github.kanylbullen.tung.core.CoreExercise
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.health.HealthConnectGateway
+import io.github.kanylbullen.tung.health.HealthConnectRecorder
+import io.github.kanylbullen.tung.health.HealthConnectSettings
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
 import io.github.kanylbullen.tung.ongoing.ongoingWorkouts
 import io.github.kanylbullen.tung.push.AndroidPushEnvironment
@@ -35,6 +38,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.time.Clock
 
 /**
@@ -47,7 +51,9 @@ import java.time.Clock
  * one they can set to a given weekday. [createTokenStore] keeps the sync
  * token in EncryptedSharedPreferences; the flow tests use one in memory,
  * because Robolectric has no Android Keystore; [createAiKeyStore] does the
- * same for the in-app assistant's API key.
+ * same for the in-app assistant's API key. [createHealthConnect] is
+ * Health Connect: the phone hands in the real gateway, the watch none, the
+ * flow tests a fake.
  *
  * The apps never reach Room themselves: they read the repositories' Flows and
  * change data through [commands].
@@ -61,6 +67,8 @@ class TungContainer(
     private val startedBy: String = StartedBy.PHONE,
     /** Which push transports this device has; the flow tests hand in a fake (no Play services, no distributor there). */
     createPushEnvironment: (Context) -> PushEnvironment = ::AndroidPushEnvironment,
+    /** Health Connect (CLAUDE.md, "Health Connect"): the phone's `TungApp` passes the real gateway; null (the watch) means none. */
+    createHealthConnect: (Context) -> HealthConnectGateway? = { null },
     /** The in-app assistant's API key (`ai_key`); the flow tests keep it in memory, like the sync token. */
     createAiKeyStore: (Context) -> TokenStore = { EncryptedTokenStore(it, AiSettings.KEY_FILE, AiSettings.KEY_NAME) },
 ) {
@@ -108,9 +116,38 @@ class TungContainer(
             programs = programRepository,
             resolver = exerciseResolver,
             extendedCatalog = extendedCatalog,
-            onWorkoutFinished = { syncAccount.requestSync() },
+            onWorkoutFinished = ::workoutFinished,
             startedBy = startedBy,
         )
+    }
+
+    /**
+     * After `FinishWorkout`: Health Connect first (write the session, read the
+     * vitals, each only when opted in), so what it stores goes up with the
+     * sync that follows. [workoutId] is null when the workout was discarded.
+     */
+    private fun workoutFinished(workoutId: String?) {
+        val recorder = healthConnectRecorder
+        if (workoutId == null || recorder == null) {
+            syncAccount.requestSync()
+            return
+        }
+        appScope.launch {
+            recorder.onWorkoutFinished(workoutId)
+            syncAccount.requestSync()
+        }
+    }
+
+    // --- Health Connect (health/), the phone only ---
+    /** Null on a device without the integration (the watch); the Settings section then says it is unavailable. */
+    val healthConnect: HealthConnectGateway? by lazy { createHealthConnect(this.context) }
+    val healthConnectSettings: HealthConnectSettings by lazy { HealthConnectSettings(settings) }
+    private val healthConnectRecorder: HealthConnectRecorder? by lazy {
+        healthConnect?.let {
+            HealthConnectRecorder(it, healthConnectSettings, workoutRepository, routineRepository) {
+                this.context.getString(R.string.health_session_title)
+            }
+        }
     }
 
     /**

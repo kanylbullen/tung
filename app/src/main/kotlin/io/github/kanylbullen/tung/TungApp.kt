@@ -9,6 +9,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
 import io.github.kanylbullen.tung.data.TungContainer
+import io.github.kanylbullen.tung.health.AndroidHealthConnectGateway
 import io.github.kanylbullen.tung.data.TungHost
 import io.github.kanylbullen.tung.voice.AndroidSpeechInput
 import io.github.kanylbullen.tung.voice.SpeechInput
@@ -80,7 +81,8 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
         get() = Configuration.Builder().build()
 
     /** Overridden only by the test application of the flow tests. */
-    protected open fun createContainer(): TungContainer = TungContainer(this)
+    /** The phone's container: Health Connect is the real one here, and only here (the watch has none). */
+    protected open fun createContainer(): TungContainer = TungContainer(this, createHealthConnect = ::AndroidHealthConnectGateway)
 
     /**
      * Speech to text for the active workout's microphone (CLAUDE.md, "Voice"):

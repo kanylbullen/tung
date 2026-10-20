@@ -20,6 +20,17 @@
         </intent>
     </queries>
 
+    <!-- Health Connect, each only after the user opts in in Settings (health/ in data/): write finished
+         workouts as exercise sessions; read heart rate and active calories for a finished workout. -->
+    <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
+
+    <!-- Health Connect is an app on Android 13 and lower; the client must be able to see it. -->
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
+
     <application
         android:name=".TungApp"
         android:allowBackup="true"
@@ -40,6 +51,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- What Tung does with Health Connect data, shown by Health Connect: up to Android 13 ... -->
+        <activity
+            android:name=".HealthPermissionsActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity>
+        <!-- ... and from Android 14, where Health Connect is part of the system. -->
+        <activity-alias
+            android:name="ViewPermissionUsageActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
+            android:targetActivity=".HealthPermissionsActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- Commands from the watch app (wear/); the system starts it when a message arrives. -->
         <service

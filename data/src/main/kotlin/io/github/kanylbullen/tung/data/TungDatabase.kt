@@ -23,8 +23,9 @@ private const val CATALOG_UPDATED_AT = 0L
         ProgramDay::class,
         Tombstone::class,
     ],
-    version = 1,
-    exportSchema = false,
+    // Raised by one with a Migration (Migrations.kt) and data/schemas/<n>.json for every change.
+    version = 2,
+    exportSchema = true,
 )
 abstract class TungDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
@@ -37,6 +38,7 @@ abstract class TungDatabase : RoomDatabase() {
     companion object {
         fun build(context: Context): TungDatabase =
             Room.databaseBuilder(context, TungDatabase::class.java, "tung.db")
+                .addMigrations(*ALL_MIGRATIONS)
                 .addCallback(SeedCallback)
                 .build()
 
@@ -44,6 +46,7 @@ abstract class TungDatabase : RoomDatabase() {
         @VisibleForTesting
         fun buildInMemory(context: Context): TungDatabase =
             Room.inMemoryDatabaseBuilder(context, TungDatabase::class.java)
+                .addMigrations(*ALL_MIGRATIONS)
                 .addCallback(SeedCallback)
                 .allowMainThreadQueries()
                 .build()

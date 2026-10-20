@@ -84,6 +84,18 @@ data class SyncWorkout(
      * so positional constructor calls keep working, and older peers ignore it.
      */
     @SerialName("started_by") val startedBy: String? = null,
+    /**
+     * From Health Connect on the phone that finished the workout (issue #45):
+     * average and maximum heart rate (bpm) and active kilocalories over the
+     * workout, and the id of the exercise session written there, so no device
+     * writes it a second time. All additive and nullable like [startedBy], and
+     * like it a null from a peer never erases a stored value: a client that
+     * does not know the fields, or has no Health Connect, sends null.
+     */
+    @SerialName("avg_heart_rate") val avgHeartRate: Int? = null,
+    @SerialName("max_heart_rate") val maxHeartRate: Int? = null,
+    @SerialName("active_calories") val activeCalories: Int? = null,
+    @SerialName("health_connect_id") val healthConnectId: String? = null,
 )
 
 @Serializable

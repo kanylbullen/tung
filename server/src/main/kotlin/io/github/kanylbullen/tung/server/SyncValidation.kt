@@ -7,6 +7,9 @@ import io.github.kanylbullen.tung.core.MIN_TARGET_SETS
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.StartedBy
+import io.github.kanylbullen.tung.core.health.MAX_ACTIVE_CALORIES
+import io.github.kanylbullen.tung.core.health.MAX_HEART_RATE
+import io.github.kanylbullen.tung.core.health.MIN_HEART_RATE
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.Validation
 import io.github.kanylbullen.tung.core.command.validate
@@ -16,6 +19,8 @@ import io.github.kanylbullen.tung.core.sync.SyncChanges
 const val SYNC_MAX_NAME = 500
 private const val MAX_NOTE = 10_000
 private const val MAX_WEEKDAY_MASK = 0b111_1111
+/** A Health Connect record id is a UUID; this leaves room for any other provider's ids. */
+private const val MAX_HEALTH_CONNECT_ID = 200
 private const val MAX_LISTED_PROBLEMS = 50
 
 /**
@@ -74,6 +79,10 @@ fun validateSync(cursor: Long, changes: SyncChanges, catalogueIds: Set<String>) 
         uuidOrNull(row.routineId, "routine_id")
         uuidOrNull(row.programDayId, "program_day_id")
         row.startedBy?.let { if (it !in StartedBy.ALL) fail("started_by must be one of ${StartedBy.ALL.joinToString()} or null") }
+        row.avgHeartRate?.let { if (it !in MIN_HEART_RATE..MAX_HEART_RATE) fail("avg_heart_rate must be $MIN_HEART_RATE-$MAX_HEART_RATE or null") }
+        row.maxHeartRate?.let { if (it !in MIN_HEART_RATE..MAX_HEART_RATE) fail("max_heart_rate must be $MIN_HEART_RATE-$MAX_HEART_RATE or null") }
+        row.activeCalories?.let { if (it !in 0..MAX_ACTIVE_CALORIES) fail("active_calories must be 0-$MAX_ACTIVE_CALORIES or null") }
+        row.healthConnectId?.let { if (it.isBlank() || it.length > MAX_HEALTH_CONNECT_ID) fail("health_connect_id must be 1-$MAX_HEALTH_CONNECT_ID characters or null") }
     }
 
     table("workout_exercises", changes.workoutExercises, { it.id }, { it.updatedAt }, { it.deletedAt }) { row ->

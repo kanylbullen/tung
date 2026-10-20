@@ -55,6 +55,11 @@ object Workouts : Table("workouts") {
     val deletedAt = long("deleted_at").nullable()
     /** V7: one of core's `StartedBy` values, null when unknown; set at creation and never changed. */
     val startedBy = text("started_by").nullable()
+    /** V9: from Health Connect on the phone (issue #45); synced, a null from a client keeps the stored value. */
+    val avgHeartRate = integer("avg_heart_rate").nullable()
+    val maxHeartRate = integer("max_heart_rate").nullable()
+    val activeCalories = integer("active_calories").nullable()
+    val healthConnectId = text("health_connect_id").nullable()
     override val primaryKey = PrimaryKey(userId, id)
 }
 
