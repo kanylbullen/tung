@@ -52,9 +52,10 @@ TUNG_FCM_SERVICE_ACCOUNT_JSON=                # later, when the Firebase project
 - [x] Devserver stack stopped (`docker compose down`, volume kept; a
       `pg_dump` of its 1 user / 2 workouts is in `/home/xup/tung-backups/`),
       localhost SSH tunnel closed.
-- [ ] Phone pointed at the public server: the phone was off USB at the time;
-      sign in once in Settings with the test account (or your own) against
-      `https://tung.xuper.fun`.
+- [x] Phone pointed at the public server (2026-10-20): signed in from
+      Settings against `https://tung.xuper.fun`, "Last sync just now",
+      "Push: none" as expected on a phone without Google services or a
+      UnifiedPush distributor.
 - [ ] Nightly backup schedule in Coolify once the S3 target exists, and one
       rehearsed restore into a scratch database.
 
