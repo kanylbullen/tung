@@ -82,8 +82,14 @@
     <!-- Number input sheet -->
     <string name="input_weight_title">Vikt</string>
     <string name="input_reps_title">Reps</string>
-    <string name="input_minus_weight">Minska med 2,5 kilo</string>
-    <string name="input_plus_weight">Öka med 2,5 kilo</string>
+    <plurals name="input_minus_weight">
+        <item quantity="one">Minska med %1$s kilo</item>
+        <item quantity="other">Minska med %1$s kilo</item>
+    </plurals>
+    <plurals name="input_plus_weight">
+        <item quantity="one">Öka med %1$s kilo</item>
+        <item quantity="other">Öka med %1$s kilo</item>
+    </plurals>
     <string name="input_minus_reps">Minska med en rep</string>
     <string name="input_plus_reps">Öka med en rep</string>
     <string name="input_minus">−</string>

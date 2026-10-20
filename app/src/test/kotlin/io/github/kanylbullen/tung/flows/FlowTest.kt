@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.flows
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import androidx.compose.ui.platform.ViewRootForTest
+import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -63,6 +64,9 @@ abstract class FlowTest {
     }
 
     protected fun str(@StringRes id: Int, vararg args: Any): String = app.getString(id, *args)
+
+    protected fun plural(@PluralsRes id: Int, quantity: Int, vararg args: Any): String =
+        app.resources.getQuantityString(id, quantity, *args)
 
     // --- waiting: Room works on its own threads, so the UI catches up asynchronously ---
 

@@ -1,11 +1,13 @@
 package io.github.kanylbullen.tung.ui.workout
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.PluralsRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -728,6 +730,12 @@ private fun DoneCheck(
 }
 
 
+/** "Increase by 1 kilo", "Increase by 2.5 kilos": a whole step picks its plural, a fraction is "other". */
+private fun stepDescription(context: Context, @PluralsRes id: Int, stepKg: Double): String {
+    val quantity = if (stepKg % 1.0 == 0.0) stepKg.toInt() else 2
+    return context.resources.getQuantityString(id, quantity, localWeight(stepKg))
+}
+
 @Composable
 private fun weightSpec(initial: String): NumberInputSpec {
     val context = LocalContext.current
@@ -737,8 +745,12 @@ private fun weightSpec(initial: String): NumberInputSpec {
         initialText = initial,
         keyboardType = KeyboardType.Decimal,
         fieldDescription = stringResource(R.string.input_field_weight),
-        minusDescription = stringResource(R.string.input_minus_weight),
-        plusDescription = stringResource(R.string.input_plus_weight),
+        minusDescription = { text ->
+            stepDescription(context, R.plurals.input_minus_weight, WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0))
+        },
+        plusDescription = { text ->
+            stepDescription(context, R.plurals.input_plus_weight, WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0))
+        },
         hint = stringResource(R.string.input_hint),
         errorText = stringResource(R.string.input_error_weight),
         doneText = stringResource(R.string.input_done),
@@ -758,14 +770,16 @@ private fun weightSpec(initial: String): NumberInputSpec {
 @Composable
 private fun repsSpec(initial: String): NumberInputSpec {
     val context = LocalContext.current
+    val minusReps = stringResource(R.string.input_minus_reps)
+    val plusReps = stringResource(R.string.input_plus_reps)
     return NumberInputSpec(
         title = stringResource(R.string.input_reps_title),
         unit = stringResource(R.string.workout_unit_reps),
         initialText = initial,
         keyboardType = KeyboardType.Number,
         fieldDescription = stringResource(R.string.input_field_reps),
-        minusDescription = stringResource(R.string.input_minus_reps),
-        plusDescription = stringResource(R.string.input_plus_reps),
+        minusDescription = { _ -> minusReps },
+        plusDescription = { _ -> plusReps },
         hint = stringResource(R.string.input_hint),
         errorText = stringResource(R.string.input_error_reps),
         doneText = stringResource(R.string.input_done),

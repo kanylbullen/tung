@@ -64,8 +64,10 @@ data class NumberInputSpec(
     val initialText: String,
     val keyboardType: KeyboardType,
     val fieldDescription: String,
-    val minusDescription: String,
-    val plusDescription: String,
+    /** What − does, for screen readers, given the current text: the step can depend on the value. */
+    val minusDescription: (text: String) -> String,
+    /** What + does, for screen readers, given the current text. */
+    val plusDescription: (text: String) -> String,
     val hint: String,
     val errorText: String,
     val doneText: String,
@@ -188,11 +190,11 @@ fun NumberInputSheet(
             )
             Spacer(Modifier.height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StepButton(spec.minusText, spec.minusDescription, Modifier.weight(1f)) {
+                StepButton(spec.minusText, spec.minusDescription(field.text), Modifier.weight(1f)) {
                     tapped = false
                     field = spec.step(field.text, -1).let { TextFieldValue(it, TextRange(it.length)) }
                 }
-                StepButton(spec.plusText, spec.plusDescription, Modifier.weight(1f)) {
+                StepButton(spec.plusText, spec.plusDescription(field.text), Modifier.weight(1f)) {
                     tapped = false
                     field = spec.step(field.text, 1).let { TextFieldValue(it, TextRange(it.length)) }
                 }

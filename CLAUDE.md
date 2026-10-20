@@ -310,15 +310,26 @@ Weight and reps are the only things that matter; everything else is scenery.
 - Typeface: Archivo (variable, OFL) — one family.
 
 The ruler under the big number (`RulerPicker`, scale in `core/Ruler.kt`) is
-the same gesture as a slider with usable precision: ticks every 2.5 kg from 0
-to 500 kg (labelled every 10) or every rep from 0 to 100 (labelled every 5),
-a fixed accent line in the centre, horizontal drag only so vertical swipes
-still reach the sheet. Dragging moves the big number live, one
-`CLOCK_TICK` haptic per step; release snaps to the nearest step and a fling
-decelerates onto one. **Typing wins:** typing or −/+ moves the ruler to the
+the same gesture as a slider with usable precision. Its scale is piecewise
+(`RulerScale` = a list of `RulerSegment(from, step, labelEvery)`): weight has
+a tick every 1 kg from 0 to 30 kg (labelled every 5), then every 2.5 kg up to
+500 kg (labelled every 10); reps a tick every rep from 0 to 100 (labelled
+every 5). Every tick has the same width on screen, so the ruler's position is
+in ticks and maps linearly to the value within a segment. A fixed accent line
+sits in the centre; horizontal drag only, so vertical swipes still reach the
+sheet. Dragging moves the big number live, one `CLOCK_TICK` haptic per step;
+release snaps to the nearest tick and a fling decelerates onto one (the decay
+runs in tick space). A **tap** (press and lift within the touch slop) jumps to
+`RulerScale.jumpTarget` for the value under the finger: the nearest 10 kg, or
+the nearest 5 reps, and exactly between two, the one nearer the current value.
+**−/+ follow the local step** (`stepUp`/`stepDown`, via `core.stepWeight`):
+1 kg below 30, 2.5 kg from 30 up, so 29 → 30 → 32.5 and back; an off-grid
+value goes to the next point on the grid, and past 500 the 2.5 kg step carries
+on to 999. Their screen-reader descriptions name the step at the current
+value. **Typing wins:** typing or −/+ moves the ruler to the
 value (between ticks if off the grid, pinned at the end if past it), and the
-ruler never writes back what was typed; only a drag writes, always on the
-grid. "Apply to all sets" is a switch in the sheet, off every time it opens,
+ruler never writes back what was typed; only a drag or a tap writes, always on
+the grid. "Apply to all sets" is a switch in the sheet, off every time it opens,
 shown only when another un-ticked set of the exercise exists. With it on,
 Done writes the value to the edited set and to every un-ticked set of that
 exercise (`WorkoutRepository.update…ForOpenSets`); ticked sets stay as

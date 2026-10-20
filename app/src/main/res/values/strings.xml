@@ -82,8 +82,15 @@
     <!-- Number input sheet -->
     <string name="input_weight_title">Weight</string>
     <string name="input_reps_title">Reps</string>
-    <string name="input_minus_weight">Decrease by 2.5 kilos</string>
-    <string name="input_plus_weight">Increase by 2.5 kilos</string>
+    <!-- The step follows the ruler: 1 kilo below 30 kg, 2.5 kilos from 30 up. %1$s is the step. -->
+    <plurals name="input_minus_weight">
+        <item quantity="one">Decrease by %1$s kilo</item>
+        <item quantity="other">Decrease by %1$s kilos</item>
+    </plurals>
+    <plurals name="input_plus_weight">
+        <item quantity="one">Increase by %1$s kilo</item>
+        <item quantity="other">Increase by %1$s kilos</item>
+    </plurals>
     <string name="input_minus_reps">Decrease by one rep</string>
     <string name="input_plus_reps">Increase by one rep</string>
     <string name="input_minus">−</string>

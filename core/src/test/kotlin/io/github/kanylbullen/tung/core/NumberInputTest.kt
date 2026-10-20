@@ -54,9 +54,25 @@ class NumberInputTest {
     }
 
     @Test
-    fun stepWeight_movesInTwoAndAHalf() {
+    fun stepWeight_movesInTwoAndAHalfFromThirtyUp() {
         assertEquals(82.5, stepWeight(80.0, 1), 0.0)
         assertEquals(77.5, stepWeight(80.0, -1), 0.0)
+    }
+
+    @Test
+    fun stepWeight_movesInOneKiloBelowThirty() {
+        assertEquals(21.0, stepWeight(20.0, 1), 0.0)
+        assertEquals(30.0, stepWeight(29.0, 1), 0.0)
+        assertEquals(32.5, stepWeight(30.0, 1), 0.0)
+        assertEquals(29.0, stepWeight(30.0, -1), 0.0)
+        assertEquals(32.5, stepWeight(29.0, 2), 0.0)
+        assertEquals(29.0, stepWeight(32.5, -2), 0.0)
+    }
+
+    @Test
+    fun stepWeight_neverGoesAboveTheMaximum() {
+        assertEquals(MAX_WEIGHT_KG, stepWeight(998.0, 1), 0.0)
+        assertEquals(MAX_WEIGHT_KG, stepWeight(MAX_WEIGHT_KG, 1), 0.0)
     }
 
     @Test

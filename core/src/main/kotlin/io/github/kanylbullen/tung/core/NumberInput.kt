@@ -1,8 +1,8 @@
 package io.github.kanylbullen.tung.core
 
+import kotlin.math.abs
 import kotlin.math.roundToLong
 
-const val WEIGHT_STEP_KG = 2.5
 const val MAX_WEIGHT_KG = 999.0
 const val MAX_REPS = 999
 
@@ -26,9 +26,16 @@ fun parseReps(input: String): Int? {
     return value.takeIf { it in 0..MAX_REPS }
 }
 
-/** One −/+ press on the weight, never below zero. */
-fun stepWeight(current: Double, steps: Int): Double =
-    roundToHundredths((current + steps * WEIGHT_STEP_KG).coerceIn(0.0, MAX_WEIGHT_KG))
+/**
+ * [steps] presses of −/+ on the weight, along the weight ruler's grid: 1 kg
+ * below 30 kg, 2.5 kg from 30 up (29 → 30 → 32.5 and back). An off-grid value
+ * goes to the next point on the grid. Never below zero or above [MAX_WEIGHT_KG].
+ */
+fun stepWeight(current: Double, steps: Int): Double {
+    var value = current
+    repeat(abs(steps)) { value = if (steps > 0) WEIGHT_RULER.stepUp(value) else WEIGHT_RULER.stepDown(value) }
+    return roundToHundredths(value.coerceIn(0.0, MAX_WEIGHT_KG))
+}
 
 fun stepReps(current: Int, steps: Int): Int = (current + steps).coerceIn(0, MAX_REPS)
 
