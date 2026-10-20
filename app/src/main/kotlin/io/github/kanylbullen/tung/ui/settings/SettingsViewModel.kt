@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.sync.ServerUrlCheck
 import io.github.kanylbullen.tung.core.sync.checkServerUrl
+import io.github.kanylbullen.tung.push.PushRegistrar
+import io.github.kanylbullen.tung.push.PushStatus
 import io.github.kanylbullen.tung.sync.AccountState
 import io.github.kanylbullen.tung.sync.AuthFailure
 import io.github.kanylbullen.tung.sync.AuthResult
@@ -46,21 +48,25 @@ data class SettingsUiState(
     val account: AccountState? = null,
     val form: SignInForm = SignInForm(),
     val watchLink: WatchLinkState = WatchLinkState(),
+    /** How the server wakes this phone: FCM, a UnifiedPush distributor, or nothing. */
+    val push: PushStatus = PushStatus(),
 )
 
 /**
  * Settings: the server and the account. Sign-in, sign-out and "Sync now" go
  * through [SyncAccount]; the screen never sees the token.
  */
-class SettingsViewModel(private val account: SyncAccount) : ViewModel() {
+class SettingsViewModel(private val account: SyncAccount, private val push: PushRegistrar) : ViewModel() {
 
     private val form = MutableStateFlow(SignInForm())
     private val watchLink = MutableStateFlow(WatchLinkState())
 
-    val state: StateFlow<SettingsUiState> = combine(account.state, form, watchLink) { a, f, w -> SettingsUiState(a, f, w) }
+    val state: StateFlow<SettingsUiState> = combine(account.state, form, watchLink, push.status) { a, f, w, p -> SettingsUiState(a, f, w, p) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     init {
+        // A distributor installed since the app started shows up here, and gets used.
+        viewModelScope.launch { if (account.isSignedIn()) push.refresh() }
         // The last server and email, so signing in again is one password away.
         viewModelScope.launch {
             val stored = account.state.first()
@@ -102,6 +108,11 @@ class SettingsViewModel(private val account: SyncAccount) : ViewModel() {
 
     fun signOut() {
         viewModelScope.launch { account.signOut() }
+    }
+
+    /** "Choose UnifiedPush distributor", when several are installed. */
+    fun chooseDistributor(packageName: String) {
+        viewModelScope.launch { push.chooseDistributor(packageName) }
     }
 
     fun syncNow() {

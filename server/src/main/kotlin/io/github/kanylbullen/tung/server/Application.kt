@@ -5,7 +5,15 @@ import io.github.kanylbullen.tung.server.command.CommandService
 import io.github.kanylbullen.tung.server.command.ServerCatalogue
 import io.github.kanylbullen.tung.server.mcp.McpReads
 import io.github.kanylbullen.tung.server.mcp.TungMcp
+import io.github.kanylbullen.tung.core.sync.PushTransport
 import io.github.kanylbullen.tung.server.oauth.OAuthStore
+import io.github.kanylbullen.tung.server.push.DisabledPushSender
+import io.github.kanylbullen.tung.server.push.EndpointGuard
+import io.github.kanylbullen.tung.server.push.FcmSender
+import io.github.kanylbullen.tung.server.push.PushService
+import io.github.kanylbullen.tung.server.push.PushStore
+import io.github.kanylbullen.tung.server.push.UnifiedPushSender
+import io.github.kanylbullen.tung.server.push.pushHttpClient
 import io.github.kanylbullen.tung.server.routes.ExchangeTransport
 import io.github.kanylbullen.tung.server.routes.McpSessions
 import io.github.kanylbullen.tung.server.routes.commandRoutes
@@ -31,6 +39,7 @@ import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.ratelimit.RateLimit
 import io.ktor.server.request.path
 import io.ktor.server.routing.routing
+import io.ktor.util.AttributeKey
 import kotlinx.coroutines.runBlocking
 import org.slf4j.event.Level
 import kotlin.system.exitProcess
@@ -52,12 +61,32 @@ fun main() {
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") { module(config, db) }.start(wait = true)
 }
 
+/** The application's [PushService], for tests that wait for pushes to settle. */
+val PushServiceKey = AttributeKey<PushService>("PushService")
+
 /**
  * The whole application. [db] is opened from [config] unless given; it is
  * closed when the application stops.
  */
 fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
-    monitor.subscribe(ApplicationStopped) { db.close() }
+    // Push (issue #34): an empty "sync now" to the user's other devices after every change.
+    // Never to an internal address unless the instance allows it (TUNG_PUSH_ALLOW_PRIVATE): at registration and at every send.
+    val pushGuard = EndpointGuard(config.pushAllowPrivate, config.pushResolver)
+    val pushStore = PushStore(db, pushGuard)
+    val pushHttp = pushHttpClient()
+    val push = PushService(
+        pushStore,
+        listOf(
+            UnifiedPushSender(pushHttp, pushGuard),
+            config.fcmServiceAccount?.let { FcmSender(it, pushHttp, config.fcmBaseUrl) } ?: DisabledPushSender(PushTransport.FCM),
+        ),
+        config.pushDebounceMillis,
+    )
+    attributes.put(PushServiceKey, push)
+    monitor.subscribe(ApplicationStopped) {
+        push.close()
+        db.close()
+    }
 
     val accounts = Accounts(db)
     val exercises = ExerciseStore(db)
@@ -72,7 +101,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
 
     // Commands, OAuth and MCP (issue #29): every change an assistant or a script makes goes through the one command handler.
     val serverCatalogue = ServerCatalogue.fromClasspath()
-    val commands = CommandService(db, serverCatalogue, exercises, workouts)
+    val commands = CommandService(db, serverCatalogue, exercises, workouts, notifier = push)
     val oauth = OAuthStore(db)
     val mcp = TungMcp(commands, McpReads(db, serverCatalogue, workouts, routines))
     val mcpTransport = ExchangeTransport().also { runBlocking { mcp.server.connect(it) } }
@@ -116,7 +145,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     }
     installErrorPages()
 
-    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync) }
+    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push) }
     routing {
         commandRoutes(commands)
         oauthRoutes(config, accounts, oauth)

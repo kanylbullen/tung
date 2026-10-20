@@ -116,6 +116,9 @@ private data class EditTarget(val setId: String, val field: Field)
 fun ActiveWorkoutScreen(
     workoutId: String,
     onBack: () -> Unit,
+    /** The ongoing notification's "Finish" was tapped: open the finish dialog once, then call [onFinishAsked]. */
+    askToFinish: Boolean = false,
+    onFinishAsked: () -> Unit = {},
     onAddExercise: () -> Unit,
     onFinished: (workoutId: String, saved: Boolean) -> Unit,
 ) {
@@ -145,7 +148,8 @@ fun ActiveWorkoutScreen(
         onDispose { view.keepScreenOn = false }
     }
 
-    // Asked once, when the first rest timer starts. Denied is fine: the countdown and the buzz still work.
+    // Asked once, the first time a workout is on screen, for the ongoing notification and "Rest over".
+    // Denied is fine: the workout, the countdown and the buzz still work.
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
     LaunchedEffect(vm) {
@@ -169,6 +173,12 @@ fun ActiveWorkoutScreen(
 
     var editing by remember { mutableStateOf<EditTarget?>(null) }
     var confirmFinish by remember { mutableStateOf(false) }
+    LaunchedEffect(askToFinish) {
+        if (askToFinish) {
+            confirmFinish = true
+            onFinishAsked()
+        }
+    }
     var restControlsOpen by remember { mutableStateOf(false) }
     var restSheetFor by remember { mutableStateOf<ActiveExerciseUi?>(null) }
     val listState = rememberLazyListState()

@@ -60,6 +60,12 @@ data class Workout(
     val programDayId: String? = null,
     /** Changed here since the last push: set with `updatedAt` by every write, cleared by sync (CLAUDE.md, "Sync"). */
     val dirty: Boolean = true,
+    /**
+     * Who started it, one of [io.github.kanylbullen.tung.core.StartedBy]
+     * (`phone`, `watch`, `agent`, …), stamped by the command path that created
+     * it and synced as `started_by`; null when unknown. Never changed after.
+     */
+    val startedBy: String? = null,
 )
 
 @Entity(

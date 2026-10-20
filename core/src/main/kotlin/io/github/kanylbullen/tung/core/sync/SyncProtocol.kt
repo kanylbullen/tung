@@ -12,6 +12,14 @@ import kotlinx.serialization.Serializable
 
 const val SYNC_PATH = "/api/v1/sync"
 
+/**
+ * The header a client sends with its sync requests: its own stable device id.
+ * The server pushes a change to every other device of the user, never back
+ * to the one that made it; a request without the header (a script, MCP)
+ * counts as a client of its own.
+ */
+const val DEVICE_HEADER = "X-Tung-Device"
+
 /** The most rows one request may push; the server answers 413 above it. */
 const val SYNC_MAX_ROWS = 20_000
 
@@ -70,6 +78,12 @@ data class SyncWorkout(
     @SerialName("program_day_id") val programDayId: String? = null,
     @SerialName("updated_at") val updatedAt: Long,
     @SerialName("deleted_at") val deletedAt: Long? = null,
+    /**
+     * Who started the workout, one of [io.github.kanylbullen.tung.core.StartedBy];
+     * null when unknown (rows from before the field existed). Additive: last,
+     * so positional constructor calls keep working, and older peers ignore it.
+     */
+    @SerialName("started_by") val startedBy: String? = null,
 )
 
 @Serializable

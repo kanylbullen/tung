@@ -9,6 +9,8 @@
 
     <!-- The buzz when a rest is over. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- The Ongoing Activity of a workout in progress (a notification) and "Rest over"; asked once, on Wear OS 4+. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Standalone mode: the rest timer's alarm ends on time when the user allows exact alarms (timer/RestAlarm.kt in data/). -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 

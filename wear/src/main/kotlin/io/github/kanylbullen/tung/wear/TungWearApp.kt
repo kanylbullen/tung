@@ -8,6 +8,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
+import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungHost
 
@@ -18,7 +19,15 @@ import io.github.kanylbullen.tung.data.TungHost
  * apart from the settings, and the phone's database is the one that counts.
  */
 class TungWearApp : Application(), Configuration.Provider, TungHost {
-    override val container: TungContainer by lazy { TungContainer(this) }
+    override val container: TungContainer by lazy { TungContainer(this, startedBy = StartedBy.WATCH) }
+
+    /** Standalone mode's backend, one per process: the screens and the Ongoing Activity share its current-set selection. */
+    val localBackend: LocalWatchBackend by lazy { LocalWatchBackend(container, this) }
+
+    /** The Ongoing Activity of the workout in progress, in both modes ([WatchOngoingActivity]). */
+    private val ongoing: WatchOngoingActivity by lazy {
+        WatchOngoingActivity(this, container, local = { localBackend }, phone = { PhoneLink(this) })
+    }
 
     private var startedActivities = 0
 
@@ -40,6 +49,7 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
+        ongoing.start()
         // The phone's triggers: periodic work while signed in, and a sync whenever the app comes to the foreground.
         container.syncAccount.restoreSchedule()
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {

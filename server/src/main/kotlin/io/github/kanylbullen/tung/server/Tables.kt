@@ -53,6 +53,8 @@ object Workouts : Table("workouts") {
     val programDayId = text("program_day_id").nullable()
     val updatedAt = long("updated_at")
     val deletedAt = long("deleted_at").nullable()
+    /** V7: one of core's `StartedBy` values, null when unknown; set at creation and never changed. */
+    val startedBy = text("started_by").nullable()
     override val primaryKey = PrimaryKey(userId, id)
 }
 
@@ -123,5 +125,18 @@ object ProgramDays : Table("program_days") {
     val weekdays = integer("weekdays")
     val updatedAt = long("updated_at")
     val deletedAt = long("deleted_at").nullable()
+    override val primaryKey = PrimaryKey(userId, id)
+}
+
+/** V6: where the server can wake a device (push, issue #34). Not synced. */
+object PushEndpoints : Table("push_endpoints") {
+    val id = text("id")
+    val userId = text("user_id")
+    val deviceId = text("device_id")
+    val transport = text("transport")
+    val endpoint = text("endpoint")
+    val createdAt = long("created_at")
+    val lastUsedAt = long("last_used_at").nullable()
+    val revokedAt = long("revoked_at").nullable()
     override val primaryKey = PrimaryKey(userId, id)
 }

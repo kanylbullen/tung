@@ -255,6 +255,17 @@
     <string name="sync_signed_in_as">Signed in as %1$s</string>
     <string name="sync_sign_out">Sign out</string>
     <string name="sync_sign_out_hint">Signing out keeps your training on this phone.</string>
+    <!-- Push: how the server wakes the phone when another device or an assistant changes something -->
+    <string name="push_status_fcm">Push: FCM</string>
+    <!-- The UnifiedPush distributor app's name, e.g. "Push: ntfy" -->
+    <string name="push_status_unifiedpush">Push: %1$s</string>
+    <string name="push_status_none">Push: none, syncs every 15 min</string>
+    <string name="push_registered">Registered with the server</string>
+    <!-- The host of the UnifiedPush endpoint -->
+    <string name="push_registered_at">Registered with the server through %1$s</string>
+    <string name="push_not_registered">Not registered with the server yet</string>
+    <string name="push_choose_distributor">Choose UnifiedPush distributor</string>
+    <string name="push_choose_title">UnifiedPush distributor</string>
     <string name="link_watch_title">Watch</string>
     <string name="link_watch_intro">Log on the watch without the phone: link it to this account with a code, no password on the wrist.</string>
     <string name="link_watch">Link a watch</string>

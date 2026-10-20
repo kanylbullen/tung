@@ -5,4 +5,17 @@
     <string name="rest_channel_description">Säger till när vilan mellan seten är slut.</string>
     <string name="rest_over">Vilan är slut</string>
     <string name="rest_over_text">Dags för nästa set.</string>
+
+    <!-- The ongoing notification of a workout in progress (ongoing/OngoingWorkoutNotifier.kt), and the watch's Ongoing Activity -->
+    <string name="ongoing_channel_name">Pågående pass</string>
+    <string name="ongoing_channel_description">Visar passet du kör, med Logga set och Avsluta.</string>
+    <string name="ongoing_title">Pass pågår</string>
+    <string name="ongoing_at_set">%1$s · set %2$d av %3$d</string>
+    <plurals name="ongoing_sets_logged">
+        <item quantity="one">%d set loggat</item>
+        <item quantity="other">%d set loggade</item>
+    </plurals>
+    <string name="ongoing_started_by_agent">Startat av din assistent</string>
+    <string name="ongoing_log_set">Logga set</string>
+    <string name="ongoing_finish">Avsluta</string>
 </resources>

@@ -91,6 +91,8 @@ data class WorkoutDto(
     val programDayId: String?,
     val updatedAt: Long,
     val exercises: List<WorkoutExerciseDto>,
+    /** Who started it, one of core's `StartedBy` values; null when unknown. */
+    val startedBy: String? = null,
 )
 
 @Serializable
@@ -129,6 +131,8 @@ data class WorkoutInput(
     val programDayId: String? = null,
     val updatedAt: Long? = null,
     val exercises: List<WorkoutExerciseInput> = emptyList(),
+    /** One of core's `StartedBy` values. Null keeps the stored value: it is set once, when the workout is made. */
+    val startedBy: String? = null,
 )
 
 @Serializable

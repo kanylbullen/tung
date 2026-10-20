@@ -126,6 +126,25 @@ watch shows its change at once and replaces that guess with the phone's state
 when it arrives. A message that cannot be delivered shows "Phone not
 reachable"; the local change stays until the phone's next state.
 
+## Ongoing Activity
+
+While a workout is in progress the watch shows an **Ongoing Activity**: the
+chip on the watch face and in the recents list, with "Bench press · set 3 of
+5" (the current set against the routine's target sets, or "4 sets logged"
+outside a routine). Tapping it opens the workout screen. It follows whatever
+the watch shows, in both modes: the watch's own log when standalone, the
+phone's mirrored state in companion mode (while the watch app's process
+runs). It has no Log set or Finish buttons; those are on the workout screen.
+
+Underneath it is the phone's "Workout in progress" notification from
+`data/` (`OngoingWorkoutNotifier`) with an androidx.wear `OngoingActivity`
+attached (`WatchOngoing.kt`, `wear-ongoing` 1.0.0). On Wear OS 4 and later it
+needs the notification permission, which the watch asks for once, the first
+time a workout is on screen; denied, the workout and the buzz still work, but
+there is no chip. Whether a paired phone's ongoing notification also shows
+up on the watch is up to Wear OS's bridging, which as far as we know leaves
+ongoing notifications on the phone; not yet checked on a device.
+
 ## Not yet
 
 - Adding exercises from the watch: "Start workout" starts an empty workout;
@@ -133,6 +152,6 @@ reachable"; the local change stays until the phone's next state.
   sync), or start a routine instead.
 - Merging a companion watch's log through the phone: a phone that cannot
   reach a server still cannot carry a standalone watch's sets.
-- An ongoing activity, a tile, heart rate.
-- The notification permission on the watch: on Wear OS 4 and later a rest
-  that ends while the app is in the background buzzes but posts nothing.
+- A tile, heart rate.
+- Push: neither FCM nor UnifiedPush reaches a standalone watch reliably, so
+  it keeps the periodic sync and the sync when the app opens.

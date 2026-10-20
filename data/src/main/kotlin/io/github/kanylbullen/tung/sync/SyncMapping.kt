@@ -20,7 +20,7 @@ import io.github.kanylbullen.tung.data.WorkoutExercise
 // Room entity -> wire row: every field, as the server's columns.
 
 fun Exercise.toSync() = SyncExercise(id, nameKey, name, muscleGroup, equipment, isCustom, restSeconds, updatedAt)
-fun Workout.toSync() = SyncWorkout(id, startedAt, endedAt, note, routineId, programDayId, updatedAt)
+fun Workout.toSync() = SyncWorkout(id, startedAt, endedAt, note, routineId, programDayId, updatedAt, startedBy = startedBy)
 fun WorkoutExercise.toSync() = SyncWorkoutExercise(id, workoutId, exerciseId, position, updatedAt)
 fun SetEntry.toSync() = SyncSet(id, workoutExerciseId, position, weightKg, reps, completed, updatedAt)
 fun Routine.toSync() = SyncRoutine(id, name, lastUsedAt, updatedAt)
@@ -58,6 +58,8 @@ fun SyncWorkout.toEntity(local: Workout?): Workout? {
         updatedAt = updatedAt,
         programDayId = programDayId,
         dirty = false,
+        // Never changes once set, so a peer that does not know the field yet (null) does not erase it.
+        startedBy = startedBy ?: local?.startedBy,
     )
 }
 

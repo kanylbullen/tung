@@ -6,6 +6,7 @@ import io.github.kanylbullen.tung.core.MAX_TARGET_SETS
 import io.github.kanylbullen.tung.core.MIN_TARGET_SETS
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.Validation
 import io.github.kanylbullen.tung.core.command.validate
@@ -72,6 +73,7 @@ fun validateSync(cursor: Long, changes: SyncChanges, catalogueIds: Set<String>) 
         if ((row.note?.length ?: 0) > MAX_NOTE) fail("note can be at most $MAX_NOTE characters")
         uuidOrNull(row.routineId, "routine_id")
         uuidOrNull(row.programDayId, "program_day_id")
+        row.startedBy?.let { if (it !in StartedBy.ALL) fail("started_by must be one of ${StartedBy.ALL.joinToString()} or null") }
     }
 
     table("workout_exercises", changes.workoutExercises, { it.id }, { it.updatedAt }, { it.deletedAt }) { row ->

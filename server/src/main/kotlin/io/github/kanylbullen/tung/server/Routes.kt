@@ -27,7 +27,11 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
+import io.github.kanylbullen.tung.server.push.ChangeNotifier
+import io.github.kanylbullen.tung.server.push.PushStore
+import io.github.kanylbullen.tung.server.push.sourceDevice
 import io.github.kanylbullen.tung.server.routes.linkRoutes
+import io.github.kanylbullen.tung.server.routes.pushRoutes
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
 import io.github.kanylbullen.tung.core.sync.SyncRequest
 import io.ktor.server.request.receiveChannel
@@ -70,7 +74,12 @@ fun Route.apiRoutes(
     workouts: WorkoutStore,
     routines: RoutineStore,
     sync: SyncStore,
+    pushStore: PushStore,
+    push: ChangeNotifier,
 ) {
+    /** After a REST write to training data: wake the user's other devices. */
+    fun ApplicationCall.changed() = push.changed(user().userId, sourceDevice())
+
     get("/healthz") {
         val ok = runCatching { db.tx { exec("SELECT 1") { it.next() } } }.getOrNull() == true
         call.respond(if (ok) HttpStatusCode.OK else HttpStatusCode.ServiceUnavailable, Health(if (ok) "ok" else "database_unavailable"))
@@ -109,8 +118,16 @@ fun Route.apiRoutes(
 
             route("/exercises") {
                 get { call.respond(ExerciseList(exercises.list(call.user().userId))) }
-                post { call.respond(HttpStatusCode.Created, exercises.create(call.user().userId, call.receive())) }
-                patch("/{id}") { call.respond(exercises.patch(call.user().userId, call.pathId(), call.receive<JsonObject>())) }
+                post {
+                    val created = exercises.create(call.user().userId, call.receive())
+                    call.changed()
+                    call.respond(HttpStatusCode.Created, created)
+                }
+                patch("/{id}") {
+                    val patched = exercises.patch(call.user().userId, call.pathId(), call.receive<JsonObject>())
+                    call.changed()
+                    call.respond(patched)
+                }
                 get("/{id}/last") {
                     val exclude = call.request.queryParameters["exclude_workout_id"]
                     call.respond(workouts.lastSession(call.user().userId, call.pathId(), exclude))
@@ -128,9 +145,14 @@ fun Route.apiRoutes(
                     call.respond(workouts.page(call.user().userId, limit, before))
                 }
                 get("/{id}") { call.respond(workouts.get(call.user().userId, call.pathId())) }
-                put("/{id}") { call.respond(workouts.put(call.user().userId, call.pathId(), call.receive())) }
+                put("/{id}") {
+                    val stored = workouts.put(call.user().userId, call.pathId(), call.receive())
+                    call.changed()
+                    call.respond(stored)
+                }
                 delete("/{id}") {
                     workouts.delete(call.user().userId, call.pathId())
+                    call.changed()
                     call.respond(HttpStatusCode.NoContent)
                 }
                 post("/{id}/finish") {
@@ -141,9 +163,13 @@ fun Route.apiRoutes(
                     } else {
                         FinishInput()
                     }
-                    call.respond(workouts.finish(call.user().userId, call.pathId(), input))
+                    val result = workouts.finish(call.user().userId, call.pathId(), input)
+                    call.changed()
+                    call.respond(result)
                 }
             }
+
+            pushRoutes(pushStore)
 
             get("/export") {
                 val userId = call.user().userId
@@ -174,7 +200,10 @@ fun Route.apiRoutes(
                 if (!request.changes.isEmpty() && principal.scope != Tokens.SCOPE_WRITE) {
                     throw forbidden("insufficient_scope", "This token is read-only: it may pull with empty changes, not push. Use a token with scope 'write'.")
                 }
-                call.respond(sync.sync(principal.userId, request))
+                val response = sync.sync(principal.userId, request)
+                // Only a request that pushed rows is a write: a pull-only sync (every device's periodic one) wakes nobody.
+                if (!request.changes.isEmpty()) push.changed(principal.userId, call.sourceDevice())
+                call.respond(response)
             }
         }
     }

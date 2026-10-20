@@ -12,6 +12,7 @@ import io.github.kanylbullen.tung.server.badRequest
 import io.github.kanylbullen.tung.server.command.CommandService
 import io.github.kanylbullen.tung.server.forbidden
 import io.github.kanylbullen.tung.server.payloadTooLarge
+import io.github.kanylbullen.tung.server.push.sourceDevice
 import io.github.kanylbullen.tung.server.unauthorized
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -60,7 +61,7 @@ fun Route.commandRoutes(commands: CommandService) {
                     is WireDecoding.Invalid -> throw badRequest(decoded.reasons.joinToString("; ") + ".", "invalid_command")
                     is WireDecoding.Decoded -> decoded.command
                 }
-                val result = commands.handlerFor(principal.userId).execute(command)
+                val result = commands.handlerFor(principal.userId, call.sourceDevice()).execute(command)
                 call.respondText(
                     CommandWire.encode(result).toString(),
                     ContentType.Application.Json,

@@ -1,5 +1,9 @@
 package io.github.kanylbullen.tung.sync
 
+import io.github.kanylbullen.tung.core.sync.DEVICE_HEADER
+import io.github.kanylbullen.tung.core.sync.PUSH_ENDPOINTS_PATH
+import io.github.kanylbullen.tung.core.sync.PushEndpoint
+import io.github.kanylbullen.tung.core.sync.PushEndpointRequest
 import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
 import io.github.kanylbullen.tung.core.sync.SyncFailure
@@ -12,6 +16,8 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -207,11 +213,13 @@ class SyncClient(
     }
 
     private suspend fun postSync(baseUrl: String, token: String, request: SyncRequest): SyncResponse {
+        val deviceId = settings.deviceId()
         var attempt = 0
         while (true) {
             val failure = try {
                 val response = http.post(baseUrl + SYNC_PATH) {
                     bearerAuth(token)
+                    header(DEVICE_HEADER, deviceId)
                     contentType(ContentType.Application.Json)
                     setBody(request)
                 }
@@ -320,6 +328,50 @@ class SyncClient(
             LinkClaimResult.Failed(LinkFailure.NETWORK)
         } catch (e: Exception) {
             LinkClaimResult.Failed(LinkFailure.SERVER)
+        }
+    }
+
+    /**
+     * `POST /api/v1/push/endpoints`: tells the server where to wake this
+     * device ([transport] and [endpoint]: an FCM token or a UnifiedPush URL),
+     * under this device's id; the server replaces an earlier one of the same
+     * device. The endpoint's server id, or null when it did not take it.
+     */
+    suspend fun registerPushEndpoint(transport: String, endpoint: String): String? = withContext(Dispatchers.IO) {
+        val baseUrl = settings.serverUrl() ?: return@withContext null
+        val token = tokens.read() ?: return@withContext null
+        try {
+            val response = http.post(baseUrl + PUSH_ENDPOINTS_PATH) {
+                bearerAuth(token)
+                header(DEVICE_HEADER, settings.deviceId())
+                contentType(ContentType.Application.Json)
+                setBody(PushEndpointRequest(settings.deviceId(), transport, endpoint))
+            }
+            if (response.status.isSuccess()) response.body<PushEndpoint>().id else null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** `DELETE /api/v1/push/endpoints/{id}` while signed in: the device has no push transport any more. Best effort. */
+    suspend fun deletePushEndpoint(id: String) {
+        val baseUrl = settings.serverUrl() ?: return
+        val token = tokens.read() ?: return
+        deletePushEndpoint(baseUrl, token, id)
+    }
+
+    /** `DELETE /api/v1/push/endpoints/{id}` with [token] at [baseUrl], before signing out. Best effort. */
+    suspend fun deletePushEndpoint(baseUrl: String, token: String, id: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                http.delete("$baseUrl$PUSH_ENDPOINTS_PATH/$id") { bearerAuth(token) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Offline: the server drops it when its transport answers 404/410, or keeps waking a signed-out app, which then does nothing.
+            }
         }
     }
 

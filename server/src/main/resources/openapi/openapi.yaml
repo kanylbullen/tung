@@ -20,6 +20,12 @@ info:
     `POST /api/v1/sync` applies the same rule to every row it is sent.
     All timestamps are epoch milliseconds.
 
+    **Push.** Every write to training data (sync with rows, commands, MCP
+    tools, the REST writes) sends an empty "sync now" to the user's other
+    devices that registered a push endpoint. A client sends its device id as
+    the `X-Tung-Device` header with its writes so it is skipped; a request
+    without it counts as a client of its own.
+
     **Errors** are `{"error": {"code": "…", "message": "…"}}`.
   license:
     name: AGPL-3.0-or-later
@@ -41,6 +47,8 @@ tags:
     description: Workouts with their exercises and sets.
   - name: sync
     description: Row-level sync of the training data between the app and the server.
+  - name: push
+    description: Where the server wakes a device with an empty "sync now" when another client changes the data.
   - name: export
     description: All of the user's data in one document.
   - name: meta
@@ -465,6 +473,11 @@ paths:
 
         A `read` token may call this with empty `changes` to pull only; a
         push needs scope `write`. At most 20 000 rows and 8 MiB per request.
+
+        A request that pushes at least one row wakes the user's other devices
+        through their push endpoints (`/api/v1/push/endpoints`); send your own
+        device id as the `X-Tung-Device` header so you are not woken by your
+        own change. A pull-only request wakes nobody.
       operationId: sync
       requestBody:
         required: true
@@ -490,6 +503,78 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
+
+  /api/v1/push/endpoints:
+    get:
+      tags: [push]
+      summary: List push endpoints
+      description: The caller's active (not revoked) push endpoints, oldest first.
+      operationId: listPushEndpoints
+      responses:
+        "200":
+          description: The endpoints.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushEndpointList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [push]
+      summary: Register a device's push endpoint
+      description: |
+        Tells the server where to wake this device. After a change made by
+        another client (another device, a script, an MCP tool), the server
+        sends an empty "sync now", `{"type":"sync"}`, never content, to every
+        active endpoint of the user except the device that made the change
+        (the device id sent as `X-Tung-Device` with its writes), debounced
+        2 s per user. FCM: `endpoint` is the registration token (sent only
+        when the server has a Firebase service account). UnifiedPush:
+        `endpoint` is the distributor's URL, which the server POSTs to. It
+        must be `https://` and its host, literal or resolved, must not be a
+        loopback, link-local, private, carrier-grade NAT or multicast
+        address, else 400 `invalid_endpoint`; an instance with
+        `TUNG_PUSH_ALLOW_PRIVATE=true` (a distributor on its LAN) allows
+        both. An endpoint that answers 404 or 410 (FCM `UNREGISTERED`) is
+        revoked.
+
+        One endpoint per `device_id`: registering again from the same device
+        replaces its transport and endpoint, keeps its id and undoes a
+        revocation (200); a new device gets 201. At most 20 active endpoints
+        per user (409 `too_many_endpoints`).
+      operationId: registerPushEndpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushEndpointRequest" }
+      responses:
+        "200":
+          description: The device's endpoint was replaced.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushEndpoint" }
+        "201":
+          description: Registered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushEndpoint" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/push/endpoints/{id}:
+    delete:
+      tags: [push]
+      summary: Revoke a push endpoint
+      description: The device gets no more pushes until it registers again.
+      operationId: revokePushEndpoint
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "204": { description: Revoked. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/export:
     get:
@@ -1102,7 +1187,7 @@ components:
 
     Workout:
       type: object
-      required: [id, started_at, ended_at, note, routine_id, program_day_id, updated_at, exercises]
+      required: [id, started_at, ended_at, note, routine_id, program_day_id, updated_at, exercises, started_by]
       properties:
         id: { $ref: "#/components/schemas/Uuid" }
         started_at: { $ref: "#/components/schemas/Millis" }
@@ -1116,6 +1201,9 @@ components:
         exercises:
           type: array
           items: { $ref: "#/components/schemas/WorkoutExercise" }
+        started_by:
+          oneOf: [{ $ref: "#/components/schemas/StartedBy" }, { type: "null" }]
+          description: Who started the workout; null when unknown (workouts from before the field).
 
     WorkoutPage:
       type: object
@@ -1168,6 +1256,54 @@ components:
           type: array
           maxItems: 200
           items: { $ref: "#/components/schemas/WorkoutExerciseInput" }
+        started_by:
+          oneOf: [{ $ref: "#/components/schemas/StartedBy" }, { type: "null" }]
+          description: Who started the workout. Set once; null or absent keeps the stored value.
+
+    StartedBy:
+      type: string
+      enum: [phone, watch, server, agent]
+      description: |
+        Who started a workout: the phone app, the watch, the server on its
+        own (reserved), or the server's command handler, i.e. a REST command
+        or an MCP tool (an assistant or a script).
+
+    PushTransport:
+      type: string
+      enum: [fcm, unifiedpush]
+
+    PushEndpointRequest:
+      type: object
+      required: [device_id, transport, endpoint]
+      properties:
+        device_id: { type: string, minLength: 1, maxLength: 128, description: The device's own stable id, the one it sends as `X-Tung-Device`. }
+        transport: { $ref: "#/components/schemas/PushTransport" }
+        endpoint:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: The FCM registration token, or the UnifiedPush distributor's URL (`https://`; `http://` only to localhost or a private IP).
+
+    PushEndpoint:
+      type: object
+      required: [id, device_id, transport, endpoint, created_at, last_used_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        device_id: { type: string }
+        transport: { $ref: "#/components/schemas/PushTransport" }
+        endpoint: { type: string }
+        created_at: { $ref: "#/components/schemas/Millis" }
+        last_used_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+          description: The last push the endpoint accepted.
+
+    PushEndpointList:
+      type: object
+      required: [endpoints]
+      properties:
+        endpoints:
+          type: array
+          items: { $ref: "#/components/schemas/PushEndpoint" }
 
     FinishInput:
       type: object
@@ -1363,6 +1499,9 @@ components:
         program_day_id: { type: [string, "null"], description: A program day id; not checked, like in the app. }
         updated_at: { $ref: "#/components/schemas/Millis" }
         deleted_at: { $ref: "#/components/schemas/SyncTombstone" }
+        started_by:
+          oneOf: [{ $ref: "#/components/schemas/StartedBy" }, { type: "null" }]
+          description: Who started the workout. Set when it is made and never changed; a row with null keeps the stored value.
 
     SyncWorkoutExercise:
       type: object

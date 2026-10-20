@@ -9,7 +9,13 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import io.github.kanylbullen.tung.core.CoreCatalog
 import io.github.kanylbullen.tung.core.ExtendedCatalog
+import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
+import io.github.kanylbullen.tung.ongoing.ongoingWorkouts
+import io.github.kanylbullen.tung.push.AndroidPushEnvironment
+import io.github.kanylbullen.tung.push.PushEnvironment
+import io.github.kanylbullen.tung.push.PushRegistrar
 import io.github.kanylbullen.tung.sync.EncryptedTokenStore
 import io.github.kanylbullen.tung.sync.SyncAccount
 import io.github.kanylbullen.tung.sync.SyncClient
@@ -23,6 +29,7 @@ import io.github.kanylbullen.tung.timer.RestTimerController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.map
 import java.time.Clock
 
 /**
@@ -44,6 +51,10 @@ class TungContainer(
     val clock: Clock = Clock.systemDefaultZone(),
     createDatabase: (Context) -> TungDatabase = TungDatabase::build,
     createTokenStore: (Context) -> TokenStore = ::EncryptedTokenStore,
+    /** Stamped on the workouts this device's commands start (`core.StartedBy`): `phone`, or `watch` on the watch. */
+    private val startedBy: String = StartedBy.PHONE,
+    /** Which push transports this device has; the flow tests hand in a fake (no Play services, no distributor there). */
+    createPushEnvironment: (Context) -> PushEnvironment = ::AndroidPushEnvironment,
 ) {
     private val context: Context = context.applicationContext ?: context
 
@@ -78,7 +89,17 @@ class TungContainer(
             resolver = AppExerciseResolver(database.exerciseDao(), { catalogueNames }, extendedCatalog),
             extendedCatalog = extendedCatalog,
             onWorkoutFinished = { syncAccount.requestSync() },
+            startedBy = startedBy,
         )
+    }
+
+    /**
+     * The ongoing notification of the workout in progress in this database
+     * (CLAUDE.md, "Ongoing workout and push"). The phone starts it from
+     * `TungApp.onCreate`; the watch builds its own over the state it shows.
+     */
+    val ongoingWorkout: OngoingWorkoutNotifier by lazy {
+        OngoingWorkoutNotifier(this.context, ongoingWorkouts(this.context, workoutRepository, routineRepository), appScope)
     }
 
     /**
@@ -100,7 +121,16 @@ class TungContainer(
         SyncClient(syncStore, syncSettings, tokenStore, syncHttpClient(), onSignedOut = { syncAccount.signedOutByServer() })
     }
     val syncAccount: SyncAccount by lazy {
-        SyncAccount(syncClient, syncSettings, tokenStore, syncStore, syncScheduler, appScope)
+        SyncAccount(
+            syncClient, syncSettings, tokenStore, syncStore, syncScheduler, appScope,
+            beforeSignOut = { url, token -> push.onSignOut(url, token) },
+        )
+    }
+
+    // --- push (push/, CLAUDE.md "Ongoing workout and push"): started by the phone, never by the watch ---
+    private val pushEnvironment: PushEnvironment by lazy { createPushEnvironment(this.context) }
+    val push: PushRegistrar by lazy {
+        PushRegistrar(pushEnvironment, syncClient, settings, syncAccount.state.map { it.signedIn }, appScope)
     }
 
     private companion object {
@@ -126,6 +156,9 @@ interface TungHost {
     @get:DrawableRes
     val notificationIcon: Int
 
-    /** What tapping "Rest over" opens: the app's main activity, told to show [workoutId]. */
+    /** What tapping "Rest over" or the ongoing notification opens: the app's main activity, told to show [workoutId]. */
     fun openWorkoutIntent(workoutId: String): Intent
+
+    /** What the ongoing notification's "Finish" opens: [workoutId] with the finish dialog. Never finishes by itself. */
+    fun finishWorkoutIntent(workoutId: String): Intent = openWorkoutIntent(workoutId)
 }

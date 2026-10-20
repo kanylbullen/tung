@@ -80,6 +80,13 @@ dependencies {
     api("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.security:security-crypto:1.0.0")
 
+    // Push (issue #34): an empty "sync now" from the server. FCM when Play services and a
+    // Firebase app are there (the apps apply the google-services plugin only when they have a
+    // google-services.json, so the open-source build runs with FCM off), else UnifiedPush.
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("org.unifiedpush.android:connector:2.5.0")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core-ktx:1.6.1")

@@ -41,7 +41,7 @@ data class WatchUi(
 class WatchViewModel(application: Application) : AndroidViewModel(application) {
     private val container = (application as TungHost).container
     private val phone = PhoneLink(application)
-    private val local by lazy { LocalWatchBackend(container, application) }
+    private val local by lazy { (application as? TungWearApp)?.localBackend ?: LocalWatchBackend(container, application) }
     private val clock: () -> Long = System::currentTimeMillis
 
     private val mode = MutableStateFlow<WatchMode?>(null)

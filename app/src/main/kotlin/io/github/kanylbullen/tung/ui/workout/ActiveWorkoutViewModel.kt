@@ -135,6 +135,11 @@ class ActiveWorkoutViewModel(
                 restTimer.stored(workoutId)?.takeIf { it.isRunningAt(clock()) }?.let(::setRest)
             }
         }
+        viewModelScope.launch {
+            // Asked once, the first time a workout is on screen: both the ongoing notification
+            // ("Workout in progress") and the rest timer's "Rest over" need it.
+            if (restTimer.firstTimeAskingForNotifications()) eventChannel.send(ActiveWorkoutEvent.AskForNotifications)
+        }
     }
 
     fun addSet(workoutExerciseId: String) {
@@ -244,11 +249,6 @@ class ActiveWorkoutViewModel(
     private fun startRest(exercise: ActiveExerciseUi) {
         val timer = RestTimer.start(clock(), exercise.restSeconds)
         setRest(timer)
-        if (timer != null) {
-            launch {
-                if (restTimer.firstTimeAskingForNotifications()) eventChannel.send(ActiveWorkoutEvent.AskForNotifications)
-            }
-        }
     }
 
     private fun setRest(timer: RestTimer?) {

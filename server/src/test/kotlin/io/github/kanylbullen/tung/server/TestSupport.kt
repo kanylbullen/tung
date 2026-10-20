@@ -20,6 +20,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.testcontainers.containers.PostgreSQLContainer
+import io.github.kanylbullen.tung.server.push.HostResolver
+import java.net.InetAddress
+import java.net.UnknownHostException
 import java.util.UUID
 import kotlin.test.assertEquals
 
@@ -39,17 +42,32 @@ object TestDatabase {
         databasePassword = container.password,
         authRequestsPerMinute = authRequestsPerMinute,
         trustProxy = trustProxy,
+        pushResolver = TestResolver,
     )
+}
+
+/**
+ * Host names for the push endpoint guard, so no test depends on real DNS:
+ * a public distributor and a name that points inside. Anything else does
+ * not resolve.
+ */
+val TestResolver = HostResolver { host ->
+    when (host) {
+        "ntfy.sh" -> listOf(InetAddress.getByName("159.203.148.75"))
+        "internal.example.org" -> listOf(InetAddress.getByName("203.0.113.9"), InetAddress.getByName("10.0.0.7"))
+        else -> throw UnknownHostException(host)
+    }
 }
 
 /** A Ktor test application on the real database. The rate limit is lifted unless a test asks for one. */
 fun tungTest(
     authRequestsPerMinute: Int = 10_000,
     trustProxy: Boolean = false,
+    pushAllowPrivate: Boolean = false,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     environment { config = MapApplicationConfig() }
-    application { module(TestDatabase.config(authRequestsPerMinute, trustProxy)) }
+    application { module(TestDatabase.config(authRequestsPerMinute, trustProxy).copy(pushAllowPrivate = pushAllowPrivate)) }
     block()
 }
 

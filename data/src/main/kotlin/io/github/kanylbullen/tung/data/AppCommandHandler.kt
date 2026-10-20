@@ -46,6 +46,8 @@ class AppCommandHandler(
     private val resolver: ExerciseResolver,
     private val extendedCatalog: ExtendedCatalog,
     private val onWorkoutFinished: () -> Unit = {},
+    /** Stamped on every workout this handler creates (`core.StartedBy`): `phone` on the phone, `watch` on a standalone watch. */
+    private val startedBy: String? = null,
 ) : CommandHandler {
 
     override suspend fun execute(command: Command): CommandResult {
@@ -63,7 +65,7 @@ class AppCommandHandler(
                 if (routineId != null) {
                     startRoutine(routineId, command.programDayId)
                 } else {
-                    Done(mapOf(WORKOUT_ID to workouts.startOrResumeWorkout()))
+                    Done(mapOf(WORKOUT_ID to workouts.startOrResumeWorkout(startedBy)))
                 }
             }
             is Command.StartRoutine -> startRoutine(command.routineId, command.programDayId)
@@ -169,7 +171,7 @@ class AppCommandHandler(
     }
 
     private suspend fun startRoutine(routineId: String, programDayId: String?): CommandResult =
-        routines.start(routineId, programDayId)?.let { Done(mapOf(WORKOUT_ID to it)) }
+        routines.start(routineId, programDayId, startedBy)?.let { Done(mapOf(WORKOUT_ID to it)) }
             ?: Rejected(listOf("no routine $routineId"))
 
     private suspend fun addExercise(command: Command.AddExercise): CommandResult {
@@ -225,7 +227,7 @@ class AppCommandHandler(
         }
         val entries = extendedEntries(plan.exercises.map { it.exercise })
         val workoutId = db.withTransaction {
-            workouts.applyPlan(plan.exercises.map { rowFor(it.exercise, entries) to it.sets })
+            workouts.applyPlan(plan.exercises.map { rowFor(it.exercise, entries) to it.sets }, startedBy)
         }
         return Done(mapOf(WORKOUT_ID to workoutId))
     }

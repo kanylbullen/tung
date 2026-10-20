@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Strings of the shared data layer, used by both apps: only what library code
-  shows itself (the "Rest over" notification). The screens' strings are in each
+  shows itself (the "Rest over" and "Workout in progress" notifications). The screens' strings are in each
   app's own res/.
 -->
 <resources>
@@ -10,4 +10,18 @@
     <string name="rest_channel_description">Tells you when the rest between sets is over.</string>
     <string name="rest_over">Rest over</string>
     <string name="rest_over_text">Time for the next set.</string>
+
+    <!-- The ongoing notification of a workout in progress (ongoing/OngoingWorkoutNotifier.kt), and the watch's Ongoing Activity -->
+    <string name="ongoing_channel_name">Workout in progress</string>
+    <string name="ongoing_channel_description">Shows the workout in progress, with Log set and Finish.</string>
+    <string name="ongoing_title">Workout in progress</string>
+    <!-- Exercise name, the current set's number, the routine's target sets: "Bench press · set 3 of 5" -->
+    <string name="ongoing_at_set">%1$s · set %2$d of %3$d</string>
+    <plurals name="ongoing_sets_logged">
+        <item quantity="one">%d set logged</item>
+        <item quantity="other">%d sets logged</item>
+    </plurals>
+    <string name="ongoing_started_by_agent">Started by your assistant</string>
+    <string name="ongoing_log_set">Log set</string>
+    <string name="ongoing_finish">Finish</string>
 </resources>

@@ -174,11 +174,13 @@ class SyncStore(private val db: Db, catalogue: List<CoreExercise>) {
             name = "workouts",
             columns = listOf(
                 "started_at" to Types.BIGINT, "ended_at" to Types.BIGINT, "note" to Types.VARCHAR,
-                "routine_id" to Types.VARCHAR, "program_day_id" to Types.VARCHAR,
+                "routine_id" to Types.VARCHAR, "program_day_id" to Types.VARCHAR, "started_by" to Types.VARCHAR,
             ),
+            // Set when the workout is made and never changed: a row from a client that does not know the field keeps it.
+            keepWhenNull = setOf("started_by"),
             rows = { it.workouts },
             id = { it.id }, updatedAt = { it.updatedAt }, deletedAt = { it.deletedAt },
-            values = { listOf(it.startedAt, it.endedAt, it.note, it.routineId, it.programDayId) },
+            values = { listOf(it.startedAt, it.endedAt, it.note, it.routineId, it.programDayId, it.startedBy) },
             map = { r ->
                 SyncWorkout(
                     id = r.getString("id"),
@@ -189,6 +191,7 @@ class SyncStore(private val db: Db, catalogue: List<CoreExercise>) {
                     programDayId = r.getString("program_day_id"),
                     updatedAt = r.getLong("updated_at"),
                     deletedAt = r.longOrNull("deleted_at"),
+                    startedBy = r.getString("started_by"),
                 )
             },
         )
@@ -323,11 +326,14 @@ class SyncStore(private val db: Db, catalogue: List<CoreExercise>) {
  * How one synced table is written and read in plain JDBC: [columns] are the
  * data columns between `(user_id, id)` and `(updated_at, deleted_at)`, with
  * their JDBC types for nulls, and [values] gives a row's values in that order.
+ * A column in [keepWhenNull] keeps its stored value when a newer row carries
+ * null for it (`COALESCE(EXCLUDED.c, stored.c)`); the row rule is unchanged.
  */
 private class SyncTable<R : Any>(
     val name: String,
     val conflict: String = "(user_id, id)",
     val columns: List<Pair<String, Int>>,
+    val keepWhenNull: Set<String> = emptySet(),
     val rows: (SyncChanges) -> List<R>,
     val id: (R) -> String,
     val updatedAt: (R) -> Long,
@@ -341,7 +347,7 @@ private class SyncTable<R : Any>(
     private val upsert = """
         INSERT INTO $name (user_id, id, ${names.joinToString()}, updated_at, deleted_at)
         VALUES (?, ?, ${names.joinToString { "?" }}, ?, NULL)
-        ON CONFLICT $conflict DO UPDATE SET ${names.joinToString { "$it = EXCLUDED.$it" }},
+        ON CONFLICT $conflict DO UPDATE SET ${names.joinToString { if (it in keepWhenNull) "$it = COALESCE(EXCLUDED.$it, $name.$it)" else "$it = EXCLUDED.$it" }},
             updated_at = EXCLUDED.updated_at, deleted_at = NULL
         WHERE $name.updated_at < EXCLUDED.updated_at
     """.trimIndent()
