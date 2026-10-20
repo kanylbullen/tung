@@ -20,7 +20,14 @@ import io.github.kanylbullen.tung.data.WorkoutExercise
 // Room entity -> wire row: every field, as the server's columns.
 
 fun Exercise.toSync() = SyncExercise(id, nameKey, name, muscleGroup, equipment, isCustom, restSeconds, updatedAt)
-fun Workout.toSync() = SyncWorkout(id, startedAt, endedAt, note, routineId, programDayId, updatedAt, startedBy = startedBy)
+fun Workout.toSync() = SyncWorkout(
+    id, startedAt, endedAt, note, routineId, programDayId, updatedAt,
+    startedBy = startedBy,
+    avgHeartRate = avgHeartRate,
+    maxHeartRate = maxHeartRate,
+    activeCalories = activeCalories,
+    healthConnectId = healthConnectId,
+)
 fun WorkoutExercise.toSync() = SyncWorkoutExercise(id, workoutId, exerciseId, position, updatedAt)
 fun SetEntry.toSync() = SyncSet(id, workoutExerciseId, position, weightKg, reps, completed, updatedAt)
 fun Routine.toSync() = SyncRoutine(id, name, lastUsedAt, updatedAt)
@@ -60,6 +67,12 @@ fun SyncWorkout.toEntity(local: Workout?): Workout? {
         dirty = false,
         // Never changes once set, so a peer that does not know the field yet (null) does not erase it.
         startedBy = startedBy ?: local?.startedBy,
+        // Health Connect's values (issue #45) come from one phone; a peer without them (an older
+        // client, the watch, the server's own commands) sends null, which must not erase them.
+        avgHeartRate = avgHeartRate ?: local?.avgHeartRate,
+        maxHeartRate = maxHeartRate ?: local?.maxHeartRate,
+        activeCalories = activeCalories ?: local?.activeCalories,
+        healthConnectId = healthConnectId ?: local?.healthConnectId,
     )
 }
 
