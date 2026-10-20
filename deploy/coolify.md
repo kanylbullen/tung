@@ -56,8 +56,14 @@ TUNG_FCM_SERVICE_ACCOUNT_JSON=                # later, when the Firebase project
       Settings against `https://tung.xuper.fun`, "Last sync just now",
       "Push: none" as expected on a phone without Google services or a
       UnifiedPush distributor.
-- [ ] Nightly backup schedule in Coolify once the S3 target exists, and one
-      rehearsed restore into a scratch database.
+- [x] Nightly backup (ops set it: 02:30 daily to the `xupbackups` Hetzner
+      bucket, 7 kept locally). **Restore rehearsed 2026-10-20:** the latest
+      dump was fetched from the bucket (key prefix
+      `data/coolify/backups/databases/root-team-0/tung-postgres-<uuid>/`),
+      restored with `pg_restore --no-owner` into a scratch `postgres:17-alpine`,
+      and held 1 user, 1 workout, 10 sets at schema v7, matching the live
+      server at backup time. Script: `/tmp/tung-phone/restore-rehearsal.sh`
+      on devserver2 (tmpfs; re-create from this description if gone).
 
 ### Ops agent / owner (needs access Claude does not have, or a decision)
 
@@ -96,12 +102,11 @@ TUNG_FCM_SERVICE_ACCOUNT_JSON=                # later, when the Firebase project
    in Phase as `TUNG_BACKUP_S3_*` and add the S3 storage in Coolify
    (Settings → S3 Storages) or tell Claude to add it through the API.
 
-5. **Firebase project** (separate from Coolify, for push over FCM): a project
-   with an Android app `io.github.kanylbullen.tung`; download
-   `google-services.json` (goes into `app/` and `wear/` locally and as a CI
-   secret, never committed) and a service-account JSON for the server (goes
-   into Coolify as `TUNG_FCM_SERVICE_ACCOUNT_JSON`). Without it push falls back
-   to UnifiedPush and periodic sync; nothing breaks.
+5. **Firebase project** — done 2026-10-20: project `tung-afdb3`, service
+   account on the server (ops), Android app `io.github.kanylbullen.tung`
+   registered through the Firebase Management API and `google-services.json`
+   placed in `app/` and `wear/` (git-ignored) and stored as the repository
+   secret `GOOGLE_SERVICES_JSON` for CI (Claude).
 
 6. **Coolify API token expiry.** `COOLIFY1_ROOT_API_TOKEN` in Phase has expired
    once before after 30 days. If Claude reports `401` from the API, create a
