@@ -66,6 +66,21 @@ data class Workout(
      * it and synced as `started_by`; null when unknown. Never changed after.
      */
     val startedBy: String? = null,
+    /**
+     * Read from Health Connect after the workout was finished on a phone that
+     * opted in (CLAUDE.md, "Health Connect"): average and maximum heart rate in
+     * bpm and active kilocalories over [startedAt]..[endedAt]. Null when not
+     * read or nothing was there. Synced; a null from a peer keeps the stored value.
+     */
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null,
+    val activeCalories: Int? = null,
+    /**
+     * The id of the `ExerciseSessionRecord` written to Health Connect for this
+     * workout. Set once; while it is set no device writes the session again.
+     * Synced like the vitals. Schema version 2.
+     */
+    val healthConnectId: String? = null,
 )
 
 @Entity(

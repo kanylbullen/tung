@@ -33,6 +33,8 @@ android {
     }
     sourceSets.getByName("test") {
         java.srcDir("src/test/kotlin")
+        // The committed Room schemas, which MigrationTestHelper reads from the test's assets.
+        assets.srcDirs("$projectDir/schemas")
     }
 
     androidResources {
@@ -90,12 +92,22 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.unifiedpush.android:connector:2.5.0")
 
+    // Health Connect (issue #45): write finished workouts, read heart rate and calories. 1.1.0-beta01 is
+    // the newest that builds with compileSdk 35 and AGP 8.7 (rc01 and 1.1.0 need compileSdk 36, AGP 8.9.1).
+    // Only the phone builds the real gateway; the watch carries the library unused.
+    implementation("androidx.health.connect:connect-client:1.1.0-beta01")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core-ktx:1.6.1")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    // MigrationTest: opens version 1 from data/schemas and runs the migrations to the current one.
+    testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.test:runner:1.6.2")
 
     testFixturesImplementation(project(":core"))
     testFixturesImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testFixturesImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    // FakeHealthConnect answers the permission sheet with an ActivityResultContract.
+    testFixturesImplementation("androidx.activity:activity:1.9.3")
 }
