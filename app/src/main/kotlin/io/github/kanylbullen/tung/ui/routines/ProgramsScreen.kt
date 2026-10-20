@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -25,8 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -197,19 +193,7 @@ private fun NewProgramDialog(onDismiss: () -> Unit, onCreate: (String, ProgramMo
                     colors = tungFieldColors(),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Column(Modifier.selectableGroup()) {
-                    listOf(
-                        ProgramMode.ROTATING to R.string.program_mode_rotating_hint,
-                        ProgramMode.FIXED to R.string.program_mode_fixed_hint,
-                    ).forEach { (option, hint) ->
-                        ModeOption(
-                            label = programModeLabel(option),
-                            hint = stringResource(hint),
-                            selected = mode == option,
-                            onSelect = { mode = option },
-                        )
-                    }
-                }
+                ProgramModeChoice(selected = mode, onSelect = { mode = it })
             }
         },
         confirmButton = {
@@ -223,26 +207,4 @@ private fun NewProgramDialog(onDismiss: () -> Unit, onCreate: (String, ProgramMo
             }
         },
     )
-}
-
-@Composable
-private fun ModeOption(label: String, hint: String, selected: Boolean, onSelect: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = null,
-            colors = RadioButtonDefaults.colors(selectedColor = Tung.colors.accent, unselectedColor = Tung.colors.muted),
-        )
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(label, style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
-            Text(hint, style = MaterialTheme.typography.bodySmall, color = Tung.colors.muted)
-        }
-    }
 }

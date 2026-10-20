@@ -63,8 +63,9 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 /**
- * One program: its days in order, each a routine; weekdays per day in fixed
- * mode; add, reorder and remove days; rename, activate or delete the program.
+ * One program: its mode (rotating or fixed, switchable); its days in order,
+ * each a routine; weekdays per day in fixed mode; add, reorder and remove
+ * days; rename, activate or delete the program.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,6 +142,17 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
             if (!state.loading && !state.missing && !deleting) {
                 item(key = "status") {
                     ProgramStatus(state, onActivate = vm::activate)
+                }
+                item(key = "mode") {
+                    Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)) {
+                        Text(
+                            stringResource(R.string.program_mode_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Tung.colors.muted,
+                        )
+                        // Days and their weekdays are kept, so switching back restores the schedule.
+                        ProgramModeChoice(selected = state.mode, onSelect = { if (it != state.mode) vm.setMode(it) })
+                    }
                 }
                 if (state.days.isEmpty()) {
                     item(key = "empty") {

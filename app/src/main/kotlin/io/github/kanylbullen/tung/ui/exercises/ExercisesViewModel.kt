@@ -40,6 +40,17 @@ import kotlinx.coroutines.launch
 import java.text.Collator
 import java.util.Locale
 
+/**
+ * What the picker adds to: the workout in progress ([Workout], `add_exercise`)
+ * or a saved routine ([Routine], `add_routine_exercise`). Null is the
+ * Exercises tab, which only lists.
+ */
+sealed interface PickerTarget {
+    data class Workout(val workoutId: String) : PickerTarget
+
+    data class Routine(val routineId: String) : PickerTarget
+}
+
 /** An exercise with the name the user sees, which is also what the search matches. */
 data class NamedExercise(val exercise: Exercise, val displayName: String)
 
@@ -67,8 +78,8 @@ data class ExercisesUiState(
 }
 
 /**
- * Backs both the Exercises tab and the picker. With a [workoutId] a tap adds the
- * exercise to that workout; without one the list is just a catalogue.
+ * Backs both the Exercises tab and the picker. With a [target] a tap adds the
+ * exercise to that workout or routine; without one the list is just a catalogue.
  *
  * [displayName] gives the name shown on screen (see `ui/common/ExerciseNames.kt`);
  * search and sort both work on it, so "bench" finds Bench press on an English
@@ -78,7 +89,7 @@ data class ExercisesUiState(
  * more also searches the extended catalogue ([ExercisesUiState.more], English
  * names). The tab never shows it.
  *
- * In the picker, while the search is empty and the workout already has
+ * In the picker for a workout, while the search is empty and the workout already has
  * exercises, [ExercisesUiState.suggested] holds up to six suggestions from
  * `core.picker.suggest`: the user's own history ([workouts], read once when
  * the picker opens) and the catalogue's muscles ([catalogueMuscles]).
@@ -87,7 +98,7 @@ class ExercisesViewModel(
     exercises: ExerciseRepository,
     private val commands: CommandHandler,
     private val extendedCatalog: ExtendedCatalog,
-    private val workoutId: String?,
+    private val target: PickerTarget?,
     private val workouts: WorkoutRepository,
     private val catalogueMuscles: CatalogueMuscles,
     private val now: () -> Long,
@@ -100,14 +111,17 @@ class ExercisesViewModel(
     /** The view model outlives a language change; the screen reports the current locale so names are redone. */
     private val locale = MutableStateFlow(Locale.getDefault())
 
-    val isPicker: Boolean get() = workoutId != null
+    val isPicker: Boolean get() = target != null
+
+    /** Suggestions are about the workout in progress ("Not trained yet today"), so only that picker has them. */
+    private val workoutId: String? = (target as? PickerTarget.Workout)?.workoutId
 
     /**
      * The extended catalogue, read the first time the picker's query is long
      * enough to search it; empty before that, in the tab, and if it cannot be read.
      */
     private val extended: Flow<List<ExtendedExercise>> =
-        if (workoutId == null) {
+        if (target == null) {
             flowOf(emptyList())
         } else {
             _query.filter { normalizeForSearch(it).length >= ExtendedCatalog.MIN_QUERY_LENGTH }
@@ -182,29 +196,31 @@ class ExercisesViewModel(
         locale.value = value
     }
 
-    fun pick(exerciseId: String, onDone: () -> Unit) {
-        val id = workoutId ?: return
-        viewModelScope.launch {
-            commands.execute(Command.AddExercise(id, ExerciseRef.ById(exerciseId)))
-            onDone()
-        }
-    }
+    fun pick(exerciseId: String, onDone: () -> Unit) = add(ExerciseRef.ById(exerciseId), onDone)
 
     /** Picker only: adds an extended-catalogue exercise, creating its Room row the first time. */
-    fun pickExtended(entry: ExtendedExercise, onDone: () -> Unit) {
-        val id = workoutId ?: return
+    fun pickExtended(entry: ExtendedExercise, onDone: () -> Unit) = add(ExerciseRef.Extended(entry.id), onDone)
+
+    private fun add(exercise: ExerciseRef, onDone: () -> Unit) {
+        val command = addCommand(exercise) ?: return
         viewModelScope.launch {
-            commands.execute(Command.AddExercise(id, ExerciseRef.Extended(entry.id)))
+            commands.execute(command)
             onDone()
         }
     }
 
-    /** Creates a custom exercise; in picker mode it also goes straight into the workout. */
+    /** The command that adds [exercise] to the [target]; null in the tab. */
+    private fun addCommand(exercise: ExerciseRef): Command? = when (val t = target) {
+        is PickerTarget.Workout -> Command.AddExercise(t.workoutId, exercise)
+        is PickerTarget.Routine -> Command.AddRoutineExercise(t.routineId, exercise)
+        null -> null
+    }
+
+    /** Creates a custom exercise; in picker mode it also goes straight into the workout or routine. */
     fun create(name: String, muscleGroup: MuscleGroup, equipment: Equipment, onDone: (addedToWorkout: Boolean) -> Unit) {
         viewModelScope.launch {
             val newId = commands.execute(Command.CreateExercise(name, muscleGroup, equipment)).id(CommandIds.EXERCISE_ID)
-            val target = workoutId
-            if (target != null && newId != null) commands.execute(Command.AddExercise(target, ExerciseRef.ById(newId)))
+            newId?.let { addCommand(ExerciseRef.ById(it)) }?.let { commands.execute(it) }
             _query.value = ""
             onDone(target != null)
         }

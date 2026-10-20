@@ -856,13 +856,22 @@ private fun weightSpec(initial: String): NumberInputSpec {
     )
 }
 
+/**
+ * The reps sheet. A set takes 0 and up; a routine's target reps ([minimum] 1,
+ * with its own [title] and [errorText]) use the same sheet.
+ */
 @Composable
-private fun repsSpec(initial: String): NumberInputSpec {
+internal fun repsSpec(
+    initial: String,
+    title: String = stringResource(R.string.input_reps_title),
+    minimum: Int = 0,
+    errorText: String = stringResource(R.string.input_error_reps),
+): NumberInputSpec {
     val context = LocalContext.current
     val minusReps = stringResource(R.string.input_minus_reps)
     val plusReps = stringResource(R.string.input_plus_reps)
     return NumberInputSpec(
-        title = stringResource(R.string.input_reps_title),
+        title = title,
         unit = stringResource(R.string.workout_unit_reps),
         initialText = initial,
         keyboardType = KeyboardType.Number,
@@ -870,12 +879,12 @@ private fun repsSpec(initial: String): NumberInputSpec {
         minusDescription = { _ -> minusReps },
         plusDescription = { _ -> plusReps },
         hint = stringResource(R.string.input_hint),
-        errorText = stringResource(R.string.input_error_reps),
+        errorText = errorText,
         doneText = stringResource(R.string.input_done),
         minusText = stringResource(R.string.input_minus),
         plusText = stringResource(R.string.input_plus),
-        isValid = { parseReps(it) != null },
-        step = { text, steps -> stepReps(parseReps(text) ?: 0, steps).toString() },
+        isValid = { text -> parseReps(text)?.let { it >= minimum } == true },
+        step = { text, steps -> stepReps(parseReps(text) ?: 0, steps).coerceAtLeast(minimum).toString() },
         sanitize = { text -> text.filter { it.isDigit() }.take(3) },
         ruler = REPS_RULER,
         toValue = { parseReps(it)?.toDouble() },

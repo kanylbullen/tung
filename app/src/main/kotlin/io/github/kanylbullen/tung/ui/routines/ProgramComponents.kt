@@ -4,15 +4,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.ISO_WEEKDAYS
@@ -73,6 +80,46 @@ fun ProgramDayChoiceRow(routineName: String, place: String, onClick: () -> Unit)
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(routineName, style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
             Text(place, style = Tung.numbers.inline, color = Tung.colors.muted)
+        }
+    }
+}
+
+/** Rotating and fixed as two radio rows with their hints: the new-program dialog and the program's own screen. */
+@Composable
+fun ProgramModeChoice(selected: ProgramMode, onSelect: (ProgramMode) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.selectableGroup()) {
+        listOf(
+            ProgramMode.ROTATING to R.string.program_mode_rotating_hint,
+            ProgramMode.FIXED to R.string.program_mode_fixed_hint,
+        ).forEach { (option, hint) ->
+            ModeOption(
+                label = programModeLabel(option),
+                hint = stringResource(hint),
+                selected = selected == option,
+                onSelect = { onSelect(option) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModeOption(label: String, hint: String, selected: Boolean, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = null,
+            colors = RadioButtonDefaults.colors(selectedColor = Tung.colors.accent, unselectedColor = Tung.colors.muted),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(label, style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = Tung.colors.muted)
         }
     }
 }

@@ -224,6 +224,12 @@
     </plurals>
     <string name="routine_no_target_reps">Inget mål för reps</string>
     <string name="routine_not_found">Rutinen finns inte längre.</string>
+    <string name="routine_add_exercise">+ Övning</string>
+    <string name="routine_remove_exercise">Ta bort</string>
+    <string name="routine_clear_target_reps">Ta bort mål för reps</string>
+    <string name="routine_edit_target_reps">Ändra målet för reps i %1$s</string>
+    <string name="routine_target_reps_title">Mål för reps · %1$s</string>
+    <string name="routine_error_target_reps">Skriv ett heltal mellan 1 och 999.</string>
 
     <!-- Programs -->
     <string name="programs_title">Program</string>
@@ -238,6 +244,7 @@
     <string name="program_mode_fixed_hint">Varje rutin på de veckodagar du väljer</string>
     <string name="program_mode_rotating">Rullande</string>
     <string name="program_mode_rotating_hint">Dag 1, 2, 3 i tur och ordning, oavsett datum</string>
+    <string name="program_mode_title">Läge</string>
     <string name="program_active">Aktivt</string>
     <string name="program_activate">Aktivera</string>
     <string name="program_activate_description">Aktivera %1$s</string>

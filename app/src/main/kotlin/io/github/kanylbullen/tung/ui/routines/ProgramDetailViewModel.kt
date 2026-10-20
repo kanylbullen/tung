@@ -63,6 +63,10 @@ class ProgramDetailViewModel(
         viewModelScope.launch { commands.execute(Command.RenameProgram(programId, name)) }
     }
 
+    fun setMode(mode: ProgramMode) {
+        viewModelScope.launch { commands.execute(Command.SetProgramMode(programId, mode)) }
+    }
+
     fun activate() {
         viewModelScope.launch { commands.execute(Command.ActivateProgram(programId)) }
     }
