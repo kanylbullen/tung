@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.core
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -69,6 +70,61 @@ class CatalogTest {
             assertTrue("${e.id}: ${e.muscleGroup}", e.muscleGroup in muscleKeys)
             assertTrue("${e.id}: ${e.equipment}", e.equipment in equipmentKeys)
         }
+    }
+
+    @Test
+    fun everyCoreEntryHasOneToThreePrimaryAndAtMostFourSecondaryMuscles() {
+        core.forEach { e ->
+            assertTrue("${e.key}: ${e.primaryMuscles}", e.primaryMuscles.size in 1..3)
+            assertTrue("${e.key}: ${e.secondaryMuscles}", e.secondaryMuscles.size <= 4)
+            val all = e.primaryMuscles + e.secondaryMuscles
+            assertEquals("${e.key} repeats a muscle", all.size, all.toSet().size)
+        }
+    }
+
+    @Test
+    fun everyMuscleInTheCatalogueIsInTheFixedList() {
+        core.forEach { e ->
+            (e.primaryMuscles + e.secondaryMuscles).forEach { assertNotNull("${e.key}: unknown muscle $it", Muscle.fromKey(it)) }
+        }
+        extended.forEach { e ->
+            (e.primaryMuscles + e.secondaryMuscles).forEach { assertNotNull("${e.id}: unknown muscle $it", Muscle.fromKey(it)) }
+        }
+    }
+
+    /** `muscleGroup` is the display level: the group of the first primary muscle, or fullbody for whole-body lifts. */
+    @Test
+    fun muscleGroupFollowsTheFirstPrimaryMuscle() {
+        core.forEach { e ->
+            val first = e.primaryMuscles.firstOrNull()?.let(Muscle::fromKey)
+            assertNotNull(e.key, first)
+            assertTrue("${e.key}: ${e.muscleGroup} but first primary ${first?.key}", first != null && muscleGroupMatches(e.muscleGroup, first))
+        }
+        extended.forEach { e ->
+            val first = e.primaryMuscles.firstOrNull()?.let(Muscle::fromKey)
+            assertNotNull("${e.id} has no primary muscle", first)
+            assertTrue("${e.id}: ${e.muscleGroup} but first primary ${first?.key}", first != null && muscleGroupMatches(e.muscleGroup, first))
+        }
+    }
+
+    @Test
+    fun theIndexKnowsEveryCatalogueExercise() {
+        val index = MuscleIndex.build(core, extended)
+        core.forEach { e ->
+            val byKey = index.musclesOf(e.key)
+            assertNotNull(e.key, byKey)
+            assertEquals(byKey, index.musclesOf(catalogExerciseId(e.key)))
+            assertEquals(e.primaryMuscles, byKey?.primary?.map { it.key })
+            assertEquals(e.secondaryMuscles, byKey?.secondary?.map { it.key })
+        }
+        extended.forEach { e ->
+            assertNotNull(e.id, index.musclesOf(extendedExerciseId(e.id)))
+        }
+        assertEquals(
+            listOf(Muscle.CHEST),
+            index.musclesOf("bench_press")?.primary,
+        )
+        assertEquals(listOf(Muscle.HAMSTRINGS, Muscle.GLUTES), index.musclesOf("romanian_deadlift")?.primary)
     }
 
     @Test
