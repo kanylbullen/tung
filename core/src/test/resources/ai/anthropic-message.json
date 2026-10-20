@@ -1,0 +1,15 @@
+{
+  "id": "msg_01XFDUDYJgAACzvnptvVoYEL",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-test-model",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"rationale\":\"Squat day is due: your last workout was the push day.\",\"exercises\":[{\"key\":\"back_squat\",\"sets\":[{\"weight_kg\":102.5,\"reps\":5},{\"weight_kg\":102.5,\"reps\":5}]}]}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": { "input_tokens": 2051, "output_tokens": 64 }
+}

@@ -355,6 +355,73 @@
     <string name="health_rationale_where">Värdena stannar i Tung på den här telefonen. Om du synkar med en Tung-server du valt i Inställningar sparas de där med passet, som resten av det. Tung har ingen analys och skickar dem ingen annanstans.</string>
     <string name="health_rationale_off">Du kan slå av båda i Tungs inställningar och ta bort behörigheterna i Health Connect när du vill.</string>
 
+    <!-- Assistant: in-app AI with your own key (BYOK) -->
+    <string name="ai_title">Assistent</string>
+    <string name="ai_entry_hint">Ett program, dagens pass eller var du har kört fast, från en modell med din egen nyckel</string>
+    <string name="ai_intro">Varje knapp skickar din träningshistorik, dina rutiner och program till leverantören du ställt in under Inställningar, med din egen nyckel, och bara när du trycker. Aldrig din e-post, ditt namn eller din enhet.</string>
+    <string name="ai_ask_program">Föreslå ett program</string>
+    <string name="ai_ask_next">Nästa pass</string>
+    <string name="ai_ask_plateaus">Var har jag kört fast</string>
+    <string name="ai_not_configured">Ställ in assistenten först: en leverantör, en modell och din nyckel, under Inställningar.</string>
+    <string name="ai_open_settings">Öppna inställningar</string>
+    <string name="ai_asking">Väntar på svaret…</string>
+    <string name="ai_show_payload">Visa vad som skickas</string>
+    <string name="ai_show_payload_on">På</string>
+    <string name="ai_payload_title">Det här skickas</string>
+    <string name="ai_payload_intro">Så här ser förfrågan ut, exakt som den går till %1$s. Din nyckel skickas i en rubrik och visas inte.</string>
+    <string name="ai_payload_send">Skicka</string>
+    <plurals name="ai_dropped">
+        <item quantity="one">%d förslag gick inte att använda och togs bort.</item>
+        <item quantity="other">%d förslag gick inte att använda och togs bort.</item>
+    </plurals>
+    <plurals name="ai_target_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d set</item>
+    </plurals>
+    <string name="ai_set_from_last_time">som förra gången</string>
+    <string name="ai_program_default_name">Föreslaget program</string>
+    <string name="ai_save_program">Spara programmet</string>
+    <string name="ai_save_program_hint">Sparar rutinerna, och ett roterande program med dem i den här ordningen. Aktivera det under Program.</string>
+    <string name="ai_start_workout">Starta det här passet</string>
+    <string name="ai_save_failed">Förslaget gick inte att spara. Försök igen.</string>
+    <string name="ai_plateaus_none">Inga platåer: det du tränar regelbundet går fortfarande framåt.</string>
+    <string name="ai_plateau_since">Sedan %1$s</string>
+    <string name="ai_error_network">Kunde inte nå leverantören. Kontrollera adressen och din anslutning.</string>
+    <string name="ai_error_timeout">Leverantören svarade inte inom en minut. Försök igen om en stund.</string>
+    <string name="ai_error_unauthorized">Leverantören godtog inte nyckeln. Kontrollera den under Inställningar.</string>
+    <string name="ai_error_not_found">Inget svarar på den adressen, eller så finns inte modellen. Kontrollera båda under Inställningar.</string>
+    <string name="ai_error_rate_limited">Leverantörens gräns är nådd. Vänta en stund, eller kontrollera din kvot.</string>
+    <string name="ai_error_rejected">Leverantören avvisade förfrågan.</string>
+    <string name="ai_error_server">Leverantören fick problem. Försök igen om en stund.</string>
+    <string name="ai_error_no_answer">Leverantören svarade utan innehåll. Försök igen.</string>
+    <string name="ai_error_unreadable">Svaret var inte i den form Tung bad om. Försök igen, eller använd en starkare modell.</string>
+    <string name="ai_error_nothing_usable">Svaret nämnde ingen övning som Tung känner till, så det finns inget att visa. Försök igen.</string>
+    <string name="ai_error_provider_says">Leverantören säger: %1$s</string>
+    <string name="ai_settings_intro">Använd din egen nyckel med ett OpenAI-kompatibelt API (OpenAI, Ollama, LM Studio med flera) eller med Anthropic. Anropen går direkt från telefonen till leverantören, bara när du trycker; Tungs server ser aldrig nyckeln.</string>
+    <string name="ai_provider_openai">OpenAI-kompatibel</string>
+    <string name="ai_provider_openai_hint">OpenAI, eller en lokal server som Ollama</string>
+    <string name="ai_provider_anthropic">Anthropic</string>
+    <string name="ai_provider_anthropic_hint">Claude-modellerna</string>
+    <string name="ai_base_url">Bas-URL</string>
+    <string name="ai_base_url_hint">Tom för leverantörens egen. http bara på ditt eget nätverk.</string>
+    <string name="ai_model">Modell</string>
+    <string name="ai_model_hint">Modellens namn hos din leverantör</string>
+    <string name="ai_key">API-nyckel</string>
+    <string name="ai_key_hint">Sparas krypterad på telefonen. En lokal server behöver kanske ingen.</string>
+    <string name="ai_key_saved">En nyckel är sparad. Skriv en ny för att byta.</string>
+    <string name="ai_key_remove">Ta bort nyckeln</string>
+    <string name="ai_key_removed">Nyckeln är borttagen.</string>
+    <string name="ai_json_mode">Be om JSON-läge</string>
+    <string name="ai_json_mode_hint">Stäng av om din server inte godtar response_format.</string>
+    <string name="ai_save">Spara</string>
+    <string name="ai_test">Testa</string>
+    <string name="ai_testing">Testar…</string>
+    <string name="ai_saved">Sparat.</string>
+    <string name="ai_test_ok">Leverantören svarade. Assistenten är redo.</string>
+    <string name="ai_error_url">Ange en bas-URL som https://api.openai.com/v1, eller lämna fältet tomt.</string>
+    <string name="ai_error_url_https">Använd https://. Vanlig http fungerar bara för localhost och adresser på ditt eget nätverk.</string>
+    <string name="ai_error_model">Ange modellens namn.</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bänkpress</string>

@@ -111,6 +111,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 )
             }
             HealthConnectSection()
+            AiSection()
         }
     }
 }

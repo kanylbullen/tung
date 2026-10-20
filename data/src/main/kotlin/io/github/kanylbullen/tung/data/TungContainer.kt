@@ -7,6 +7,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import io.github.kanylbullen.tung.ai.AiClient
+import io.github.kanylbullen.tung.ai.AiService
+import io.github.kanylbullen.tung.ai.AiSettings
+import io.github.kanylbullen.tung.ai.aiHttpClient
 import io.github.kanylbullen.tung.core.CoreCatalog
 import io.github.kanylbullen.tung.core.CoreExercise
 import io.github.kanylbullen.tung.core.ExtendedCatalog
@@ -46,7 +50,8 @@ import java.time.Clock
  * for Home's "Today"; the app uses the system clock and zone, the flow tests
  * one they can set to a given weekday. [createTokenStore] keeps the sync
  * token in EncryptedSharedPreferences; the flow tests use one in memory,
- * because Robolectric has no Android Keystore. [createHealthConnect] is
+ * because Robolectric has no Android Keystore; [createAiKeyStore] does the
+ * same for the in-app assistant's API key. [createHealthConnect] is
  * Health Connect: the phone hands in the real gateway, the watch none, the
  * flow tests a fake.
  *
@@ -64,6 +69,8 @@ class TungContainer(
     createPushEnvironment: (Context) -> PushEnvironment = ::AndroidPushEnvironment,
     /** Health Connect (CLAUDE.md, "Health Connect"): the phone's `TungApp` passes the real gateway; null (the watch) means none. */
     createHealthConnect: (Context) -> HealthConnectGateway? = { null },
+    /** The in-app assistant's API key (`ai_key`); the flow tests keep it in memory, like the sync token. */
+    createAiKeyStore: (Context) -> TokenStore = { EncryptedTokenStore(it, AiSettings.KEY_FILE, AiSettings.KEY_NAME) },
 ) {
     private val context: Context = context.applicationContext ?: context
 
@@ -87,6 +94,11 @@ class TungContainer(
         coreCatalog.associate { it.key to it.name.values.toList() }
     }
 
+    /** Names to exercises, for the command handler and the assistant's answers (core's `resolveRef`). */
+    private val exerciseResolver: AppExerciseResolver by lazy {
+        AppExerciseResolver(database.exerciseDao(), { catalogueNames }, extendedCatalog)
+    }
+
     /** What each catalogue exercise trains (`core.MuscleIndex`), for the picker's suggestions. */
     val catalogueMuscles: CatalogueMuscles by lazy { CatalogueMuscles({ coreCatalog }, extendedCatalog) }
 
@@ -102,7 +114,7 @@ class TungContainer(
             exercises = exerciseRepository,
             routines = routineRepository,
             programs = programRepository,
-            resolver = AppExerciseResolver(database.exerciseDao(), { catalogueNames }, extendedCatalog),
+            resolver = exerciseResolver,
             extendedCatalog = extendedCatalog,
             onWorkoutFinished = ::workoutFinished,
             startedBy = startedBy,
@@ -176,6 +188,23 @@ class TungContainer(
     private val pushEnvironment: PushEnvironment by lazy { createPushEnvironment(this.context) }
     val push: PushRegistrar by lazy {
         PushRegistrar(pushEnvironment, syncClient, settings, syncAccount.state.map { it.signedIn }, appScope)
+    }
+
+    // --- the in-app assistant with the user's own key (ai/, CLAUDE.md "In-app AI (BYOK)"): only on a tap ---
+    private val aiKeyStore: TokenStore by lazy { createAiKeyStore(this.context) }
+    val aiSettings: AiSettings by lazy { AiSettings(settings, aiKeyStore) }
+    val ai: AiService by lazy {
+        AiService(
+            settings = aiSettings,
+            client = AiClient(aiHttpClient()),
+            workouts = workoutRepository,
+            routines = routineRepository,
+            programs = programRepository,
+            resolver = exerciseResolver,
+            catalogueKeys = { coreCatalog.map { it.key } },
+            commands = commands,
+            clock = clock,
+        )
     }
 
     private companion object {

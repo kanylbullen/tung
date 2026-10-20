@@ -15,7 +15,7 @@ import java.time.ZoneId
  * `robolectric.properties`). Identical to [TungApp] except that the database
  * lives in memory, seeded with the same catalogue, that Home's "today"
  * comes from [today], and that the sync token is kept in [tokens] instead of
- * EncryptedSharedPreferences, that its push transports are [push], and that
+ * EncryptedSharedPreferences (the assistant's API key likewise, in [aiKeys]), that its push transports are [push], and that
  * Health Connect is [healthConnect]. Robolectric creates a new application per test, so every
  * test starts with an empty history.
  */
@@ -32,6 +32,9 @@ class FlowTestApp : TungApp() {
 
     val tokens = MemoryTokenStore()
 
+    /** The in-app assistant's API key, in memory for the same reason as [tokens]. */
+    val aiKeys = MemoryTokenStore()
+
     /** The push transports this "device" has: none unless a test sets its fields (it is read when push refreshes). */
     val push = FakePushEnvironment()
 
@@ -45,6 +48,7 @@ class FlowTestApp : TungApp() {
         createTokenStore = { tokens },
         createPushEnvironment = { push },
         createHealthConnect = { healthConnect },
+        createAiKeyStore = { aiKeys },
     )
 
     /** Every read goes to [today], so a test can change it after the container exists. */

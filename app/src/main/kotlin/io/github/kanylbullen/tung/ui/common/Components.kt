@@ -45,14 +45,17 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
 
 /** A quieter full-width button on the raised surface. */
 @Composable
-fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.fillMaxWidth().heightIn(min = 56.dp),
         shape = TungCorner,
         colors = ButtonDefaults.buttonColors(
             containerColor = Tung.colors.raised,
             contentColor = Tung.colors.text,
+            disabledContainerColor = Tung.colors.raised,
+            disabledContentColor = Tung.colors.muted,
         ),
         elevation = null,
     ) {

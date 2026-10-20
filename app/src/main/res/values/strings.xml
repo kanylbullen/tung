@@ -359,6 +359,73 @@
     <string name="health_rationale_where">These values stay in Tung on this phone. If you sync with a Tung server you chose in Settings, they are stored there with the workout, like the rest of it. Tung has no analytics and sends them nowhere else.</string>
     <string name="health_rationale_off">You can turn either off in Tung\'s Settings and revoke the permissions in Health Connect at any time.</string>
 
+    <!-- Assistant: in-app AI with your own key (BYOK) -->
+    <string name="ai_title">Assistant</string>
+    <string name="ai_entry_hint">A program, today\'s workout or where you are stuck, from a model with your own key</string>
+    <string name="ai_intro">Each button sends your training history, routines and programs to the provider set up in Settings, with your own key, and only when you tap it. Never your email, name or device.</string>
+    <string name="ai_ask_program">Suggest a program</string>
+    <string name="ai_ask_next">Next workout</string>
+    <string name="ai_ask_plateaus">Where have I got stuck</string>
+    <string name="ai_not_configured">Set up the assistant first: a provider, a model and your key, in Settings.</string>
+    <string name="ai_open_settings">Open settings</string>
+    <string name="ai_asking">Waiting for the answer…</string>
+    <string name="ai_show_payload">Show what is sent</string>
+    <string name="ai_show_payload_on">On</string>
+    <string name="ai_payload_title">What is sent</string>
+    <string name="ai_payload_intro">This is the request exactly as it goes to %1$s. Your key goes in a header and is not shown.</string>
+    <string name="ai_payload_send">Send</string>
+    <plurals name="ai_dropped">
+        <item quantity="one">%d suggestion could not be used and was left out.</item>
+        <item quantity="other">%d suggestions could not be used and were left out.</item>
+    </plurals>
+    <plurals name="ai_target_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d sets</item>
+    </plurals>
+    <string name="ai_set_from_last_time">as last time</string>
+    <string name="ai_program_default_name">Suggested program</string>
+    <string name="ai_save_program">Save program</string>
+    <string name="ai_save_program_hint">Saves the routines, and a rotating program with them in this order. Activate it under Programs.</string>
+    <string name="ai_start_workout">Start this workout</string>
+    <string name="ai_save_failed">Could not save the suggestion. Try again.</string>
+    <string name="ai_plateaus_none">No plateaus found: what you train regularly is still moving.</string>
+    <string name="ai_plateau_since">Since %1$s</string>
+    <string name="ai_error_network">Could not reach the provider. Check the address and your connection.</string>
+    <string name="ai_error_timeout">The provider did not answer within a minute. Try again in a while.</string>
+    <string name="ai_error_unauthorized">The provider refused the key. Check it in Settings.</string>
+    <string name="ai_error_not_found">Nothing answers at that address, or the model does not exist. Check both in Settings.</string>
+    <string name="ai_error_rate_limited">The provider\'s limit is reached. Wait a while, or check your quota.</string>
+    <string name="ai_error_rejected">The provider refused the request.</string>
+    <string name="ai_error_server">The provider had a problem. Try again in a while.</string>
+    <string name="ai_error_no_answer">The provider answered with nothing. Try again.</string>
+    <string name="ai_error_unreadable">The answer was not in the form Tung asked for. Try again, or use a stronger model.</string>
+    <string name="ai_error_nothing_usable">The answer named no exercise Tung knows, so there is nothing to show. Try again.</string>
+    <string name="ai_error_provider_says">The provider says: %1$s</string>
+    <string name="ai_settings_intro">Use your own key with an OpenAI-compatible API (OpenAI, Ollama, LM Studio and others) or with Anthropic. Calls go straight from this phone to the provider, only when you tap; Tung\'s server never sees the key.</string>
+    <string name="ai_provider_openai">OpenAI-compatible</string>
+    <string name="ai_provider_openai_hint">OpenAI, or a local server such as Ollama</string>
+    <string name="ai_provider_anthropic">Anthropic</string>
+    <string name="ai_provider_anthropic_hint">The Claude models</string>
+    <string name="ai_base_url">Base URL</string>
+    <string name="ai_base_url_hint">Empty for the provider\'s own. http only on your own network.</string>
+    <string name="ai_model">Model</string>
+    <string name="ai_model_hint">The model\'s name at your provider</string>
+    <string name="ai_key">API key</string>
+    <string name="ai_key_hint">Stored encrypted on this phone. A local server may need none.</string>
+    <string name="ai_key_saved">A key is saved. Type a new one to replace it.</string>
+    <string name="ai_key_remove">Remove key</string>
+    <string name="ai_key_removed">The key is removed.</string>
+    <string name="ai_json_mode">Ask for JSON mode</string>
+    <string name="ai_json_mode_hint">Turn off if your server refuses response_format.</string>
+    <string name="ai_save">Save</string>
+    <string name="ai_test">Test</string>
+    <string name="ai_testing">Testing…</string>
+    <string name="ai_saved">Saved.</string>
+    <string name="ai_test_ok">The provider answered. The assistant is ready.</string>
+    <string name="ai_error_url">Enter a base URL such as https://api.openai.com/v1, or leave it empty.</string>
+    <string name="ai_error_url_https">Use https://. Plain http only works for localhost and addresses on your own network.</string>
+    <string name="ai_error_model">Enter the model\'s name.</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bench press</string>
