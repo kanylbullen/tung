@@ -32,6 +32,8 @@ tags:
     description: Accounts and session tokens.
   - name: tokens
     description: Named API tokens for scripts and agents.
+  - name: link
+    description: Sign a device in with a short code instead of a password (a watch).
   - name: exercises
     description: The catalogue and the user's own exercises.
   - name: workouts
@@ -129,6 +131,59 @@ paths:
         "204": { description: Revoked. }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/link/start:
+    post:
+      tags: [link]
+      summary: Get a code to link a device
+      description: |
+        Makes a six-digit numeric code for the caller's account, valid ten
+        minutes and unique among the codes that have not expired. Another
+        device, typically a watch where typing a password is impractical,
+        sends it to `POST /api/v1/link/claim` and gets its own token. Needs a
+        token with scope `write`. At most 5 codes a minute per user.
+      operationId: linkStart
+      responses:
+        "201":
+          description: The code, to show on the signed-in device.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkCode" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/link/claim:
+    post:
+      tags: [link]
+      summary: Trade a code for a token
+      description: |
+        Claims a code from `POST /api/v1/link/start`. A valid code that has
+        not been claimed is marked claimed and answered with a new API token
+        of that user (scope `write`, name `watch`, listed and revocable under
+        `/api/v1/tokens`) and the user. A code works once: an unknown,
+        expired or already claimed code is 404 `invalid_code`. No auth. At
+        most 10 attempts a minute per client address.
+      operationId: linkClaim
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkClaim" }
+      responses:
+        "200":
+          description: Linked; the token is shown here and nowhere else.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: The code is unknown, expired or already claimed (`invalid_code`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/me:
     get:
@@ -550,6 +605,19 @@ components:
       properties:
         token: { type: string, examples: ["tung_3q2-…"] }
         user: { $ref: "#/components/schemas/User" }
+
+    LinkCode:
+      type: object
+      required: [code, expires_at]
+      properties:
+        code: { type: string, pattern: "^[0-9]{6}$", examples: ["042917"] }
+        expires_at: { $ref: "#/components/schemas/Millis" }
+
+    LinkClaim:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, pattern: "^[0-9]{6}$" }
 
     Token:
       type: object
