@@ -185,6 +185,11 @@ reliably today and in every gym.
   assistant and dictating to the app give the same result. The assistant
   gets the grammar's job done by the model it already is.
 
+The first half (#48) is implemented: the grammar in `core/voice/`, the
+phone's recogniser, the mic and hands-free mode in the active workout, and
+the free-text fallback to the in-app assistant; `CLAUDE.md`, "Voice", is the
+reference. Whisper, Home and the watch are later steps.
+
 ## Camera
 
 Recognising a workout from video is possible in parts, and the parts have
