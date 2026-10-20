@@ -6,9 +6,9 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The seed list is generated from `catalog/core.json` into the app, so the app
- * checks it; the catalogue data itself is checked by `CatalogTest` in `core/`.
- * Gradle runs unit tests with `app/` as working directory.
+ * The seed list is generated from `catalog/core.json` into the data module, so
+ * it checks it; the catalogue data itself is checked by `CatalogTest` in `core/`.
+ * Gradle runs unit tests with `data/` as working directory.
  */
 class SeedExercisesTest {
 

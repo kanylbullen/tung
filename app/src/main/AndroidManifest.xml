@@ -32,10 +32,6 @@
             </intent-filter>
         </activity>
 
-        <receiver
-            android:name=".timer.RestTimerReceiver"
-            android:exported="false" />
-
         <!-- Commands from the watch app (wear/); the system starts it when a message arrives. -->
         <service
             android:name=".wear.WearSyncService"

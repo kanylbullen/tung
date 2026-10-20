@@ -2,10 +2,6 @@ package io.github.kanylbullen.tung.ui.common
 
 import android.annotation.SuppressLint
 import android.content.Context
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import io.github.kanylbullen.tung.data.Exercise
 import java.util.concurrent.ConcurrentHashMap
 
@@ -13,6 +9,11 @@ import java.util.concurrent.ConcurrentHashMap
  * Catalogue exercises are named by the string resource `ex_<nameKey>`, so the
  * name follows the phone's language. Custom exercises have no key and show
  * what the user typed. A key without a resource falls back to [Exercise.name].
+ *
+ * The `ex_*` strings are generated into each app's own resources (`app/` and
+ * `wear/`, by `catalog/tools/gen_android.py`); the lookup is by name in the
+ * running app's package, so this works in both. The composable wrapper,
+ * `exerciseDisplayName`, is in the phone app.
  */
 object ExerciseNames {
     /** nameKey → string resource id, 0 when there is none. Resource ids never change at runtime. */
@@ -30,11 +31,3 @@ object ExerciseNames {
 }
 
 fun Exercise.displayName(context: Context): String = ExerciseNames.resolve(context, nameKey, name)
-
-/** For composables; recomposes with the configuration, so a language change shows at once. */
-@Composable
-fun exerciseDisplayName(nameKey: String?, name: String): String {
-    val configuration = LocalConfiguration.current
-    val context = LocalContext.current
-    return remember(nameKey, name, configuration) { ExerciseNames.resolve(context, nameKey, name) }
-}

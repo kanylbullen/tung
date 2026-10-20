@@ -14,15 +14,14 @@ import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import io.github.kanylbullen.tung.MainActivity
-import io.github.kanylbullen.tung.R
-import io.github.kanylbullen.tung.TungApp
+import io.github.kanylbullen.tung.data.R
+import io.github.kanylbullen.tung.data.TungHost
 import java.util.concurrent.atomic.AtomicLong
 
 /**
  * What happens when a rest is over: a vibration always, and a "Rest over"
  * notification when the app is not on screen and notifications are allowed.
- * Tapping the notification opens the active workout.
+ * Tapping the notification opens the active workout ([TungHost.openWorkoutIntent]).
  *
  * Both the alarm ([RestTimerReceiver]) and the countdown on screen can get
  * here for the same rest; whichever comes first alerts and the other is a no-op.
@@ -40,8 +39,8 @@ object RestAlerts {
     fun restOver(context: Context, workoutId: String, endsAtMillis: Long) {
         if (lastAlerted.getAndSet(endsAtMillis) == endsAtMillis) return
         vibrate(context)
-        val visible = (context.applicationContext as? TungApp)?.isInForeground == true
-        if (!visible) notify(context, workoutId)
+        val host = context.applicationContext as? TungHost ?: return
+        if (!host.isInForeground) notify(context, host, workoutId)
     }
 
     fun cancelNotification(context: Context) {
@@ -59,7 +58,7 @@ object RestAlerts {
         vibrator.vibrate(VibrationEffect.createWaveform(PATTERN, -1))
     }
 
-    private fun notify(context: Context, workoutId: String) {
+    private fun notify(context: Context, host: TungHost, workoutId: String) {
         val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
@@ -69,13 +68,12 @@ object RestAlerts {
         val open = PendingIntent.getActivity(
             context,
             0,
-            Intent(context, MainActivity::class.java)
-                .putExtra(MainActivity.EXTRA_OPEN_WORKOUT, workoutId)
+            host.openWorkoutIntent(workoutId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_dumbbell)
+            .setSmallIcon(host.notificationIcon)
             .setContentTitle(context.getString(R.string.rest_over))
             .setContentText(context.getString(R.string.rest_over_text))
             .setCategory(NotificationCompat.CATEGORY_ALARM)

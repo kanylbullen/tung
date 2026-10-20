@@ -11,11 +11,11 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import io.github.kanylbullen.tung.TungApp
+import io.github.kanylbullen.tung.data.TungHost
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import java.util.concurrent.TimeUnit
 
-/** When background syncs run. [WorkManagerSyncScheduler] in the app. */
+/** When background syncs run. [WorkManagerSyncScheduler] in both apps. */
 interface SyncScheduler {
     /** Every 15 minutes while signed in, with a network. Kept if already scheduled. */
     fun schedulePeriodic()
@@ -69,7 +69,7 @@ class WorkManagerSyncScheduler(private val context: Context) : SyncScheduler {
  */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val client = (applicationContext as TungApp).container.syncClient
+        val client = (applicationContext as TungHost).container.syncClient
         return when (val result = client.syncOnce()) {
             is SyncResult.Success, SyncResult.NotSignedIn -> Result.success()
             is SyncResult.Failed -> when (result.failure) {

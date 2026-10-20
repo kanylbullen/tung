@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Strings of the shared data layer, used by both apps: only what library code
+  shows itself (the "Rest over" notification). The screens' strings are in each
+  app's own res/.
+-->
+<resources>
+    <!-- Rest timer notification (timer/RestAlerts.kt) -->
+    <string name="rest_channel_name">Rest timer</string>
+    <string name="rest_channel_description">Tells you when the rest between sets is over.</string>
+    <string name="rest_over">Rest over</string>
+    <string name="rest_over_text">Time for the next set.</string>
+</resources>

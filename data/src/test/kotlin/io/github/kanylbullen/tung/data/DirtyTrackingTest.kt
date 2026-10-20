@@ -167,7 +167,7 @@ class DirtyTrackingTest {
     /** The rule is "a DAO statement that stamps updatedAt also sets dirty": checked on the source, so a new one cannot forget it. */
     @Test
     fun everyDaoUpdateThatStampsUpdatedAtAlsoSetsDirty() {
-        val dir = listOf(File("src/main/kotlin/io/github/kanylbullen/tung/data"), File("app/src/main/kotlin/io/github/kanylbullen/tung/data"))
+        val dir = listOf(File("src/main/kotlin/io/github/kanylbullen/tung/data"), File("data/src/main/kotlin/io/github/kanylbullen/tung/data"))
             .first { it.isDirectory }
         val setClause = Regex("""UPDATE\s+(\w+)\s+SET\s+(.*?)\s+WHERE""")
         val offenders = dir.listFiles { f -> f.name.endsWith("Dao.kt") }.orEmpty().flatMap { file ->

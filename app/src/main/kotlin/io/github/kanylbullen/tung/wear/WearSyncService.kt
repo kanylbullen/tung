@@ -21,13 +21,13 @@ class WearSyncService : WearableListenerService() {
 
     override fun onMessageReceived(event: MessageEvent) {
         if (event.path != WatchProtocol.COMMAND_PATH) return
-        val container = (application as TungApp).container
-        val publisher = container.wearPublisher
+        val app = application as TungApp
+        val publisher = app.wearPublisher
         publisher.start()
         val text = event.data.toString(Charsets.UTF_8)
         val done = runBlocking {
             withTimeoutOrNull(TIMEOUT_MILLIS) {
-                container.wearCommands.handle(text)
+                app.wearCommands.handle(text)
                 publisher.publishNow()
             }
         }

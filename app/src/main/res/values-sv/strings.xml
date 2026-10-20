@@ -77,10 +77,6 @@
     <string name="rest_skip">Hoppa över</string>
     <string name="rest_add">+30 s</string>
     <string name="rest_add_description">Lägg till 30 sekunder</string>
-    <string name="rest_channel_name">Vilotimer</string>
-    <string name="rest_channel_description">Säger till när vilan mellan seten är slut.</string>
-    <string name="rest_over">Vilan är slut</string>
-    <string name="rest_over_text">Dags för nästa set.</string>
 
     <!-- Number input sheet -->
     <string name="input_weight_title">Vikt</string>

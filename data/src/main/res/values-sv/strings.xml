@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Rest timer notification (timer/RestAlerts.kt) -->
+    <string name="rest_channel_name">Vilotimer</string>
+    <string name="rest_channel_description">Säger till när vilan mellan seten är slut.</string>
+    <string name="rest_over">Vilan är slut</string>
+    <string name="rest_over_text">Dags för nästa set.</string>
+</resources>

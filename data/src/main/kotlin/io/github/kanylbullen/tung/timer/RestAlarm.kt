@@ -17,8 +17,11 @@ import android.os.Build
  * screen the countdown ends the rest on time either way. `USE_EXACT_ALARM` is
  * not used: Play reserves it for apps whose core function is an alarm clock,
  * timer or calendar, and a training log is not one.
+ *
+ * Public, not internal, since it moved to `data/`: the phone app's
+ * `RestAlertsTest` sends its broadcast by hand.
  */
-internal object RestAlarm {
+object RestAlarm {
 
     const val ACTION_REST_OVER = "io.github.kanylbullen.tung.action.REST_OVER"
     const val EXTRA_WORKOUT_ID = "workoutId"
