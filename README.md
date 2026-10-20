@@ -33,9 +33,13 @@ planned and described in detail in [`docs/architecture.md`](docs/architecture.md
   sets and new records.
 - Swedish and English. Dark theme by default, light follows the system.
 - 70 curated exercises seeded on first start.
+- Sync, if you want it: sign in to a tung-server in Settings and the phone
+  syncs row by row in the background, newest write wins and deletions as
+  tombstones; without a server it works exactly as before.
 
 Stack: Kotlin, Jetpack Compose, Material 3, Room. minSdk 26, targetSdk 35.
-The app needs no backend and has no analytics and no network permission.
+The app needs no backend and has no analytics; its only network use is the
+sync server you name.
 
 ### Server
 
@@ -55,9 +59,6 @@ through `core/`.
 
 ## Direction
 
-- **Sync.** The app points at any server URL, ours or your own, and syncs
-  row by row (newest write wins, deletions as tombstones). Without a server
-  it works exactly as today.
 - **The whole app as an API.** Every command the app's buttons use
   (`core/command/`) exposed over HTTP under the same names, so everything the
   app can do is in the OpenAPI spec. No private endpoints.
