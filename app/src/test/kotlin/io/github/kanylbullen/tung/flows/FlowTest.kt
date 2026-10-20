@@ -6,6 +6,8 @@ import android.os.Looper
 import androidx.compose.ui.platform.ViewRootForTest
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
+import androidx.compose.ui.test.printToString
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -99,6 +101,10 @@ abstract class FlowTest {
             }
         } catch (e: ComposeTimeoutException) {
             System.err.println(threadDump("${testName.methodName}: ${e.message}"))
+            // What the screen actually showed, so a timeout on CI can be read without a device.
+            val tree = runCatching { compose.onRoot(useUnmergedTree = true).printToString(maxDepth = 12) }
+                .getOrElse { "semantics tree unavailable: $it" }
+            System.err.println("semantics at timeout (${testName.methodName}):\n" + tree.take(12_000))
             throw e
         }
     }
