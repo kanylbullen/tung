@@ -76,6 +76,7 @@
 | Import | Adapters in `core/`, Jefit first, then Strong and Hevy; alias table in `catalog/`, review list for unmatched names, deterministic ids, source marked on the session | The import decides whether someone switches; it must be safe to run twice |
 | Health Connect | App-side only: write the session as strength training, read heart rate and calories, attach them to the session and sync them as columns | Health Connect has no server API; the server sees the values through sync like all other data |
 | AI | MCP first: the user's own assistant reads history and saves programs via `save_routine`. In-app as a second choice with BYOK, operator key or a small free budget | See the AI features section. MCP means we do not pay for tokens and the feature comes along with self-hosting; same validation whichever route |
+| Private mode | Optional E2EE per account: content encrypted on the device, structure in the clear for sync; server commands and MCP refuse private accounts, local MCP instead | Protects against the operator of the public instance; the price is hosted assistants, said up front. Planned after the Standard beta |
 | Personal data | Never leaves the device unless sync is on. JSON export at any time. No analytics or telemetry in the app | It is the only part that is not open, and it should belong to the user |
 
 ## Import from other apps
@@ -255,6 +256,45 @@ sent before it is sent the first time. What is sent is training data and
 settings, never email, name or device id. A suggestion that refers to an
 exercise that is not in the catalogue is discarded, not shown.
 
+## Private mode (optional end-to-end encryption)
+
+Planned, not built; decided 2026-10-20 so that nothing built before it makes it
+impossible. An account is either **Standard** or **Private**, chosen when it is
+created and changeable later with a re-encryption pass.
+
+- **Standard** is what exists today: the server reads the data, the REST API,
+  the server-side commands and the MCP tools work in full, including from
+  hosted assistants.
+- **Private** encrypts the content on the device: weights, reps, notes, custom
+  exercise names, routine and program names. The server keeps only what sync
+  needs in the clear: ids, `updated_at`, `deleted_at`, the parent references and
+  the catalogue exercise ids, so it sees the shape of the training but not the
+  numbers. Sync between the user's own devices works unchanged; export works
+  (the device decrypts); the API returns ciphertext; the server-side commands
+  and every MCP tool answer with one clear error, "this account is private".
+  MCP for a private account runs **locally**, on the user's own computer or in
+  the app, with the key, which serves Claude Code and Claude Desktop but not
+  Claude.ai or ChatGPT. That trade-off is the point and is stated in the app
+  when the mode is chosen.
+
+Keys follow the pattern from bino, which is easier here because the app is
+native: one random data key per account, wrapped by a key derived from a
+passphrase with Argon2id, and by a passkey through the Credential Manager PRF
+extension on Android 14+ where available, plus a recovery key shown once. The
+passphrase and the recovery key use **separate** KDF parameters (a lesson from
+bino, where a shared iteration count broke recovery keys). The unwrapped key
+lives in the Android Keystore per device. A new device gets the key by
+entering the passphrase or scanning a QR shown by an unlocked device; the key
+never passes through the server, so the six-digit watch link code is not
+enough on its own and the watch is given the key over the Data Layer or a QR
+on the phone.
+
+Rules for everything built from now on: every synced table gets room for an
+encrypted payload column with nullable content columns; every server feature
+that reads content must have a defined answer for a private account; no
+server feature may become the only way to do something a Standard user can
+do on the device.
+
 ## Open decisions
 
 - **Licence.** AGPL-3.0 is the proposal: a self-hostable service with an API is
@@ -322,6 +362,9 @@ exercise that is not in the catalogue is discarded, not shown.
 14. **Camera and wrist:** rep counting for one set from pose on the phone
    and from the IMU on the watch, as proposals; exercise recognition when a
    keypoint dataset exists; plate colours as a hint last.
+15. **Private mode:** the key management, the payload column, the device-side
+   encryption in the sync planner and applier, the "private account" answers
+   on the server, and local MCP. After the Standard beta.
 
 Anything that involves money or a hosted paid service is deliberately out of
 scope. If it comes later, it lives in our instance, not in the code everyone
