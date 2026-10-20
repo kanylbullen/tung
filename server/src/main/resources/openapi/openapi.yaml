@@ -45,6 +45,10 @@ tags:
     description: The catalogue and the user's own exercises.
   - name: workouts
     description: Workouts with their exercises and sets.
+  - name: routines
+    description: Saved workout templates with their exercises.
+  - name: programs
+    description: Ordered lists of routines, at most one of them active.
   - name: sync
     description: Row-level sync of the training data between the app and the server.
   - name: push
@@ -439,6 +443,220 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FinishResult" }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/routines:
+    get:
+      tags: [routines]
+      summary: List routines
+      description: The live routines by name, with their exercises in position order.
+      operationId: listRoutines
+      responses:
+        "200":
+          description: The routines.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoutineList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [routines]
+      summary: Create a routine
+      description: |
+        Writes a new routine by the same rules as `PUT /api/v1/routines/{id}`,
+        under the body's `id` or, without one, an id the server makes.
+        Every `exercise_id` must be a catalogue exercise or one of the user's
+        own (`unknown_exercise` otherwise). A missing `last_used_at` keeps the
+        stored one.
+      operationId: createRoutine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoutineInput" }
+      responses:
+        "201":
+          description: The routine as stored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Routine" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: A routine with this id exists or existed (`already_exists`); use PUT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/routines/{id}:
+    get:
+      tags: [routines]
+      summary: Get a routine
+      operationId: getRoutine
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "200":
+          description: The routine.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Routine" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [routines]
+      summary: Create or replace a routine
+      description: |
+        Full nested upsert by the client's ids, as `PUT /api/v1/workouts/{id}`.
+        Each row (the routine and each of its exercises) is written only if its
+        `updated_at` is newer than the stored one; a missing `updated_at`
+        means now. Exercises stored under this routine but missing from the body
+        are deleted when they are older than the body's routine `updated_at`.
+        Every `exercise_id` must be a catalogue exercise or one of the user's
+        own (`unknown_exercise` otherwise). A missing `last_used_at` keeps the
+        stored one.
+      operationId: putRoutine
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoutineInput" }
+      responses:
+        "200":
+          description: The routine as stored after the merge.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Routine" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: The routine was deleted after the version sent (`routine_deleted`); send a newer `updated_at` to restore it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      tags: [routines]
+      summary: Delete a routine
+      description: Tombstones the routine, its exercises and the program days that use it, as the app does (core's `delete_routine`). Workouts started from it are kept.
+      operationId: deleteRoutine
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/programs:
+    get:
+      tags: [programs]
+      summary: List programs
+      description: The live programs by name, with their days in position order.
+      operationId: listPrograms
+      responses:
+        "200":
+          description: The programs.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProgramList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [programs]
+      summary: Create a program
+      description: |
+        Writes a new program by the same rules as `PUT /api/v1/programs/{id}`,
+        under the body's `id` or, without one, an id the server makes.
+        Every day's `routine_id` must be one of the user's live routines
+        (`unknown_routine` otherwise). At most one program is active: after
+        the write, when more than one is, the one with the newest
+        `updated_at` stays active (a tie goes to this one) and the others are
+        switched off with a server stamp, so other devices get the change.
+      operationId: createProgram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProgramInput" }
+      responses:
+        "201":
+          description: The program as stored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Program" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: A program with this id exists or existed (`already_exists`); use PUT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/programs/{id}:
+    get:
+      tags: [programs]
+      summary: Get a program
+      operationId: getProgram
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "200":
+          description: The program.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Program" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [programs]
+      summary: Create or replace a program
+      description: |
+        Full nested upsert by the client's ids, as `PUT /api/v1/workouts/{id}`.
+        Each row (the program and each of its days) is written only if its
+        `updated_at` is newer than the stored one; a missing `updated_at`
+        means now. Days stored under this program but missing from the body
+        are deleted when they are older than the body's program `updated_at`.
+        Every day's `routine_id` must be one of the user's live routines
+        (`unknown_routine` otherwise). At most one program is active: after
+        the write, when more than one is, the one with the newest
+        `updated_at` stays active (a tie goes to this one) and the others are
+        switched off with a server stamp, so other devices get the change.
+      operationId: putProgram
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProgramInput" }
+      responses:
+        "200":
+          description: The program as stored after the merge.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Program" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: The program was deleted after the version sent (`program_deleted`); send a newer `updated_at` to restore it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      tags: [programs]
+      summary: Delete a program
+      description: Tombstones the program and its days (core's `delete_program`). Workouts started from it are kept.
+      operationId: deleteProgram
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "204": { description: Deleted. }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -1429,6 +1647,68 @@ components:
       minimum: 0
       maximum: 127
       description: ISO weekdays as a bitmask, Monday in bit 0 … Sunday in bit 6.
+
+    RoutineList:
+      type: object
+      required: [routines]
+      properties:
+        routines:
+          type: array
+          items: { $ref: "#/components/schemas/Routine" }
+
+    ProgramList:
+      type: object
+      required: [programs]
+      properties:
+        programs:
+          type: array
+          items: { $ref: "#/components/schemas/Program" }
+
+    RoutineInput:
+      type: object
+      required: [name]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid", description: "PUT: must equal the path id if given. POST: the new routine's id; the server makes one when absent." }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        last_used_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+          description: Null or absent keeps the stored value.
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        exercises:
+          type: array
+          maxItems: 200
+          items:
+            type: object
+            required: [id, exercise_id, position, target_sets]
+            properties:
+              id: { $ref: "#/components/schemas/Uuid" }
+              exercise_id: { $ref: "#/components/schemas/Uuid", description: A catalogue exercise or one of the user's own. }
+              position: { type: integer, minimum: 0 }
+              target_sets: { type: integer, minimum: 1, maximum: 20 }
+              target_reps: { type: [integer, "null"], minimum: 0, maximum: 999 }
+              updated_at: { $ref: "#/components/schemas/Millis" }
+
+    ProgramInput:
+      type: object
+      required: [name, mode]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid", description: "PUT: must equal the path id if given. POST: the new program's id; the server makes one when absent." }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        mode: { $ref: "#/components/schemas/ProgramMode" }
+        is_active: { type: boolean, default: false }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        days:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            required: [id, routine_id, position]
+            properties:
+              id: { $ref: "#/components/schemas/Uuid" }
+              routine_id: { $ref: "#/components/schemas/Uuid", description: One of the user's live routines. }
+              position: { type: integer, minimum: 0 }
+              weekdays: { $ref: "#/components/schemas/Weekdays" }
+              updated_at: { $ref: "#/components/schemas/Millis" }
 
     SyncRequest:
       type: object

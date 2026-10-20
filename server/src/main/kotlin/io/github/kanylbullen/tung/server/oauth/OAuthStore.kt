@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import java.security.MessageDigest
+import java.sql.Connection
 import java.security.SecureRandom
 import java.util.Base64
 
@@ -90,6 +91,44 @@ class OAuthStore(private val db: Db, private val clock: () -> Long = System::cur
                 secretHash = it[OAuthClients.secretHash],
                 createdAt = it[OAuthClients.createdAt],
             )
+        }
+    }
+
+    /** Stamps the client's `last_used_at`: every authorize and token call by it keeps it from expiring. */
+    suspend fun markUsed(clientId: String) {
+        val now = clock()
+        db.tx { OAuthClients.update({ OAuthClients.id eq clientId }) { it[lastUsedAt] = now } }
+    }
+
+    /**
+     * Deletes the clients nobody has used for [UNUSED_CLIENT_LIFETIME_MS]
+     * before [now] (`COALESCE(last_used_at, created_at)`) and that hold no
+     * live grant: no access token of theirs that is neither revoked nor
+     * expired, and none with a refresh token that still works. A client's
+     * tokens are found through its refresh tokens, which name both the client
+     * and the `api_tokens` row (`mcp:<client name>`) they renew; names alone
+     * are not unique. Codes and refresh tokens go with the client (ON DELETE
+     * CASCADE); the API tokens stay in the user's list. Returns how many were
+     * deleted.
+     */
+    suspend fun sweepUnusedClients(now: Long = clock()): Int = db.tx {
+        val connection = connection.connection as Connection
+        connection.prepareStatement(
+            """
+            DELETE FROM oauth_clients c
+            WHERE COALESCE(c.last_used_at, c.created_at) < ?
+              AND NOT EXISTS (
+                SELECT 1 FROM oauth_refresh_tokens r
+                JOIN api_tokens t ON t.id = r.api_token_id
+                WHERE r.client_id = c.id AND t.revoked_at IS NULL
+                  AND (t.expires_at > ? OR (r.revoked_at IS NULL AND r.expires_at > ?))
+              )
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setLong(1, now - UNUSED_CLIENT_LIFETIME_MS)
+            statement.setLong(2, now)
+            statement.setLong(3, now)
+            statement.executeUpdate()
         }
     }
 
@@ -257,6 +296,12 @@ class OAuthStore(private val db: Db, private val clock: () -> Long = System::cur
 
         /** A refresh token lives 90 days from when it was issued; each refresh issues a new one. */
         const val REFRESH_TOKEN_LIFETIME_MS = 90 * 24 * 3_600_000L
+
+        /** A client unused for 90 days and without a live grant is deleted by [sweepUnusedClients]. */
+        const val UNUSED_CLIENT_LIFETIME_MS = 90 * 24 * 3_600_000L
+
+        /** How often the application runs [sweepUnusedClients], after once at start. */
+        const val CLIENT_SWEEP_INTERVAL_MS = 24 * 3_600_000L
 
         /** Refresh tokens are not API tokens: a different prefix, never accepted as a bearer token. */
         const val REFRESH_PREFIX = "tungr_"
