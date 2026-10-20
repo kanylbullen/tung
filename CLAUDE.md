@@ -94,19 +94,22 @@ databases. The packages are the ones the files had in `app/`:
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
+| `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set). See "Ongoing workout and push". |
+| `push/` | Push: `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`. See "Ongoing workout and push". |
 | `ui/common/` | `ExerciseNames` and `Exercise.displayName(context)`; the composable `exerciseDisplayName` stays in `app/`. |
 
 `../catalog` (`core.json`, `extended.json`) is an asset directory of the
 library, so both APKs get it from there. The library's own strings are only
-what library code shows (the "Rest over" notification), in
+what library code shows (the "Rest over" and "Workout in progress" notifications), in
 `data/src/main/res/values{,-sv}/`; screens' strings stay in each app.
 
 - **`app` and `wear` never touch Room.** No DAO, no `TungDatabase`, no
   `withTransaction` outside `data/`: the apps read the repositories' Flows
   and change data through `container.commands` (see "Commands").
-- **`TungContainer(context, clock, createDatabase, createTokenStore)`** is the
+- **`TungContainer(context, clock, createDatabase, createTokenStore, startedBy, createPushEnvironment)`** is the
   one container. The application implements `TungHost` (`container`,
-  `isInForeground`, the notification icon, the intent "Rest over" opens), which
+  `isInForeground`, the notification icon, the intents "Rest over" and the
+  ongoing notification open), which
   is how `SyncWorker` finds the container and `RestAlerts` knows what to show,
   without the library knowing either app.
 - **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`, `SyncClientTest` and
@@ -246,8 +249,9 @@ reaching zero calls the same function, so the alert is on time even with an
 inexact alarm; it alerts once per `endsAt`. Tapping the notification opens
 `TungHost.openWorkoutIntent`: on the phone `MainActivity` with `EXTRA_OPEN_WORKOUT`, which `TungAppRoot` navigates to. No
 foreground service. `POST_NOTIFICATIONS` is asked for once, the first time a
-timer starts on Android 13+ (flag in DataStore); denied, the countdown and the
-vibration still work.
+workout is on screen on Android 13+ (flag in DataStore,
+`RestTimerController.firstTimeAskingForNotifications`, shared with the ongoing
+notification); denied, the countdown and the vibration still work.
 
 The DataStore is built in `TungContainer` with `PreferenceDataStoreFactory`,
 not the `preferencesDataStore` delegate: the delegate is a process-wide
@@ -518,14 +522,93 @@ not see a companion watch's selection or rest. The phone's
 `WearCommandHandler` still writes through the repositories rather than the
 `CommandHandler` (its rules match; moving it is a follow-up). A standalone
 watch cannot add exercises: start a routine, or add them on the phone and
-sync. The watch does not ask for the notification permission, so on Wear OS
-4+ a rest that ends with the app in the background only buzzes.
+sync. The watch asks for the notification permission once, the first time a
+workout is on screen (Wear OS 4+), for its Ongoing Activity and "Rest over".
 
 **File boundaries.** Watch code only in `wear/`; the protocol only in
 `core/.../core/wear/`; what both devices share in `data/`; the phone's
 companion code only in `app/.../wear/` plus the service in the manifest and
 the publisher on `TungApp`. The watch never reaches Room directly; everything
 goes through a command.
+
+## Ongoing workout and push
+
+Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
+
+- **The ongoing notification** (`data/.../ongoing/`). `OngoingWorkoutNotifier`
+  follows a `Flow<OngoingWorkout?>` and posts one ongoing notification
+  (`setOngoing`, `CATEGORY_WORKOUT`, channel `workout_in_progress`, low
+  importance, silent, id 2; "Rest over" is 1) while it has a workout, and
+  cancels it on null (finished or discarded). No foreground service. Title
+  "Workout in progress"; body from core's `ongoingStatus`: "Bench press · set
+  3 of 5" for the current set by the default rule of `core.currentSet`
+  (no selection: the notification cannot see the screen's), counted against
+  the routine's target sets (or the sets there are, if more), else "4 sets
+  logged"; elapsed time by `setUsesChronometer` + `setWhen(startedAt)`. The
+  phone's source is `ongoingWorkouts(...)` over the repositories, built as
+  `container.ongoingWorkout` and started in `TungApp.onCreate`, so it shows
+  whoever started the workout: this phone, a companion watch, or a sync that
+  brought one from the server. Nothing is posted without `POST_NOTIFICATIONS`.
+  **Android 16 Live Update is not done:** `setRequestPromotedOngoing` is API 36
+  and compileSdk stays 35.
+- **Actions.** Tap opens the workout (`TungHost.openWorkoutIntent`). **Log
+  set** is a broadcast to `OngoingWorkoutReceiver` (in data's manifest) with
+  the set the notification showed; it runs `Command.LogSet` through
+  `container.commands`, no UI, and does nothing if that set is no longer
+  open, so a stale notification cannot tick the wrong set. A current set with
+  0 reps makes Log set open the workout instead (like the tick opening the
+  reps sheet); it starts no rest timer. **Finish** opens
+  `TungHost.finishWorkoutIntent`: on the phone `MainActivity` with
+  `EXTRA_FINISH_WORKOUT`, and `TungAppRoot` hands the workout screen a
+  one-shot request that opens its finish dialog; it never finishes silently.
+- **`Workout.startedBy`** (`core.StartedBy`: `phone`, `watch`, `server`,
+  `agent`). Each command path stamps its own when it creates a workout:
+  `AppCommandHandler` gets it from `TungContainer(startedBy = …)` (`phone`,
+  `watch` on the watch), the phone's `WearCommandHandler` stamps `watch`, the
+  server's command handler `agent` (REST commands and MCP tools); `server`
+  is reserved. Synced as the additive, nullable `started_by`; a null from a
+  peer never erases a stored value (app `SyncMapping`, server `COALESCE`). The
+  notification's sub-text says "Started by your assistant" for `agent`.
+  Room schema still `version = 1`: wipe a dev install.
+- **The watch** (`wear/.../WatchOngoing.kt`): `WatchOngoingActivity` runs the
+  same notifier over the state the watch shows (`watchOngoing(state)`, pure:
+  the watch's own database standalone through the shared `LocalWatchBackend`,
+  the phone's DataItem in companion mode while the process lives) and
+  attaches an androidx.wear `OngoingActivity` in `decorate`. No actions there.
+  `WatchExercise.targetSets` and `WatchWorkoutState.startedBy` carry what it needs.
+- **Push transports** (`data/.../push/`). The server only ever sends an empty
+  "sync now"; receiving one on either transport calls
+  `SyncAccount.requestSync()`. `core.selectPushTransport` (pure) picks: FCM
+  when Play services are available and the build has a Firebase app
+  (`FirebaseApp.getApps`), else the chosen or first UnifiedPush distributor,
+  else none (periodic sync). `PushRegistrar` (started by `TungApp`, never by
+  the watch) refreshes on app start and every sign-in, registers the FCM
+  token or UnifiedPush endpoint with `POST /api/v1/push/endpoints` under the
+  device id, follows `onNewToken`/`onNewEndpoint`, and deletes the endpoint
+  in `SyncAccount.signOut` before the token is forgotten (`beforeSignOut`).
+  Settings shows the transport and offers "Choose UnifiedPush distributor"
+  when several are installed. `TungFirebaseMessagingService` and
+  `TungUnifiedPushReceiver` (connector 2.5.0) are in data's manifest.
+- **Firebase is optional at build time.** `firebase-messaging` comes through
+  the Firebase BoM in `data/`; the `com.google.gms.google-services` plugin is
+  declared `apply false` at the root and applied by `app/` and `wear/` **only
+  when their `google-services.json` exists**. Without it Firebase has no app
+  and FCM is off; the open-source build compiles and runs. Never commit a
+  `google-services.json` (gitignored); how to add one: `server/README.md`,
+  "Push".
+- **`X-Tung-Device`** (`core.sync.DEVICE_HEADER`): every sync request and
+  push registration carries the device's stable random id
+  (`SyncSettings.deviceId()`, DataStore, kept across sign-outs), so the server
+  never wakes the device that made a change.
+- **Server trigger** (`server/.../push/`): after a successful write by a
+  client (a sync that carried rows, a REST command or MCP tool with a `Done`
+  result except `select_current`, the REST writes) `ChangeNotifier.changed(user,
+  device)`; `PushService` debounces 2 s per user, sends to every other active
+  endpoint (one in flight per endpoint), revokes on 404/410 and logs and
+  drops other failures. A request without the header counts as a client of
+  its own. `UnifiedPushSender` POSTs `{"type":"sync"}`; `FcmSender` uses the
+  HTTP v1 API with a hand-rolled service-account JWT; FCM is off without
+  `TUNG_FCM_SERVICE_ACCOUNT_JSON`.
 
 ## Server
 
@@ -687,9 +770,10 @@ part of `./gradlew test`. Only them:
   overrides `TungApp.createContainer()` to hand `TungContainer` an in-memory
   `TungDatabase.buildInMemory`, same schema and seed, and a settable
   `Clock` (`FlowTestApp.today`) for Home's "Today", and a `TokenStore` in
-  memory (`FlowTestApp.tokens`), because Robolectric has no Android Keystore.
-  Those three `TungContainer` parameters are the only test seams in production
-  code. Sync tests talk to `FakeSyncServer` (data's test fixtures,
+  memory (`FlowTestApp.tokens`), because Robolectric has no Android Keystore,
+  and the push transports (`FlowTestApp.push`, a `FakePushEnvironment` from
+  data's test fixtures, none by default). Those four `TungContainer`
+  parameters are the only test seams in production code. Sync tests talk to `FakeSyncServer` (data's test fixtures,
   `data/src/testFixtures/.../sync/`, the protocol and the link routes on a
   MockWebServer), and `SyncFlowTest` installs WorkManager's test
   instance (`WorkManagerTestInitHelper`) before it signs in.

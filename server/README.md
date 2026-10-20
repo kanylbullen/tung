@@ -260,6 +260,16 @@ Two transports; the app picks one per device and registers it:
 With neither, nothing changes: devices sync every 15 minutes and when the
 app opens, as before.
 
+**An app build with FCM.** The open-source build has no Firebase app, so it
+never picks FCM. To build one that does (a self-hoster with their own
+Firebase project, or the project's own release builds): in the Firebase
+console add an Android app with the package name `io.github.kanylbullen.tung`,
+download its `google-services.json` into `app/` (and `wear/`, if the watch
+build should carry it too), and build as usual. The Gradle build applies the
+google-services plugin only when that file exists. The file is in
+`.gitignore`: never commit it, every instance brings its own. The server's
+`TUNG_FCM_SERVICE_ACCOUNT_JSON` must be a key of the same Firebase project.
+
 **Endpoints API.** `POST /api/v1/push/endpoints {device_id, transport,
 endpoint}` (write token) registers a device: `transport` is `fcm` (endpoint
 = the registration token) or `unifiedpush` (endpoint = the distributor's
