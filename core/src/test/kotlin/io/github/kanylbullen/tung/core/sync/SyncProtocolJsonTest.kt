@@ -12,7 +12,12 @@ class SyncProtocolJsonTest {
         cursor = 42,
         changes = SyncChanges(
             exercises = listOf(SyncExercise("e", "bench_press", "Bench press", "chest", "barbell", false, 90, 1)),
-            workouts = listOf(SyncWorkout("w", 10, 20, "note", "r", "d", 2, null)),
+            workouts = listOf(
+                SyncWorkout(
+                    "w", 10, 20, "note", "r", "d", 2, null,
+                    startedBy = "phone", avgHeartRate = 120, maxHeartRate = 160, activeCalories = 300, healthConnectId = "hc",
+                ),
+            ),
             workoutExercises = listOf(SyncWorkoutExercise("we", "w", "e", 0, 3)),
             sets = listOf(SyncSet("s", "we", 0, 80.0, 8, true, 4)),
             routines = listOf(SyncRoutine("r", "Push", 30, 5)),
@@ -42,11 +47,21 @@ class SyncProtocolJsonTest {
             "\"name_key\"", "\"muscle_group\"", "\"is_custom\"", "\"rest_seconds\"", "\"updated_at\"",
             "\"started_at\"", "\"ended_at\"", "\"routine_id\"", "\"program_day_id\"", "\"workout_id\"", "\"exercise_id\"",
             "\"workout_exercise_id\"", "\"weight_kg\"", "\"last_used_at\"", "\"target_sets\"", "\"target_reps\"",
-            "\"is_active\"", "\"program_id\"", "\"deleted_at\"",
+            "\"is_active\"", "\"program_id\"", "\"deleted_at\"", "\"started_by\"",
+            "\"avg_heart_rate\"", "\"max_heart_rate\"", "\"active_calories\"", "\"health_connect_id\"",
         )) {
             assertTrue("$key missing from $text", key in text)
         }
         assertTrue("no camelCase key may appear: $text", Regex("\"[a-z]+[A-Z]\\w*\":").find(text) == null)
+    }
+
+    @Test
+    fun aWorkoutFromAPeerWithoutTheHealthFieldsReadsThemAsNull() {
+        val row = Json.decodeFromString(SyncWorkout.serializer(), """{"id":"w","started_at":1,"updated_at":2}""")
+        assertEquals(null, row.avgHeartRate)
+        assertEquals(null, row.maxHeartRate)
+        assertEquals(null, row.activeCalories)
+        assertEquals(null, row.healthConnectId)
     }
 
     @Test
