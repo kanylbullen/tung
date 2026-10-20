@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tung</string>
+
+    <!-- No workout -->
+    <string name="start_workout">Start workout</string>
+    <string name="routines_title">Routines</string>
+    <plurals name="exercise_count">
+        <item quantity="one">%d exercise</item>
+        <item quantity="other">%d exercises</item>
+    </plurals>
+    <string name="open_phone_hint">Open Tung on the phone to see your workout here.</string>
+    <string name="phone_unreachable">Phone not reachable</string>
+
+    <!-- Active workout -->
+    <string name="log_set">Log set</string>
+    <string name="previous">Last: %1$s × %2$d</string>
+    <string name="times">" × "</string>
+    <string name="reps_empty">–</string>
+    <string name="all_logged">All sets logged</string>
+    <string name="workout_empty">Add exercises on the phone.</string>
+    <string name="set_number">Set %1$d</string>
+    <string name="edit_weight">Change weight, %1$s kilos</string>
+    <string name="edit_reps">Change reps, %1$s</string>
+    <string name="finish_workout">Finish workout</string>
+    <string name="finish_title">Finish workout?</string>
+    <string name="finish_body">Sets that are not ticked and exercises without sets will be removed.</string>
+    <string name="finish_confirm">Finish</string>
+    <string name="keep_training">Keep training</string>
+
+    <!-- Rest -->
+    <string name="rest_title">Rest</string>
+    <string name="rest_skip">Skip</string>
+    <string name="rest_add">+30 s</string>
+    <string name="rest_add_description">Add 30 seconds</string>
+
+    <!-- Adjust weight or reps -->
+    <string name="input_weight_title">Weight</string>
+    <string name="input_reps_title">Reps</string>
+    <string name="unit_kg">kg</string>
+    <string name="unit_reps">reps</string>
+    <string name="input_minus">−</string>
+    <string name="input_plus">+</string>
+    <plurals name="input_minus_weight">
+        <item quantity="one">Decrease by %1$s kilo</item>
+        <item quantity="other">Decrease by %1$s kilos</item>
+    </plurals>
+    <plurals name="input_plus_weight">
+        <item quantity="one">Increase by %1$s kilo</item>
+        <item quantity="other">Increase by %1$s kilos</item>
+    </plurals>
+    <string name="input_minus_reps">Decrease by one rep</string>
+    <string name="input_plus_reps">Increase by one rep</string>
+    <string name="input_done">Done</string>
+</resources>

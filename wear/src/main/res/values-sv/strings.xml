@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tung</string>
+
+    <!-- No workout -->
+    <string name="start_workout">Starta pass</string>
+    <string name="routines_title">Rutiner</string>
+    <plurals name="exercise_count">
+        <item quantity="one">%d övning</item>
+        <item quantity="other">%d övningar</item>
+    </plurals>
+    <string name="open_phone_hint">Öppna Tung i telefonen för att se passet här.</string>
+    <string name="phone_unreachable">Telefonen nås inte</string>
+
+    <!-- Active workout -->
+    <string name="log_set">Logga set</string>
+    <string name="previous">Förra: %1$s × %2$d</string>
+    <string name="times">" × "</string>
+    <string name="reps_empty">–</string>
+    <string name="all_logged">Alla set är loggade</string>
+    <string name="workout_empty">Lägg till övningar i telefonen.</string>
+    <string name="set_number">Set %1$d</string>
+    <string name="edit_weight">Ändra vikt, %1$s kilo</string>
+    <string name="edit_reps">Ändra reps, %1$s</string>
+    <string name="finish_workout">Avsluta pass</string>
+    <string name="finish_title">Avsluta pass?</string>
+    <string name="finish_body">Set som inte är bockade och övningar utan set tas bort.</string>
+    <string name="finish_confirm">Avsluta</string>
+    <string name="keep_training">Fortsätt träna</string>
+
+    <!-- Rest -->
+    <string name="rest_title">Vila</string>
+    <string name="rest_skip">Hoppa över</string>
+    <string name="rest_add">+30 s</string>
+    <string name="rest_add_description">Lägg till 30 sekunder</string>
+
+    <!-- Adjust weight or reps -->
+    <string name="input_weight_title">Vikt</string>
+    <string name="input_reps_title">Reps</string>
+    <string name="unit_kg">kg</string>
+    <string name="unit_reps">reps</string>
+    <string name="input_minus">−</string>
+    <string name="input_plus">+</string>
+    <plurals name="input_minus_weight">
+        <item quantity="one">Minska med %1$s kilo</item>
+        <item quantity="other">Minska med %1$s kilo</item>
+    </plurals>
+    <plurals name="input_plus_weight">
+        <item quantity="one">Öka med %1$s kilo</item>
+        <item quantity="other">Öka med %1$s kilo</item>
+    </plurals>
+    <string name="input_minus_reps">Minska med en rep</string>
+    <string name="input_plus_reps">Öka med en rep</string>
+    <string name="input_done">Klar</string>
+</resources>

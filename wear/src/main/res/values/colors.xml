@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The phone's dark tokens (app/.../ui/theme/Color.kt); a watch is always dark. -->
+    <color name="background">#1A1D21</color>
+    <color name="launcher_background">#1A1D21</color>
+    <color name="launcher_plate">#F2C230</color>
+</resources>
