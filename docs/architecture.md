@@ -193,10 +193,19 @@ Weight is dictated or typed; the camera's counts and recognised exercise
 arrive as a proposed `LogSet` or `AddExercise` the user confirms with the
 same tap as any other set.
 
-The watch does the same job more cheaply for many exercises: rep detection
-from the wrist's accelerometer and gyroscope works without any camera, in
-any gym, and feeds the same `LogSet` proposal. Build it alongside the camera
-and let the phone merge both signals.
+The watch does the same job more cheaply for the exercises where the hand
+travels: curls, presses, rows, raises, and squats and deadlifts because the
+hands follow the bar. Rep detection from the wrist's accelerometer and
+gyroscope works there without any camera, in any gym, and feeds the same
+`LogSet` proposal. Where the wrist is still it does not: push-ups give only a
+weak forearm-tilt signal, chins almost none, leg machines and leg raises
+nothing. Those are exactly what the camera sees best, and a phone in the
+pocket covers some (chins, leg press) but not others (leg extension, leg
+curl). So the catalogue carries a `repSensing` field per exercise (`wrist`,
+`pocket`, `camera`, `none`), the app only offers a counter where a source
+exists, and everywhere else the watch pre-fills last time's reps for the
+user to confirm or to say aloud after the set. The phone merges whichever
+signals are present; none of them writes a set without confirmation.
 
 ## AI features
 
