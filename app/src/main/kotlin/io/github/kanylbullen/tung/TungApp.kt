@@ -42,6 +42,9 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
     override fun openWorkoutIntent(workoutId: String): Intent =
         Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_WORKOUT, workoutId)
 
+    override fun finishWorkoutIntent(workoutId: String): Intent =
+        openWorkoutIntent(workoutId).putExtra(MainActivity.EXTRA_FINISH_WORKOUT, true)
+
     override fun onCreate() {
         super.onCreate()
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
@@ -53,6 +56,8 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
+        // "Workout in progress" while there is one, whoever started it (this phone, the watch, an assistant).
+        container.ongoingWorkout.start()
         // Without Play services there is no Data Layer and no watch to publish to (also the JVM tests).
         if (isWearableApiAvailable(this)) wearPublisher.start()
         // Sync: keep the periodic work while signed in, and sync whenever the app comes to the foreground.

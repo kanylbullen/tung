@@ -9,7 +9,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import io.github.kanylbullen.tung.core.CoreCatalog
 import io.github.kanylbullen.tung.core.ExtendedCatalog
+import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
+import io.github.kanylbullen.tung.ongoing.ongoingWorkouts
 import io.github.kanylbullen.tung.sync.EncryptedTokenStore
 import io.github.kanylbullen.tung.sync.SyncAccount
 import io.github.kanylbullen.tung.sync.SyncClient
@@ -44,6 +47,8 @@ class TungContainer(
     val clock: Clock = Clock.systemDefaultZone(),
     createDatabase: (Context) -> TungDatabase = TungDatabase::build,
     createTokenStore: (Context) -> TokenStore = ::EncryptedTokenStore,
+    /** Stamped on the workouts this device's commands start (`core.StartedBy`): `phone`, or `watch` on the watch. */
+    private val startedBy: String = StartedBy.PHONE,
 ) {
     private val context: Context = context.applicationContext ?: context
 
@@ -78,7 +83,17 @@ class TungContainer(
             resolver = AppExerciseResolver(database.exerciseDao(), { catalogueNames }, extendedCatalog),
             extendedCatalog = extendedCatalog,
             onWorkoutFinished = { syncAccount.requestSync() },
+            startedBy = startedBy,
         )
+    }
+
+    /**
+     * The ongoing notification of the workout in progress in this database
+     * (CLAUDE.md, "Ongoing workout and push"). The phone starts it from
+     * `TungApp.onCreate`; the watch builds its own over the state it shows.
+     */
+    val ongoingWorkout: OngoingWorkoutNotifier by lazy {
+        OngoingWorkoutNotifier(this.context, ongoingWorkouts(this.context, workoutRepository, routineRepository), appScope)
     }
 
     /**
@@ -126,6 +141,9 @@ interface TungHost {
     @get:DrawableRes
     val notificationIcon: Int
 
-    /** What tapping "Rest over" opens: the app's main activity, told to show [workoutId]. */
+    /** What tapping "Rest over" or the ongoing notification opens: the app's main activity, told to show [workoutId]. */
     fun openWorkoutIntent(workoutId: String): Intent
+
+    /** What the ongoing notification's "Finish" opens: [workoutId] with the finish dialog. Never finishes by itself. */
+    fun finishWorkoutIntent(workoutId: String): Intent = openWorkoutIntent(workoutId)
 }

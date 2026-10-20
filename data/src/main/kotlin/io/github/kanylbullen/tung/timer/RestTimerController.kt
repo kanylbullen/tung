@@ -59,7 +59,10 @@ class RestTimerController(
 
     /**
      * True the first time it is called, so the notification permission is asked
-     * for once, when the first timer starts, and never nagged about after that.
+     * for once and never nagged about after that. The workout screen asks the
+     * first time it shows a workout: the ongoing notification
+     * ([io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier]) and "Rest
+     * over" share the one permission and the one question.
      */
     suspend fun firstTimeAskingForNotifications(): Boolean {
         var first = false

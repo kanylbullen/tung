@@ -26,11 +26,11 @@ class WorkoutRepository(
     fun observeExercises(workoutId: String): Flow<List<WorkoutExerciseWithSets>> =
         dao.observeExercisesWithSets(workoutId)
 
-    /** Returns the workout in progress, creating one if there is none. */
-    suspend fun startOrResumeWorkout(): String = db.withTransaction {
+    /** Returns the workout in progress, creating one if there is none, started by [startedBy] (`core.StartedBy`). */
+    suspend fun startOrResumeWorkout(startedBy: String? = null): String = db.withTransaction {
         dao.getActiveWorkout()?.id ?: run {
             val now = clock()
-            val workout = Workout(id = newId(), startedAt = now, updatedAt = now)
+            val workout = Workout(id = newId(), startedAt = now, updatedAt = now, startedBy = startedBy)
             dao.insertWorkout(workout)
             workout.id
         }
@@ -152,8 +152,8 @@ class WorkoutRepository(
      *
      * @return the workout's id.
      */
-    suspend fun applyPlan(exercises: List<Pair<String, List<PlannedSet>>>): String = db.withTransaction {
-        val workoutId = startOrResumeWorkout()
+    suspend fun applyPlan(exercises: List<Pair<String, List<PlannedSet>>>, startedBy: String? = null): String = db.withTransaction {
+        val workoutId = startOrResumeWorkout(startedBy)
         exercises.forEach { (exerciseId, planned) ->
             val now = clock()
             val workoutExercise = WorkoutExercise(

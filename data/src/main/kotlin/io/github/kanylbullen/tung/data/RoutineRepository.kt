@@ -105,7 +105,7 @@ class RoutineRepository(
      *
      * @return the workout's id, or null if the routine no longer exists.
      */
-    suspend fun start(routineId: String, programDayId: String? = null): String? = db.withTransaction {
+    suspend fun start(routineId: String, programDayId: String? = null, startedBy: String? = null): String? = db.withTransaction {
         workoutDao.getActiveWorkout()?.let { return@withTransaction it.id }
         dao.getRoutine(routineId) ?: return@withTransaction null
         val now = clock()
@@ -115,6 +115,7 @@ class RoutineRepository(
             routineId = routineId,
             updatedAt = now,
             programDayId = programDayId,
+            startedBy = startedBy,
         )
         workoutDao.insertWorkout(workout)
         dao.getRoutineExercises(routineId).forEachIndexed { position, re ->

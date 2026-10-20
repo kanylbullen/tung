@@ -5,6 +5,7 @@ import io.github.kanylbullen.tung.core.MAX_REPS
 import io.github.kanylbullen.tung.core.MAX_WEIGHT_KG
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.SetIndex
+import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
 import io.github.kanylbullen.tung.core.wear.WatchCommand
@@ -69,12 +70,12 @@ class WearCommandHandler(
             is WatchCommand.SetReps -> setReps(command.setId, command.reps)
             is WatchCommand.SelectSet -> selectSet(command.setId)
             is WatchCommand.StartWorkout -> {
-                workouts.startOrResumeWorkout()
+                workouts.startOrResumeWorkout(StartedBy.WATCH)
                 selection.clear()
                 true
             }
             is WatchCommand.StartRoutine -> {
-                val started = routines.start(command.routineId) != null
+                val started = routines.start(command.routineId, startedBy = StartedBy.WATCH) != null
                 if (started) selection.clear()
                 started
             }

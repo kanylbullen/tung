@@ -15,6 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -79,17 +82,23 @@ private val tabs = listOf(
 
 private val idArgument = listOf(navArgument(Routes.ARG_ID) { type = NavType.StringType })
 
+/** A workout to open from a notification; [askToFinish] for the ongoing notification's "Finish". */
+data class OpenWorkout(val workoutId: String, val askToFinish: Boolean = false)
+
 /**
- * @param openWorkoutId a workout to open on top of Home, set when a "Rest over"
- *   notification is tapped; [onWorkoutOpened] is called once it has been.
+ * @param openWorkout a workout to open on top of Home, set when a "Rest over"
+ *   or the ongoing notification is tapped; [onWorkoutOpened] is called once it has been.
  */
 @Composable
-fun TungAppRoot(openWorkoutId: String? = null, onWorkoutOpened: () -> Unit = {}) {
+fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = {}) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
-    LaunchedEffect(openWorkoutId) {
-        if (openWorkoutId != null) {
-            nav.navigate(Routes.workout(openWorkoutId)) {
+    // The workout whose finish dialog the screen should open; one-shot, cleared by the screen.
+    var finishRequest by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(openWorkout) {
+        if (openWorkout != null) {
+            if (openWorkout.askToFinish) finishRequest = openWorkout.workoutId
+            nav.navigate(Routes.workout(openWorkout.workoutId)) {
                 popUpTo(Routes.HOME)
                 launchSingleTop = true
             }
@@ -182,6 +191,8 @@ fun TungAppRoot(openWorkoutId: String? = null, onWorkoutOpened: () -> Unit = {})
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
                 ActiveWorkoutScreen(
                     workoutId = id,
+                    askToFinish = finishRequest == id,
+                    onFinishAsked = { finishRequest = null },
                     onBack = { nav.popBackStack() },
                     onAddExercise = { nav.navigate(Routes.picker(id)) },
                     onFinished = { finishedId, saved ->
