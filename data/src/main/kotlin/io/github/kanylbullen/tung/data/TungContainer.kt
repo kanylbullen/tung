@@ -13,6 +13,9 @@ import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
 import io.github.kanylbullen.tung.ongoing.ongoingWorkouts
+import io.github.kanylbullen.tung.push.AndroidPushEnvironment
+import io.github.kanylbullen.tung.push.PushEnvironment
+import io.github.kanylbullen.tung.push.PushRegistrar
 import io.github.kanylbullen.tung.sync.EncryptedTokenStore
 import io.github.kanylbullen.tung.sync.SyncAccount
 import io.github.kanylbullen.tung.sync.SyncClient
@@ -26,6 +29,7 @@ import io.github.kanylbullen.tung.timer.RestTimerController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.map
 import java.time.Clock
 
 /**
@@ -49,6 +53,8 @@ class TungContainer(
     createTokenStore: (Context) -> TokenStore = ::EncryptedTokenStore,
     /** Stamped on the workouts this device's commands start (`core.StartedBy`): `phone`, or `watch` on the watch. */
     private val startedBy: String = StartedBy.PHONE,
+    /** Which push transports this device has; the flow tests hand in a fake (no Play services, no distributor there). */
+    createPushEnvironment: (Context) -> PushEnvironment = ::AndroidPushEnvironment,
 ) {
     private val context: Context = context.applicationContext ?: context
 
@@ -115,7 +121,16 @@ class TungContainer(
         SyncClient(syncStore, syncSettings, tokenStore, syncHttpClient(), onSignedOut = { syncAccount.signedOutByServer() })
     }
     val syncAccount: SyncAccount by lazy {
-        SyncAccount(syncClient, syncSettings, tokenStore, syncStore, syncScheduler, appScope)
+        SyncAccount(
+            syncClient, syncSettings, tokenStore, syncStore, syncScheduler, appScope,
+            beforeSignOut = { url, token -> push.onSignOut(url, token) },
+        )
+    }
+
+    // --- push (push/, CLAUDE.md "Ongoing workout and push"): started by the phone, never by the watch ---
+    private val pushEnvironment: PushEnvironment by lazy { createPushEnvironment(this.context) }
+    val push: PushRegistrar by lazy {
+        PushRegistrar(pushEnvironment, syncClient, settings, syncAccount.state.map { it.signedIn }, appScope)
     }
 
     private companion object {

@@ -10,6 +10,7 @@ import io.github.kanylbullen.tung.core.sync.SyncState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.util.UUID
 
 /**
  * Sync's small state in the app's Preferences DataStore (the `settings`
@@ -60,6 +61,19 @@ class SyncSettings(private val store: DataStore<Preferences>) {
 
     suspend fun recordFailure(failure: SyncFailure) = store.edit { it[LAST_ERROR] = failure.key }
 
+    /**
+     * This device's stable id, a random UUID made the first time it is asked
+     * for: sent as `X-Tung-Device` with every sync and as `device_id` of its
+     * push endpoint, so the server never pushes a change back to the device
+     * that made it. Kept across sign-outs; it identifies the install, not the account.
+     */
+    suspend fun deviceId(): String {
+        store.data.first()[DEVICE_ID]?.let { return it }
+        var id = ""
+        store.edit { prefs -> id = prefs[DEVICE_ID] ?: UUID.randomUUID().toString().also { prefs[DEVICE_ID] = it } }
+        return id
+    }
+
     private companion object {
         const val RECENT_LIMIT = 5
         val RECENT = stringPreferencesKey("sync_recent_servers")
@@ -68,5 +82,6 @@ class SyncSettings(private val store: DataStore<Preferences>) {
         val CURSOR = longPreferencesKey("sync_cursor")
         val LAST_SYNC_AT = longPreferencesKey("sync_last_at")
         val LAST_ERROR = stringPreferencesKey("sync_last_error")
+        val DEVICE_ID = stringPreferencesKey("device_id")
     }
 }

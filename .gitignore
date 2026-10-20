@@ -6,6 +6,9 @@ local.properties
 *.apk
 *.aab
 
+# Firebase config of a build with FCM push (app/ or wear/); every instance brings its own, never committed.
+google-services.json
+
 # IDE
 .idea/
 *.iml

@@ -11,6 +11,14 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// FCM push (issue #34) needs a Firebase app, which only a build with this module's
+// google-services.json has. Without the file the plugin is not applied, Firebase has
+// no app, and the app picks UnifiedPush or no push instead: the open-source build
+// compiles and runs with FCM off. The file is gitignored; see server/README.md, "Push".
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "io.github.kanylbullen.tung.wear"
     compileSdk = 35

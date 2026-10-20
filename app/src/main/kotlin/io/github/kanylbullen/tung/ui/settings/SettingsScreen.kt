@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -18,10 +19,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -34,8 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.sync.PushChoice
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncState
+import io.github.kanylbullen.tung.push.PushStatus
 import io.github.kanylbullen.tung.sync.AccountState
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
@@ -47,13 +54,14 @@ import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
+import java.net.URI
 
 /** Settings, reached from Home's gear: for now only the server and the account for sync. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val container = appContainer()
-    val vm: SettingsViewModel = viewModel(factory = factoryOf { SettingsViewModel(container.syncAccount) })
+    val vm: SettingsViewModel = viewModel(factory = factoryOf { SettingsViewModel(container.syncAccount, container.push) })
     val state by vm.state.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -87,7 +95,9 @@ fun SettingsScreen(onBack: () -> Unit) {
             when (account?.signedIn) {
                 null -> Unit
                 true -> {
-                    SignedIn(account, onSyncNow = vm::syncNow, onSignOut = vm::signOut)
+                    SignedIn(account, onSyncNow = vm::syncNow, onSignOut = vm::signOut) {
+                        Push(state.push, onChoose = vm::chooseDistributor)
+                    }
                     WatchLink(state.watchLink, onLink = vm::linkWatch, onClose = vm::closeWatchLink)
                 }
                 false -> SignInForm(
@@ -105,7 +115,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: () -> Unit) {
+private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: () -> Unit, push: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             stringResource(R.string.sync_signed_in_as, account.email.orEmpty()),
@@ -120,8 +130,82 @@ private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: ()
         onClick = onSyncNow,
         enabled = !account.syncing,
     )
+    push()
     SecondaryButton(text = stringResource(R.string.sync_sign_out), onClick = onSignOut)
     Text(stringResource(R.string.sync_sign_out_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+}
+
+/**
+ * How the server wakes this phone ("Push: FCM", "Push: ntfy", or none and the
+ * 15-minute sync), whether the server has the endpoint, and the choice among
+ * several UnifiedPush distributors.
+ */
+@Composable
+private fun Push(push: PushStatus, onChoose: (String) -> Unit) {
+    val choice = push.choice ?: return
+    var choosing by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            when (choice) {
+                PushChoice.Fcm -> stringResource(R.string.push_status_fcm)
+                is PushChoice.UnifiedPush -> stringResource(R.string.push_status_unifiedpush, push.distributorLabel ?: choice.distributor)
+                PushChoice.None -> stringResource(R.string.push_status_none)
+            },
+            style = MaterialTheme.typography.bodyLarge,
+            color = Tung.colors.text,
+        )
+        if (choice != PushChoice.None) {
+            val host = push.endpoint?.takeIf { choice is PushChoice.UnifiedPush }?.let { runCatching { URI(it).host }.getOrNull() }
+            Text(
+                when {
+                    !push.registered -> stringResource(R.string.push_not_registered)
+                    host != null -> stringResource(R.string.push_registered_at, host)
+                    else -> stringResource(R.string.push_registered)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = Tung.colors.muted,
+            )
+        }
+    }
+    if (choice is PushChoice.UnifiedPush && push.distributors.size > 1) {
+        SecondaryButton(text = stringResource(R.string.push_choose_distributor), onClick = { choosing = true })
+    }
+    if (choosing) {
+        AlertDialog(
+            onDismissRequest = { choosing = false },
+            containerColor = Tung.colors.raised,
+            tonalElevation = 0.dp,
+            shape = TungCorner,
+            title = { Text(stringResource(R.string.push_choose_title)) },
+            text = {
+                Column {
+                    push.distributors.forEach { distributor ->
+                        TextButton(
+                            onClick = {
+                                choosing = false
+                                onChoose(distributor.packageName)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            val current = (choice as? PushChoice.UnifiedPush)?.distributor == distributor.packageName
+                            Text(
+                                distributor.label,
+                                color = if (current) Tung.colors.accentText else Tung.colors.text,
+                                fontWeight = if (current) FontWeight.Bold else null,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { choosing = false }) {
+                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                }
+            },
+        )
+    }
 }
 
 /**

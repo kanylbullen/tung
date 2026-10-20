@@ -62,6 +62,8 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
         if (isWearableApiAvailable(this)) wearPublisher.start()
         // Sync: keep the periodic work while signed in, and sync whenever the app comes to the foreground.
         container.syncAccount.restoreSchedule()
+        // Push: register this phone's FCM token or UnifiedPush endpoint with the server while signed in.
+        container.push.start()
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) = container.syncAccount.requestSync()
         })

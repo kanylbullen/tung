@@ -33,6 +33,8 @@ class SyncAccount(
     private val store: SyncStore,
     private val scheduler: SyncScheduler,
     private val scope: CoroutineScope,
+    /** Runs with the server and token just before signing out, while the token still works (the push endpoint's removal). */
+    private val beforeSignOut: suspend (serverUrl: String, token: String) -> Unit = { _, _ -> },
 ) {
     private val signedIn = MutableStateFlow<Boolean?>(null)
 
@@ -98,6 +100,9 @@ class SyncAccount(
     /** Cancels the background sync, forgets the token, then asks the server to revoke it. Local data stays. */
     suspend fun signOut() {
         scheduler.cancel()
+        withContext(Dispatchers.IO) { settings.serverUrl() to tokens.read() }.let { (url, token) ->
+            if (url != null && token != null) beforeSignOut(url, token)
+        }
         val (url, token) = withContext(Dispatchers.IO) {
             val token = tokens.read()
             tokens.write(null)

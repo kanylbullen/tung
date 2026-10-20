@@ -254,6 +254,14 @@
     <string name="sync_signed_in_as">Inloggad som %1$s</string>
     <string name="sync_sign_out">Logga ut</string>
     <string name="sync_sign_out_hint">Din träning finns kvar på telefonen när du loggar ut.</string>
+    <string name="push_status_fcm">Push: FCM</string>
+    <string name="push_status_unifiedpush">Push: %1$s</string>
+    <string name="push_status_none">Push: ingen, synkar var 15:e minut</string>
+    <string name="push_registered">Registrerad hos servern</string>
+    <string name="push_registered_at">Registrerad hos servern via %1$s</string>
+    <string name="push_not_registered">Inte registrerad hos servern än</string>
+    <string name="push_choose_distributor">Välj UnifiedPush-distributör</string>
+    <string name="push_choose_title">UnifiedPush-distributör</string>
     <string name="link_watch_title">Klocka</string>
     <string name="link_watch_intro">Logga på klockan utan telefonen: länka den till det här kontot med en kod, inget lösenord på handleden.</string>
     <string name="link_watch">Länka en klocka</string>

@@ -1,6 +1,10 @@
 package io.github.kanylbullen.tung.sync
 
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
+import io.github.kanylbullen.tung.core.sync.DEVICE_HEADER
+import io.github.kanylbullen.tung.core.sync.PUSH_ENDPOINTS_PATH
+import io.github.kanylbullen.tung.core.sync.PushEndpoint
+import io.github.kanylbullen.tung.core.sync.PushEndpointRequest
 import io.github.kanylbullen.tung.core.sync.SyncEntry
 import io.github.kanylbullen.tung.core.sync.SyncRequest
 import io.github.kanylbullen.tung.core.sync.SyncResponse
@@ -43,6 +47,18 @@ class FakeSyncServer : Dispatcher() {
 
     /** Every sync request as received, before any auth check. */
     val syncRequests = CopyOnWriteArrayList<SyncRequest>()
+
+    /** The `X-Tung-Device` header of every sync request, in order (null when it was missing). */
+    val syncDevices = CopyOnWriteArrayList<String?>()
+
+    /** Every `POST /api/v1/push/endpoints` body, with the Authorization header it came with. */
+    val pushRegistrations = CopyOnWriteArrayList<Pair<PushEndpointRequest, String?>>()
+
+    /** The ids of every `DELETE /api/v1/push/endpoints/{id}`, with the Authorization header. */
+    val pushDeletes = CopyOnWriteArrayList<Pair<String, String?>>()
+
+    /** Every path the fake was asked for, in order. */
+    val paths = CopyOnWriteArrayList<String>()
     val authPaths = CopyOnWriteArrayList<String>()
 
     /** Answer the next n sync requests with this status instead. */
@@ -89,7 +105,30 @@ class FakeSyncServer : Dispatcher() {
         }
     }
 
-    override fun dispatch(request: RecordedRequest): MockResponse = when (request.path) {
+    override fun dispatch(request: RecordedRequest): MockResponse {
+        paths += "${request.method} ${request.path}"
+        val path = request.path.orEmpty()
+        return when {
+            path == PUSH_ENDPOINTS_PATH && request.method == "POST" -> registerPush(request)
+            path.startsWith("$PUSH_ENDPOINTS_PATH/") && request.method == "DELETE" -> {
+                pushDeletes += path.removePrefix("$PUSH_ENDPOINTS_PATH/") to request.getHeader("Authorization")
+                MockResponse().setResponseCode(204)
+            }
+            else -> route(request)
+        }
+    }
+
+    private fun registerPush(request: RecordedRequest): MockResponse {
+        val body = SyncJson.decodeFromString(PushEndpointRequest.serializer(), request.body.readUtf8())
+        pushRegistrations += body to request.getHeader("Authorization")
+        if (request.getHeader("Authorization") != "Bearer $token") {
+            return json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
+        }
+        val endpoint = PushEndpoint(PUSH_ENDPOINT_ID, body.deviceId, body.transport, body.endpoint, createdAt = 1L)
+        return json(201, SyncJson.encodeToString(PushEndpoint.serializer(), endpoint))
+    }
+
+    private fun route(request: RecordedRequest): MockResponse = when (request.path) {
         "/api/v1/auth/login", "/api/v1/auth/register" -> {
             authPaths += request.path
             json(if (request.path.orEmpty().endsWith("register")) 201 else 200, """{"token":"$token","user":{"id":"u","email":"lifter@example.org","created_at":0}}""")
@@ -125,6 +164,7 @@ class FakeSyncServer : Dispatcher() {
     private fun sync(request: RecordedRequest): MockResponse {
         val body = SyncJson.decodeFromString(SyncRequest.serializer(), request.body.readUtf8())
         syncRequests += body
+        syncDevices += request.getHeader(DEVICE_HEADER)
         if (failNext > 0) {
             failNext--
             return json(failStatus, """{"error":{"code":"failure","message":"Failing on purpose."}}""")
@@ -146,4 +186,9 @@ class FakeSyncServer : Dispatcher() {
 
     private fun json(status: Int, text: String) =
         MockResponse().setResponseCode(status).setHeader("Content-Type", "application/json").setBody(text)
+
+    companion object {
+        /** The id the fake gives every push endpoint. */
+        const val PUSH_ENDPOINT_ID = "push-endpoint-1"
+    }
 }
