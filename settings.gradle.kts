@@ -19,3 +19,4 @@ rootProject.name = "tung"
 include(":app")
 include(":core")
 include(":wear")
+include(":server")

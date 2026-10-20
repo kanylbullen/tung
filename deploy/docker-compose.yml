@@ -1,0 +1,44 @@
+# tung-server with Postgres. From this directory:
+#   cp .env.example .env    # then set POSTGRES_PASSWORD and TUNG_PUBLIC_URL
+#   docker compose up -d --build
+# See README.md for backups and upgrades.
+
+name: tung
+
+services:
+  tung-server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: tung-server:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tung}
+      DATABASE_USER: ${POSTGRES_USER:-tung}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      TUNG_PUBLIC_URL: ${TUNG_PUBLIC_URL:-}
+      TUNG_TRUST_PROXY: ${TUNG_TRUST_PROXY:-false}
+      PORT: "8080"
+    ports:
+      - "${TUNG_BIND:-127.0.0.1}:${TUNG_PORT:-8080}:8080"
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tung}
+      POSTGRES_USER: ${POSTGRES_USER:-tung}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - tung-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tung-pgdata:

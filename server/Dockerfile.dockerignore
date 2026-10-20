@@ -1,0 +1,14 @@
+# Build context for server/Dockerfile (BuildKit reads <Dockerfile>.dockerignore).
+# Everything is excluded except what the server build needs.
+*
+!gradlew
+!gradle/
+!build.gradle.kts
+!settings.gradle.kts
+!gradle.properties
+!core/
+!server/
+!catalog/*.json
+**/build/
+**/.gradle/
+**/.kotlin/
