@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.ProgramMode
 import io.ktor.server.application.Application
 import io.ktor.server.application.plugin
 import io.ktor.server.config.MapApplicationConfig
@@ -77,6 +78,7 @@ class OpenApiCoverageTest {
         val schemas = (spec["components"] as Map<String, Any>)["schemas"] as Map<String, Map<String, Any>>
         assertEquals(MuscleGroup.entries.map { it.key }, schemas["MuscleGroup"]!!["enum"])
         assertEquals(Equipment.entries.map { it.key }, schemas["Equipment"]!!["enum"])
+        assertEquals(ProgramMode.entries.map { it.key }, schemas["ProgramMode"]!!["enum"])
         assertEquals("3.1.0", spec["openapi"])
     }
 }

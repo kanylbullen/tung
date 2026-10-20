@@ -6,7 +6,9 @@ import kotlinx.coroutines.Dispatchers
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.DatabaseConfig
+import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.Transaction
+import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.io.Closeable
 
@@ -56,4 +58,24 @@ class Db(private val dataSource: HikariDataSource) : Closeable {
             return Db(dataSource)
         }
     }
+}
+
+/**
+ * Serialises the writes of one user: a transaction-scoped Postgres advisory
+ * lock on the user, released at commit or rollback. Every transaction that
+ * writes training data takes it first, and so does a sync pull.
+ *
+ * Why: `seq` comes from a sequence, and sequence values are handed out in
+ * call order, not commit order. Without the lock, a transaction holding seq 10
+ * could commit after one holding seq 11, and a client that pulled in between
+ * would store cursor 11 and never see row 10. With it, every seq of a user is
+ * committed before a later one of the same user is even taken, and a sync's
+ * reads, run under the lock, see no half-committed write of that user.
+ */
+fun Transaction.lockUser(userId: String) {
+    exec(
+        "SELECT pg_advisory_xact_lock(hashtextextended(?, 0))",
+        listOf(TextColumnType() to "tung:user:$userId"),
+        explicitStatementType = StatementType.SELECT,
+    ) { it.next() }
 }

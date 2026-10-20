@@ -374,10 +374,10 @@ watch never reaches Room or the server; everything goes through a command.
 ## Server
 
 `server/` is the Gradle module for tung-server, the optional backend
-(`docs/architecture.md`, step 5). The app does not talk to it yet; sync is the
-next step. Package `io.github.kanylbullen.tung.server`, run with
-`./gradlew :server:run` (needs `DATABASE_URL`; see `server/README.md` for the
-environment), shipped as `server/Dockerfile` with `deploy/docker-compose.yml`.
+(`docs/architecture.md`, steps 5 and 6). Package
+`io.github.kanylbullen.tung.server`, run with `./gradlew :server:run` (needs
+`DATABASE_URL`; see `server/README.md` for the environment), shipped as
+`server/Dockerfile` with `deploy/docker-compose.yml`.
 
 - **Stack:** Ktor 3.0.3 on Netty (content negotiation with kotlinx JSON,
   bearer auth, call logging, status pages, CORS, rate limit, Swagger UI),
@@ -397,14 +397,40 @@ environment), shipped as `server/Dockerfile` with `deploy/docker-compose.yml`.
   a 404. Catalogue exercises have `user_id NULL`; a user's row with a
   catalogue id is their copy (made when they set its rest time) and shadows
   the catalogue for them. Every user table has `updated_at` and `deleted_at`.
+  Routines and programs (V2) mirror the app's entities; sync writes them and
+  the export reads them, no REST routes yet.
 - **The row rule:** a write replaces a stored row only when its `updated_at`
   is strictly newer; equal or older is ignored per row (`upsert … where
   updated_at < incoming`). `PUT /api/v1/workouts/{id}` applies it to the
   workout, each exercise and each set separately, and tombstones stored
   children missing from the body only when they are older than the body's
   workout `updated_at`. Deletes are tombstones, never `DELETE`. Server-made
-  changes (finish, delete, PATCH) stamp `max(now, stored + 1)`. Sync will
-  reuse exactly this rule; do not add a write path that bypasses it.
+  changes (finish, delete, PATCH) stamp `max(now, stored + 1)`. Sync uses
+  exactly this rule; do not add a write path that bypasses it.
+- **Sync** (`POST /api/v1/sync`, `SyncStore.kt`, validation in
+  `SyncValidation.kt`, protocol types in `core/.../sync/SyncProtocol.kt`,
+  shared with the app): one transaction per request. Every pushed row goes
+  through the row rule (newer `updated_at` wins, equal or older is ignored
+  and the stored row is sent back); a tombstone (`deleted_at` set) sets
+  `deleted_at` and `updated_at` on an older stored row and keeps it, and is
+  dropped when the server never had the row. The answer is every row of the
+  user's with `seq > cursor` plus the stored version of every pushed row, and
+  `cursor` = the highest `seq` in it. Plain JDBC batches, not Exposed, for
+  speed (10 000 sets in about 3 s). An exercise row with a catalogue id is
+  the user's copy and takes only `rest_seconds`.
+- **`seq`:** one sequence, `sync_seq`, stamped on every insert and update of
+  the eight synced tables by a trigger (`bump_sync_seq`, V2), so every REST
+  write is synced without code of its own; index `(user_id, seq)` on each.
+  **Every transaction that writes training data starts with
+  `lockUser(userId)`** (a transaction-scoped advisory lock), and so does a
+  sync: sequence values are taken in call order, not commit order, and
+  without the lock a client could pull seq 11 before seq 10 commits and never
+  see 10. A new write path must take the lock too.
+- **Foreign keys between training-data tables are `DEFERRABLE INITIALLY
+  DEFERRED`** (V2), so the order of rows in a sync request does not matter.
+  `SyncStore` checks parents (and exercise ids, which are not foreign keys,
+  because a catalogue row has `user_id NULL`) before commit and answers 409
+  `missing_parent` naming the rows; the commit-time check is the backstop.
 - **Every route is in `src/main/resources/openapi/openapi.yaml`** (OpenAPI
   3.1, hand-written, served at `/openapi.yaml` and as Swagger UI at `/docs`).
   `OpenApiCoverageTest` walks the routing tree and fails on a route missing

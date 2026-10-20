@@ -56,6 +56,8 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
         ?.use { CoreCatalog.parse(it.readBytes().toString(Charsets.UTF_8)) }
         ?: error("catalog/core.json is missing from the classpath")
     exercises.seedCatalogue(db.database, catalogue)
+    val routines = RoutineStore(db)
+    val sync = SyncStore(db, catalogue)
 
     install(ContentNegotiation) { json(ApiJson) }
     if (config.trustProxy) {
@@ -90,7 +92,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     }
     installErrorPages()
 
-    routing { apiRoutes(config, db, accounts, exercises, workouts) }
+    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync) }
 
     log.info("tung-server ready{}", config.publicUrl?.let { " at $it" } ?: "")
 }

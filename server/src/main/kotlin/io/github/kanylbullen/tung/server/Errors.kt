@@ -33,6 +33,8 @@ fun forbidden(code: String, message: String) = ApiException(HttpStatusCode.Forbi
 
 fun unauthorized(code: String, message: String) = ApiException(HttpStatusCode.Unauthorized, code, message)
 
+fun payloadTooLarge(code: String, message: String) = ApiException(HttpStatusCode.PayloadTooLarge, code, message)
+
 fun Application.installErrorPages() {
     install(StatusPages) {
         exception<ApiException> { call, e ->

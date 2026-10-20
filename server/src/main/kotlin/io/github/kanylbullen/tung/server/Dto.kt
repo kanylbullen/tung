@@ -153,6 +153,45 @@ data class LastSession(
 )
 
 @Serializable
+data class RoutineExerciseDto(
+    val id: String,
+    val exerciseId: String,
+    val position: Int,
+    val targetSets: Int,
+    val targetReps: Int?,
+    val updatedAt: Long,
+)
+
+@Serializable
+data class RoutineDto(
+    val id: String,
+    val name: String,
+    val lastUsedAt: Long?,
+    val updatedAt: Long,
+    val exercises: List<RoutineExerciseDto>,
+)
+
+@Serializable
+data class ProgramDayDto(
+    val id: String,
+    val routineId: String,
+    val position: Int,
+    /** ISO weekdays as bits, Monday in bit 0. */
+    val weekdays: Int,
+    val updatedAt: Long,
+)
+
+@Serializable
+data class ProgramDto(
+    val id: String,
+    val name: String,
+    val mode: String,
+    val isActive: Boolean,
+    val updatedAt: Long,
+    val days: List<ProgramDayDto>,
+)
+
+@Serializable
 data class ExportTokenDto(val name: String, val scope: String, val createdAt: Long)
 
 @Serializable
@@ -164,6 +203,8 @@ data class ExportDocument(
     /** The user's own exercises: custom ones and their copies of catalogue exercises. */
     val exercises: List<ExerciseDto>,
     val workouts: List<WorkoutDto>,
+    val routines: List<RoutineDto>,
+    val programs: List<ProgramDto>,
     /** Names and scopes only; never a token or its hash. */
     val tokens: List<ExportTokenDto>,
 )
