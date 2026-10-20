@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.ui
 
+import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -66,7 +67,8 @@ private object Routes {
     const val ARG_PROGRAM = "programId"
     const val PROGRAM = "program/{$ARG_PROGRAM}"
     const val SETTINGS = "settings"
-    const val ASSISTANT = "assistant"
+    const val ARG_ASK = "ask"
+    const val ASSISTANT = "assistant?$ARG_ASK={$ARG_ASK}"
 
     fun workout(id: String) = "workout/$id"
     fun picker(id: String) = "picker/$id"
@@ -75,6 +77,9 @@ private object Routes {
     fun routine(id: String) = "routine/$id"
     fun routinePicker(id: String) = "routine/$id/add"
     fun program(id: String) = "program/$id"
+
+    /** The Assistant screen; with [ask], words the voice grammar did not understand, asked as free text at once. */
+    fun assistant(ask: String? = null) = if (ask == null) "assistant" else "assistant?$ARG_ASK=${Uri.encode(ask)}"
 }
 
 private data class Tab(val route: String, @StringRes val label: Int)
@@ -153,11 +158,15 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                     onShowHistory = { nav.navigateToTab(Routes.HISTORY) },
                     onShowRoutines = { nav.navigate(Routes.ROUTINES) },
                     onShowSettings = { nav.navigate(Routes.SETTINGS) },
-                    onShowAssistant = { nav.navigate(Routes.ASSISTANT) },
+                    onShowAssistant = { nav.navigate(Routes.assistant()) },
                 )
             }
-            composable(Routes.ASSISTANT) {
+            composable(
+                Routes.ASSISTANT,
+                arguments = listOf(navArgument(Routes.ARG_ASK) { type = NavType.StringType; nullable = true; defaultValue = null }),
+            ) { entry ->
                 AssistantScreen(
+                    ask = entry.arguments?.getString(Routes.ARG_ASK),
                     onBack = { nav.popBackStack() },
                     onOpenSettings = { nav.navigate(Routes.SETTINGS) },
                     onProgramSaved = { nav.navigate(Routes.ROUTINES) { popUpTo(Routes.HOME) } },
@@ -224,6 +233,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                     onFinishAsked = { finishRequest = null },
                     onBack = { nav.popBackStack() },
                     onAddExercise = { nav.navigate(Routes.picker(id)) },
+                    onAskAssistant = { text -> nav.navigate(Routes.assistant(text)) },
                     onFinished = { finishedId, saved ->
                         if (saved) {
                             nav.navigate(Routes.summary(finishedId)) { popUpTo(Routes.HOME) }

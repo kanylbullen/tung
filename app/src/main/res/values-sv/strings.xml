@@ -422,6 +422,35 @@
     <string name="ai_error_url_https">Använd https://. Vanlig http fungerar bara för localhost och adresser på ditt eget nätverk.</string>
     <string name="ai_error_model">Ange modellens namn.</string>
 
+    <!-- Voice: the active workout's microphone (CLAUDE.md, "Voice"). -->
+    <string name="voice_mic">Röstinmatning</string>
+    <string name="voice_mic_idle">Lyssnar inte</string>
+    <string name="voice_mic_listening">Lyssnar</string>
+    <string name="voice_mic_tap">Säg vikt och reps</string>
+    <string name="voice_mic_stop">Sluta lyssna</string>
+    <string name="voice_hands_free_start">Slå på handsfree-läget</string>
+    <string name="voice_hands_free_chip">Lyssnar</string>
+    <string name="voice_hands_free_description">Handsfree-läget är på: lyssnar mellan seten</string>
+    <string name="voice_hands_free_stop">Stäng av handsfree-läget</string>
+    <string name="voice_listening">Lyssnar…</string>
+    <string name="voice_echo_values">%1$s × %2$s</string>
+    <string name="voice_echo_logged">%1$s × %2$s loggat</string>
+    <string name="voice_echo_next">Nästa: %1$s, set %2$d</string>
+    <string name="voice_echo_set_added">Set tillagt i %1$s</string>
+    <string name="voice_echo_rest">Vilan har startat</string>
+    <string name="voice_echo_rest_off">Vilotimern är av för %1$s</string>
+    <string name="voice_echo_no_set">Det finns inget set att logga</string>
+    <string name="voice_echo_no_previous">Det finns inget tidigare set att kopiera</string>
+    <string name="voice_echo_no_next">Det finns inget annat set att gå till</string>
+    <string name="voice_echo_not_understood">Uppfattade inte: ”%1$s”</string>
+    <string name="voice_echo_heard_nothing">Hörde ingenting</string>
+    <string name="voice_echo_unavailable">Taligenkänning finns inte på den här telefonen</string>
+    <string name="voice_echo_permission">Tung behöver mikrofonen för att höra dig. Tillåt den i systeminställningarna.</string>
+    <string name="voice_echo_network">Taligenkänningen behöver nätverk på den här telefonen</string>
+    <string name="voice_echo_failed">Taligenkänningen misslyckades. Försök igen.</string>
+    <string name="voice_ask_assistant">Fråga assistenten</string>
+    <string name="ai_voice_heard">Du sa: ”%1$s”</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bänkpress</string>

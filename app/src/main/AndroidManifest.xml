@@ -10,6 +10,15 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Exact end of a rest in the background when the user allows it; see timer/RestAlarm.kt. Not USE_EXACT_ALARM. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Voice in the active workout: asked for the first time the mic is tapped. Audio goes to the phone's recogniser only. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Android 11+ hides other apps' services: without this, SpeechRecognizer.isRecognitionAvailable is always false. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <!-- Health Connect, each only after the user opts in in Settings (health/ in data/): write finished
          workouts as exercise sessions; read heart rate and active calories for a finished workout. -->

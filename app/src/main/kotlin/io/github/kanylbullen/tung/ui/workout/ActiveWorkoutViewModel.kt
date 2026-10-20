@@ -16,6 +16,7 @@ import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.timer.RestTimerController
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -209,11 +210,39 @@ class ActiveWorkoutViewModel(
      */
     fun logSet(exercise: ActiveExerciseUi, set: ActiveSetUi) {
         val before = state.value
-        launch {
-            val added = commands.execute(Command.LogSet(workoutId, set.id)).id(CommandIds.ADDED_SET_ID)
-            advanceAfterLogging(before, set.id, added, scrollAlways = true)
-        }
+        launch { log(before, set) }
         startRest(exercise)
+    }
+
+    /**
+     * A voice intent's values ([VoiceAction.Apply]): `SetWeight` and `SetReps`
+     * on the set, then, when it asks for it, the same as [logSet]. One
+     * coroutine, so the set is logged with the values just written; on
+     * [viewModelScope], so it completes even if the screen leaves meanwhile.
+     */
+    fun applyVoice(action: VoiceAction.Apply): Job {
+        val before = state.value
+        touch(action.exercise.workoutExerciseId)
+        if (action.after == AfterVoice.LOG) startRest(action.exercise)
+        return viewModelScope.launch {
+            action.weightKg?.let { commands.execute(Command.SetWeight(action.set.id, it)) }
+            action.reps?.let { commands.execute(Command.SetReps(action.set.id, it)) }
+            if (action.after == AfterVoice.LOG) log(before, action.set)
+        }
+    }
+
+    /** Voice's "next": [setId] becomes the current set, as a tap on its number would make it, and is scrolled into view. */
+    fun selectFromVoice(workoutExerciseId: String, setId: String) {
+        selectSet(workoutExerciseId, setId)
+        requestScroll(ScrollRequest(setId = setId, mode = ScrollMode.IntoView, seq = 0))
+    }
+
+    /** Voice's "rest": [exercise]'s rest timer, as after a tick. */
+    fun startRestFor(exercise: ActiveExerciseUi) = startRest(exercise)
+
+    private suspend fun log(before: ActiveWorkoutUiState, set: ActiveSetUi) {
+        val added = commands.execute(Command.LogSet(workoutId, set.id)).id(CommandIds.ADDED_SET_ID)
+        advanceAfterLogging(before, set.id, added, scrollAlways = true)
     }
 
     fun skipRest() = setRest(rest.value?.skip())

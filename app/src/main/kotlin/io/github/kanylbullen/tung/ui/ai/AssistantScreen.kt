@@ -29,6 +29,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +67,8 @@ import java.time.format.FormatStyle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssistantScreen(
+    /** What the user said in the workout that the voice grammar did not understand; asked as [AiRequest.FreeText] once. */
+    ask: String? = null,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
     onProgramSaved: () -> Unit,
@@ -76,6 +79,10 @@ fun AssistantScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val language = LocalConfiguration.current.locales[0].toLanguageTag()
     var menuOpen by remember { mutableStateOf(false) }
+    // The same path as the buttons: "What is sent" first when it is due, then the proposal.
+    LaunchedEffect(ask, state.configured) {
+        if (ask != null && state.configured == true) vm.askOnce(AiRequest.FreeText(ask), language)
+    }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -127,6 +134,9 @@ fun AssistantScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(stringResource(R.string.ai_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+            if (ask != null) {
+                Text(stringResource(R.string.ai_voice_heard, ask), style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
+            }
             if (state.configured == false) {
                 Text(stringResource(R.string.ai_not_configured), style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
                 SecondaryButton(text = stringResource(R.string.ai_open_settings), onClick = onOpenSettings)

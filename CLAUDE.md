@@ -126,6 +126,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 |---|---|
 | `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
+| `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`. |
 | `ui/theme/` | Colour tokens, typography, theme. |
 | `wear/` | The phone's side of the Data Layer for a companion watch (section "Wear"). |
@@ -837,6 +838,74 @@ reviews every request while it is on. What is sent is training data and
 settings only. A suggested exercise that is not in the catalogue is dropped,
 not shown. Nothing is written until the user confirms, and then only through
 `container.commands`. The key is never in DataStore, a log or a sync.
+
+## Voice
+
+Issue #48, the first half of step 13 of `docs/architecture.md` ("Voice"):
+one set at a time, spoken in the active workout, with no model and no
+network. The grammar is tried first and never guesses; the assistant is the
+fallback, and only on a tap.
+
+- **Grammar in core, `core/.../core/voice/`** (pure, tested):
+  `parseUtterance(text, VoiceLanguage)` → `VoiceIntent`: `SetWeightAndReps`,
+  `AdjustWeight(deltaKg)`, `AdjustReps(delta)`, `SameAgain`, `Next`, `AddSet`,
+  `Done`, `Finish`, `Rest`, `Unknown(text)`. `VoiceLanguage.of(tag)` from the
+  app's locale; each language has its own words (`VoiceGrammar.kt`), and the
+  numbers (`SpokenNumbers.kt`) are digits, "82,5", or words up to 999
+  ("sjuttiofem", "hundratjugo", "seventy-five", "two and a half", "åttio komma
+  fem"). Normalised like `normalizeExerciseName` but with the diacritics kept.
+  One number needs a unit ("80 kilo", "8 reps") or a half ("82,5" is a
+  weight); a bare "80" is `Unknown`. Two numbers are weight then reps ("80 8",
+  "80 kg 8", "80 x 8"), or reps then weight when both carry their unit.
+  "plus/minus/upp/ner/up/down/add" + a number is kilos unless it says reps.
+  **Never guess:** number words written apart are tried both joined and not
+  ("åttio åtta", "one hundred twenty-five"), and an utterance with more than
+  one reading is `Unknown` ("one hundred twenty-five reps" is also 100 × 25).
+  Weights 0–999 in steps of 0.5, reps 0–999, else `Unknown`.
+  `VoiceGrammarTest` is the table (over 100 utterances) and checks every
+  spoken number 0–200 in both languages; a new phrase goes in the table.
+- **Speech, `app/.../voice/`:** `SpeechInput.listenOnce(locale)` is a Flow of
+  `Listening`, `Partial`, then one `Result` or `Error(kind)`.
+  `AndroidSpeechInput` wraps `SpeechRecognizer` (`ACTION_RECOGNIZE_SPEECH`,
+  `EXTRA_LANGUAGE` from the app locale, `EXTRA_PREFER_OFFLINE`,
+  `EXTRA_PARTIAL_RESULTS`) and answers `UNAVAILABLE` when
+  `isRecognitionAvailable` is false, which on Android 11+ needs the
+  `<queries>` entry for `android.speech.RecognitionService` in the manifest.
+  The factory is `TungApp.createSpeechInput()`, an open function the flow
+  tests' `FlowTestApp` overrides with `FakeSpeechInput` (`say`, `fail`); it is
+  deliberately not a `TungContainer` seam, since nothing in `data/` hears.
+  `RECORD_AUDIO` is asked for the first time the mic is used.
+- **The mic, `ui/workout/`:** a round button left of Log set, as tall as it,
+  accent outline, filled while listening (`VoiceControls.kt`). `voiceAction`
+  (`VoiceActions.kt`, pure, `VoiceActionsTest` without Robolectric) decides
+  what an intent does on the current set from the UI state; the screen runs it
+  through the ViewModel's own functions, so every write is the usual command:
+  values are `SetWeight`/`SetReps` (an adjustment added and clamped to
+  0–999), `Done` is exactly the Log set button (`LogSet`, rest timer, or the
+  reps sheet when the set has none), `SameAgain` copies the set before it in
+  the same exercise and logs (with none before it, nothing: last session is
+  not guessed), `Next` selects the set a tick would move to without logging,
+  `AddSet` is `AddSet`, `Rest` starts the rest timer, `Finish` opens the finish
+  dialog. `applyVoice` runs the writes and the log in one coroutine on
+  `viewModelScope`. The echo line above the buttons shows what was understood
+  ("80 × 8 logged") or not ("Didn't catch that: '…'") for 3 s, the partial
+  text while listening.
+- **Hands-free** (long press on the mic): `VoiceController` listens again 1 s
+  after each result and shows the "Listening" chip; a `CONFIRM` haptic
+  (`CLOCK_TICK` below Android 11) per intent that changed something. It stops
+  on a tap on the chip or the mic, on leaving the screen (it runs on the
+  screen's composition scope) or the app going to the background (`ON_STOP`),
+  on "finish workout", on a fatal error (no recogniser, no permission) and
+  after three other errors in a row. Silence is not an error: between sets the
+  phone mostly hears nothing. No foreground service; the screen is already
+  kept on.
+- **The assistant link:** on `Unknown` with the assistant set up
+  (`AiConfig.configured`), the echo offers "Ask the assistant" for 8 s. It
+  opens the Assistant screen with the transcript (`assistant?ask=…`), which
+  asks `AiRequest.FreeText(text)` once: the next-workout schema and parser,
+  the transcript as a JSON string in the question. The rules of "In-app AI
+  (BYOK)" hold unchanged: the request goes on that tap, the first one is shown
+  in full first, and "Start this workout" applies the plan with `ApplyPlan`.
 
 ## Server
 

@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -58,6 +59,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -67,6 +69,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -82,12 +85,16 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.core.REPS_RULER
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.WEIGHT_RULER
@@ -95,6 +102,8 @@ import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepReps
 import io.github.kanylbullen.tung.core.stepWeight
+import io.github.kanylbullen.tung.core.voice.VoiceLanguage
+import io.github.kanylbullen.tung.core.voice.parseUtterance
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.appContainer
@@ -104,8 +113,10 @@ import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
+import io.github.kanylbullen.tung.voice.SpeechErrorKind
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.map
 
 private enum class Field { WEIGHT, REPS }
 
@@ -121,6 +132,8 @@ fun ActiveWorkoutScreen(
     onFinishAsked: () -> Unit = {},
     onAddExercise: () -> Unit,
     onFinished: (workoutId: String, saved: Boolean) -> Unit,
+    /** "Ask the assistant" on words the voice grammar did not understand: the Assistant screen with them. */
+    onAskAssistant: (String) -> Unit = {},
 ) {
     val container = appContainer()
     val vm: ActiveWorkoutViewModel = viewModel(
@@ -179,6 +192,74 @@ fun ActiveWorkoutScreen(
             onFinishAsked()
         }
     }
+    // Voice (CLAUDE.md, "Voice"): the grammar in core turns what is heard into an intent, voiceAction
+    // into what the ViewModel's own functions do. The controller runs on this screen's scope, so it
+    // stops when the screen leaves; it also stops when the app goes to the background.
+    val app = context.applicationContext as TungApp
+    val voiceScope = rememberCoroutineScope()
+    val voice = remember { VoiceController(app.createSpeechInput(), voiceScope) }
+    val voiceState by voice.state.collectAsStateWithLifecycle()
+    val aiConfigured by remember { container.aiSettings.config.map { it.configured } }.collectAsStateWithLifecycle(false)
+    val locale = LocalConfiguration.current.locales[0]
+    val language = VoiceLanguage.of(locale.toLanguageTag())
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(voice, lifecycle) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) voice.stop() }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            voice.stop()
+        }
+    }
+    val handleUtterance: suspend (String) -> VoiceEcho = { text ->
+        val action = voiceAction(parseUtterance(text, language), vm.state.value)
+        when (action) {
+            is VoiceAction.Apply -> {
+                vm.applyVoice(action).join()
+                if (action.after == AfterVoice.ASK_FOR_REPS) editing = EditTarget(action.set.id, Field.REPS)
+            }
+            is VoiceAction.Select -> vm.selectFromVoice(action.exercise.workoutExerciseId, action.set.id)
+            is VoiceAction.AddSet -> vm.addSet(action.exercise.workoutExerciseId)
+            VoiceAction.Finish -> confirmFinish = true
+            is VoiceAction.Rest -> vm.startRestFor(action.exercise)
+            is VoiceAction.Problem, is VoiceAction.NotUnderstood -> Unit
+        }
+        action.echo
+    }
+    var pendingHandsFree by remember { mutableStateOf<Boolean?>(null) }
+    fun startVoice(handsFree: Boolean) {
+        if (handsFree) {
+            voice.startHandsFree(locale, handleUtterance) {
+                view.performHapticFeedback(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CLOCK_TICK,
+                )
+            }
+        } else {
+            voice.listenOnce(locale, handleUtterance)
+        }
+    }
+    // RECORD_AUDIO is asked for the first time the mic is used; denied, the echo says how to allow it.
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val handsFree = pendingHandsFree
+        pendingHandsFree = null
+        when {
+            !granted -> voice.show(VoiceEcho.Failed(SpeechErrorKind.PERMISSION))
+            handsFree != null -> startVoice(handsFree)
+        }
+    }
+    fun onMic(handsFree: Boolean) {
+        if (voice.active && !handsFree) {
+            voice.stop()
+            return
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            startVoice(handsFree)
+        } else {
+            pendingHandsFree = handsFree
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
     var restControlsOpen by remember { mutableStateOf(false) }
     var restSheetFor by remember { mutableStateOf<ActiveExerciseUi?>(null) }
     val listState = rememberLazyListState()
@@ -260,15 +341,40 @@ fun ActiveWorkoutScreen(
             }
         },
         bottomBar = {
-            if (!state.loading && !state.missing && current != null) {
+            if (!state.loading && !state.missing && (current != null || state.exercises.isNotEmpty())) {
+                val echo = voiceState.echo
+                val askable = echo is VoiceEcho.NotUnderstood && aiConfigured
+                val echoShown = echo != null &&
+                    now - voiceState.echoAt < if (askable) VOICE_ECHO_WITH_ACTION_MILLIS else VOICE_ECHO_MILLIS
+                val echoText = if (echoShown && echo != null) voiceEchoText(echo) else null
+                val line = voiceState.partial
+                    ?: echoText
+                    ?: if (voiceState.listening && !voiceState.handsFree) stringResource(R.string.voice_listening) else null
                 LogSetBar(
                     current = current,
+                    voice = voiceState,
+                    line = line,
+                    lineMuted = voiceState.partial != null || echoText == null,
+                    askAssistant = if (askable && echoText != null && line == echoText) {
+                        {
+                            voice.stop()
+                            voice.dismissEcho()
+                            onAskAssistant((echo as VoiceEcho.NotUnderstood).text)
+                        }
+                    } else {
+                        null
+                    },
+                    onMic = { onMic(handsFree = false) },
+                    onMicLongPress = { onMic(handsFree = true) },
+                    onStopHandsFree = voice::stop,
                     onClick = {
-                        // Logging a set without reps would just be removed on finish, so ask for reps first.
-                        if (current.set.reps <= 0) {
-                            editing = EditTarget(current.set.id, Field.REPS)
-                        } else {
-                            vm.logSet(current.exercise, current.set)
+                        current?.let { c ->
+                            // Logging a set without reps would just be removed on finish, so ask for reps first.
+                            if (c.set.reps <= 0) {
+                                editing = EditTarget(c.set.id, Field.REPS)
+                            } else {
+                                vm.logSet(c.exercise, c.set)
+                            }
                         }
                     },
                 )
@@ -377,20 +483,52 @@ fun ActiveWorkoutScreen(
 /**
  * The big button above the system navigation: always under the thumb, wherever
  * the list is scrolled, which a button at the end of the list would not be.
+ * The mic button sits left of it, and above both the voice line: what was
+ * heard or understood, and the "Listening" chip while hands-free mode is on.
+ * With every set logged only the mic remains, for "finish workout" or "add a set".
  */
 @Composable
-private fun LogSetBar(current: CurrentSet, onClick: () -> Unit) {
-    val set = current.set
-    val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
-    val name = exerciseDisplayName(current.exercise.nameKey, current.exercise.name)
-    Box(
+private fun LogSetBar(
+    current: CurrentSet?,
+    voice: VoiceUiState,
+    line: String?,
+    lineMuted: Boolean,
+    askAssistant: (() -> Unit)?,
+    onMic: () -> Unit,
+    onMicLongPress: () -> Unit,
+    onStopHandsFree: () -> Unit,
+    onClick: () -> Unit,
+) {
+    Column(
         Modifier
             .fillMaxWidth()
             .background(Tung.colors.background)
             .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        PrimaryButton(text = stringResource(R.string.workout_log_set, name, localWeight(set.weightKg), reps), onClick = onClick)
+        if (voice.handsFree) HandsFreeChip(onStop = onStopHandsFree)
+        if (line != null) {
+            VoiceEchoLine(
+                text = line,
+                muted = lineMuted,
+                actionLabel = askAssistant?.let { stringResource(R.string.voice_ask_assistant) },
+                onAction = { askAssistant?.invoke() },
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            MicButton(active = voice.listening || voice.handsFree, onTap = onMic, onLongPress = onMicLongPress)
+            if (current != null) {
+                val set = current.set
+                val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
+                val name = exerciseDisplayName(current.exercise.nameKey, current.exercise.name)
+                PrimaryButton(
+                    text = stringResource(R.string.workout_log_set, name, localWeight(set.weightKg), reps),
+                    onClick = onClick,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
     }
 }
 

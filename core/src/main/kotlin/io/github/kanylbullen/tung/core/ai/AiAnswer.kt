@@ -81,7 +81,7 @@ fun parseAiAnswer(request: AiRequest, text: String, catalogueKeys: Set<String>):
         ?: return AiParse.Malformed("the answer is not valid JSON")
     return when (request) {
         AiRequest.Program -> parseProgram(root, catalogueKeys)
-        AiRequest.NextWorkout -> parseNextWorkout(root, catalogueKeys)
+        AiRequest.NextWorkout, is AiRequest.FreeText -> parseNextWorkout(root, catalogueKeys)
         AiRequest.Plateaus -> parsePlateaus(root, catalogueKeys)
     }
 }
