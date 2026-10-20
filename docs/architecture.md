@@ -47,10 +47,16 @@
   the same code and the same setting.
 - **The watch is its own client with the same model.** It has its own small
   log, creates sets with its own UUIDs and `updatedAt`, and syncs with the
-  phone over the Wearable Data Layer when it is nearby. The phone merges using
-  the same rules it uses against the server. One sync protocol, two
-  transports. So the watch works even when the phone is in the locker and
-  never needs to reach the server itself.
+  **same protocol as the phone uses with the server**: over Wi-Fi straight to
+  the server when it has one, over the Wearable Data Layer to the phone when
+  the two are paired and the phone merges on its behalf. One sync protocol,
+  two transports, and the watch chooses whichever is available. Decided
+  2026-10-20: the watch must work **without a paired phone**. Galaxy Wearable
+  refuses to run on a modified Android (LineageOS on both test phones), and a
+  Samsung watch cannot be paired any other way, so a companion-only watch
+  would exclude exactly the people who self-host. The one-time setup of a
+  Galaxy Watch still needs a stock phone once; after that the watch lives on
+  its own Wi-Fi and Google account and never needs the phone again.
 - **The API is the contract.** The app, the MCP server and third parties go
   through the same REST surface. The MCP tools are thin wrappers over the API,
   not a separate way into the database.
@@ -277,6 +283,11 @@ exercise that is not in the catalogue is discarded, not shown.
    export. `docker compose` with Postgres. No sync yet; API first.
 6. **Sync in the app:** server URL in settings, push/pull of changes since the
    last sync, tombstones.
+6b. **Standalone watch:** the sync client from the previous step moves into
+   `core/` so the watch uses it too; `wear/` gets its own local log and a
+   server setting, `standalone=true`, and keeps the Data Layer transport for
+   phones where the companion works. Setup of the Galaxy Watch is done once
+   against a stock phone, then the watch is reached over Wi-Fi adb.
 7. **MCP:** tools over the API: `log_set`, `last_time`, `start_workout`,
    `finish_workout`, `history`, `save_routine`, plus prompts for program,
    next workout and plateaus. Registration in the MCP registry.
