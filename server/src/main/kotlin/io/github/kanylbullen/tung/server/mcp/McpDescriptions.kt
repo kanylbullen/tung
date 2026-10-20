@@ -84,11 +84,23 @@ object McpDescriptions {
         "adjust_target_sets" to
             "Changes how many sets a routine asks for of one exercise by delta (1 adds a set, -1 removes one; kept within 1 to 20). " +
             "routine_exercise_id comes from routines.",
+        "add_routine_exercise" to
+            "Adds an exercise to a saved routine, after its last one, with target_sets (1 to 20, default 3) and optionally " +
+            "target_reps (1 to 999). Returns ids.routineExerciseId and ids.exerciseId. routine_id comes from routines. $REF",
+        "remove_routine_exercise" to
+            "Removes one exercise from a routine; the ones after it move up. Workouts already done from the routine are kept. " +
+            "routine_exercise_id comes from routines.",
+        "set_target_reps" to
+            "Sets the reps a routine asks for per set of one exercise (1 to 999), or clears it with target_reps null. " +
+            "routine_exercise_id comes from routines.",
         "create_program" to
             "Creates an empty, inactive program: an ordered list of routines. Mode fixed puts each day on chosen weekdays " +
             "(toggle_program_weekday); rotating runs day 1, 2, 3 in order whatever the date. Add days with add_program_day and make it " +
             "the active one with activate_program. Returns ids.programId.",
         "rename_program" to "Renames a program. $IDS",
+        "set_program_mode" to
+            "Switches a program between fixed (each day on chosen weekdays, toggle_program_weekday) and rotating (day 1, 2, 3 in " +
+            "order whatever the date). Its days and their weekdays are kept. program_id comes from programs.",
         "activate_program" to "Makes this the user's one active program; any other active program is switched off.",
         "deactivate_program" to "Switches a program off, leaving no active program if it was the active one.",
         "delete_program" to "Deletes a program and its days. Routines and workouts stay. Confirm with the user first.",

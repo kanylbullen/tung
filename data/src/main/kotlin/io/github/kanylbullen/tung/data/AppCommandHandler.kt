@@ -9,6 +9,7 @@ import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
@@ -137,9 +138,22 @@ class AppCommandHandler(
                 routines.adjustTargetSets(command.routineExerciseId, command.delta)
                 Done()
             }
+            is Command.AddRoutineExercise -> addRoutineExercise(command)
+            is Command.RemoveRoutineExercise -> {
+                routines.removeExercise(command.routineExerciseId)
+                Done()
+            }
+            is Command.SetTargetReps -> {
+                routines.setTargetReps(command.routineExerciseId, command.reps)
+                Done()
+            }
             is Command.CreateProgram -> Done(mapOf(PROGRAM_ID to programs.create(command.name, command.mode)))
             is Command.RenameProgram -> {
                 programs.rename(command.programId, command.name)
+                Done()
+            }
+            is Command.SetProgramMode -> {
+                programs.setMode(command.programId, command.mode)
                 Done()
             }
             is Command.ActivateProgram -> {
@@ -185,6 +199,21 @@ class AppCommandHandler(
             workouts.addExercise(command.workoutId, rowFor(exercise, entries))
         }
         return Done(mapOf(WORKOUT_EXERCISE_ID to workoutExerciseId, EXERCISE_ID to exercise.id))
+    }
+
+    /** Like [addExercise], for a saved routine: resolve first (a question writes nothing), then append. */
+    private suspend fun addRoutineExercise(command: Command.AddRoutineExercise): CommandResult {
+        val exercise = when (val resolution = resolveRef(command.exercise, resolver)) {
+            is RefResolution.Unresolved -> return NeedsAnswers(listOf(resolution.question))
+            is RefResolution.Resolved -> resolution.exercise
+        }
+        val missing = Rejected(listOf("no routine ${command.routineId}"))
+        if (!routines.exists(command.routineId)) return missing
+        val entries = extendedEntries(listOf(exercise))
+        val routineExerciseId = db.withTransaction {
+            routines.addExercise(command.routineId, rowFor(exercise, entries), command.targetSets, command.targetReps)
+        } ?: return missing
+        return Done(mapOf(ROUTINE_EXERCISE_ID to routineExerciseId, EXERCISE_ID to exercise.id))
     }
 
     private suspend fun logSet(command: Command.LogSet): CommandResult {

@@ -67,4 +67,13 @@ interface RoutineDao {
 
     @Query("UPDATE routine_exercise SET targetSets = :targetSets, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setTargetSets(id: String, targetSets: Int, updatedAt: Long)
+
+    @Query("UPDATE routine_exercise SET targetReps = :targetReps, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
+    suspend fun setTargetReps(id: String, targetReps: Int?, updatedAt: Long)
+
+    @Query("SELECT COALESCE(MAX(position), -1) FROM routine_exercise WHERE routineId = :routineId")
+    suspend fun maxPosition(routineId: String): Int
+
+    @Query("DELETE FROM routine_exercise WHERE id = :id")
+    suspend fun deleteRoutineExercise(id: String)
 }

@@ -43,6 +43,15 @@ class ProgramRepository(
         dao.rename(programId, trimmed, clock())
     }
 
+    /**
+     * Switches the program between fixed and rotating. Its days, their order
+     * and their weekdays are kept, so switching back restores the schedule.
+     */
+    suspend fun setMode(programId: String, mode: ProgramMode) = db.withTransaction {
+        val program = dao.getProgram(programId) ?: return@withTransaction
+        if (program.mode != mode.key) dao.setMode(programId, mode.key, clock())
+    }
+
     /** Makes [programId] the one active program; every other program is deactivated in the same transaction. */
     suspend fun activate(programId: String) = db.withTransaction {
         dao.getProgram(programId) ?: return@withTransaction

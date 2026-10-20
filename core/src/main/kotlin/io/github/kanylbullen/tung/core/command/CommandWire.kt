@@ -197,10 +197,32 @@ object CommandWire {
         "adjust_target_sets" to Spec(listOf(routineExerciseId, req("delta", Kind.INT, "Sets to add (negative removes); the result stays within 1 to 20."))) {
             Command.AdjustTargetSets(it.id("routine_exercise_id"), it.int("delta"))
         },
-        "create_program" to Spec(listOf(name, req("mode", Kind.PROGRAM_MODE, "fixed: each day on chosen weekdays; rotating: day 1, 2, 3 in order whatever the date."))) {
+        "add_routine_exercise" to Spec(
+            listOf(
+                routineId,
+                req("exercise", Kind.EXERCISE, EXERCISE_DESCRIPTION),
+                opt("target_sets", Kind.INT, "Sets per session, 1 to 20. Default $DEFAULT_ROUTINE_TARGET_SETS."),
+                opt("target_reps", Kind.NULLABLE_INT, "Repetitions aimed at per set, 1 to 999; leave out or null for none."),
+            ),
+        ) {
+            Command.AddRoutineExercise(
+                it.id("routine_id"),
+                it.exercise("exercise"),
+                it.intOrNull("target_sets") ?: DEFAULT_ROUTINE_TARGET_SETS,
+                it.intOrNull("target_reps"),
+            )
+        },
+        "remove_routine_exercise" to Spec(listOf(routineExerciseId)) { Command.RemoveRoutineExercise(it.id("routine_exercise_id")) },
+        "set_target_reps" to Spec(
+            listOf(routineExerciseId, req("target_reps", Kind.NULLABLE_INT, "Repetitions aimed at per set, 1 to 999; null clears the target.")),
+        ) { Command.SetTargetReps(it.id("routine_exercise_id"), it.intOrNull("target_reps")) },
+        "create_program" to Spec(listOf(name, req("mode", Kind.PROGRAM_MODE, PROGRAM_MODE_DESCRIPTION))) {
             Command.CreateProgram(it.text("name"), ProgramMode.fromKey(it.text("mode")))
         },
         "rename_program" to Spec(listOf(programId, name)) { Command.RenameProgram(it.id("program_id"), it.text("name")) },
+        "set_program_mode" to Spec(listOf(programId, req("mode", Kind.PROGRAM_MODE, PROGRAM_MODE_DESCRIPTION))) {
+            Command.SetProgramMode(it.id("program_id"), ProgramMode.fromKey(it.text("mode")))
+        },
         "activate_program" to Spec(listOf(programId)) { Command.ActivateProgram(it.id("program_id")) },
         "deactivate_program" to Spec(listOf(programId)) { Command.DeactivateProgram(it.id("program_id")) },
         "delete_program" to Spec(listOf(programId)) { Command.DeleteProgram(it.id("program_id")) },
@@ -452,3 +474,5 @@ private const val EXERCISE_DESCRIPTION =
     "The exercise: {\"key\": \"bench_press\"} (a core catalogue key), {\"id\": \"…\"}, {\"name\": \"Bench press\"} " +
         "(any catalogue language; only an exact name resolves, anything else comes back as a question with suggestions) " +
         "or {\"extended\": \"…\"} (an extended-catalogue id)."
+
+private const val PROGRAM_MODE_DESCRIPTION = "fixed: each day on chosen weekdays; rotating: day 1, 2, 3 in order whatever the date."

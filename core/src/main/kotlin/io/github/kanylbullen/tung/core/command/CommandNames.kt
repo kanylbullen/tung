@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.core.command
 import io.github.kanylbullen.tung.core.command.Command.ActivateProgram
 import io.github.kanylbullen.tung.core.command.Command.AddExercise
 import io.github.kanylbullen.tung.core.command.Command.AddProgramDay
+import io.github.kanylbullen.tung.core.command.Command.AddRoutineExercise
 import io.github.kanylbullen.tung.core.command.Command.AddSet
 import io.github.kanylbullen.tung.core.command.Command.AdjustTargetSets
 import io.github.kanylbullen.tung.core.command.Command.ApplyPlan
@@ -18,14 +19,17 @@ import io.github.kanylbullen.tung.core.command.Command.MoveProgramDay
 import io.github.kanylbullen.tung.core.command.Command.MoveRoutineExercise
 import io.github.kanylbullen.tung.core.command.Command.RemoveExercise
 import io.github.kanylbullen.tung.core.command.Command.RemoveProgramDay
+import io.github.kanylbullen.tung.core.command.Command.RemoveRoutineExercise
 import io.github.kanylbullen.tung.core.command.Command.RemoveSet
 import io.github.kanylbullen.tung.core.command.Command.RenameProgram
 import io.github.kanylbullen.tung.core.command.Command.RenameRoutine
 import io.github.kanylbullen.tung.core.command.Command.SaveRoutine
 import io.github.kanylbullen.tung.core.command.Command.SaveRoutinePlan
 import io.github.kanylbullen.tung.core.command.Command.SelectCurrent
+import io.github.kanylbullen.tung.core.command.Command.SetProgramMode
 import io.github.kanylbullen.tung.core.command.Command.SetReps
 import io.github.kanylbullen.tung.core.command.Command.SetRest
+import io.github.kanylbullen.tung.core.command.Command.SetTargetReps
 import io.github.kanylbullen.tung.core.command.Command.SetWeight
 import io.github.kanylbullen.tung.core.command.Command.StartRoutine
 import io.github.kanylbullen.tung.core.command.Command.StartWorkout
@@ -65,8 +69,12 @@ object CommandNames {
         DeleteRoutine::class.java to "delete_routine",
         MoveRoutineExercise::class.java to "move_routine_exercise",
         AdjustTargetSets::class.java to "adjust_target_sets",
+        AddRoutineExercise::class.java to "add_routine_exercise",
+        RemoveRoutineExercise::class.java to "remove_routine_exercise",
+        SetTargetReps::class.java to "set_target_reps",
         CreateProgram::class.java to "create_program",
         RenameProgram::class.java to "rename_program",
+        SetProgramMode::class.java to "set_program_mode",
         ActivateProgram::class.java to "activate_program",
         DeactivateProgram::class.java to "deactivate_program",
         DeleteProgram::class.java to "delete_program",

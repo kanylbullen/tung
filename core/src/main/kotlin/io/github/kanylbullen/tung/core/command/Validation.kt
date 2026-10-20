@@ -8,6 +8,7 @@ import io.github.kanylbullen.tung.core.MIN_TARGET_SETS
 import io.github.kanylbullen.tung.core.command.Command.ActivateProgram
 import io.github.kanylbullen.tung.core.command.Command.AddExercise
 import io.github.kanylbullen.tung.core.command.Command.AddProgramDay
+import io.github.kanylbullen.tung.core.command.Command.AddRoutineExercise
 import io.github.kanylbullen.tung.core.command.Command.AddSet
 import io.github.kanylbullen.tung.core.command.Command.AdjustTargetSets
 import io.github.kanylbullen.tung.core.command.Command.ApplyPlan
@@ -23,14 +24,17 @@ import io.github.kanylbullen.tung.core.command.Command.MoveProgramDay
 import io.github.kanylbullen.tung.core.command.Command.MoveRoutineExercise
 import io.github.kanylbullen.tung.core.command.Command.RemoveExercise
 import io.github.kanylbullen.tung.core.command.Command.RemoveProgramDay
+import io.github.kanylbullen.tung.core.command.Command.RemoveRoutineExercise
 import io.github.kanylbullen.tung.core.command.Command.RemoveSet
 import io.github.kanylbullen.tung.core.command.Command.RenameProgram
 import io.github.kanylbullen.tung.core.command.Command.RenameRoutine
 import io.github.kanylbullen.tung.core.command.Command.SaveRoutine
 import io.github.kanylbullen.tung.core.command.Command.SaveRoutinePlan
 import io.github.kanylbullen.tung.core.command.Command.SelectCurrent
+import io.github.kanylbullen.tung.core.command.Command.SetProgramMode
 import io.github.kanylbullen.tung.core.command.Command.SetReps
 import io.github.kanylbullen.tung.core.command.Command.SetRest
+import io.github.kanylbullen.tung.core.command.Command.SetTargetReps
 import io.github.kanylbullen.tung.core.command.Command.SetWeight
 import io.github.kanylbullen.tung.core.command.Command.StartRoutine
 import io.github.kanylbullen.tung.core.command.Command.StartWorkout
@@ -56,7 +60,7 @@ sealed interface Validation {
  * Checks a command on its own, without the database: numbers in range
  * (weight 0..[MAX_WEIGHT_KG] kg, reps 0..[MAX_REPS], planned sets
  * [MIN_PLANNED_SETS]..[MAX_PLANNED_SETS], a routine's target sets
- * [MIN_TARGET_SETS]..[MAX_TARGET_SETS], rest 0..[MAX_REST_SECONDS] s, weekday
+ * [MIN_TARGET_SETS]..[MAX_TARGET_SETS] and target reps 1..[MAX_REPS], rest 0..[MAX_REST_SECONDS] s, weekday
  * 1..7), names and ids not blank, plans not empty. Whether the ids exist is the
  * handler's business. Pure, so the app, the server and a client checking
  * before it sends all agree.
@@ -74,6 +78,9 @@ fun validate(command: Command): Validation {
     }
     fun reps(value: Int, field: String = "reps") {
         if (value !in 0..MAX_REPS) reasons += "$field must be between 0 and $MAX_REPS"
+    }
+    fun targetReps(value: Int?, field: String = "target reps") {
+        if (value != null && value !in 1..MAX_REPS) reasons += "$field must be between 1 and $MAX_REPS"
     }
     fun ref(value: ExerciseRef, field: String = "exercise") {
         val text = when (value) {
@@ -164,11 +171,25 @@ fun validate(command: Command): Validation {
         is DeleteRoutine -> id(command.routineId, "routineId")
         is MoveRoutineExercise -> id(command.routineExerciseId, "routineExerciseId")
         is AdjustTargetSets -> id(command.routineExerciseId, "routineExerciseId")
+        is AddRoutineExercise -> {
+            id(command.routineId, "routineId")
+            ref(command.exercise)
+            if (command.targetSets !in MIN_TARGET_SETS..MAX_TARGET_SETS) {
+                reasons += "target sets must be between $MIN_TARGET_SETS and $MAX_TARGET_SETS"
+            }
+            targetReps(command.targetReps)
+        }
+        is RemoveRoutineExercise -> id(command.routineExerciseId, "routineExerciseId")
+        is SetTargetReps -> {
+            id(command.routineExerciseId, "routineExerciseId")
+            targetReps(command.reps)
+        }
         is CreateProgram -> name(command.name)
         is RenameProgram -> {
             id(command.programId, "programId")
             name(command.name)
         }
+        is SetProgramMode -> id(command.programId, "programId")
         is ActivateProgram -> id(command.programId, "programId")
         is DeactivateProgram -> id(command.programId, "programId")
         is DeleteProgram -> id(command.programId, "programId")

@@ -21,6 +21,8 @@ class RoutineRepository(
 
     fun observeRoutine(id: String): Flow<Routine?> = dao.observeRoutine(id)
 
+    suspend fun exists(routineId: String): Boolean = dao.getRoutine(routineId) != null
+
     fun observeRoutineExercises(routineId: String): Flow<List<RoutineExerciseWithExercise>> =
         dao.observeRoutineExercises(routineId)
 
@@ -195,6 +197,49 @@ class RoutineRepository(
         val re = dao.getRoutineExercise(routineExerciseId) ?: return@withTransaction
         val target = clampTargetSets(re.targetSets + delta)
         if (target != re.targetSets) dao.setTargetSets(re.id, target, clock())
+    }
+
+    /** The reps an exercise aims at per set; null for none. Writes only when the value changes. */
+    suspend fun setTargetReps(routineExerciseId: String, targetReps: Int?) = db.withTransaction {
+        val re = dao.getRoutineExercise(routineExerciseId) ?: return@withTransaction
+        if (re.targetReps != targetReps) dao.setTargetReps(re.id, targetReps, clock())
+    }
+
+    /**
+     * Appends [exerciseId] to the routine, after its last exercise, with
+     * [targetSets] (kept within the allowed range) and [targetReps]. The
+     * exercise row must exist.
+     *
+     * @return the new routine exercise's id, or null if the routine no longer exists.
+     */
+    suspend fun addExercise(routineId: String, exerciseId: String, targetSets: Int, targetReps: Int?): String? = db.withTransaction {
+        dao.getRoutine(routineId) ?: return@withTransaction null
+        val re = RoutineExercise(
+            id = newId(),
+            routineId = routineId,
+            exerciseId = exerciseId,
+            position = dao.maxPosition(routineId) + 1,
+            targetSets = clampTargetSets(targetSets),
+            targetReps = targetReps,
+            updatedAt = clock(),
+        )
+        dao.insertRoutineExercise(re)
+        re.id
+    }
+
+    /**
+     * Removes one exercise from its routine, with a tombstone, and closes the
+     * position gap so the rest keep their order from 0. Workouts started from
+     * the routine are kept.
+     */
+    suspend fun removeExercise(routineExerciseId: String) = db.withTransaction {
+        val re = dao.getRoutineExercise(routineExerciseId) ?: return@withTransaction
+        val now = clock()
+        db.recordDeletes(SyncTable.ROUTINE_EXERCISES, listOf(routineExerciseId), now)
+        dao.deleteRoutineExercise(routineExerciseId)
+        dao.getRoutineExercises(re.routineId).forEachIndexed { position, rest ->
+            if (rest.position != position) dao.setPosition(rest.id, position, now)
+        }
     }
 
     /**
