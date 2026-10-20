@@ -23,7 +23,7 @@ class LogSetFlowTest : FlowTest() {
     private val countdown get() = hasContentDescription(str(R.string.rest_title))
     private val alarms: ShadowAlarmManager get() = shadowOf(app.getSystemService(AlarmManager::class.java))
 
-    private fun logSet(weight: String, reps: String) = str(R.string.workout_log_set, weight, reps)
+    private fun logSet(weight: String, reps: String) = str(R.string.workout_log_set, benchPress, weight, reps)
 
     /** Seconds the countdown in the top bar says are left, read from its state description ("1:28 left"). */
     private fun restSecondsLeft(): Int {

@@ -58,7 +58,10 @@
     <string name="workout_keep_training">Keep training</string>
     <string name="workout_discarded">The workout was not saved because no sets were ticked.</string>
     <string name="workout_not_found">This workout no longer exists. Go back and start a new one.</string>
-    <string name="workout_log_set">Log set · %1$s × %2$s</string>
+    <string name="workout_log_set">Log set · %1$s · %2$s × %3$s</string>
+    <string name="workout_select_exercise">Log sets of %1$s next</string>
+    <string name="workout_select_set">Make set %1$d the current set</string>
+    <string name="workout_current_set">Current set</string>
     <string name="workout_rest_timer">Rest timer…</string>
 
     <!-- Rest timer -->

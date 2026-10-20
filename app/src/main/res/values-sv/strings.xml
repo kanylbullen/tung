@@ -58,7 +58,10 @@
     <string name="workout_keep_training">Fortsätt träna</string>
     <string name="workout_discarded">Passet sparades inte eftersom inga set var bockade.</string>
     <string name="workout_not_found">Passet finns inte längre. Gå tillbaka och starta ett nytt.</string>
-    <string name="workout_log_set">Logga set · %1$s × %2$s</string>
+    <string name="workout_log_set">Logga set · %1$s · %2$s × %3$s</string>
+    <string name="workout_select_exercise">Logga set i %1$s härnäst</string>
+    <string name="workout_select_set">Gör set %1$d till aktuellt set</string>
+    <string name="workout_current_set">Aktuellt set</string>
     <string name="workout_rest_timer">Vilotimer…</string>
 
     <!-- Rest timer -->

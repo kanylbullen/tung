@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.kanylbullen.tung.core.DEFAULT_REST_SECONDS
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.RestTimer
+import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
 import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
@@ -50,6 +51,11 @@ class ActiveWorkoutViewModel(
      */
     private val rest = MutableStateFlow(restoredRest()?.takeIf { it.isRunningAt(clock()) })
     private val lastTouched = MutableStateFlow(savedState.get<String>(KEY_TOUCHED))
+
+    /** The set the user made current by tapping a header or a set number; kept like [lastTouched]. */
+    private val selected = MutableStateFlow(savedState.get<String>(KEY_SELECTED))
+    private val scroll = MutableStateFlow<ScrollRequest?>(null)
+    private var scrollSeq = 0L
     private val defaultRest = restTimer.defaultSeconds
         .stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_REST_SECONDS)
 
@@ -100,8 +106,14 @@ class ActiveWorkoutViewModel(
         }
     }
 
-    val state: StateFlow<ActiveWorkoutUiState> = combine(workoutState, rest, lastTouched) { s, timer, touched ->
-        s.copy(rest = timer, lastTouchedExerciseId = touched)
+    val state: StateFlow<ActiveWorkoutUiState> = combine(
+        workoutState,
+        rest,
+        lastTouched,
+        selected,
+        scroll,
+    ) { s, timer, touched, selection, scrollRequest ->
+        s.copy(rest = timer, lastTouchedExerciseId = touched, selectedSetId = selection, scrollRequest = scrollRequest)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActiveWorkoutUiState())
 
     private val eventChannel = Channel<ActiveWorkoutEvent>(Channel.BUFFERED)
@@ -122,7 +134,26 @@ class ActiveWorkoutViewModel(
 
     fun addSet(workoutExerciseId: String) {
         touch(workoutExerciseId)
-        launch { repo.addSet(workoutExerciseId) }
+        launch { repo.addSet(workoutExerciseId)?.let { requestScroll(ScrollRequest(setId = it, mode = ScrollMode.IntoView, seq = 0)) } }
+    }
+
+    /** A tap on an exercise's header: its first un-ticked set becomes the current set. */
+    fun selectExercise(workoutExerciseId: String) {
+        val exercise = state.value.exercises.firstOrNull { it.workoutExerciseId == workoutExerciseId } ?: return
+        val set = exercise.sets.firstOrNull { !it.completed } ?: return
+        select(workoutExerciseId, set.id)
+    }
+
+    /** A tap on the number of an un-ticked set: that set becomes the current set. */
+    fun selectSet(workoutExerciseId: String, setId: String) {
+        val set = state.value.findSet(setId) ?: return
+        if (set.completed) return
+        select(workoutExerciseId, setId)
+    }
+
+    /** The screen has carried out [request]. */
+    fun onScrollHandled(request: ScrollRequest) {
+        scroll.compareAndSet(request, null)
     }
 
     fun setWeight(workoutExerciseId: String, setId: String, weightKg: Double) {
@@ -149,7 +180,11 @@ class ActiveWorkoutViewModel(
 
     /** The tick on the row. Ticking (not un-ticking) starts the rest timer too. */
     fun setCompleted(exercise: ActiveExerciseUi, setId: String, completed: Boolean) {
-        touch(exercise.workoutExerciseId)
+        if (completed) {
+            advanceAfterLogging(state.value, setId, addedSetId = null)
+        } else {
+            touch(exercise.workoutExerciseId)
+        }
         launch { repo.setCompleted(setId, completed) }
         if (completed) startRest(exercise)
     }
@@ -159,8 +194,11 @@ class ActiveWorkoutViewModel(
      * last ([WorkoutRepository.logSet]) and starts the rest timer.
      */
     fun logSet(exercise: ActiveExerciseUi, set: ActiveSetUi) {
-        touch(exercise.workoutExerciseId)
-        launch { repo.logSet(set.id) }
+        val before = state.value
+        launch {
+            val added = repo.logSet(set.id)
+            advanceAfterLogging(before, set.id, added, scrollAlways = true)
+        }
         startRest(exercise)
     }
 
@@ -219,11 +257,52 @@ class ActiveWorkoutViewModel(
         savedState[KEY_TOUCHED] = workoutExerciseId
     }
 
+    private fun select(workoutExerciseId: String, setId: String?) {
+        touch(workoutExerciseId)
+        selected.value = setId
+        savedState[KEY_SELECTED] = setId
+    }
+
+    /**
+     * Moves the current set on after the set [loggedId] was ticked, by the
+     * rule in [nextCurrentAfterLogging], working on [before] (the state as it
+     * was when the set was ticked) with the set ticked and [addedSetId], the
+     * set "Log set" added after it, appended. The move clears a manual
+     * selection: the next set is always the first open one of its exercise,
+     * which is what the touched exercise gives. When the current set lands in
+     * another exercise, or [scrollAlways], it is scrolled into view.
+     */
+    private fun advanceAfterLogging(before: ActiveWorkoutUiState, loggedId: String, addedSetId: String?, scrollAlways: Boolean = false) {
+        val logged = before.indexOfSet(loggedId) ?: return
+        val completed = before.completedMatrix().mapIndexed { e, sets ->
+            if (e != logged.exercise) sets
+            else sets.mapIndexed { i, done -> done || i == logged.set } + listOfNotNull(addedSetId?.let { false })
+        }
+        val next = nextCurrentAfterLogging(completed, logged)
+        val exercise = before.exercises[next?.exercise ?: logged.exercise]
+        select(exercise.workoutExerciseId, null)
+        if (next == null) return
+        val nextSetId = exercise.sets.getOrNull(next.set)?.id ?: addedSetId ?: return
+        if (scrollAlways || next.exercise != logged.exercise) {
+            requestScroll(ScrollRequest(setId = nextSetId, mode = ScrollMode.IntoView, seq = 0))
+        }
+    }
+
+    private fun requestScroll(request: ScrollRequest) {
+        scroll.value = request.copy(seq = ++scrollSeq)
+    }
+
     private fun noteAddedExercise(list: List<WorkoutExerciseWithSets>) {
         val ids = list.map { it.workoutExercise.id }
         val known = knownExercises
         knownExercises = ids.toSet()
-        if (known != null) ids.lastOrNull { it !in known }?.let(::touch)
+        if (known != null) {
+            ids.lastOrNull { it !in known }?.let { added ->
+                // Just added, so it is what the user means to do next: it becomes current, over a manual choice.
+                select(added, null)
+                requestScroll(ScrollRequest(workoutExerciseId = added, mode = ScrollMode.ToTop, seq = 0))
+            }
+        }
     }
 
     private fun launch(block: suspend () -> Unit) {
@@ -234,5 +313,6 @@ class ActiveWorkoutViewModel(
         const val KEY_ENDS_AT = "rest_ends_at"
         const val KEY_DURATION = "rest_duration"
         const val KEY_TOUCHED = "last_touched_exercise"
+        const val KEY_SELECTED = "selected_set"
     }
 }
