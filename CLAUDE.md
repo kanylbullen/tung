@@ -63,7 +63,7 @@ Multiplatform; that is a later step if a non-JVM client ever needs it.
 What belongs there: pure functions and plain data shapes that are calculated
 the same on every client — volume, best set, records, pre-fill (`LoggedSet`,
 `isLogged`), routine targets and start sets (`Routines.kt`), the program day suggestion (`Programs.kt`), weight/reps parsing and formatting, diacritic-insensitive search,
-`MuscleGroup`/`Equipment`, the id helpers (`Ids.kt`), the rest timer and the
+`MuscleGroup`/`Equipment`, the finer `Muscle` list and `MuscleIndex` (`Muscles.kt`), the id helpers (`Ids.kt`), the rest timer and the
 current set (`RestTimer.kt`, `LogSet.kt`), and the catalogue models
 with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
 `ExtendedCatalog`/`ExtendedExercise` for `extended.json`, including the
@@ -90,7 +90,7 @@ databases. The packages are the ones the files had in `app/`:
 
 | Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
@@ -298,6 +298,25 @@ out of date. `CatalogTest` (in `core`) checks `core.json` and `extended.json`
 as data, and `SeedExercisesTest` (in `data`) compares `core.json` with the seed list.
 English names are gym English (Lat pulldown, Skull crusher), not literal
 translations. A `key` never changes once it exists: it carries the exercise's id.
+
+### Muscles
+
+Each catalogue entry, core and extended, carries `primaryMuscles` (1–3) and
+`secondaryMuscles` (0–4) from a fixed list of 21 (`core.Muscle`: chest,
+lats, upper_back, lower_back, traps, front_delts, side_delts, rear_delts,
+biceps, triceps, forearms, quads, hamstrings, glutes, calves, adductors,
+abductors, abs, obliques, hip_flexors, neck), each in one `MuscleGroup`.
+**`muscleGroup` stays the display level and follows the first primary
+muscle**: `muscleGroup == MuscleGroup.of(primaryMuscles[0])`, except
+`fullbody`, which has no muscle of its own and which whole-body lifts keep
+(`muscleGroupMatches`; `CatalogTest` checks both files). The muscles live
+only in the catalogue files: no Room column, nothing synced. `MuscleIndex`
+(core, built from both files) answers `musclesOf(id, key or extended id)`;
+the app gets it from `container.catalogueMuscles.index()`, the server would
+build it from its classpath copies. free-exercise-db has one `shoulders`, so
+the import maps every one to `side_delts` (`catalog/README.md`); front and
+rear delts come only from `core.json`. Table and rules: `catalog/README.md`,
+"Muscles".
 
 ### The extended catalogue
 
