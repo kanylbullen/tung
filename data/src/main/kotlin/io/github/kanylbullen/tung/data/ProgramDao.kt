@@ -36,6 +36,9 @@ interface ProgramDao {
     @Query("UPDATE program SET name = :name, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun rename(id: String, name: String, updatedAt: Long)
 
+    @Query("UPDATE program SET mode = :mode, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
+    suspend fun setMode(id: String, mode: String, updatedAt: Long)
+
     /** Deactivates every active program other than [exceptId]. */
     @Query("UPDATE program SET isActive = 0, updatedAt = :updatedAt, dirty = 1 WHERE isActive = 1 AND id != :exceptId")
     suspend fun deactivateOthers(exceptId: String, updatedAt: Long)

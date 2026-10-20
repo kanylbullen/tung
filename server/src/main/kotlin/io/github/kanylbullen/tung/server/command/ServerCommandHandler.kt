@@ -12,6 +12,7 @@ import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
@@ -235,15 +236,8 @@ class ServerCommandHandler(
             }
             is Command.MoveRoutineExercise -> {
                 val re = liveRoutineExercise(command.routineExerciseId) ?: return noSuch("exercise in a routine", command.routineExerciseId)
-                val ordered = moved(liveRoutineExercises(re[RoutineExercises.routineId]), RoutineExercises.id, command.routineExerciseId, command.delta)
-                ordered?.forEachIndexed { position, row ->
-                    if (row[RoutineExercises.position] != position) {
-                        RoutineExercises.update({ (RoutineExercises.userId eq userId) and (RoutineExercises.id eq row[RoutineExercises.id]) }) {
-                            it[RoutineExercises.position] = position
-                            it[updatedAt] = bumped(updatedAt, now)
-                        }
-                    }
-                }
+                moved(liveRoutineExercises(re[RoutineExercises.routineId]), RoutineExercises.id, command.routineExerciseId, command.delta)
+                    ?.let { writeRoutineExercisePositions(it, now) }
                 Done()
             }
             is Command.AdjustTargetSets -> {
@@ -252,6 +246,26 @@ class ServerCommandHandler(
                 if (target != re[RoutineExercises.targetSets]) {
                     RoutineExercises.update({ (RoutineExercises.userId eq userId) and (RoutineExercises.id eq command.routineExerciseId) }) {
                         it[targetSets] = target
+                        it[updatedAt] = bumped(updatedAt, now)
+                    }
+                }
+                Done()
+            }
+            is Command.AddRoutineExercise -> addRoutineExercise(command, now)
+            is Command.RemoveRoutineExercise -> {
+                val re = liveRoutineExercise(command.routineExerciseId) ?: return noSuch("exercise in a routine", command.routineExerciseId)
+                tombstone(RoutineExercises, RoutineExercises.updatedAt, RoutineExercises.deletedAt, now) {
+                    (RoutineExercises.userId eq userId) and (RoutineExercises.id eq command.routineExerciseId)
+                }
+                // Close the gap, as the app does, so the rest keep their order from 0.
+                writeRoutineExercisePositions(liveRoutineExercises(re[RoutineExercises.routineId]), now)
+                Done()
+            }
+            is Command.SetTargetReps -> {
+                val re = liveRoutineExercise(command.routineExerciseId) ?: return noSuch("exercise in a routine", command.routineExerciseId)
+                if (re[RoutineExercises.targetReps] != command.reps) {
+                    RoutineExercises.update({ (RoutineExercises.userId eq userId) and (RoutineExercises.id eq command.routineExerciseId) }) {
+                        it[targetReps] = command.reps
                         it[updatedAt] = bumped(updatedAt, now)
                     }
                 }
@@ -276,6 +290,17 @@ class ServerCommandHandler(
                 Programs.update({ (Programs.userId eq userId) and (Programs.id eq command.programId) }) {
                     it[name] = command.name.trim()
                     it[updatedAt] = bumped(updatedAt, now)
+                }
+                Done()
+            }
+            is Command.SetProgramMode -> {
+                val program = liveProgram(command.programId) ?: return noSuch("program", command.programId)
+                // Days and their weekdays stay, so switching back restores the schedule.
+                if (program[Programs.mode] != command.mode.key) {
+                    Programs.update({ (Programs.userId eq userId) and (Programs.id eq command.programId) }) {
+                        it[mode] = command.mode.key
+                        it[updatedAt] = bumped(updatedAt, now)
+                    }
                 }
                 Done()
             }
@@ -464,6 +489,29 @@ class ServerCommandHandler(
         return Done(mapOf(ROUTINE_ID to insertRoutine(plan.name, rows, now)))
     }
 
+    /** Appends to a saved routine; resolves first, so an unknown name writes nothing. */
+    private suspend fun Transaction.addRoutineExercise(command: Command.AddRoutineExercise, now: Long): CommandResult {
+        val exercise = when (val resolution = resolveRef(command.exercise, resolver)) {
+            is RefResolution.Unresolved -> return NeedsAnswers(listOf(resolution.question))
+            is RefResolution.Resolved -> resolution.exercise
+        }
+        liveRoutine(command.routineId) ?: return noSuch("routine", command.routineId)
+        val exerciseId = rowFor(exercise, now)
+        val position = (liveRoutineExercises(command.routineId).maxOfOrNull { it[RoutineExercises.position] } ?: -1) + 1
+        val id = newId()
+        RoutineExercises.insert {
+            it[userId] = this@ServerCommandHandler.userId
+            it[RoutineExercises.id] = id
+            it[routineId] = command.routineId
+            it[RoutineExercises.exerciseId] = exerciseId
+            it[RoutineExercises.position] = position
+            it[targetSets] = clampTargetSets(command.targetSets)
+            it[targetReps] = command.targetReps
+            it[updatedAt] = now
+        }
+        return Done(mapOf(ROUTINE_EXERCISE_ID to id, EXERCISE_ID to exerciseId))
+    }
+
     private fun Transaction.insertRoutine(name: String, exercises: List<Triple<String, Int, Int?>>, now: Long): String {
         val newRoutineId = newId()
         Routines.insert {
@@ -635,6 +683,17 @@ class ServerCommandHandler(
         Programs.update({ (Programs.userId eq userId) and (Programs.id eq programId) }) {
             it[isActive] = active
             it[updatedAt] = bumped(updatedAt, now)
+        }
+    }
+
+    private fun Transaction.writeRoutineExercisePositions(rows: List<ResultRow>, now: Long) {
+        rows.forEachIndexed { position, row ->
+            if (row[RoutineExercises.position] != position) {
+                RoutineExercises.update({ (RoutineExercises.userId eq userId) and (RoutineExercises.id eq row[RoutineExercises.id]) }) {
+                    it[RoutineExercises.position] = position
+                    it[updatedAt] = bumped(updatedAt, now)
+                }
+            }
         }
     }
 

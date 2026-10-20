@@ -42,6 +42,7 @@ fun CommandResult.id(key: String): String? = (this as? CommandResult.Done)?.ids?
  * - [ADDED_SET_ID]: LogSet, when it added the next set.
  * - [EXERCISE_ID]: CreateExercise; AddExercise (the exercise it resolved to).
  * - [ROUTINE_ID]: SaveRoutine, SaveRoutinePlan.
+ * - [ROUTINE_EXERCISE_ID]: AddRoutineExercise (the new row); [EXERCISE_ID] with it (the exercise it resolved to).
  * - [PROGRAM_ID]: CreateProgram.
  * - [PROGRAM_DAY_ID]: AddProgramDay.
  */
@@ -52,6 +53,7 @@ object CommandIds {
     const val ADDED_SET_ID = "addedSetId"
     const val EXERCISE_ID = "exerciseId"
     const val ROUTINE_ID = "routineId"
+    const val ROUTINE_EXERCISE_ID = "routineExerciseId"
     const val PROGRAM_ID = "programId"
     const val PROGRAM_DAY_ID = "programDayId"
 }

@@ -70,13 +70,13 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 /**
- * The exercise catalogue. With [workoutId] it is the picker: tapping an
- * exercise adds it to that workout and calls [onPicked].
+ * The exercise catalogue. With a [target] it is the picker: tapping an
+ * exercise adds it to that workout or routine and calls [onPicked].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisesScreen(
-    workoutId: String?,
+    target: PickerTarget?,
     onBack: (() -> Unit)?,
     onPicked: () -> Unit,
 ) {
@@ -88,7 +88,7 @@ fun ExercisesScreen(
                 container.exerciseRepository,
                 container.commands,
                 container.extendedCatalog,
-                workoutId,
+                target,
                 container.workoutRepository,
                 container.catalogueMuscles,
                 now = { container.clock.millis() },

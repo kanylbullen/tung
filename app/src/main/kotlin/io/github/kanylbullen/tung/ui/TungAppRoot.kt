@@ -35,6 +35,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.ui.exercises.ExercisesScreen
+import io.github.kanylbullen.tung.ui.exercises.PickerTarget
 import io.github.kanylbullen.tung.ui.history.HistoryScreen
 import io.github.kanylbullen.tung.ui.history.WorkoutDetailScreen
 import io.github.kanylbullen.tung.ui.home.HomeScreen
@@ -59,6 +60,7 @@ private object Routes {
     const val ROUTINES = "routines"
     const val ARG_ROUTINE = "routineId"
     const val ROUTINE = "routine/{$ARG_ROUTINE}"
+    const val ROUTINE_PICKER = "routine/{$ARG_ROUTINE}/add"
     const val PROGRAMS = "programs"
     const val ARG_PROGRAM = "programId"
     const val PROGRAM = "program/{$ARG_PROGRAM}"
@@ -69,6 +71,7 @@ private object Routes {
     fun detail(id: String) = "detail/$id"
     fun summary(id: String) = "summary/$id"
     fun routine(id: String) = "routine/$id"
+    fun routinePicker(id: String) = "routine/$id/add"
     fun program(id: String) = "program/$id"
 }
 
@@ -179,13 +182,28 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 arguments = listOf(navArgument(Routes.ARG_ROUTINE) { type = NavType.StringType }),
             ) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ROUTINE) ?: return@composable
-                RoutineDetailScreen(routineId = id, onBack = { nav.popBackStack() })
+                RoutineDetailScreen(
+                    routineId = id,
+                    onBack = { nav.popBackStack() },
+                    onAddExercise = { nav.navigate(Routes.routinePicker(id)) },
+                )
+            }
+            composable(
+                Routes.ROUTINE_PICKER,
+                arguments = listOf(navArgument(Routes.ARG_ROUTINE) { type = NavType.StringType }),
+            ) { entry ->
+                val id = entry.arguments?.getString(Routes.ARG_ROUTINE) ?: return@composable
+                ExercisesScreen(
+                    target = PickerTarget.Routine(id),
+                    onBack = { nav.popBackStack() },
+                    onPicked = { nav.popBackStack() },
+                )
             }
             composable(Routes.HISTORY) {
                 HistoryScreen(onOpenDetail = { id -> nav.navigate(Routes.detail(id)) })
             }
             composable(Routes.EXERCISES) {
-                ExercisesScreen(workoutId = null, onBack = null, onPicked = {})
+                ExercisesScreen(target = null, onBack = null, onPicked = {})
             }
             composable(Routes.WORKOUT, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
@@ -207,7 +225,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
             composable(Routes.PICKER, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
                 ExercisesScreen(
-                    workoutId = id,
+                    target = PickerTarget.Workout(id),
                     onBack = { nav.popBackStack() },
                     onPicked = { nav.popBackStack() },
                 )

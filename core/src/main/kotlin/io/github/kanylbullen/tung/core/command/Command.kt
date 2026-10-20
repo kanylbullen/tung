@@ -4,6 +4,9 @@ import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 
+/** The target sets of an exercise added to a routine ([Command.AddRoutineExercise]) when the caller names none. */
+const val DEFAULT_ROUTINE_TARGET_SETS = 3
+
 /**
  * Everything that changes training data, as plain data. The app's buttons, a
  * future REST API and MCP server, voice and camera all speak this one
@@ -109,11 +112,32 @@ sealed interface Command {
     /** Adds [delta] to a routine exercise's target sets, kept within the allowed range. */
     data class AdjustTargetSets(val routineExerciseId: String, val delta: Int) : Command
 
+    /**
+     * Appends an exercise to a saved routine, after its last one, with
+     * [targetSets] (1..20) and, if given, [targetReps] (1..999). The exercise is
+     * resolved like [AddExercise]'s; an unknown name asks instead of guessing.
+     */
+    data class AddRoutineExercise(
+        val routineId: String,
+        val exercise: ExerciseRef,
+        val targetSets: Int = DEFAULT_ROUTINE_TARGET_SETS,
+        val targetReps: Int? = null,
+    ) : Command
+
+    /** Removes one exercise from a routine; the ones after it move up. Workouts started from it are kept. */
+    data class RemoveRoutineExercise(val routineExerciseId: String) : Command
+
+    /** The reps a routine exercise aims at per set, 1..999; null for none. */
+    data class SetTargetReps(val routineExerciseId: String, val reps: Int?) : Command
+
     // --- programs ---
 
     data class CreateProgram(val name: String, val mode: ProgramMode) : Command
 
     data class RenameProgram(val programId: String, val name: String) : Command
+
+    /** Switches a program between fixed (weekdays) and rotating (in order); its days and their weekdays are kept. */
+    data class SetProgramMode(val programId: String, val mode: ProgramMode) : Command
 
     /** Makes this the one active program. */
     data class ActivateProgram(val programId: String) : Command

@@ -225,6 +225,12 @@
     </plurals>
     <string name="routine_no_target_reps">No target reps</string>
     <string name="routine_not_found">This routine no longer exists.</string>
+    <string name="routine_add_exercise">+ Exercise</string>
+    <string name="routine_remove_exercise">Remove</string>
+    <string name="routine_clear_target_reps">Clear target reps</string>
+    <string name="routine_edit_target_reps">Change the target reps of %1$s</string>
+    <string name="routine_target_reps_title">Target reps · %1$s</string>
+    <string name="routine_error_target_reps">Enter a whole number between 1 and 999.</string>
 
     <!-- Programs -->
     <string name="programs_title">Programs</string>
@@ -239,6 +245,7 @@
     <string name="program_mode_fixed_hint">Each routine on the weekdays you pick</string>
     <string name="program_mode_rotating">Rotating</string>
     <string name="program_mode_rotating_hint">Day 1, 2, 3 in order, whatever the date</string>
+    <string name="program_mode_title">Mode</string>
     <string name="program_active">Active</string>
     <string name="program_activate">Activate</string>
     <string name="program_activate_description">Activate %1$s</string>

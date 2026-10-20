@@ -74,4 +74,13 @@ class RoutineDetailViewModel(
     fun changeSets(routineExerciseId: String, delta: Int) {
         viewModelScope.launch { commands.execute(Command.AdjustTargetSets(routineExerciseId, delta)) }
     }
+
+    /** [reps] 1..999, or null to clear the target. */
+    fun setTargetReps(routineExerciseId: String, reps: Int?) {
+        viewModelScope.launch { commands.execute(Command.SetTargetReps(routineExerciseId, reps)) }
+    }
+
+    fun remove(routineExerciseId: String) {
+        viewModelScope.launch { commands.execute(Command.RemoveRoutineExercise(routineExerciseId)) }
+    }
 }
