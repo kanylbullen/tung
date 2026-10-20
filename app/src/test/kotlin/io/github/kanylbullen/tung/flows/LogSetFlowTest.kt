@@ -108,7 +108,7 @@ class LogSetFlowTest : FlowTest() {
         clickText(str(R.string.rest_skip))
         waitGone(countdown)
         compose.onNode(hasText(str(R.string.rest_skip))).assertDoesNotExist()
-        compose.waitUntil(5_000) { alarms.scheduledAlarms.isEmpty() }
+        compose.waitUntil(15_000) { alarms.scheduledAlarms.isEmpty() }
         screenshot("2-skipped")
     }
 

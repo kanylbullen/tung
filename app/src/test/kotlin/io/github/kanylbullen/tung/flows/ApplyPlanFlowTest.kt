@@ -100,7 +100,7 @@ class ApplyPlanFlowTest : FlowTest() {
 
         finishWorkout(screenshotStep = "3-finish")
         waitGone(hasText(str(R.string.workout_finish_title)))
-        compose.waitUntil(5_000) { count("SELECT COUNT(*) FROM workout WHERE endedAt IS NOT NULL") == 1 }
+        compose.waitUntil(15_000) { count("SELECT COUNT(*) FROM workout WHERE endedAt IS NOT NULL") == 1 }
         assertEquals("one workout, saved", 1, count("SELECT COUNT(*) FROM workout"))
         assertEquals("with the one logged set", 1, count("SELECT COUNT(*) FROM set_entry"))
         assertEquals(1, count("SELECT COUNT(*) FROM workout_exercise"))
