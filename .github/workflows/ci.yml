@@ -32,6 +32,17 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      # FCM: the Firebase config is a repository secret, written into both app
+      # modules before the build so the CI APKs can register for push. Forks
+      # without the secret build with push off, exactly like a local checkout.
+      - name: Write google-services.json
+        if: ${{ env.GOOGLE_SERVICES_JSON != '' }}
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          printf '%s' "$GOOGLE_SERVICES_JSON" > wear/google-services.json
+
       # The hosted runner ships the Android SDK with ANDROID_HOME set, so no
       # separate SDK setup step is needed. Build-tools and platform 35 are
       # fetched by AGP on demand if missing.
