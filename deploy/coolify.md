@@ -17,7 +17,8 @@ server (HostUp); see `docs/architecture.md`, step 9.
 | Backups | nightly `pg_dump` to S3-compatible storage outside the home lab | Coolify's scheduled database backup to an S3 target |
 
 Environment variables on `tung-server` (set by Claude through the Coolify API;
-values live only in Coolify):
+values live only in Coolify; resource uuids: project `xcdaw5urzre2d7nqmlbesior`,
+database `9sbb7bqayjvy4ye3lhj9t1po`, application `svyizo94fhk6uvipggo4tp2h`):
 
 ```
 DATABASE_URL=jdbc:postgresql://<tung-postgres uuid>:5432/tung
@@ -35,8 +36,10 @@ TUNG_FCM_SERVICE_ACCOUNT_JSON=                # later, when the Firebase project
 ### Claude (done or does itself through the Coolify API)
 
 - [x] Project `tung`, database `tung-postgres`, application `tung-server` created.
-- [ ] Environment variables set, first deploy, `GET /healthz` and
-      `/.well-known/oauth-authorization-server` verified on the LAN.
+- [x] Environment variables set, first deploy, `GET /healthz` and
+      `/.well-known/oauth-authorization-server` verified on the LAN
+      (2026-10-20: `running:healthy`, schema v7, issuer `https://tung.xuper.fun`;
+      reached through Traefik on `192.168.12.155` with the app's `Host` header).
 - [ ] After the hostname exists: point the phone at `https://tung.xuper.fun`,
       remove the temporary devserver stack and the localhost SSH tunnel,
       re-add the MCP server in Claude Code with the public URL, and test the
