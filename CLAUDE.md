@@ -134,12 +134,36 @@ at the top of the Routines screen (`ui/routines/Program*`).
 
 ### Log set and rest timer
 
-The active workout has a sticky **Log set · 80 × 8** button above the system
-navigation (always under the thumb, wherever the list is scrolled). It acts on
-the **current set** (`core.currentSet`): the first un-ticked set of the
-exercise the user last touched (ticked, edited, added a set to, or just added),
-else the first un-ticked set of the first exercise that has one; no current
-set, no button. Tapping it calls `WorkoutRepository.logSet`, one transaction:
+The active workout has a sticky **Log set · Bench press · 80 × 8** button
+above the system navigation (always under the thumb, wherever the list is
+scrolled). It acts on the **current set** (`core.currentSet`), marked by a 3dp
+accent bar at the left edge of its row (`Tung.colors.accent`; "Current set"
+as its number's state description). The rule, in order: an explicit selection
+while that set still exists and is un-ticked; else the first un-ticked set of
+the exercise the user last touched (ticked, edited, added a set to, or just
+added); else the first un-ticked set of the first exercise that has one; no
+current set, no button. The selection is made by hand: a tap on an exercise's
+**header** selects its first un-ticked set ("Log sets of Bench press next"),
+a tap on the **number** of any other un-ticked set selects that set ("Make set
+2 the current set"); that is how the user switches exercises and runs
+supersets. Edits elsewhere (weight, reps, + Set) only move the touched
+exercise, so they never override a manual selection. A **tick or Log set**
+moves the current set by `core.nextCurrentAfterLogging` and clears the
+selection: the first un-ticked set of the same exercise while it has one, else
+of the next exercise with one in list order, wrapping. Adding an exercise
+makes it current, over a manual selection. The selected set id and the
+touched exercise live in the ViewModel's `SavedStateHandle`, so both survive
+rotation and process death. **Auto-scroll:** the ViewModel puts a one-shot
+`ScrollRequest` (a set or an exercise header, mode `IntoView` or `ToTop`) in
+the UI state and the screen carries it out with the `LazyListState`, finding
+the index among the list's keys (`listKeys`), then calls `onScrollHandled`.
+`IntoView` scrolls only when the item is not wholly between the top bar and
+the button: just enough when it is partly visible, else to it with the row
+above in view. Requests: the new set after + Set, the new current set after
+Log set (the set it added, or the next exercise's), the new current set when a
+tick moves it to another exercise, and the new exercise's header to the top
+after Add exercise.
+Tapping the button calls `WorkoutRepository.logSet`, one transaction:
 tick the set and, **only if it was the last set of its exercise**, add the next
 set pre-filled by the usual rule (a copy of the set just logged). A workout
 started from a routine is not padded past the routine's `targetSets` for that

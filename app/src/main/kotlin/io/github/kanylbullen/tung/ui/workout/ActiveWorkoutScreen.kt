@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -59,9 +60,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -71,6 +75,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -99,6 +104,7 @@ import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
+import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
 private enum class Field { WEIGHT, REPS }
@@ -165,8 +171,6 @@ fun ActiveWorkoutScreen(
     var confirmFinish by remember { mutableStateOf(false) }
     var restControlsOpen by remember { mutableStateOf(false) }
     var restSheetFor by remember { mutableStateOf<ActiveExerciseUi?>(null) }
-    // The set that was just logged; once the current set has moved on from it, that set is scrolled into view.
-    var scrollAfterLogging by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
 
     // The clock, not a counter: what is left of the rest is always computed from it.
@@ -178,11 +182,23 @@ fun ActiveWorkoutScreen(
     LaunchedEffect(rest == null) { if (rest == null) restControlsOpen = false }
 
     val current = state.current
-    LaunchedEffect(current?.set?.id, scrollAfterLogging) {
-        val logged = scrollAfterLogging ?: return@LaunchedEffect
-        if (current?.set?.id == logged) return@LaunchedEffect
-        scrollAfterLogging = null
-        current?.let { listState.scrollIntoView(itemIndexOfSet(state, it.set.id)) }
+
+    // The ViewModel asks for a scroll (a set added, an exercise added, the current set moved on).
+    // A set or exercise that was just written may not be in the list yet; the effect waits for it.
+    val scrollRequest = state.scrollRequest
+    val scrollIndex = scrollRequest?.let { request ->
+        val key = request.setId?.let(::setKey) ?: request.workoutExerciseId?.let(::headerKey)
+        listKeys(state).indexOf(key).takeIf { it >= 0 }
+    }
+    LaunchedEffect(scrollRequest, scrollIndex) {
+        if (scrollRequest == null || scrollIndex == null) return@LaunchedEffect
+        // Laid out first: until then the list does not know the new item.
+        snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > scrollIndex }
+        when (scrollRequest.mode) {
+            ScrollMode.IntoView -> listState.scrollIntoView(scrollIndex)
+            ScrollMode.ToTop -> listState.animateScrollToItem(scrollIndex)
+        }
+        vm.onScrollHandled(scrollRequest)
     }
 
     Scaffold(
@@ -236,13 +252,12 @@ fun ActiveWorkoutScreen(
         bottomBar = {
             if (!state.loading && !state.missing && current != null) {
                 LogSetBar(
-                    set = current.set,
+                    current = current,
                     onClick = {
                         // Logging a set without reps would just be removed on finish, so ask for reps first.
                         if (current.set.reps <= 0) {
                             editing = EditTarget(current.set.id, Field.REPS)
                         } else {
-                            scrollAfterLogging = current.set.id
                             vm.logSet(current.exercise, current.set)
                         }
                     },
@@ -262,6 +277,9 @@ fun ActiveWorkoutScreen(
                 state = state,
                 listState = listState,
                 contentPadding = padding,
+                currentSetId = current?.set?.id,
+                onSelectExercise = vm::selectExercise,
+                onSelectSet = vm::selectSet,
                 onEdit = { setId, field -> editing = EditTarget(setId, field) },
                 onToggle = { exercise, set ->
                     // Ticking a set without reps would just be removed on finish, so ask for reps first.
@@ -351,8 +369,10 @@ fun ActiveWorkoutScreen(
  * the list is scrolled, which a button at the end of the list would not be.
  */
 @Composable
-private fun LogSetBar(set: ActiveSetUi, onClick: () -> Unit) {
+private fun LogSetBar(current: CurrentSet, onClick: () -> Unit) {
+    val set = current.set
     val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
+    val name = exerciseDisplayName(current.exercise.nameKey, current.exercise.name)
     Box(
         Modifier
             .fillMaxWidth()
@@ -360,7 +380,7 @@ private fun LogSetBar(set: ActiveSetUi, onClick: () -> Unit) {
             .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 12.dp),
     ) {
-        PrimaryButton(text = stringResource(R.string.workout_log_set, localWeight(set.weightKg), reps), onClick = onClick)
+        PrimaryButton(text = stringResource(R.string.workout_log_set, name, localWeight(set.weightKg), reps), onClick = onClick)
     }
 }
 
@@ -411,28 +431,41 @@ private fun RestControls(onSkip: () -> Unit, onAdd: () -> Unit) {
     }
 }
 
-/** The position of set [setId] among the list's items; mirrors the item order in [WorkoutList]. */
-private fun itemIndexOfSet(state: ActiveWorkoutUiState, setId: String): Int {
-    var index = if (state.exercises.isEmpty()) 1 else 0
+private const val EMPTY_KEY = "empty"
+private const val ADD_EXERCISE_KEY = "add-exercise"
+
+private fun headerKey(workoutExerciseId: String) = "we-$workoutExerciseId"
+
+private fun setKey(setId: String) = "set-$setId"
+
+private fun addSetKey(workoutExerciseId: String) = "add-$workoutExerciseId"
+
+/** The keys of the list's items in order; [WorkoutList] emits exactly these. */
+private fun listKeys(state: ActiveWorkoutUiState): List<String> = buildList {
+    if (state.exercises.isEmpty()) add(EMPTY_KEY)
     state.exercises.forEach { exercise ->
-        index++ // header
-        exercise.sets.forEach { set ->
-            if (set.id == setId) return index
-            index++
-        }
-        index++ // "+ Set"
+        add(headerKey(exercise.workoutExerciseId))
+        exercise.sets.forEach { add(setKey(it.id)) }
+        add(addSetKey(exercise.workoutExerciseId))
     }
-    return index
+    add(ADD_EXERCISE_KEY)
 }
 
-/** Scrolls only when the item is not wholly on screen, and then leaves the row above it in view too. */
+/**
+ * Scrolls only when the item is not wholly on screen (between the top bar and
+ * the Log set button). Partly visible: just enough to show all of it. Out of
+ * sight: to the item, with the row above it in view too.
+ */
 private suspend fun LazyListState.scrollIntoView(index: Int) {
     val info = layoutInfo
+    val top = info.viewportStartOffset + info.beforeContentPadding
+    val bottom = info.viewportEndOffset - info.afterContentPadding
     val item = info.visibleItemsInfo.firstOrNull { it.index == index }
-    val whollyVisible = item != null &&
-        item.offset >= info.viewportStartOffset + info.beforeContentPadding &&
-        item.offset + item.size <= info.viewportEndOffset - info.afterContentPadding
-    if (!whollyVisible) animateScrollToItem((index - 1).coerceAtLeast(0))
+    when {
+        item == null -> animateScrollToItem((index - 1).coerceAtLeast(0))
+        item.offset < top -> animateScrollBy((item.offset - top).toFloat())
+        item.offset + item.size > bottom -> animateScrollBy((minOf(item.offset - top, item.offset + item.size - bottom)).toFloat())
+    }
 }
 
 @Composable
@@ -440,6 +473,9 @@ private fun WorkoutList(
     state: ActiveWorkoutUiState,
     listState: LazyListState,
     contentPadding: PaddingValues,
+    currentSetId: String?,
+    onSelectExercise: (String) -> Unit,
+    onSelectSet: (workoutExerciseId: String, setId: String) -> Unit,
     onEdit: (String, Field) -> Unit,
     onToggle: (ActiveExerciseUi, ActiveSetUi) -> Unit,
     onDeleteSet: (String) -> Unit,
@@ -454,7 +490,7 @@ private fun WorkoutList(
         modifier = Modifier.fillMaxSize(),
     ) {
         if (state.exercises.isEmpty()) {
-            item(key = "empty") {
+            item(key = EMPTY_KEY) {
                 Text(
                     stringResource(R.string.workout_empty),
                     style = MaterialTheme.typography.bodyLarge,
@@ -464,23 +500,31 @@ private fun WorkoutList(
             }
         }
         state.exercises.forEach { exercise ->
-            item(key = "we-${exercise.workoutExerciseId}") {
+            item(key = headerKey(exercise.workoutExerciseId)) {
                 ExerciseHeader(
                     exerciseDisplayName(exercise.nameKey, exercise.name),
+                    // Only an exercise with a set left to log can take the current set.
+                    onSelect = if (exercise.sets.any { !it.completed }) {
+                        { onSelectExercise(exercise.workoutExerciseId) }
+                    } else {
+                        null
+                    },
                     onRestTimer = { onRestTimer(exercise) },
                     onRemove = { onRemoveExercise(exercise.workoutExerciseId) },
                 )
             }
-            items(exercise.sets, key = { "set-${it.id}" }) { set ->
+            items(exercise.sets, key = { setKey(it.id) }) { set ->
                 SwipeableSetRow(
                     set = set,
+                    isCurrent = set.id == currentSetId,
+                    onSelect = { onSelectSet(exercise.workoutExerciseId, set.id) },
                     onEditWeight = { onEdit(set.id, Field.WEIGHT) },
                     onEditReps = { onEdit(set.id, Field.REPS) },
                     onToggle = { onToggle(exercise, set) },
                     onDelete = { onDeleteSet(set.id) },
                 )
             }
-            item(key = "add-${exercise.workoutExerciseId}") {
+            item(key = addSetKey(exercise.workoutExerciseId)) {
                 val description = stringResource(
                     R.string.workout_add_set_description,
                     exerciseDisplayName(exercise.nameKey, exercise.name),
@@ -500,7 +544,7 @@ private fun WorkoutList(
                 }
             }
         }
-        item(key = "add-exercise") {
+        item(key = ADD_EXERCISE_KEY) {
             val text = stringResource(R.string.workout_add_exercise)
             Box(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
                 if (state.exercises.isEmpty()) {
@@ -515,18 +559,32 @@ private fun WorkoutList(
 }
 
 @Composable
-private fun ExerciseHeader(name: String, onRestTimer: () -> Unit, onRemove: () -> Unit) {
+private fun ExerciseHeader(name: String, onSelect: (() -> Unit)?, onRestTimer: () -> Unit, onRemove: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
+    val selectDescription = stringResource(R.string.workout_select_exercise, name)
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(end = 4.dp, top = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            name,
-            style = MaterialTheme.typography.titleLarge,
-            color = Tung.colors.text,
-            modifier = Modifier.weight(1f),
-        )
+        // The name is the way to switch exercises: a tap makes its first open set the current set.
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 48.dp)
+                .then(
+                    if (onSelect != null) {
+                        Modifier
+                            .clickable(role = Role.Button, onClick = onSelect)
+                            .semantics { contentDescription = selectDescription }
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(start = 20.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(name, style = MaterialTheme.typography.titleLarge, color = Tung.colors.text)
+        }
         Box {
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
@@ -558,6 +616,8 @@ private fun ExerciseHeader(name: String, onRestTimer: () -> Unit, onRemove: () -
 @Composable
 private fun SwipeableSetRow(
     set: ActiveSetUi,
+    isCurrent: Boolean,
+    onSelect: () -> Unit,
     onEditWeight: () -> Unit,
     onEditReps: () -> Unit,
     onToggle: () -> Unit,
@@ -600,14 +660,16 @@ private fun SwipeableSetRow(
             }
         },
     ) {
-        SetRow(set, deleteAction, onEditWeight, onEditReps, onToggle)
+        SetRow(set, isCurrent, deleteAction, onSelect, onEditWeight, onEditReps, onToggle)
     }
 }
 
 @Composable
 private fun SetRow(
     set: ActiveSetUi,
+    isCurrent: Boolean,
     deleteAction: List<CustomAccessibilityAction>,
+    onSelect: () -> Unit,
     onEditWeight: () -> Unit,
     onEditReps: () -> Unit,
     onToggle: () -> Unit,
@@ -615,26 +677,41 @@ private fun SetRow(
     val weight = localWeight(set.weightKg)
     val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
     val setDescription = stringResource(R.string.workout_set_number_description, set.number)
+    val selectDescription = stringResource(R.string.workout_select_set, set.number)
+    val currentState = stringResource(R.string.workout_current_set)
+    val accent = Tung.colors.accent
+    // Any other un-ticked set can be made the current one by tapping its number.
+    val selectable = !set.completed && !isCurrent
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(Tung.colors.background)
+            // The current set, the one "Log set" acts on: an accent bar at the row's left edge.
+            .drawBehind { if (isCurrent) drawRect(accent, size = Size(CURRENT_BAR_WIDTH.toPx(), size.height)) }
             .heightIn(min = 72.dp)
-            .padding(start = 12.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+            .padding(end = 8.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            set.number.toString(),
-            style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.7f),
-            color = Tung.colors.muted,
+        Box(
             modifier = Modifier
-                .width(32.dp)
-                .padding(start = 8.dp)
-                .semantics {
-                    contentDescription = setDescription
+                .width(48.dp)
+                .heightIn(min = 48.dp)
+                .then(if (selectable) Modifier.clickable(role = Role.Button, onClick = onSelect) else Modifier)
+                .clearAndSetSemantics {
+                    contentDescription = if (selectable) selectDescription else setDescription
+                    if (selectable) role = Role.Button
+                    if (isCurrent) stateDescription = currentState
                     customActions = deleteAction
+                    if (selectable) onClick { onSelect(); true }
                 },
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                set.number.toString(),
+                style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.7f),
+                color = Tung.colors.muted,
+            )
+        }
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 NumberCell(
@@ -729,6 +806,8 @@ private fun DoneCheck(
     }
 }
 
+
+private val CURRENT_BAR_WIDTH = 3.dp
 
 /** "Increase by 1 kilo", "Increase by 2.5 kilos": a whole step picks its plural, a fraction is "other". */
 private fun stepDescription(context: Context, @PluralsRes id: Int, stepKg: Double): String {
