@@ -123,6 +123,81 @@ app and the server sees its results through ordinary sync.
   columns. A client without Health Connect (iOS one day, a web client) simply
   leaves them empty.
 
+## One command surface: API, MCP, voice, camera
+
+Everything that changes training data goes through one set of **commands**
+in `core/`, with the same names and the same validation wherever they are
+called from: the app's buttons, the REST API, the MCP tools, voice
+dictation, camera recognition and the in-app AI. A command is a plain data
+class (`StartWorkout`, `AddExercise(exerciseKey)`, `LogSet(exercise,
+weightKg, reps)`, `SetCurrent`, `FinishWorkout`, `SaveRoutine(plan)`,
+`StartRoutine`, `CreateProgram`, …) and the result is the state it produced.
+The REST API exposes them one to one, the MCP tools are the same list plus
+read tools (`history`, `last_time`, `current_workout`) and prompts, and the
+app's own UI calls them too, so a button and an MCP call can never drift
+apart. A new input (a voice, a camera, a watch) is a translator from signal
+to commands, never a new path into the database.
+
+Two commands carry structured plans rather than single actions:
+`SaveRoutine(plan)` for a programme and `ApplyPlan(plan)` for a whole workout
+dictated or recognised at once ("deadlift, bench press and biceps curl, five
+sets of ten, 50, 60 and 20 kg"). A plan names exercises by catalogue key;
+anything that does not resolve is returned as a question, not guessed.
+
+## Voice
+
+Dictation is the first native AI feature, because it is the one that works
+reliably today and in every gym.
+
+- **Speech to text on the device.** Android's `SpeechRecognizer` with
+  on-device models where the phone has them; a bundled Whisper model
+  (whisper.cpp, small or base, ~75 to 250 MB, downloaded on first use) where
+  it does not, which includes de-Googled phones like the test Note9. Audio
+  never leaves the phone in either path.
+- **Text to commands in two tiers.** A deterministic grammar in `core/`
+  handles the patterns used between sets without any model: "80 kilo 8 reps",
+  "same again", "next set", "90", "add 2.5", "done", "rest 2 minutes", with
+  numbers in Swedish and English and the catalogue's names and aliases. It is
+  instant, offline and testable. Free-form sentences that plan a whole
+  workout or several exercises go to a language model (the same three modes
+  as below: BYOK, operator key, our budget) with the command schema as the
+  output format; the result is shown as a plan the user confirms before
+  `ApplyPlan` runs. The grammar is tried first; the model is the fallback.
+- **Where it lives.** A microphone button in the active workout (press and
+  hold, or tap to toggle hands-free for a set), on Home for "set up a
+  workout with …", and on the watch for one set at a time. Hands-free mode
+  keeps listening between sets, confirms each command with a short haptic
+  and the row updating, and stops on "stop" or when the workout is finished.
+- **The same sentence through the user's own AI** (Claude, ChatGPT with the
+  MCP server connected) ends in the same commands, so dictating to the
+  assistant and dictating to the app give the same result. The assistant
+  gets the grammar's job done by the model it already is.
+
+## Camera
+
+Recognising a workout from video is possible in parts, and the parts have
+very different reliability. The plan is honest about which is which.
+
+| What | How | Reliability | When |
+|---|---|---|---|
+| **Rep counting for one set** | Phone propped up, on-device pose estimation (MediaPipe or ML Kit Pose), reps counted from joint-angle cycles; nothing recorded, only counts | Good for the big lifts with a clear side view (squat, bench, deadlift, press, curl, row); poor when the view is blocked or the camera is far | First |
+| **Exercise recognition** | A small on-device classifier on pose sequences, limited to the core catalogue (~70 exercises) | Usable for distinct movements, confuses close variants (incline vs flat, grips) and must offer a correction | Second, after a dataset exists; the app can collect pose keypoints, never video, from users who opt in |
+| **Weight from plate colours** | Colour segmentation of the plates on the bar | Only on calibrated competition plates (red 25, blue 20, yellow 15, green 10). Most gyms have black plates, and bumpers vary by brand, so it is a hint, never a value | Later, as a suggestion the user confirms |
+| **Whole-session recording** | Record the session, segment it into sets, run the above over each | Battery, storage, and above all other people in the frame: many gyms forbid filming and bystanders have not consented | Not planned as a default; if ever, on-device only and with the camera pointed at the user |
+
+Rules: video is processed on the device and never stored or uploaded by
+default; keypoints, not frames, are what the app keeps if the user opts into
+helping the classifier; cloud video analysis (a multimodal model through
+BYOK) is an explicit per-session choice, and the app says what is sent.
+Weight is dictated or typed; the camera's counts and recognised exercise
+arrive as a proposed `LogSet` or `AddExercise` the user confirms with the
+same tap as any other set.
+
+The watch does the same job more cheaply for many exercises: rep detection
+from the wrist's accelerometer and gyroscope works without any camera, in
+any gym, and feeds the same `LogSet` proposal. Build it alongside the camera
+and let the phone merge both signals.
+
 ## AI features
 
 **MCP first.** Anyone who already has an AI (Claude, ChatGPT, a local model
@@ -182,19 +257,23 @@ exercise that is not in the catalogue is discarded, not shown.
    broken out as an open data file that both app and server read.
 3. **`core` module:** the domain logic moves out of `app/` into a Kotlin module
    without Android dependencies so that the server can use it.
-4. **Server v0:** account, API token, OpenAPI, CRUD for workouts and sets,
+4. **Command surface** in `core/`: the commands and `ApplyPlan`, used by
+   the app's own UI first, so the server and MCP in the next steps expose
+   something that already runs every day.
+5. **Server v0:** account, API token, OpenAPI, CRUD for workouts and sets,
    export. `docker compose` with Postgres. No sync yet; API first.
-5. **Sync in the app:** server URL in settings, push/pull of changes since the
+6. **Sync in the app:** server URL in settings, push/pull of changes since the
    last sync, tombstones.
-6. **MCP:** tools over the API: `log_set`, `last_time`, `start_workout`,
+7. **MCP:** tools over the API: `log_set`, `last_time`, `start_workout`,
    `finish_workout`, `history`, `save_routine`, plus prompts for program,
    next workout and plateaus. Registration in the MCP registry.
-7. **Watch v0:** see the current workout, next set with last time as the
+8. **Watch v0:** see the current workout, next set with last time as the
    suggestion, weight and reps with the crown or the bezel in large steps,
    confirm with a tap, rest timer with haptics. Start a workout from the watch
    with the latest exercises. Requires that the `core` module (step 3) exists,
    not the server.
-8. **Our instance**, the same image that self-hosters get. During beta it
+9. **Our instance**, the same image that self-hosters get. MCP ships with
+   OAuth 2.1 from the first deploy, so hosted assistants can connect. During beta it
    runs on Coolify in the home lab. Once out of beta it moves to a hosted
    server, most likely HostUp in Sweden, decided 2026-10-19. The move must be
    a DNS change and a restore, not a project, which sets three rules from
@@ -203,16 +282,22 @@ exercise that is not in the catalogue is discarded, not shown.
    ends; nothing is stored on the host except the Postgres volume; and the
    public hostname is ours, never the host's, so clients, API tokens and MCP
    registrations survive the move unchanged.
-9. **Import from Jefit** in the app, written against a real export file;
+10. **Import from Jefit** in the app, written against a real export file;
    Strong and Hevy after it. Needs step 3 (done) and the catalogue alias
    table, not the server.
-10. **Health Connect:** write sessions after step 5 so the attached heart
+11. **Health Connect:** write sessions after step 5 so the attached heart
    rate and calories sync; read support once the watch exists, since that is
    where the heart rate comes from.
-11. **Templates and in-app AI:** `Routine` in the data model already comes in
+12. **Templates and in-app AI:** `Routine` in the data model already comes in
    step 6 because `save_routine` needs it. In-app suggestions in BYOK mode
    after that, budget mode on our instance last, and only if the MCP route
    turns out to be too narrow for many people.
+13. **Voice:** on-device speech to text, the grammar for one set at a time,
+   then the model-backed planner behind a confirmation; on the watch after
+   the phone.
+14. **Camera and wrist:** rep counting for one set from pose on the phone
+   and from the IMU on the watch, as proposals; exercise recognition when a
+   keypoint dataset exists; plate colours as a hint last.
 
 Anything that involves money or a hosted paid service is deliberately out of
 scope. If it comes later, it lives in our instance, not in the code everyone
