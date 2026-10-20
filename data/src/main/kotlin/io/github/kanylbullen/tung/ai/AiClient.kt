@@ -119,6 +119,9 @@ class AiClient(private val http: HttpClient) {
             AiHttpResult.Failed(AiFailure.TIMEOUT)
         } catch (e: IOException) {
             AiHttpResult.Failed(AiFailure.NETWORK)
+        } catch (e: Exception) {
+            // Anything else the engine throws on a strange address or answer is a failed call, never a crash.
+            AiHttpResult.Failed(AiFailure.NETWORK)
         }
     }
 }
