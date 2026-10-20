@@ -20,6 +20,10 @@ import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.data.fromAssets
 import io.github.kanylbullen.tung.timer.RestTimerController
+import io.github.kanylbullen.tung.wear.DataLayerStateWriter
+import io.github.kanylbullen.tung.wear.WearCommandHandler
+import io.github.kanylbullen.tung.wear.WearStatePublisher
+import io.github.kanylbullen.tung.wear.isWearableApiAvailable
 import java.time.Clock
 
 /**
@@ -70,6 +74,14 @@ class AppContainer(
         PreferenceDataStoreFactory.create { context.preferencesDataStoreFile("settings") }
     }
     val restTimer: RestTimerController by lazy { RestTimerController(context, settings) }
+
+    /** Mirrors the active workout to the watch (`wear/`); started by [TungApp] and `WearSyncService`. */
+    val wearPublisher: WearStatePublisher by lazy {
+        WearStatePublisher(context, workoutRepository, routineRepository, restTimer, settings.data, DataLayerStateWriter(context))
+    }
+    val wearCommands: WearCommandHandler by lazy {
+        WearCommandHandler(workoutRepository, routineRepository, restTimer, wearPublisher.selection)
+    }
 }
 
 /** `catalog/core.json`, shipped as an asset like the extended catalogue. */
@@ -94,6 +106,8 @@ open class TungApp : Application() {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
+        // Without Play services there is no Data Layer and no watch to publish to (also the JVM tests).
+        if (isWearableApiAvailable(this)) container.wearPublisher.start()
     }
 
     /** Overridden only by the test application of the flow tests. */
