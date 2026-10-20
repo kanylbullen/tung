@@ -76,6 +76,7 @@
 | Import | Adapters in `core/`, Jefit first, then Strong and Hevy; alias table in `catalog/`, review list for unmatched names, deterministic ids, source marked on the session | The import decides whether someone switches; it must be safe to run twice |
 | Health Connect | App-side only: write the session as strength training, read heart rate and calories, attach them to the session and sync them as columns | Health Connect has no server API; the server sees the values through sync like all other data |
 | AI | MCP first: the user's own assistant reads history and saves programs via `save_routine`. In-app as a second choice with BYOK, operator key or a small free budget | See the AI features section. MCP means we do not pay for tokens and the feature comes along with self-hosting; same validation whichever route |
+| Ongoing workout and push | Ongoing notification on the phone and Ongoing Activity on the watch for any workout in progress; server push as an empty "sync now" over FCM and UnifiedPush, both supported, app chooses | A workout started by an assistant must show up on the phone at once; the empty signal keeps Private mode intact; both transports because most phones have Google services and some deliberately do not |
 | Private mode | Optional E2EE per account: content encrypted on the device, structure in the clear for sync; server commands and MCP refuse private accounts, local MCP instead | Protects against the operator of the public instance; the price is hosted assistants, said up front. Planned after the Standard beta |
 | Personal data | Never leaves the device unless sync is on. JSON export at any time. No analytics or telemetry in the app | It is the only part that is not open, and it should belong to the user |
 
@@ -256,6 +257,37 @@ sent before it is sent the first time. What is sent is training data and
 settings, never email, name or device id. A suggestion that refers to an
 exercise that is not in the catalogue is discarded, not shown.
 
+## The ongoing workout and push
+
+A workout in progress is visible outside the app. Decided 2026-10-20.
+
+- **Phone: an ongoing notification** whenever a workout is in progress,
+  whoever started it: "Workout in progress · Bench press, set 3 of 5",
+  updated as sets are logged, tapping it opens the active workout, with
+  actions for Log set and Finish. On Android 16 it is a Live Update. It uses
+  the existing notification channel plumbing from the rest timer. When the
+  workout was started by another client (an assistant through MCP, the watch,
+  another phone) the text says so.
+- **Watch: an Ongoing Activity** (the chip on the watch face and in recents)
+  for the same state, in both modes. Paired with a phone, Wear OS also
+  bridges the phone's notification, so nothing extra is needed there.
+- **Push from the server**, so a workout started through MCP reaches the
+  phone now rather than at the next 15-minute sync. The server sends an
+  **empty "sync now" signal**, never content, so it works unchanged in
+  Private mode. Two transports, both supported, the app picks automatically:
+  **FCM** when Google Play services are present (the common case, also for
+  most self-hosters; a self-hosted server needs its own Firebase project and
+  service-account key in its environment, and the app build carries the
+  matching `google-services.json`; without it the FCM path is simply off),
+  and **UnifiedPush** otherwise or by choice (any distributor; ntfy is the
+  usual one, self-hostable, and our instance runs one). The phone registers
+  its endpoint with the server (`push_endpoints`, per device, revocable); the
+  server pushes on every change made by a different client than the one it
+  is pushing to, debounced. Neither transport reaches a standalone watch
+  reliably, so the watch keeps periodic sync plus sync-on-open, and shows
+  the Ongoing Activity from whatever state it has.
+- Fallback when no push transport exists: the periodic sync, as today.
+
 ## Private mode (optional end-to-end encryption)
 
 Planned, not built; decided 2026-10-20 so that nothing built before it makes it
@@ -364,7 +396,11 @@ do on the device.
 14. **Camera and wrist:** rep counting for one set from pose on the phone
    and from the IMU on the watch, as proposals; exercise recognition when a
    keypoint dataset exists; plate colours as a hint last.
-15. **Private mode:** the key management, the payload column, the device-side
+15. **Ongoing workout:** the phone's ongoing notification with actions, the
+   watch's Ongoing Activity, then push: `push_endpoints` on the server, FCM
+   and UnifiedPush clients in `data/`, the server's debounced empty signal.
+   Can run early, after sync; nothing else depends on it.
+16. **Private mode:** the key management, the payload column, the device-side
    encryption in the sync planner and applier, the "private account" answers
    on the server, and local MCP. After the Standard beta.
 
