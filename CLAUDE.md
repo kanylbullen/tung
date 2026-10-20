@@ -125,6 +125,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 | Directory | Contents |
 |---|---|
 | `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"). |
+| `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`. |
 | `ui/theme/` | Colour tokens, typography, theme. |
 | `wear/` | The phone's side of the Data Layer for a companion watch (section "Wear"). |
@@ -694,6 +695,60 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   read, 5 s in all; `FcmSender` uses the
   HTTP v1 API with a hand-rolled service-account JWT; FCM is off without
   `TUNG_FCM_SERVICE_ACCOUNT_JSON`.
+
+## In-app AI (BYOK)
+
+Issue #46, step 12 of `docs/architecture.md` ("AI features"), BYOK mode
+only: the three MCP prompts ("Suggest a program", "Next workout", "Where have
+I got stuck") as buttons on the phone, answered by the user's own provider
+with the user's own key. **There is no server-side key, no operator key and no
+free budget**: the call goes from the phone straight to the provider, and
+tung-server never sees the key or the request.
+
+- **core, `core/.../core/ai/`** (pure, tested): `AiRequest` (`Program`,
+  `NextWorkout`, `Plateaus`); `AiContext`, built by `buildAiContext` from plain
+  shapes: finished workouts of the last 90 days (at most 30, logged sets only,
+  exercise key and name), routines, programs, today's date and weekday, the
+  core catalogue's keys, unit kg. The shape has no field for an email, a name,
+  a device id, a server URL or a note, so none can be sent. `buildAiPrompt`
+  (English, framed like the server's MCP prompts, the answer's JSON shape in
+  the system message, the app's language for the text fields).
+  `parseAiAnswer` + `resolveAiAnswer`: a program is routines in the shape
+  `SaveRoutinePlan` takes (`ExerciseRef.ByKey` when the key is in the
+  catalogue, else `ByName`), a next workout one `WorkoutPlan`, plateaus
+  `{exercise, since, observation, suggestion}`; numbers outside `validate`'s
+  bounds and exercises that resolve to nothing are **dropped** (counted, not
+  shown), and a plan left empty is rejected. `AiWire.kt`: the OpenAI-compatible
+  (`POST {base}/chat/completions`, `response_format` json when enabled) and
+  Anthropic (`POST {base}/v1/messages`, `x-api-key`, `anthropic-version`)
+  formats as pure request builders and response readers, and
+  `checkAiBaseUrl` (the sync rule: https, or http only to localhost and
+  private IP literals, for Ollama on the home network).
+- **data, `data/.../ai/`**: `AiSettings` (provider, base URL, model, JSON
+  mode, "first request shown" and "always show" flags in the `settings`
+  DataStore; the key in EncryptedSharedPreferences `ai_key` through
+  `TokenStore`, excluded from backups like `sync_token`); `AiClient` (its own
+  Ktor client: 60 s, no retries, no redirects, statuses mapped to
+  `AiFailure`); `AiService` (`prepare` builds the context and the request
+  without the key, `send` sends exactly that body with the key added to the
+  header, `confirm` runs the commands, `test` sends a one-token request with
+  no training data). `TungContainer(createAiKeyStore = …)` is the seam;
+  `FlowTestApp.aiKeys` keeps the key in memory.
+- **app**: the Assistant screen (`ui/ai/`), reached from the **last row on
+  Home**; Settings' "Assistant" section is `ui/settings/AiSection.kt`, one
+  call in `SettingsScreen`. A program proposal is confirmed with "Save
+  program": `SaveRoutinePlan` per routine, then `CreateProgram` (rotating)
+  and `AddProgramDay` in order; the program is not activated. A next workout
+  is `ApplyPlan`. Plateaus are only shown.
+
+**Non-negotiable rules.** A call happens only on a tap, never in the
+background (no WorkManager, no retry). The first request ever is shown in
+full ("What is sent", the pretty-printed body and the URL; the key is in a
+header and never shown) before it is sent, and the menu's "Show what is sent"
+reviews every request while it is on. What is sent is training data and
+settings only. A suggested exercise that is not in the catalogue is dropped,
+not shown. Nothing is written until the user confirms, and then only through
+`container.commands`. The key is never in DataStore, a log or a sync.
 
 ## Server
 
