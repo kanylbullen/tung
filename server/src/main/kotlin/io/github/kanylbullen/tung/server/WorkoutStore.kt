@@ -23,7 +23,9 @@ private const val MAX_NOTE = 10_000
  * write replaces a stored row only when its `updated_at` is strictly newer.
  * Equal or older writes are ignored row by row, so replaying a request changes
  * nothing and a stale device cannot overwrite a newer edit. Deletes are
- * tombstones (`deleted_at`), never row deletes.
+ * tombstones (`deleted_at`), never row deletes. Every write takes the user's
+ * lock ([lockUser]) first, and the `seq` trigger stamps each written row, so
+ * sync sees these writes like its own.
  */
 class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
 
@@ -65,6 +67,7 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
         validate(input)
         val now = System.currentTimeMillis()
         return db.tx {
+            lockUser(userId)
             val wanted = input.exercises.map { it.exerciseId }.toSet()
             val unknown = wanted - with(exercises) { visibleIds(userId, wanted) }
             if (unknown.isNotEmpty()) throw badRequest("Unknown exercise id: ${unknown.joinToString()}.", "unknown_exercise")
@@ -138,6 +141,7 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
 
     /** Tombstones the workout with its exercises and sets. */
     suspend fun delete(userId: String, id: String) = db.tx {
+        lockUser(userId)
         val row = liveRow(userId, id) ?: throw notFound("Workout")
         tombstone(userId, id, maxOf(System.currentTimeMillis(), row[Workouts.updatedAt] + 1))
     }
@@ -149,6 +153,7 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
      * Finishing a finished workout returns it unchanged.
      */
     suspend fun finish(userId: String, id: String, input: FinishInput): FinishResult = db.tx {
+        lockUser(userId)
         val row = liveRow(userId, id) ?: throw notFound("Workout")
         if (row[Workouts.endedAt] != null) return@tx FinishResult(liveWorkout(userId, id), discarded = false)
         val now = System.currentTimeMillis()

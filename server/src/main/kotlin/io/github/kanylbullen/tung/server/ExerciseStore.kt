@@ -75,6 +75,7 @@ class ExerciseStore(private val db: Db) {
         requireValid(Command.SetRest(id, restSeconds))
         val now = System.currentTimeMillis()
         return db.tx {
+            lockUser(userId)
             val taken = Exercises.selectAll()
                 .where { (Exercises.id eq id) and (Exercises.userId.isNull() or (Exercises.userId eq userId)) }
                 .any()
@@ -113,6 +114,7 @@ class ExerciseStore(private val db: Db) {
         if (restGiven) requireValid(Command.SetRest(id, rest))
         val now = System.currentTimeMillis()
         return db.tx {
+            lockUser(userId)
             val own = ownRows(userId).firstOrNull { it[Exercises.id] == id }
             if (own != null) {
                 if (name != null && !own[Exercises.isCustom]) {
@@ -128,7 +130,11 @@ class ExerciseStore(private val db: Db) {
                 val catalogue = Exercises.selectAll().where { Exercises.userId.isNull() and (Exercises.id eq id) }.singleOrNull()
                     ?: throw notFound("Exercise")
                 if (name != null) throw badRequest("A catalogue exercise keeps its name; only rest_seconds can change.", "catalogue_name_fixed")
-                Exercises.insert {
+                // A deleted copy (sync can tombstone one) is revived: the key (user_id, id) is taken.
+                val deletedCopyUpdatedAt = Exercises.selectAll()
+                    .where { (Exercises.userId eq userId) and (Exercises.id eq id) }
+                    .singleOrNull()?.get(Exercises.updatedAt)
+                Exercises.upsert(Exercises.userId, Exercises.id) {
                     it[Exercises.userId] = userId
                     it[Exercises.id] = id
                     it[nameKey] = catalogue[nameKey]
@@ -137,7 +143,8 @@ class ExerciseStore(private val db: Db) {
                     it[equipment] = catalogue[equipment]
                     it[isCustom] = false
                     it[restSeconds] = if (restGiven) rest else catalogue[restSeconds]
-                    it[updatedAt] = now
+                    it[updatedAt] = deletedCopyUpdatedAt?.let { stored -> maxOf(now, stored + 1) } ?: now
+                    it[deletedAt] = null
                 }
             }
             ownRows(userId).first { it[Exercises.id] == id }.toDto()

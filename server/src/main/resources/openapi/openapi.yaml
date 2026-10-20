@@ -16,6 +16,7 @@ info:
     (lower-case UUIDs). Every row has `updated_at` (epoch milliseconds), and a
     write replaces a stored row only when its `updated_at` is strictly newer;
     equal or older writes are ignored row by row. Deletes are tombstones.
+    `POST /api/v1/sync` applies the same rule to every row it is sent.
     All timestamps are epoch milliseconds.
 
     **Errors** are `{"error": {"code": "…", "message": "…"}}`.
@@ -35,6 +36,8 @@ tags:
     description: The catalogue and the user's own exercises.
   - name: workouts
     description: Workouts with their exercises and sets.
+  - name: sync
+    description: Row-level sync of the training data between the app and the server.
   - name: export
     description: All of the user's data in one document.
   - name: meta
@@ -370,6 +373,62 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/sync:
+    post:
+      tags: [sync]
+      summary: Push changed rows and pull everything changed since the cursor
+      description: |
+        Row-level sync of the eight training-data tables, in one transaction.
+
+        **Push.** `changes` holds the client's changed rows, one list per
+        table, each the full row (snake_case, as the server's columns). A row
+        is applied only when its `updated_at` is strictly newer than the
+        stored one, or nothing is stored; equal or older rows are ignored. A
+        tombstone is a row with `deleted_at` set: on a stored, older row it
+        sets `deleted_at` and `updated_at` and keeps the row; for a row the
+        server never had it is dropped. A live row newer than a stored
+        tombstone brings the row back. The order of the lists does not
+        matter: parents are written first and foreign keys are checked at
+        commit. An exercise row with a catalogue id is the user's own copy
+        and takes only `rest_seconds` from the client; the catalogue itself
+        is never written.
+
+        **Pull.** The answer holds every row of the user's whose server
+        `seq` is above `cursor`, including the rows just pushed, plus the
+        stored version of every pushed row that was ignored, so the client
+        converges. `cursor` in the answer is the highest `seq` included (the
+        request's cursor when nothing changed); send it next time. Every
+        insert and update on the server, through any endpoint, takes a new
+        `seq` from one sequence.
+
+        A `read` token may call this with empty `changes` to pull only; a
+        push needs scope `write`. At most 20 000 rows and 8 MiB per request.
+      operationId: sync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SyncRequest" }
+      responses:
+        "200":
+          description: Everything changed since the cursor, and the new cursor.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncResponse" }
+        "400":
+          description: The body cannot be read, or rows are invalid (`invalid_rows`, every offending row named). Nothing was written.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: A live row refers to a parent (or an exercise) that does not exist (`missing_parent`, the rows named). Nothing was written.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+
   /api/v1/export:
     get:
       tags: [export]
@@ -433,6 +492,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     RateLimited:
       description: Too many requests from this address; see `Retry-After`.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    PayloadTooLarge:
+      description: More than 8 MiB (`payload_too_large`) or more than 20 000 rows (`too_many_rows`). Push in batches.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -704,7 +768,7 @@ components:
 
     Export:
       type: object
-      required: [format, version, exported_at, user, exercises, workouts, tokens]
+      required: [format, version, exported_at, user, exercises, workouts, routines, programs, tokens]
       properties:
         format: { type: string, const: tung-export }
         version: { type: integer, const: 1 }
@@ -717,6 +781,12 @@ components:
         workouts:
           type: array
           items: { $ref: "#/components/schemas/Workout" }
+        routines:
+          type: array
+          items: { $ref: "#/components/schemas/Routine" }
+        programs:
+          type: array
+          items: { $ref: "#/components/schemas/Program" }
         tokens:
           type: array
           description: Names and scopes of active tokens; never their values.
@@ -727,3 +797,205 @@ components:
               name: { type: string }
               scope: { type: string, enum: [read, write] }
               created_at: { $ref: "#/components/schemas/Millis" }
+
+    Routine:
+      type: object
+      required: [id, name, last_used_at, updated_at, exercises]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        name: { type: string }
+        last_used_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+          description: When a workout was last started from it.
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        exercises:
+          type: array
+          items:
+            type: object
+            required: [id, exercise_id, position, target_sets, target_reps, updated_at]
+            properties:
+              id: { $ref: "#/components/schemas/Uuid" }
+              exercise_id: { $ref: "#/components/schemas/Uuid" }
+              position: { type: integer, minimum: 0 }
+              target_sets: { type: integer, minimum: 1, maximum: 20 }
+              target_reps: { type: [integer, "null"], minimum: 0, maximum: 999 }
+              updated_at: { $ref: "#/components/schemas/Millis" }
+
+    Program:
+      type: object
+      required: [id, name, mode, is_active, updated_at, days]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        name: { type: string }
+        mode: { $ref: "#/components/schemas/ProgramMode" }
+        is_active: { type: boolean }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        days:
+          type: array
+          items:
+            type: object
+            required: [id, routine_id, position, weekdays, updated_at]
+            properties:
+              id: { $ref: "#/components/schemas/Uuid" }
+              routine_id: { $ref: "#/components/schemas/Uuid" }
+              position: { type: integer, minimum: 0 }
+              weekdays: { $ref: "#/components/schemas/Weekdays" }
+              updated_at: { $ref: "#/components/schemas/Millis" }
+
+    ProgramMode:
+      type: string
+      enum: [fixed, rotating]
+      description: "`fixed`: each day on chosen weekdays; `rotating`: day 1, 2, 3 in order, whatever the date."
+    Weekdays:
+      type: integer
+      minimum: 0
+      maximum: 127
+      description: ISO weekdays as a bitmask, Monday in bit 0 … Sunday in bit 6.
+
+    SyncRequest:
+      type: object
+      properties:
+        cursor:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+          description: The `cursor` of the previous response; 0 on the first sync.
+        changes: { $ref: "#/components/schemas/SyncChanges" }
+
+    SyncResponse:
+      type: object
+      required: [cursor, changes]
+      properties:
+        cursor:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The highest server `seq` in `changes`, or the request's cursor when nothing changed.
+        changes: { $ref: "#/components/schemas/SyncChanges" }
+
+    SyncChanges:
+      type: object
+      description: One list per table. In a request, every list is optional; in a response, every list is present.
+      properties:
+        exercises: { type: array, items: { $ref: "#/components/schemas/SyncExercise" } }
+        workouts: { type: array, items: { $ref: "#/components/schemas/SyncWorkout" } }
+        workout_exercises: { type: array, items: { $ref: "#/components/schemas/SyncWorkoutExercise" } }
+        sets: { type: array, items: { $ref: "#/components/schemas/SyncSet" } }
+        routines: { type: array, items: { $ref: "#/components/schemas/SyncRoutine" } }
+        routine_exercises: { type: array, items: { $ref: "#/components/schemas/SyncRoutineExercise" } }
+        programs: { type: array, items: { $ref: "#/components/schemas/SyncProgram" } }
+        program_days: { type: array, items: { $ref: "#/components/schemas/SyncProgramDay" } }
+
+    # The sync rows. Only id and updated_at are always required. A live row
+    # (deleted_at null) needs every column that is not nullable in its table;
+    # a tombstone may leave them out or null, and they are not written.
+    SyncTombstone:
+      oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+      description: Set when the row is deleted (a tombstone); null or absent while it is live.
+
+    SyncExercise:
+      type: object
+      required: [id, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        name_key: { type: [string, "null"], description: The catalogue key; null for custom and extended-catalogue exercises. }
+        name: { type: [string, "null"], maxLength: 500, description: Required on a live row unless the id is a catalogue id. }
+        muscle_group:
+          oneOf: [{ $ref: "#/components/schemas/MuscleGroup" }, { type: "null" }]
+        equipment:
+          oneOf: [{ $ref: "#/components/schemas/Equipment" }, { type: "null" }]
+        is_custom: { type: [boolean, "null"] }
+        rest_seconds: { type: [integer, "null"], minimum: 0, maximum: 3600, description: "0 is off, null follows the default." }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        deleted_at: { $ref: "#/components/schemas/SyncTombstone" }
+
+    SyncWorkout:
+      type: object
+      required: [id, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        started_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+          description: Required on a live row.
+        ended_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+          description: Null while in progress; not before `started_at`.
+        note: { type: [string, "null"], maxLength: 10000 }
+        routine_id: { type: [string, "null"], description: A routine id; not checked, like in the app. }
+        program_day_id: { type: [string, "null"], description: A program day id; not checked, like in the app. }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        deleted_at: { $ref: "#/components/schemas/SyncTombstone" }
+
+    SyncWorkoutExercise:
+      type: object
+      required: [id, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        workout_id: { type: [string, "null"], description: Required on a live row; the workout must exist. }
+        exercise_id: { type: [string, "null"], description: Required on a live row; a catalogue exercise or one of the user's own. }
+        position: { type: [integer, "null"], minimum: 0 }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        deleted_at: { $ref: "#/components/schemas/SyncTombstone" }
+
+    SyncSet:
+      type: object
+      required: [id, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        workout_exercise_id: { type: [string, "null"], description: Required on a live row; the workout exercise must exist. }
+        position: { type: [integer, "null"], minimum: 0 }
+        weight_kg: { type: [number, "null"], minimum: 0, maximum: 999 }
+        reps: { type: [integer, "null"], minimum: 0, maximum: 999 }
+        completed: { type: [boolean, "null"] }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        deleted_at: { $ref: "#/components/schemas/SyncTombstone" }
+
+    SyncRoutine:
+      type: object
+      required: [id, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        name: { type: [string, "null"], maxLength: 500 }
+        last_used_at:
+          oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        deleted_at: { $ref: "#/components/schemas/SyncTombstone" }
+
+    SyncRoutineExercise:
+      type: object
+      required: [id, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        routine_id: { type: [string, "null"], description: Required on a live row; the routine must exist. }
+        exercise_id: { type: [string, "null"], description: Required on a live row; a catalogue exercise or one of the user's own. }
+        position: { type: [integer, "null"], minimum: 0 }
+        target_sets: { type: [integer, "null"], minimum: 1, maximum: 20 }
+        target_reps: { type: [integer, "null"], minimum: 0, maximum: 999 }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        deleted_at: { $ref: "#/components/schemas/SyncTombstone" }
+
+    SyncProgram:
+      type: object
+      required: [id, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        name: { type: [string, "null"], maxLength: 500 }
+        mode:
+          oneOf: [{ $ref: "#/components/schemas/ProgramMode" }, { type: "null" }]
+        is_active: { type: [boolean, "null"] }
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        deleted_at: { $ref: "#/components/schemas/SyncTombstone" }
+
+    SyncProgramDay:
+      type: object
+      required: [id, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        program_id: { type: [string, "null"], description: Required on a live row; the program must exist. }
+        routine_id: { type: [string, "null"], description: Required on a live row; the routine must exist. }
+        position: { type: [integer, "null"], minimum: 0 }
+        weekdays:
+          oneOf: [{ $ref: "#/components/schemas/Weekdays" }, { type: "null" }]
+        updated_at: { $ref: "#/components/schemas/Millis" }
+        deleted_at: { $ref: "#/components/schemas/SyncTombstone" }

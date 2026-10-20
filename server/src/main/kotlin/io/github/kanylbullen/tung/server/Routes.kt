@@ -26,6 +26,13 @@ import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
+import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
+import io.github.kanylbullen.tung.core.sync.SYNC_PATH
+import io.github.kanylbullen.tung.core.sync.SyncRequest
+import io.ktor.server.request.receiveChannel
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import java.time.Instant
 import java.time.ZoneOffset
@@ -54,7 +61,15 @@ private fun ApplicationCall.pathId(name: String = "id"): String =
  * Every route the server has. Each one must also be in
  * resources/openapi/openapi.yaml; OpenApiCoverageTest fails otherwise.
  */
-fun Route.apiRoutes(config: ServerConfig, db: Db, accounts: Accounts, exercises: ExerciseStore, workouts: WorkoutStore) {
+fun Route.apiRoutes(
+    config: ServerConfig,
+    db: Db,
+    accounts: Accounts,
+    exercises: ExerciseStore,
+    workouts: WorkoutStore,
+    routines: RoutineStore,
+    sync: SyncStore,
+) {
     get("/healthz") {
         val ok = runCatching { db.tx { exec("SELECT 1") { it.next() } } }.getOrNull() == true
         call.respond(if (ok) HttpStatusCode.OK else HttpStatusCode.ServiceUnavailable, Health(if (ok) "ok" else "database_unavailable"))
@@ -136,6 +151,8 @@ fun Route.apiRoutes(config: ServerConfig, db: Db, accounts: Accounts, exercises:
                     user = accounts.me(userId),
                     exercises = exercises.own(userId),
                     workouts = workouts.all(userId),
+                    routines = routines.routines(userId),
+                    programs = routines.programs(userId),
                     tokens = accounts.exportTokens(userId),
                 )
                 val date = Instant.ofEpochMilli(now).atOffset(ZoneOffset.UTC).toLocalDate()
@@ -146,7 +163,45 @@ fun Route.apiRoutes(config: ServerConfig, db: Db, accounts: Accounts, exercises:
                 call.respond(document)
             }
         }
+
+        // Outside RequireWriteScope: a read token may pull (empty changes); the handler refuses its pushes.
+        authenticate(BEARER) {
+            post(SYNC_PATH.removePrefix("/api/v1")) {
+                val principal = call.user()
+                val request = call.receiveSyncRequest()
+                if (!request.changes.isEmpty() && principal.scope != Tokens.SCOPE_WRITE) {
+                    throw forbidden("insufficient_scope", "This token is read-only: it may pull with empty changes, not push. Use a token with scope 'write'.")
+                }
+                call.respond(sync.sync(principal.userId, request))
+            }
+        }
     }
+}
+
+/** The largest sync request body: 20 000 rows of the widest table fit with room to spare. */
+const val SYNC_MAX_BODY_BYTES = 8L * 1024 * 1024
+
+/**
+ * Reads the body itself instead of `receive()`, to stop at
+ * [SYNC_MAX_BODY_BYTES] (413) before parsing, and to answer more than
+ * [SYNC_MAX_ROWS] rows with 413 too.
+ */
+private suspend fun ApplicationCall.receiveSyncRequest(): SyncRequest {
+    val tooLarge = { payloadTooLarge("payload_too_large", "A sync request can be at most ${SYNC_MAX_BODY_BYTES / (1024 * 1024)} MiB. Push in smaller batches.") }
+    request.headers[HttpHeaders.ContentLength]?.toLongOrNull()?.let { if (it > SYNC_MAX_BODY_BYTES) throw tooLarge() }
+    val bytes = receiveChannel().readRemaining(SYNC_MAX_BODY_BYTES + 1).readByteArray()
+    if (bytes.size > SYNC_MAX_BODY_BYTES) throw tooLarge()
+    val request = try {
+        ApiJson.decodeFromString(SyncRequest.serializer(), bytes.decodeToString())
+    } catch (e: SerializationException) {
+        throw badRequest("The request body could not be read: ${e.message}")
+    } catch (e: IllegalArgumentException) {
+        throw badRequest("The request body could not be read: ${e.message}")
+    }
+    if (request.changes.size() > SYNC_MAX_ROWS) {
+        throw payloadTooLarge("too_many_rows", "A sync request can push at most $SYNC_MAX_ROWS rows, got ${request.changes.size()}. Push in batches.")
+    }
+    return request
 }
 
 private const val DEFAULT_PAGE = 20

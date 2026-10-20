@@ -3,7 +3,9 @@ package io.github.kanylbullen.tung.server
 import org.jetbrains.exposed.sql.Table
 
 // Exposed DSL mappings of the Flyway schema (db/migration). Flyway owns the
-// schema; these objects only describe it, nothing here creates tables.
+// schema; these objects only describe it, nothing here creates tables. The
+// `seq` column (V2) is left out on purpose: the trigger owns it, and only
+// SyncStore reads it, in plain SQL.
 
 object Users : Table("users") {
     val id = text("id")
@@ -71,6 +73,52 @@ object Sets : Table("sets") {
     val weightKg = double("weight_kg")
     val reps = integer("reps")
     val completed = bool("completed")
+    val updatedAt = long("updated_at")
+    val deletedAt = long("deleted_at").nullable()
+    override val primaryKey = PrimaryKey(userId, id)
+}
+
+object Routines : Table("routines") {
+    val userId = text("user_id")
+    val id = text("id")
+    val name = text("name")
+    val lastUsedAt = long("last_used_at").nullable()
+    val updatedAt = long("updated_at")
+    val deletedAt = long("deleted_at").nullable()
+    override val primaryKey = PrimaryKey(userId, id)
+}
+
+object RoutineExercises : Table("routine_exercises") {
+    val userId = text("user_id")
+    val id = text("id")
+    val routineId = text("routine_id")
+    val exerciseId = text("exercise_id")
+    val position = integer("position")
+    val targetSets = integer("target_sets")
+    val targetReps = integer("target_reps").nullable()
+    val updatedAt = long("updated_at")
+    val deletedAt = long("deleted_at").nullable()
+    override val primaryKey = PrimaryKey(userId, id)
+}
+
+object Programs : Table("programs") {
+    val userId = text("user_id")
+    val id = text("id")
+    val name = text("name")
+    val mode = text("mode")
+    val isActive = bool("is_active")
+    val updatedAt = long("updated_at")
+    val deletedAt = long("deleted_at").nullable()
+    override val primaryKey = PrimaryKey(userId, id)
+}
+
+object ProgramDays : Table("program_days") {
+    val userId = text("user_id")
+    val id = text("id")
+    val programId = text("program_id")
+    val routineId = text("routine_id")
+    val position = integer("position")
+    val weekdays = integer("weekdays")
     val updatedAt = long("updated_at")
     val deletedAt = long("deleted_at").nullable()
     override val primaryKey = PrimaryKey(userId, id)
