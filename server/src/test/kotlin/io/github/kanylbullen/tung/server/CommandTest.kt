@@ -171,6 +171,98 @@ class CommandTest {
     }
 
     @Test
+    fun aSavedRoutineCanBeEdited() = tungTest {
+        val token = client.register()
+        suspend fun export() = ApiJson.decodeFromString(ExportDocument.serializer(), client.authedGet("/api/v1/export", token).bodyAsText())
+        val routineId = client.done(
+            token,
+            "save_routine_plan",
+            """{"name": "Push", "exercises": [{"exercise": {"key": "bench_press"}, "target_sets": 3, "target_reps": 8},
+                                               {"exercise": {"key": "overhead_press"}, "target_sets": 3}]}""",
+        )["routineId"]!!.str
+
+        // Appended last, target sets 3 by default and no target reps.
+        val added = client.done(token, "add_routine_exercise", """{"routine_id": "$routineId", "exercise": {"name": "Skivstångscurl"}}""")
+        assertEquals(catalogExerciseId("barbell_curl"), added["exerciseId"]!!.str, "a Swedish name resolves")
+        val curlId = added["routineExerciseId"]!!.str
+        val withTargets = client.done(
+            token,
+            "add_routine_exercise",
+            """{"routine_id": "$routineId", "exercise": {"key": "back_squat"}, "target_sets": 5, "target_reps": 5}""",
+        )["routineExerciseId"]!!.str
+        var exercises = export().routines.single().exercises.sortedBy { it.position }
+        assertEquals(listOf(BENCH, catalogExerciseId("overhead_press"), catalogExerciseId("barbell_curl"), SQUAT), exercises.map { it.exerciseId })
+        assertEquals(listOf(0, 1, 2, 3), exercises.map { it.position })
+        assertEquals(3 to null, exercises[2].targetSets to exercises[2].targetReps)
+        assertEquals(5 to 5, exercises[3].targetSets to exercises[3].targetReps)
+
+        // An unknown name is a question and writes nothing.
+        val unknown = client.command(token, "add_routine_exercise", """{"routine_id": "$routineId", "exercise": {"name": "Flying squirrel press"}}""")
+        assertEquals("needs_answers", unknown.json()["status"]!!.str)
+        assertEquals(4, export().routines.single().exercises.size)
+
+        // Target reps: set, then cleared.
+        client.done(token, "set_target_reps", """{"routine_exercise_id": "$curlId", "target_reps": 12}""")
+        assertEquals(12, export().routines.single().exercises.single { it.id == curlId }.targetReps)
+        client.done(token, "set_target_reps", """{"routine_exercise_id": "$curlId", "target_reps": null}""")
+        assertNull(export().routines.single().exercises.single { it.id == curlId }.targetReps)
+
+        // Removing the second exercise closes the gap and leaves a tombstone the phone pulls.
+        val press = exercises[1].id
+        client.done(token, "remove_routine_exercise", """{"routine_exercise_id": "$press"}""")
+        exercises = export().routines.single().exercises.sortedBy { it.position }
+        assertEquals(listOf(BENCH, catalogExerciseId("barbell_curl"), SQUAT), exercises.map { it.exerciseId })
+        assertEquals(listOf(0, 1, 2), exercises.map { it.position }, "positions are 0, 1, 2 again")
+        val tombstone = client.synced(token).changes.routineExercises.single { it.id == press }
+        assertNotNull(tombstone.deletedAt, "a delete is a tombstone, not a DELETE")
+        assertEquals(withTargets, exercises.last().id)
+
+        // The started workout follows the edited routine.
+        val workoutId = client.done(token, "start_routine", """{"routine_id": "$routineId"}""")["workoutId"]!!.str
+        val workout = client.authedGet("/api/v1/workouts/$workoutId", token).workout()
+        assertEquals(listOf(BENCH, catalogExerciseId("barbell_curl"), SQUAT), workout.exercises.map { it.exerciseId })
+        assertEquals(listOf(3, 3, 5), workout.exercises.map { it.sets.size })
+
+        // Gone ids and bad values are refused.
+        assertEquals(HttpStatusCode.UnprocessableEntity, client.command(token, "remove_routine_exercise", """{"routine_exercise_id": "$press"}""").status)
+        assertEquals(HttpStatusCode.UnprocessableEntity, client.command(token, "set_target_reps", """{"routine_exercise_id": "${id()}", "target_reps": 8}""").status)
+        assertEquals(
+            HttpStatusCode.UnprocessableEntity,
+            client.command(token, "add_routine_exercise", """{"routine_id": "${id()}", "exercise": {"key": "bench_press"}}""").status,
+        )
+        val zero = client.command(token, "set_target_reps", """{"routine_exercise_id": "$curlId", "target_reps": 0}""")
+        assertEquals(HttpStatusCode.UnprocessableEntity, zero.status)
+        assertTrue(zero.bodyAsText().contains("between 1 and 999"), zero.bodyAsText())
+        assertEquals(HttpStatusCode.BadRequest, client.command(token, "set_target_reps", """{"routine_exercise_id": "$curlId"}""").status)
+    }
+
+    @Test
+    fun aProgramsModeCanBeSwitchedAndKeepsItsDays() = tungTest {
+        val token = client.register()
+        suspend fun program() = ApiJson.decodeFromString(ExportDocument.serializer(), client.authedGet("/api/v1/export", token).bodyAsText()).programs.single()
+        val routine = client.done(token, "save_routine_plan", """{"name": "Legs", "exercises": [{"exercise": {"key": "back_squat"}, "target_sets": 3}]}""")["routineId"]!!.str
+        val programId = client.done(token, "create_program", """{"name": "PPL", "mode": "rotating"}""")["programId"]!!.str
+        val day = client.done(token, "add_program_day", """{"program_id": "$programId", "routine_id": "$routine"}""")["programDayId"]!!.str
+        client.done(token, "toggle_program_weekday", """{"day_id": "$day", "weekday": 2}""")
+        val before = program().updatedAt
+
+        client.done(token, "set_program_mode", """{"program_id": "$programId", "mode": "fixed"}""")
+        val fixed = program()
+        assertEquals("fixed", fixed.mode)
+        assertTrue(fixed.updatedAt > before, "the change moves updated_at forward")
+        assertEquals(listOf(day to 0b10), fixed.days.map { it.id to it.weekdays }, "days and weekdays are kept")
+        assertTrue(client.synced(token).changes.programs.single().mode == "fixed", "sync carries the new mode")
+
+        client.done(token, "set_program_mode", """{"program_id": "$programId", "mode": "fixed"}""")
+        assertEquals(fixed.updatedAt, program().updatedAt, "the same mode again writes nothing")
+        client.done(token, "set_program_mode", """{"program_id": "$programId", "mode": "rotating"}""")
+        assertEquals("rotating", program().mode)
+
+        assertEquals(HttpStatusCode.BadRequest, client.command(token, "set_program_mode", """{"program_id": "$programId", "mode": "weekly"}""").status)
+        assertEquals(HttpStatusCode.UnprocessableEntity, client.command(token, "set_program_mode", """{"program_id": "${id()}", "mode": "fixed"}""").status)
+    }
+
+    @Test
     fun refusalsAndErrors() = tungTest {
         val token = client.register()
         val missing = client.command(token, "log_set", """{"workout_id": "${id()}"}""")

@@ -43,8 +43,12 @@ class CommandWireTest {
         "delete_routine" to """{"routine_id": "$id"}""",
         "move_routine_exercise" to """{"routine_exercise_id": "$id", "delta": -1}""",
         "adjust_target_sets" to """{"routine_exercise_id": "$id", "delta": 1}""",
+        "add_routine_exercise" to """{"routine_id": "$id", "exercise": $ex, "target_sets": 4, "target_reps": 8}""",
+        "remove_routine_exercise" to """{"routine_exercise_id": "$id"}""",
+        "set_target_reps" to """{"routine_exercise_id": "$id", "target_reps": 12}""",
         "create_program" to """{"name": "PPL", "mode": "rotating"}""",
         "rename_program" to """{"program_id": "$id", "name": "PPL 2"}""",
+        "set_program_mode" to """{"program_id": "$id", "mode": "fixed"}""",
         "activate_program" to """{"program_id": "$id"}""",
         "deactivate_program" to """{"program_id": "$id"}""",
         "delete_program" to """{"program_id": "$id"}""",
@@ -88,6 +92,39 @@ class CommandWireTest {
         assertEquals(Command.CreateProgram("PPL", ProgramMode.ROTATING), decoded("create_program", samples.getValue("create_program")))
         assertEquals(Command.SetRest(id, null), decoded("set_rest", """{"exercise_id": "$id", "seconds": null}"""))
         assertEquals(Command.SetRest(id, null), decoded("set_rest", """{"exercise_id": "$id"}"""))
+    }
+
+    @Test
+    fun routineEditingFieldsMapOntoTheCommand() {
+        val bench = ExerciseRef.ByKey("bench_press")
+        assertEquals(Command.AddRoutineExercise(id, bench, 4, 8), decoded("add_routine_exercise", samples.getValue("add_routine_exercise")))
+        assertEquals(
+            "target sets default to 3, target reps to none",
+            Command.AddRoutineExercise(id, ExerciseRef.ByName("Bänkpress"), DEFAULT_ROUTINE_TARGET_SETS, null),
+            decoded("add_routine_exercise", """{"routine_id": "$id", "exercise": "Bänkpress"}"""),
+        )
+        assertEquals(
+            Command.AddRoutineExercise(id, ExerciseRef.Extended("Zercher_Squats"), 3, null),
+            decoded("add_routine_exercise", """{"routine_id": "$id", "exercise": {"extended": "Zercher_Squats"}, "target_sets": null, "target_reps": null}"""),
+        )
+        assertEquals(Command.RemoveRoutineExercise(id), decoded("remove_routine_exercise", samples.getValue("remove_routine_exercise")))
+        assertEquals(Command.SetTargetReps(id, 12), decoded("set_target_reps", samples.getValue("set_target_reps")))
+        assertEquals(Command.SetTargetReps(id, null), decoded("set_target_reps", """{"routine_exercise_id": "$id", "target_reps": null}"""))
+        assertEquals(Command.SetProgramMode(id, ProgramMode.FIXED), decoded("set_program_mode", samples.getValue("set_program_mode")))
+        assertEquals(Command.SetProgramMode(id, ProgramMode.ROTATING), decoded("set_program_mode", """{"program_id": "$id", "mode": "rotating"}"""))
+    }
+
+    @Test
+    fun routineEditingShapesAreChecked() {
+        fun reasons(name: String, body: String) = (CommandWire.decode(name, obj(body)) as WireDecoding.Invalid).reasons
+        assertTrue(reasons("add_routine_exercise", """{"routine_id": "$id"}""").contains("exercise is required"))
+        assertTrue(reasons("add_routine_exercise", """{"routine_id": "$id", "exercise": $ex, "target_sets": 2.5}""").contains("target_sets must be a whole number"))
+        assertTrue(reasons("remove_routine_exercise", "{}").contains("routine_exercise_id is required"))
+        // Clearing the target is explicit: an absent field is not read as null.
+        assertTrue(reasons("set_target_reps", """{"routine_exercise_id": "$id"}""").contains("target_reps is required"))
+        assertTrue(reasons("set_target_reps", """{"routine_exercise_id": "$id", "target_reps": "many"}""").contains("target_reps must be a whole number or null"))
+        assertTrue(reasons("set_program_mode", """{"program_id": "$id", "mode": "weekly"}""").contains("mode must be one of fixed, rotating"))
+        assertTrue(reasons("set_program_mode", """{"program_id": "$id"}""").contains("mode is required"))
     }
 
     @Test

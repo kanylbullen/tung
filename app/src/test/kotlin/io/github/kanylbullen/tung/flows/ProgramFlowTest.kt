@@ -196,6 +196,46 @@ class ProgramFlowTest : FlowTest() {
         )
     }
 
+    /**
+     * A rotating program "Split" with one day changes its mind: on its own
+     * screen the owner picks "Fixed days", the day gets its weekday toggles
+     * (and loses "Day 1 of 1"); ticking Monday and going back to "Rotating"
+     * keeps the day, and the Monday it had.
+     */
+    @Test
+    fun switchAProgramsMode() {
+        val push = seedRoutine("Push day", bench())
+        val programId = runBlocking {
+            val programs = ProgramRepository(db)
+            programs.create("Split", ProgramMode.ROTATING).also { programs.addDay(it, push) }
+        }
+
+        waitForText("Push day")
+        clickText(str(R.string.routines_all))
+        waitGone(hasText(str(R.string.home_recent)))
+        clickText(str(R.string.programs_title))
+        clickText("Split")
+        waitForText(str(R.string.program_mode_title))
+        waitForText(dayOf(1, 1))
+        screenshot("1-rotating")
+
+        clickText(str(R.string.program_mode_fixed))
+        val monday = hasContentDescription(str(R.string.program_weekday_description, "Push day", weekdayFull(1)))
+        waitFor(monday)
+        waitGone(hasText(dayOf(1, 1)))
+        assertEquals(1, count("SELECT COUNT(*) FROM program WHERE id = '$programId' AND mode = 'fixed' AND dirty = 1"))
+        compose.onNode(monday).performClick()
+        waitUntil { count("SELECT COUNT(*) FROM program_day WHERE weekdays = 1") == 1 }
+        screenshot("2-fixed")
+
+        clickText(str(R.string.program_mode_rotating))
+        waitForText(dayOf(1, 1))
+        waitGone(monday)
+        waitUntil { count("SELECT COUNT(*) FROM program WHERE id = '$programId' AND mode = 'rotating'") == 1 }
+        assertEquals("the day and its Monday are kept", 1, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$push' AND weekdays = 1"))
+        screenshot("3-rotating-again")
+    }
+
     // --- seeding through the real repositories ---
 
     private fun row(): String = catalogExerciseId("barbell_row")
