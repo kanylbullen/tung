@@ -102,7 +102,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
         ?.use { CoreCatalog.parse(it.readBytes().toString(Charsets.UTF_8)) }
         ?: error("catalog/core.json is missing from the classpath")
     exercises.seedCatalogue(db.database, catalogue)
-    val routines = RoutineStore(db)
+    val routines = RoutineStore(db, exercises)
     val sync = SyncStore(db, catalogue)
 
     // Commands, OAuth and MCP (issue #29): every change an assistant or a script makes goes through the one command handler.
@@ -166,7 +166,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     }
     installErrorPages()
 
-    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push) }
+    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push, commands) }
     routing {
         commandRoutes(commands)
         oauthRoutes(config, accounts, oauth)
