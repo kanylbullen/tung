@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 11 and older. The sync token is encrypted with a Keystore key that a backup cannot carry. -->
+<!-- Android 11 and older. The sync token and the assistant's API key are encrypted with a Keystore key that a backup cannot carry. -->
 <full-backup-content>
     <exclude domain="sharedpref" path="sync_token.xml" />
+    <exclude domain="sharedpref" path="ai_key.xml" />
 </full-backup-content>
