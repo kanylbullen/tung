@@ -3,6 +3,8 @@ package io.github.kanylbullen.tung.data
 import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.addsNextSet
+import io.github.kanylbullen.tung.core.command.PlannedSet
+import io.github.kanylbullen.tung.core.command.plannedSetValues
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.prefillSet
 import kotlinx.coroutines.flow.Flow
@@ -131,6 +133,43 @@ class WorkoutRepository(
 
     suspend fun getSets(workoutExerciseId: String): List<SetEntry> = dao.getSets(workoutExerciseId)
 
+    /**
+     * A whole planned workout in one transaction: the workout in progress, or
+     * a new one, gets each of [exercises] appended in order with its planned
+     * sets, none ticked. A number the plan leaves out comes from the pre-fill
+     * rule ([plannedSetValues]). The exercise rows must exist.
+     *
+     * @return the workout's id.
+     */
+    suspend fun applyPlan(exercises: List<Pair<String, List<PlannedSet>>>): String = db.withTransaction {
+        val workoutId = startOrResumeWorkout()
+        exercises.forEach { (exerciseId, planned) ->
+            val now = clock()
+            val workoutExercise = WorkoutExercise(
+                id = newId(),
+                workoutId = workoutId,
+                exerciseId = exerciseId,
+                position = dao.maxExercisePosition(workoutId) + 1,
+                updatedAt = now,
+            )
+            dao.insertWorkoutExercise(workoutExercise)
+            val previous = dao.previousSessionSets(exerciseId, workoutId).map { it.toLogged() }
+            plannedSetValues(planned, previous).forEachIndexed { position, values ->
+                dao.insertSet(
+                    SetEntry(
+                        id = newId(),
+                        workoutExerciseId = workoutExercise.id,
+                        position = position,
+                        weightKg = values.weightKg,
+                        reps = values.reps,
+                        completed = false,
+                        updatedAt = now,
+                    ),
+                )
+            }
+        }
+        workoutId
+    }
 
     suspend fun previousSessionSets(exerciseId: String, excludeWorkoutId: String): List<LoggedSet> =
         dao.previousSessionSets(exerciseId, excludeWorkoutId).map { it.toLogged() }

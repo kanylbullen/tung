@@ -19,9 +19,12 @@ import io.github.kanylbullen.tung.core.command.CommandResult.NeedsAnswers
 import io.github.kanylbullen.tung.core.command.CommandResult.Rejected
 import io.github.kanylbullen.tung.core.command.ExerciseCandidate
 import io.github.kanylbullen.tung.core.command.ExerciseResolver
+import io.github.kanylbullen.tung.core.command.PlanResolution
 import io.github.kanylbullen.tung.core.command.RefResolution
 import io.github.kanylbullen.tung.core.command.Validation
+import io.github.kanylbullen.tung.core.command.resolvePlan
 import io.github.kanylbullen.tung.core.command.resolveRef
+import io.github.kanylbullen.tung.core.command.resolveRoutinePlan
 import io.github.kanylbullen.tung.core.command.validate
 import io.github.kanylbullen.tung.core.currentSet
 
@@ -96,7 +99,7 @@ class AppCommandHandler(
                 workouts.deleteWorkout(command.workoutId)
                 Done()
             }
-            is Command.ApplyPlan -> Rejected(listOf("apply_plan is not supported yet"))
+            is Command.ApplyPlan -> applyPlan(command)
             is Command.SetRest -> {
                 exercises.setRestSeconds(command.exerciseId, command.seconds)
                 Done(mapOf(EXERCISE_ID to command.exerciseId))
@@ -106,7 +109,7 @@ class AppCommandHandler(
             is Command.SaveRoutine ->
                 routines.saveFromWorkout(command.workoutId, command.name)?.let { Done(mapOf(ROUTINE_ID to it)) }
                     ?: Rejected(listOf("the workout has no logged set to save"))
-            is Command.SaveRoutinePlan -> Rejected(listOf("save_routine_plan is not supported yet"))
+            is Command.SaveRoutinePlan -> saveRoutinePlan(command)
             is Command.RenameRoutine -> {
                 routines.rename(command.routineId, command.name)
                 Done()
@@ -199,6 +202,38 @@ class AppCommandHandler(
         }
         if (set.completed) return Rejected(listOf("set ${set.id} is already ticked"))
         return Done(mapOf(SET_ID to set.id, WORKOUT_EXERCISE_ID to set.workoutExerciseId))
+    }
+
+    /**
+     * Resolves the whole plan first (anything unknown → questions, nothing
+     * written), then one transaction: rows for extended entries, the workout
+     * in progress or a new one, the exercises and their sets.
+     */
+    private suspend fun applyPlan(command: Command.ApplyPlan): CommandResult {
+        val plan = when (val resolution = resolvePlan(command.plan, resolver)) {
+            is PlanResolution.NeedsAnswers -> return NeedsAnswers(resolution.questions)
+            is PlanResolution.Resolved -> resolution.plan
+        }
+        val entries = extendedEntries(plan.exercises.map { it.exercise })
+        val workoutId = db.withTransaction {
+            workouts.applyPlan(plan.exercises.map { rowFor(it.exercise, entries) to it.sets })
+        }
+        return Done(mapOf(WORKOUT_ID to workoutId))
+    }
+
+    private suspend fun saveRoutinePlan(command: Command.SaveRoutinePlan): CommandResult {
+        val plan = when (val resolution = resolveRoutinePlan(command.plan, resolver)) {
+            is PlanResolution.NeedsAnswers -> return NeedsAnswers(resolution.questions)
+            is PlanResolution.Resolved -> resolution.plan
+        }
+        val entries = extendedEntries(plan.exercises.map { it.exercise })
+        val routineId = db.withTransaction {
+            routines.createFromPlan(
+                plan.name,
+                plan.exercises.map { Triple(rowFor(it.exercise, entries), it.targetSets, it.targetReps) },
+            )
+        }
+        return Done(mapOf(ROUTINE_ID to routineId))
     }
 
     /** The extended-catalogue entries [candidates] refer to, read before a transaction starts (the catalogue loads on IO). */
