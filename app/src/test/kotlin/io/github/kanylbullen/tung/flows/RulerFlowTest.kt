@@ -188,14 +188,14 @@ class RulerFlowTest : FlowTest() {
         val benchPress = str(R.string.ex_bench_press)
         addExercise("bench", benchPress)
         repeat(2) { clickDescription(str(R.string.workout_add_set_description, benchPress)) }
-        compose.waitUntil(5_000) { activeSets().size == 3 }
+        waitUntil(5_000) { activeSets().size == 3 }
         assertEquals(List(3) { Triple(80.0, 8, false) }, activeSets())
 
         clickDescription(str(R.string.workout_mark_done, 1))
         waitForDescription(str(R.string.workout_mark_undone, 1))
 
         val weightCells = hasContentDescription(str(R.string.workout_edit_weight, "80"))
-        compose.waitUntil(5_000) { compose.onAllNodes(weightCells).fetchSemanticsNodes().size == 3 }
+        waitUntil(5_000) { compose.onAllNodes(weightCells).fetchSemanticsNodes().size == 3 }
         compose.onAllNodes(weightCells)[1].performClick()
         waitForDescription(str(R.string.input_field_weight))
         field.performTextReplacement("90")
@@ -206,7 +206,7 @@ class RulerFlowTest : FlowTest() {
         done.performClick()
         waitGone(hasContentDescription(str(R.string.input_field_weight)))
 
-        compose.waitUntil(5_000) { activeSets().map { it.first } == listOf(80.0, 90.0, 90.0) }
+        waitUntil(5_000) { activeSets().map { it.first } == listOf(80.0, 90.0, 90.0) }
         assertEquals(
             listOf(Triple(80.0, 8, true), Triple(90.0, 8, false), Triple(90.0, 8, false)),
             activeSets(),
@@ -215,7 +215,7 @@ class RulerFlowTest : FlowTest() {
 
         // Off by default every time the sheet opens.
         val cell90 = hasContentDescription(str(R.string.workout_edit_weight, "90"))
-        compose.waitUntil(5_000) { compose.onAllNodes(cell90).fetchSemanticsNodes().size == 2 }
+        waitUntil(5_000) { compose.onAllNodes(cell90).fetchSemanticsNodes().size == 2 }
         compose.onAllNodes(cell90)[1].performClick()
         waitForDescription(str(R.string.input_field_weight))
         applyToAll.assertIsOff()

@@ -84,7 +84,7 @@ class CurrentSetFlowTest : FlowTest() {
 
         compose.onNode(logSet(benchPress, "85", "6")).performSemanticsAction(SemanticsActions.OnClick)
         waitForDescription(str(R.string.workout_mark_undone, 2))
-        compose.waitUntil(5_000) { activeSets("s.completed = 1") == 1 }
+        waitUntil(5_000) { activeSets("s.completed = 1") == 1 }
         assertEquals(1, activeSets("s.completed = 1 AND s.position = 1 AND s.weightKg = 85.0"))
     }
 
@@ -150,7 +150,7 @@ class CurrentSetFlowTest : FlowTest() {
         waitFor(newSet)
         // Adding a set touches bench press, and with no set picked by hand its first open set is current.
         val button = logSet(benchPress, "80", "8")
-        compose.waitUntil(5_000) {
+        waitUntil(5_000) {
             compose.onNode(newSet).getUnclippedBoundsInRoot().bottom <= compose.onNode(button).getUnclippedBoundsInRoot().top
         }
         compose.onNode(newSet).assertIsDisplayed()
@@ -182,7 +182,7 @@ class CurrentSetFlowTest : FlowTest() {
         waitFor(newHeader)
         val newSet = markedCurrent(1)
         waitFor(newSet)
-        compose.waitUntil(5_000) {
+        waitUntil(5_000) {
             compose.onNode(newSet).getUnclippedBoundsInRoot().bottom <= compose.onNode(button).getUnclippedBoundsInRoot().top
         }
         compose.onNode(newHeader).assertIsDisplayed()

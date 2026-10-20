@@ -66,7 +66,7 @@ class SyncFlowTest : FlowTest() {
         assertEquals(fake.token, app.tokens.token)
         // Signing in schedules the periodic sync and asks for a first one.
         assertEquals(1, workManager.getWorkInfosForUniqueWork(WorkManagerSyncScheduler.PERIODIC_WORK).get().size)
-        compose.waitUntil(5_000) { nowWork().isNotEmpty() }
+        waitUntil(5_000) { nowWork().isNotEmpty() }
 
         clickText(str(R.string.sync_now))
         waitForText(str(R.string.sync_status_just_now))
@@ -85,7 +85,7 @@ class SyncFlowTest : FlowTest() {
         waitForText(str(R.string.summary_title))
 
         // FinishWorkout, through the command handler, enqueued one more sync.
-        compose.waitUntil(5_000) { (nowWork() - before).isNotEmpty() }
+        waitUntil(5_000) { (nowWork() - before).isNotEmpty() }
         assertTrue(nowWork().containsAll(before))
     }
 }
