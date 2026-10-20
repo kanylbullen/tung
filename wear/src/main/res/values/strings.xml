@@ -112,6 +112,7 @@
     <string name="ex_lat_pulldown">Lat pulldown</string>
     <string name="ex_pull_up">Pull-up</string>
     <string name="ex_seated_cable_row">Seated cable row</string>
+    <string name="ex_shrug">Shrug</string>
     <string name="ex_t_bar_row">T-bar row</string>
     <string name="ex_arnold_press">Arnold press</string>
     <string name="ex_dumbbell_shoulder_press">Dumbbell shoulder press</string>
@@ -121,7 +122,6 @@
     <string name="ex_machine_shoulder_press">Machine shoulder press</string>
     <string name="ex_overhead_press">Overhead press</string>
     <string name="ex_reverse_fly">Reverse fly</string>
-    <string name="ex_shrug">Shrug</string>
     <string name="ex_barbell_curl">Barbell curl</string>
     <string name="ex_cable_curl">Cable curl</string>
     <string name="ex_concentration_curl">Concentration curl</string>

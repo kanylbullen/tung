@@ -10,6 +10,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.daysAgo
 import io.github.kanylbullen.tung.core.formatWeight
@@ -82,6 +83,34 @@ fun muscleGroupLabel(group: MuscleGroup): String = stringResource(
         MuscleGroup.GLUTES -> R.string.muscle_glutes
         MuscleGroup.CORE -> R.string.muscle_core
         MuscleGroup.FULLBODY -> R.string.muscle_fullbody
+    }
+)
+
+/** A muscle's name in lower case, for use inside a sentence ("Pairs with triceps"). */
+@Composable
+fun muscleLabel(muscle: Muscle): String = stringResource(
+    when (muscle) {
+        Muscle.CHEST -> R.string.muscle_name_chest
+        Muscle.LATS -> R.string.muscle_name_lats
+        Muscle.UPPER_BACK -> R.string.muscle_name_upper_back
+        Muscle.LOWER_BACK -> R.string.muscle_name_lower_back
+        Muscle.TRAPS -> R.string.muscle_name_traps
+        Muscle.FRONT_DELTS -> R.string.muscle_name_front_delts
+        Muscle.SIDE_DELTS -> R.string.muscle_name_side_delts
+        Muscle.REAR_DELTS -> R.string.muscle_name_rear_delts
+        Muscle.BICEPS -> R.string.muscle_name_biceps
+        Muscle.TRICEPS -> R.string.muscle_name_triceps
+        Muscle.FOREARMS -> R.string.muscle_name_forearms
+        Muscle.QUADS -> R.string.muscle_name_quads
+        Muscle.HAMSTRINGS -> R.string.muscle_name_hamstrings
+        Muscle.GLUTES -> R.string.muscle_name_glutes
+        Muscle.CALVES -> R.string.muscle_name_calves
+        Muscle.ADDUCTORS -> R.string.muscle_name_adductors
+        Muscle.ABDUCTORS -> R.string.muscle_name_abductors
+        Muscle.ABS -> R.string.muscle_name_abs
+        Muscle.OBLIQUES -> R.string.muscle_name_obliques
+        Muscle.HIP_FLEXORS -> R.string.muscle_name_hip_flexors
+        Muscle.NECK -> R.string.muscle_name_neck
     }
 )
 

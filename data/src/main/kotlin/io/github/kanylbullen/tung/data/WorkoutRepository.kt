@@ -6,6 +6,8 @@ import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.command.PlannedSet
 import io.github.kanylbullen.tung.core.command.plannedSetValues
 import io.github.kanylbullen.tung.core.newId
+import io.github.kanylbullen.tung.core.picker.HistoricWorkout
+import io.github.kanylbullen.tung.core.picker.SUGGESTION_HISTORY_LIMIT
 import io.github.kanylbullen.tung.core.prefillSet
 import io.github.kanylbullen.tung.core.sync.SyncTable
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +24,16 @@ class WorkoutRepository(
     fun observeFinishedWorkouts(): Flow<List<WorkoutSummaryRow>> = dao.observeFinishedWorkouts()
 
     fun observeWorkout(id: String): Flow<Workout?> = dao.observeWorkout(id)
+
+    /**
+     * The latest [limit] finished workouts as the picker's suggestions read
+     * them: start time and exercise ids in position order, newest first. Read
+     * when the picker opens; nothing about it is stored.
+     */
+    suspend fun recentHistory(limit: Int = SUGGESTION_HISTORY_LIMIT): List<HistoricWorkout> =
+        dao.recentExerciseOrder(limit).groupBy { it.workoutId }.values.map { rows ->
+            HistoricWorkout(rows.first().startedAt, rows.map { it.exerciseId })
+        }
 
     fun observeExercises(workoutId: String): Flow<List<WorkoutExerciseWithSets>> =
         dao.observeExercisesWithSets(workoutId)

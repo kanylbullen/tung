@@ -15,7 +15,7 @@ and other clients can read the same files.
 `core.json` is a list sorted by `key`, one entry per line:
 
 ```json
-{"key": "bench_press", "name": {"sv": "Bänkpress", "en": "Bench press"}, "muscleGroup": "chest", "equipment": "barbell"}
+{"key": "bench_press", "name": {"sv": "Bänkpress", "en": "Bench press"}, "muscleGroup": "chest", "equipment": "barbell", "primaryMuscles": ["chest"], "secondaryMuscles": ["triceps", "front_delts"]}
 ```
 
 - `key`: stable key, lowercase letters and underscores. Never changes once it
@@ -28,6 +28,33 @@ and other clients can read the same files.
   `glutes`, `core` or `fullbody`.
 - `equipment`: `barbell`, `dumbbell`, `machine`, `cable`, `bodyweight` or
   `other`.
+- `primaryMuscles`: 1–3 muscles the exercise is for, most important first;
+  `secondaryMuscles`: 0–4 that work along. No muscle in both lists. Values
+  from the fixed list below.
+
+### Muscles
+
+A fixed list (`Muscle` in `core/`), each in one muscle group:
+
+| Group | Muscles |
+|---|---|
+| `chest` | `chest` |
+| `back` | `lats`, `upper_back`, `lower_back`, `traps`, `neck` |
+| `shoulders` | `front_delts`, `side_delts`, `rear_delts` |
+| `biceps` | `biceps`, `forearms` |
+| `triceps` | `triceps` |
+| `legs` | `quads`, `hamstrings`, `calves`, `adductors`, `abductors` |
+| `glutes` | `glutes` |
+| `core` | `abs`, `obliques`, `hip_flexors` |
+| `fullbody` | none of its own |
+
+`muscleGroup` stays the display level (the picker's and the tab's
+headings) and follows the muscles: **it is the group of the first primary
+muscle** (`MuscleGroup.of(primaryMuscles[0])`), except `fullbody`, which a
+whole-body lift (burpee, snatch, power clean) may keep whatever its first
+muscle. `CatalogTest` checks the rule for both files. Order the primary
+muscles so the first one names the group you want; an entry that cannot is
+in the wrong group. A key in this list never changes once it exists.
 
 ## Adding an exercise to the core
 
@@ -67,6 +94,13 @@ fetches `dist/exercises.json` from free-exercise-db (branch `main`) and:
 - maps `primaryMuscles[0]` and `equipment` to our values (the tables are at the
   top of the script; anything unknown becomes `fullbody` and `other`
   respectively);
+- keeps the source's `primaryMuscles` and `secondaryMuscles`, mapped onto the
+  fixed list (`abdominals` → `abs`, `lower back` → `lower_back`, `middle back`
+  → `upper_back`, `quadriceps` → `quads`, the rest by the same name), with a
+  muscle that is primary dropped from the secondary list. The source has a
+  single `shoulders` and does not say which head, so **every source
+  `shoulders` becomes `side_delts`**: `front_delts` and `rear_delts` only come
+  from `core.json`. A source muscle missing from the table stops the import;
 - drops exercises that are already in the core: the same normalised English
   name (lowercase, hyphens to spaces, spaces collapsed) or a pair in the
   script's hand-written alias list (`Barbell Squat` ↔ `back_squat` and so on);
@@ -75,7 +109,7 @@ fetches `dist/exercises.json` from free-exercise-db (branch `main`) and:
 An entry:
 
 ```json
-{"id": "Zercher_Squats", "name": {"en": "Zercher Squats"}, "muscleGroup": "legs", "equipment": "barbell", "instructions": ["…"], "source": "free-exercise-db"}
+{"id": "Zercher_Squats", "name": {"en": "Zercher Squats"}, "muscleGroup": "legs", "primaryMuscles": ["quads"], "secondaryMuscles": ["calves", "glutes", "hamstrings"], "equipment": "barbell", "instructions": ["…"], "source": "free-exercise-db"}
 ```
 
 `id` is free-exercise-db's id. The app gives a chosen exercise the id

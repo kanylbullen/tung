@@ -14,12 +14,17 @@ import java.io.InputStream
 @Serializable
 data class ExtendedName(val en: String)
 
-/** One entry in `catalog/extended.json`. [muscleGroup] and [equipment] are domain keys. */
+/**
+ * One entry in `catalog/extended.json`. [muscleGroup] and [equipment] are
+ * domain keys; the muscle lists hold [Muscle] keys mapped from the source's.
+ */
 @Serializable
 data class ExtendedExercise(
     val id: String,
     val name: ExtendedName,
     val muscleGroup: String,
+    val primaryMuscles: List<String> = emptyList(),
+    val secondaryMuscles: List<String> = emptyList(),
     val equipment: String,
     val instructions: List<String> = emptyList(),
     val source: String,

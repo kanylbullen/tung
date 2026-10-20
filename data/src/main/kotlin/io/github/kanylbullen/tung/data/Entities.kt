@@ -265,6 +265,13 @@ data class WorkoutSummaryRow(
     val volumeKg: Double,
 )
 
+/** One exercise of a finished workout, for the picker's history (`WorkoutDao.recentExerciseOrder`). */
+data class WorkoutExerciseOrderRow(
+    val workoutId: String,
+    val startedAt: Long,
+    val exerciseId: String,
+)
+
 /** A routine's exercise with its catalogue row. */
 data class RoutineExerciseWithExercise(
     @Embedded val routineExercise: RoutineExercise,

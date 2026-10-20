@@ -14,6 +14,14 @@ enum class MuscleGroup(val key: String) {
 
     companion object {
         fun fromKey(key: String): MuscleGroup = entries.firstOrNull { it.key == key } ?: FULLBODY
+
+        /**
+         * The display group of an exercise whose first primary muscle is
+         * [firstPrimary]. The catalogue rule: an entry's `muscleGroup` is
+         * `of(primaryMuscles[0])`, or `fullbody` for whole-body lifts (burpee,
+         * snatch), which no muscle maps to ([muscleGroupMatches]).
+         */
+        fun of(firstPrimary: Muscle): MuscleGroup = firstPrimary.group
     }
 }
 

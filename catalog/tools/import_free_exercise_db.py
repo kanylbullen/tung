@@ -2,7 +2,7 @@
 """Import the extended catalogue from free-exercise-db into catalog/extended.json.
 
 Source: https://github.com/yuhonas/free-exercise-db (Unlicense). Only the
-strength-type categories are kept, mapped to Tung's muscle groups and
+strength-type categories are kept, mapped to Tung's muscle groups, muscles and
 equipment. Exercises that duplicate the core catalogue (catalog/core.json)
 are dropped. Images are not imported: their origin is undocumented.
 
@@ -45,6 +45,31 @@ MUSCLE = {
     "glutes": "glutes",
     "abdominals": "core",
 }  # neck and anything else: fullbody
+
+# The source's muscle names → Tung's fixed muscle list (core's `Muscle`, keys
+# in catalog/README.md). The source has one "shoulders" and does not say which
+# head; its shoulder exercises are presses and raises alike, so they cannot be
+# told apart here. They all become side_delts, the head every shoulder movement
+# trains to some degree; front_delts and rear_delts only come from core.json.
+MUSCLES = {
+    "abdominals": "abs",
+    "abductors": "abductors",
+    "adductors": "adductors",
+    "biceps": "biceps",
+    "calves": "calves",
+    "chest": "chest",
+    "forearms": "forearms",
+    "glutes": "glutes",
+    "hamstrings": "hamstrings",
+    "lats": "lats",
+    "lower back": "lower_back",
+    "middle back": "upper_back",
+    "neck": "neck",
+    "quadriceps": "quads",
+    "shoulders": "side_delts",
+    "traps": "traps",
+    "triceps": "triceps",
+}  # anything else stops the import: a new source muscle needs a decision
 
 EQUIPMENT = {
     "barbell": "barbell",
@@ -104,6 +129,18 @@ ALIASES = {
 }
 
 
+def map_muscles(names, fed_id, skip=()):
+    """The source's muscle names as Tung muscle keys, in order, without repeats or anything in [skip]."""
+    out = []
+    for name in names or []:
+        if name not in MUSCLES:
+            sys.exit(f"{fed_id}: unknown muscle {name!r}; add it to MUSCLES")
+        key = MUSCLES[name]
+        if key not in out and key not in skip:
+            out.append(key)
+    return out
+
+
 def normalize(name):
     """Lowercase, hyphens to spaces, runs of whitespace to one space."""
     return " ".join(name.lower().replace("-", " ").split())
@@ -141,10 +178,13 @@ def main():
             dropped.append((fed_id, duplicate_of))
             continue
         primary = x.get("primaryMuscles") or []
+        primary_muscles = map_muscles(primary, fed_id)
         entries.append({
             "id": fed_id,
             "name": {"en": name},
             "muscleGroup": MUSCLE.get(primary[0], "fullbody") if primary else "fullbody",
+            "primaryMuscles": primary_muscles,
+            "secondaryMuscles": map_muscles(x.get("secondaryMuscles"), fed_id, skip=primary_muscles),
             "equipment": EQUIPMENT.get(x.get("equipment"), "other"),
             "instructions": [s.strip() for s in (x.get("instructions") or []) if s.strip()],
             "source": SOURCE,
@@ -168,6 +208,9 @@ def main():
     print(f"wrote {OUTPUT.relative_to(ROOT)}: {len(entries)} exercises")
     for field in ("muscleGroup", "equipment"):
         counts = collections.Counter(e[field] for e in entries)
+        print(f"by {field}: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))))
+    for field in ("primaryMuscles", "secondaryMuscles"):
+        counts = collections.Counter(m for e in entries for m in e[field])
         print(f"by {field}: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))))
 
 

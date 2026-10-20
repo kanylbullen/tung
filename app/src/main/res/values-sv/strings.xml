@@ -117,6 +117,11 @@
     <string name="exercises_create">Skapa övning</string>
     <string name="exercises_custom">Egen</string>
     <string name="picker_more">Fler övningar</string>
+    <string name="picker_suggested">Förslag</string>
+    <string name="picker_reason_often_after">Ofta efter %1$s</string>
+    <string name="picker_reason_pairs_with">Passar med %1$s</string>
+    <string name="picker_reason_not_yet_today">Inte tränat än i dag</string>
+    <string name="picker_reason_often_together">Ofta tillsammans</string>
     <string name="create_title">Skapa övning</string>
     <string name="create_name">Namn</string>
     <string name="create_muscle">Muskelgrupp</string>
@@ -133,6 +138,28 @@
     <string name="muscle_glutes">Säte</string>
     <string name="muscle_core">Bål</string>
     <string name="muscle_fullbody">Helkropp</string>
+    <!-- Muscles (core.Muscle), lower case: they are used inside sentences such as "Pairs with %1$s". -->
+    <string name="muscle_name_chest">bröst</string>
+    <string name="muscle_name_lats">lats</string>
+    <string name="muscle_name_upper_back">övre rygg</string>
+    <string name="muscle_name_lower_back">ländrygg</string>
+    <string name="muscle_name_traps">trapezius</string>
+    <string name="muscle_name_front_delts">främre axlar</string>
+    <string name="muscle_name_side_delts">sidoaxlar</string>
+    <string name="muscle_name_rear_delts">bakre axlar</string>
+    <string name="muscle_name_biceps">biceps</string>
+    <string name="muscle_name_triceps">triceps</string>
+    <string name="muscle_name_forearms">underarmar</string>
+    <string name="muscle_name_quads">framsida lår</string>
+    <string name="muscle_name_hamstrings">baksida lår</string>
+    <string name="muscle_name_glutes">säte</string>
+    <string name="muscle_name_calves">vader</string>
+    <string name="muscle_name_adductors">insida lår</string>
+    <string name="muscle_name_abductors">utsida höft</string>
+    <string name="muscle_name_abs">mage</string>
+    <string name="muscle_name_obliques">sneda magmuskler</string>
+    <string name="muscle_name_hip_flexors">höftböjare</string>
+    <string name="muscle_name_neck">nacke</string>
 
     <string name="equipment_barbell">Skivstång</string>
     <string name="equipment_dumbbell">Hantlar</string>
@@ -320,6 +347,7 @@
     <string name="ex_lat_pulldown">Latsdrag</string>
     <string name="ex_pull_up">Pull-ups</string>
     <string name="ex_seated_cable_row">Sittande kabelrodd</string>
+    <string name="ex_shrug">Shrugs</string>
     <string name="ex_t_bar_row">T-gripsrodd</string>
     <string name="ex_arnold_press">Arnoldpress</string>
     <string name="ex_dumbbell_shoulder_press">Axelpress med hantlar</string>
@@ -329,7 +357,6 @@
     <string name="ex_machine_shoulder_press">Axelpress i maskin</string>
     <string name="ex_overhead_press">Militärpress</string>
     <string name="ex_reverse_fly">Omvända flyes</string>
-    <string name="ex_shrug">Shrugs</string>
     <string name="ex_barbell_curl">Skivstångscurl</string>
     <string name="ex_cable_curl">Kabelcurl</string>
     <string name="ex_concentration_curl">Koncentrationscurl</string>

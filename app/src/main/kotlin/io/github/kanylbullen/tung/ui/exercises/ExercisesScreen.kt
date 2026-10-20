@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -56,12 +57,14 @@ import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.picker.SuggestionReason
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.displayName
 import io.github.kanylbullen.tung.ui.common.equipmentLabel
 import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.muscleGroupLabel
+import io.github.kanylbullen.tung.ui.common.muscleLabel
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -86,6 +89,9 @@ fun ExercisesScreen(
                 container.commands,
                 container.extendedCatalog,
                 workoutId,
+                container.workoutRepository,
+                container.catalogueMuscles,
+                now = { container.clock.millis() },
             ) {
                 it.displayName(appContext)
             }
@@ -124,6 +130,15 @@ fun ExercisesScreen(
         LazyColumn(contentPadding = padding, modifier = Modifier.fillMaxSize()) {
             item(key = "search") {
                 SearchField(query, vm::setQuery)
+            }
+            if (state.suggested.isNotEmpty()) {
+                item(key = "suggested") {
+                    SectionHeader(stringResource(R.string.picker_suggested))
+                }
+                // Keys of their own: the same exercise is also in its group below.
+                items(state.suggested, key = { "suggested-${it.exercise.exercise.id}" }) { suggestion ->
+                    SuggestionRow(suggestion, onClick = { vm.pick(suggestion.exercise.exercise.id, onPicked) })
+                }
             }
             if (!state.loading && state.isEmpty) {
                 item(key = "no-match") {
@@ -216,6 +231,33 @@ private fun ExerciseRow(exercise: NamedExercise, onClick: (() -> Unit)?) {
     }.joinToString(stringResource(R.string.row_separator))
     NameRow(exercise.displayName, detail, onClick)
 }
+
+/** A suggestion: the name, and under it why, muted. Tapping it is tapping the exercise's row in the list. */
+@Composable
+private fun SuggestionRow(suggestion: SuggestedExercise, onClick: () -> Unit) {
+    val reason = when (val r = suggestion.reason) {
+        is SuggestionReason.OftenAfter -> suggestion.afterName?.let { stringResource(R.string.picker_reason_often_after, it) }
+            ?: stringResource(R.string.picker_reason_often_together)
+        SuggestionReason.OftenTogether -> stringResource(R.string.picker_reason_often_together)
+        is SuggestionReason.PairsWith -> stringResource(R.string.picker_reason_pairs_with, muscleLabel(r.muscle))
+        SuggestionReason.NotYetToday -> stringResource(R.string.picker_reason_not_yet_today)
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .testTag(SUGGESTION_TAG),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(suggestion.exercise.displayName, style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
+        Text(reason, style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+    }
+}
+
+/** The semantics tag of a "Suggested" row; the flow tests read the rows in order by it. */
+const val SUGGESTION_TAG = "picker-suggestion"
 
 /** The extended list is not grouped, so the row names the muscle group as well as the equipment. */
 @Composable

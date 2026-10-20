@@ -63,12 +63,12 @@ Multiplatform; that is a later step if a non-JVM client ever needs it.
 What belongs there: pure functions and plain data shapes that are calculated
 the same on every client — volume, best set, records, pre-fill (`LoggedSet`,
 `isLogged`), routine targets and start sets (`Routines.kt`), the program day suggestion (`Programs.kt`), weight/reps parsing and formatting, diacritic-insensitive search,
-`MuscleGroup`/`Equipment`, the id helpers (`Ids.kt`), the rest timer and the
+`MuscleGroup`/`Equipment`, the finer `Muscle` list and `MuscleIndex` (`Muscles.kt`), the id helpers (`Ids.kt`), the rest timer and the
 current set (`RestTimer.kt`, `LogSet.kt`), and the catalogue models
 with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
 `ExtendedCatalog`/`ExtendedExercise` for `extended.json`, including the
 extended-catalogue search), the command surface (`core/command/`, see
-"Commands"), and the sync protocol with its pure rules (`core/sync/`, see
+"Commands"), the picker's suggestions (`core/picker/`, see "Smart picker"), and the sync protocol with its pure rules (`core/sync/`, see
 "Sync"). Core gets the catalogue as a `String` or an
 `InputStream`; where the bytes come from (APK assets, a file) is the caller's
 business. Room entities live in `data/` and map to core's shapes
@@ -90,7 +90,7 @@ databases. The packages are the ones the files had in `app/`:
 
 | Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
@@ -299,6 +299,25 @@ as data, and `SeedExercisesTest` (in `data`) compares `core.json` with the seed 
 English names are gym English (Lat pulldown, Skull crusher), not literal
 translations. A `key` never changes once it exists: it carries the exercise's id.
 
+### Muscles
+
+Each catalogue entry, core and extended, carries `primaryMuscles` (1–3) and
+`secondaryMuscles` (0–4) from a fixed list of 21 (`core.Muscle`: chest,
+lats, upper_back, lower_back, traps, front_delts, side_delts, rear_delts,
+biceps, triceps, forearms, quads, hamstrings, glutes, calves, adductors,
+abductors, abs, obliques, hip_flexors, neck), each in one `MuscleGroup`.
+**`muscleGroup` stays the display level and follows the first primary
+muscle**: `muscleGroup == MuscleGroup.of(primaryMuscles[0])`, except
+`fullbody`, which has no muscle of its own and which whole-body lifts keep
+(`muscleGroupMatches`; `CatalogTest` checks both files). The muscles live
+only in the catalogue files: no Room column, nothing synced. `MuscleIndex`
+(core, built from both files) answers `musclesOf(id, key or extended id)`;
+the app gets it from `container.catalogueMuscles.index()`, the server would
+build it from its classpath copies. free-exercise-db has one `shoulders`, so
+the import maps every one to `side_delts` (`catalog/README.md`); front and
+rear delts come only from `core.json`. Table and rules: `catalog/README.md`,
+"Muscles".
+
 ### The extended catalogue
 
 `catalog/extended.json` (~600 exercises, English only, from free-exercise-db
@@ -320,6 +339,36 @@ A set counts (`core.isLogged`) when it is ticked **and** has reps > 0.
 "Finish workout" deletes everything else, then exercises without sets, and a
 workout without a single counted set is deleted entirely instead of being
 saved empty.
+
+### Smart picker
+
+Opened from a workout that already has exercises, with the search empty, the
+picker shows **Suggested** first: up to six rows, each with a muted reason
+("Often after Barbell curl", "Pairs with biceps", "Not trained yet today",
+"Often together"), then the usual grouped list. Typing hides the section;
+a tap is the same `AddExercise` as a list row. The ranking is pure and lives
+in core, `core/picker/Suggestions.kt` (`suggest`), so a server or the watch
+can rank the same way; the app only feeds it (`ExercisesViewModel`). Two
+layers, with A the last exercise in the workout:
+
+- **Learned**, from the latest 60 finished workouts
+  (`WorkoutRepository.recentHistory`, `WorkoutDao.recentExerciseOrder`):
+  B right after A weighs 3, B in a workout with any exercise of this one
+  weighs 1, each times a recency factor from 1.0 (newest) down to 0.5 (60th).
+- **Heuristic**, always added at half weight, from the catalogue's muscles
+  (`container.catalogueMuscles`): +2 when B's first primary muscle
+  complements A's (biceps–triceps, chest–lats/upper back, quads–hamstrings,
+  front–rear delts, abs–lower back), +1 for a group not in the workout yet,
+  −2 for A's own main muscle, −1 for abs and obliques unless nothing else is
+  left. Exercises already in the workout are never suggested.
+
+**Hand-over:** once A has three observations (recent workouts with A and
+another exercise) the learned score is tripled, so the user's habits win;
+before that the heuristic separates what history does not. Each row's reason
+is the largest contribution; order is score, then name. **The learning is
+derived from history every time the picker opens and is never stored or
+synced**: no table, no column, nothing new in Private mode or on the server.
+The server has no `suggest_exercises` MCP tool yet.
 
 ## Commands
 

@@ -6,7 +6,8 @@ import kotlinx.serialization.json.Json
 /**
  * One entry in `catalog/core.json`, the curated core catalogue. [key] is the
  * stable key that carries the exercise's id ([catalogExerciseId]); [muscleGroup]
- * and [equipment] are [MuscleGroup] and [Equipment] keys.
+ * and [equipment] are [MuscleGroup] and [Equipment] keys, and the muscle lists
+ * hold [Muscle] keys (1–3 primary, 0–4 secondary; [MuscleIndex] reads them).
  */
 @Serializable
 data class CoreExercise(
@@ -15,6 +16,8 @@ data class CoreExercise(
     val name: Map<String, String>,
     val muscleGroup: String,
     val equipment: String,
+    val primaryMuscles: List<String> = emptyList(),
+    val secondaryMuscles: List<String> = emptyList(),
 )
 
 /** Parsing of `catalog/core.json`. The caller reads the file (an asset, a resource, a path) and hands over the text. */
