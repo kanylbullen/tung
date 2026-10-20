@@ -320,6 +320,7 @@
     <string name="ex_lat_pulldown">Latsdrag</string>
     <string name="ex_pull_up">Pull-ups</string>
     <string name="ex_seated_cable_row">Sittande kabelrodd</string>
+    <string name="ex_shrug">Shrugs</string>
     <string name="ex_t_bar_row">T-gripsrodd</string>
     <string name="ex_arnold_press">Arnoldpress</string>
     <string name="ex_dumbbell_shoulder_press">Axelpress med hantlar</string>
@@ -329,7 +330,6 @@
     <string name="ex_machine_shoulder_press">Axelpress i maskin</string>
     <string name="ex_overhead_press">Militärpress</string>
     <string name="ex_reverse_fly">Omvända flyes</string>
-    <string name="ex_shrug">Shrugs</string>
     <string name="ex_barbell_curl">Skivstångscurl</string>
     <string name="ex_cable_curl">Kabelcurl</string>
     <string name="ex_concentration_curl">Koncentrationscurl</string>

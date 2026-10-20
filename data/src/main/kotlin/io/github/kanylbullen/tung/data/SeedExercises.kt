@@ -55,6 +55,7 @@ internal object SeedExercises {
         SeedExercise("lat_pulldown", "Lat pulldown", BACK, CABLE),
         SeedExercise("pull_up", "Pull-up", BACK, BODYWEIGHT),
         SeedExercise("seated_cable_row", "Seated cable row", BACK, CABLE),
+        SeedExercise("shrug", "Shrug", BACK, DUMBBELL),
         SeedExercise("t_bar_row", "T-bar row", BACK, BARBELL),
 
         SeedExercise("arnold_press", "Arnold press", SHOULDERS, DUMBBELL),
@@ -65,7 +66,6 @@ internal object SeedExercises {
         SeedExercise("machine_shoulder_press", "Machine shoulder press", SHOULDERS, MACHINE),
         SeedExercise("overhead_press", "Overhead press", SHOULDERS, BARBELL),
         SeedExercise("reverse_fly", "Reverse fly", SHOULDERS, DUMBBELL),
-        SeedExercise("shrug", "Shrug", SHOULDERS, DUMBBELL),
 
         SeedExercise("barbell_curl", "Barbell curl", BICEPS, BARBELL),
         SeedExercise("cable_curl", "Cable curl", BICEPS, CABLE),

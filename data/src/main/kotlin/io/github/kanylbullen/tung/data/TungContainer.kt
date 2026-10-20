@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import io.github.kanylbullen.tung.core.CoreCatalog
+import io.github.kanylbullen.tung.core.CoreExercise
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.CommandHandler
@@ -68,11 +69,18 @@ class TungContainer(
     val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database.exerciseDao()) }
     val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog.fromAssets(this.context) }
 
-    /** The core catalogue's names in every language, by key, from `core.json`; read the first time a name is resolved. */
-    private val catalogueNames: Map<String, List<String>> by lazy {
+    /** `core.json` from the assets, read the first time a name is resolved or the muscles are needed. */
+    private val coreCatalog: List<CoreExercise> by lazy {
         this.context.assets.open(CORE_CATALOG_ASSET).use { CoreCatalog.parse(it.reader().readText()) }
-            .associate { it.key to it.name.values.toList() }
     }
+
+    /** The core catalogue's names in every language, by key. */
+    private val catalogueNames: Map<String, List<String>> by lazy {
+        coreCatalog.associate { it.key to it.name.values.toList() }
+    }
+
+    /** What each catalogue exercise trains (`core.MuscleIndex`), for the picker's suggestions. */
+    val catalogueMuscles: CatalogueMuscles by lazy { CatalogueMuscles({ coreCatalog }, extendedCatalog) }
 
     /**
      * Every change to training data goes through here: the screens' ViewModels
