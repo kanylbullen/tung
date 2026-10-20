@@ -37,8 +37,9 @@ the active workout's factory also passes `createSavedStateHandle()`, for the res
 
 ## Layers
 
-Two Gradle modules: `core/` (plain Kotlin on the JVM) and `app/` (Android),
-with `app` depending on `project(":core")`.
+Four Gradle modules: `core/` (plain Kotlin on the JVM) and `app/` (Android),
+with `app` depending on `project(":core")`, plus `wear/` and `server/`
+(sections "Wear" and "Server"), which depend on `core` too.
 
 ### `core/` — domain logic without Android
 
@@ -369,6 +370,57 @@ the next step).
 `core/.../core/wear/`; the phone's watch code only in `app/.../wear/` plus the
 service in the manifest and the two lines in `AppContainer`/`TungApp`. The
 watch never reaches Room or the server; everything goes through a command.
+
+## Server
+
+`server/` is the Gradle module for tung-server, the optional backend
+(`docs/architecture.md`, step 5). The app does not talk to it yet; sync is the
+next step. Package `io.github.kanylbullen.tung.server`, run with
+`./gradlew :server:run` (needs `DATABASE_URL`; see `server/README.md` for the
+environment), shipped as `server/Dockerfile` with `deploy/docker-compose.yml`.
+
+- **Stack:** Ktor 3.0.3 on Netty (content negotiation with kotlinx JSON,
+  bearer auth, call logging, status pages, CORS, rate limit, Swagger UI),
+  Exposed 0.56 DSL (not DAO) over HikariCP and Postgres 17, Flyway 10
+  migrations in `src/main/resources/db/migration/` run on start, Argon2id from
+  Bouncy Castle (pure Java, no native library in the image), logback.
+  Bytecode 17, run on JRE 21.
+- **Depends on `:core` and never on `:app`.** Domain rules come from core:
+  the catalogue (`CoreCatalog.parse` of `catalog/core.json`, copied into the
+  classpath as `/catalog/core.json` by `processResources`, so there is one
+  file), ids (`catalogExerciseId`), `isLogged` for finish, and
+  `core.command.validate` for weight, reps, rest and names, so the API accepts
+  exactly what a command does. Anything the server needs from the app moves
+  into core first.
+- **Data is keyed by `(user_id, id)`**, never `id` alone, with the client's
+  ids: one user can never write into another's rows, and another user's id is
+  a 404. Catalogue exercises have `user_id NULL`; a user's row with a
+  catalogue id is their copy (made when they set its rest time) and shadows
+  the catalogue for them. Every user table has `updated_at` and `deleted_at`.
+- **The row rule:** a write replaces a stored row only when its `updated_at`
+  is strictly newer; equal or older is ignored per row (`upsert … where
+  updated_at < incoming`). `PUT /api/v1/workouts/{id}` applies it to the
+  workout, each exercise and each set separately, and tombstones stored
+  children missing from the body only when they are older than the body's
+  workout `updated_at`. Deletes are tombstones, never `DELETE`. Server-made
+  changes (finish, delete, PATCH) stamp `max(now, stored + 1)`. Sync will
+  reuse exactly this rule; do not add a write path that bypasses it.
+- **Every route is in `src/main/resources/openapi/openapi.yaml`** (OpenAPI
+  3.1, hand-written, served at `/openapi.yaml` and as Swagger UI at `/docs`).
+  `OpenApiCoverageTest` walks the routing tree and fails on a route missing
+  from the spec or an operation the server lacks. Change the DTOs
+  (`Dto.kt`, snake_case on the wire through `ApiJson`) and the spec together.
+- **Errors** are thrown as `ApiException` (`badRequest`, `notFound`, …), never
+  responded by hand, so they come out as `{"error": {"code", "message"}}` and
+  StatusPages' handlers for Ktor's own 401/404/405/429 do not replace them.
+- **Tokens:** `tung_` + 32 random bytes, SHA-256 in `api_tokens`; sessions
+  are tokens named `session`. A `read` token gets 403 on anything but GET.
+  No OAuth or OIDC yet; OAuth 2.1 comes with MCP.
+- **Tests** (`./gradlew :server:test --no-daemon`) use a real Postgres from
+  Testcontainers, so they need Docker; `./gradlew test` includes them.
+  `server/build.gradle.kts` sets `api.version=1.44` for docker-java, because
+  Docker Engine 29 rejects the older API version Testcontainers 1.20 asks for.
+  Each test registers its own users instead of cleaning the database.
 
 ## Building
 

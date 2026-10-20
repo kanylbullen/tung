@@ -35,19 +35,39 @@ planned and described in detail in [`docs/architecture.md`](docs/architecture.md
 - 70 curated exercises seeded on first start.
 
 Stack: Kotlin, Jetpack Compose, Material 3, Room. minSdk 26, targetSdk 35.
-No backend, no analytics, no network permission.
+The app needs no backend and has no analytics and no network permission.
+
+### Server
+
+An optional server in [`server/`](server/README.md), not yet connected to
+the app:
+
+- Accounts with email and password, and API tokens (read or write) for
+  scripts and agents.
+- A REST API over exercises and workouts, with "last time" for any exercise
+  and a full JSON export. Every endpoint is in the OpenAPI spec, served with
+  Swagger UI at `/docs`; a test fails if a route is missing from it.
+- Self-hosting with one Docker image and Postgres: `docker compose up` in
+  [`deploy/`](deploy/README.md), backups with one `pg_dump` line.
+
+Stack: Kotlin, Ktor, Exposed, Postgres, sharing the domain code with the app
+through `core/`.
 
 ## Direction
 
-- **Open API.** Everything the app can do is available over HTTP with an
-  OpenAPI spec. No private endpoints.
+- **Sync.** The app points at any server URL, ours or your own, and syncs
+  row by row (newest write wins, deletions as tombstones). Without a server
+  it works exactly as today.
+- **The whole app as an API.** Every command the app's buttons use
+  (`core/command/`) exposed over HTTP under the same names, so everything the
+  app can do is in the OpenAPI spec. No private endpoints.
 - **MCP server** built into the same server binary, so the AI you already use
   (Claude, ChatGPT, a local model) can log a set, answer "what did I bench
   last time", and save a training programme it wrote for you from your own
   history. The programme goes through `save_routine`, which only accepts a
   structured plan validated against the catalogue.
-- **Self-hosting** with one Docker image and Postgres. Our hosted instance is
-  just one such installation; the app lets you point at any server URL.
+- **Our hosted instance**, the same image self-hosters run, with OAuth 2.1
+  for hosted assistants.
 - **Wear OS app** to start a session and enter sets from the wrist while the
   phone stays in the locker. The watch syncs with the phone using the same
   rules the phone uses with the server.
@@ -80,6 +100,11 @@ logic (volume, best set, records, pre-fill, weight parsing, search) lives in
 the Android-free `core/` module, and `test` runs its plain JVM tests together
 with the app's; reports land under `core/build/reports/tests/test/` and
 `app/build/reports/tests/`. CI runs the same command on every pull request.
+
+`test` also runs the server's tests, which start Postgres in Docker
+(Testcontainers); without Docker, add `-x :server:test`. The server alone:
+`./gradlew :server:test`, and its image: `docker build -f server/Dockerfile .`.
+See [`server/README.md`](server/README.md).
 
 If Gradle cannot reach Maven on a machine that prefers IPv6, add
 `-Djava.net.preferIPv4Stack=true` to `org.gradle.jvmargs` in
