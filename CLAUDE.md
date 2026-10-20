@@ -325,6 +325,51 @@ its signal to commands, never a new path into the database
   when a command has no name (the commands are nested in `Command` so it can
   list them with plain Java reflection).
 
+## Wear
+
+`wear/` is the Wear OS app (Compose for Wear OS 1.4, minSdk 30, Galaxy Watch 4
+and later). v0 mirrors the phone: the workout lives in the phone's Room
+database, the watch shows it and sends commands. Same `applicationId` as the
+phone (`io.github.kanylbullen.tung`; the Data Layer only pairs apps with the
+same id and signing key), its own namespace `io.github.kanylbullen.tung.wear`,
+`standalone = false`. Install and pairing: `wear/README.md`.
+
+**Protocol** (`core/.../core/wear/WatchProtocol.kt`, JSON, shared by both
+sides): the phone writes a `WatchWorkoutState` as the DataItem
+`/tung/active_workout`; the watch sends a `WatchCommand` as a message to
+`/tung/cmd`. State is a **DataItem** because the Data Layer syncs and keeps it:
+a watch that was out of range, or just started, reads the latest state with no
+request. Commands are **messages** because they are actions, not state: a
+DataItem would replay or coalesce them. Messages are not queued, so a failed
+send shows "Phone not reachable" and the watch keeps its optimistic change
+(`wear/.../Optimistic.kt`) until the phone's next state replaces it.
+
+**Phone side** (`app/.../wear/`): `WearSyncService` (a `WearableListenerService`,
+started by the system on a message) hands the JSON to `WearCommandHandler`,
+which applies it through `WorkoutRepository`/`RoutineRepository` and
+`RestTimerController`, checks every set id against the workout in progress and
+drops repeated `commandId`s, then publishes once. `WearStatePublisher` (in
+`AppContainer`, started from `TungApp.onCreate` when Play services is present)
+observes the active workout, its sets, the rest stored in DataStore and the
+routines, and writes the DataItem on change, debounced 100 ms and skipped when
+nothing changed. The watch's current-set selection is kept in the publisher
+(`WearSelectionHolder`), by `core.currentSet` and `nextCurrentAfterLogging`.
+
+**Limitations of v0.** The publisher only runs while the app's process does;
+the DataItem keeps the last state when Android kills it, and the service
+restarts the process for the next command. The workout screen's ViewModel
+does not see the watch: with the workout open on the phone, a set logged on
+the watch shows at once (Room), but the screen keeps its own rest countdown
+and current-set selection, and the watch does not see a selection made on the
+phone. Both go away when the screens and the watch share the command handler.
+No logging without the phone yet (the architecture's watch log with merge is
+the next step).
+
+**File boundaries.** Watch code only in `wear/`; the protocol only in
+`core/.../core/wear/`; the phone's watch code only in `app/.../wear/` plus the
+service in the manifest and the two lines in `AppContainer`/`TungApp`. The
+watch never reaches Room or the server; everything goes through a command.
+
 ## Building
 
 ```sh
