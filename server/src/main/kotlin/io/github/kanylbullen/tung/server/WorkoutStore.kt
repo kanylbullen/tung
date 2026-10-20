@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.isLogged
 import org.jetbrains.exposed.sql.ResultRow
@@ -75,7 +76,11 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
             if (unknown.isNotEmpty()) throw badRequest("Unknown exercise id: ${unknown.joinToString()}.", "unknown_exercise")
 
             val workoutUpdatedAt = input.updatedAt ?: now
-            Workouts.upsert(where = { Workouts.updatedAt less workoutUpdatedAt }) {
+            Workouts.upsert(
+                // started_by is set once: a body without it keeps the stored value.
+                onUpdateExclude = if (input.startedBy == null) listOf(Workouts.startedBy) else null,
+                where = { Workouts.updatedAt less workoutUpdatedAt },
+            ) {
                 it[Workouts.userId] = userId
                 it[Workouts.id] = id
                 it[startedAt] = input.startedAt
@@ -83,6 +88,7 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
                 it[note] = input.note
                 it[routineId] = input.routineId
                 it[programDayId] = input.programDayId
+                it[startedBy] = input.startedBy
                 it[updatedAt] = workoutUpdatedAt
                 it[deletedAt] = null
             }
@@ -259,6 +265,7 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
         input.updatedAt?.let { validTimestamp(it, "updated_at") }
         input.routineId?.let { requireUuid(it, "routine_id") }
         input.programDayId?.let { requireUuid(it, "program_day_id") }
+        input.startedBy?.let { if (it !in StartedBy.ALL) throw badRequest("started_by must be one of ${StartedBy.ALL.joinToString()}, got '$it'.") }
         if ((input.note?.length ?: 0) > MAX_NOTE) throw badRequest("note can be at most $MAX_NOTE characters.")
         if (input.exercises.size > MAX_EXERCISES_PER_WORKOUT) throw badRequest("A workout can have at most $MAX_EXERCISES_PER_WORKOUT exercises.")
         val seen = HashSet<String>()
@@ -370,6 +377,7 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
                 programDayId = it[Workouts.programDayId],
                 updatedAt = it[Workouts.updatedAt],
                 exercises = exercisesByWorkout[it[Workouts.id]].orEmpty(),
+                startedBy = it[Workouts.startedBy],
             )
         }
     }

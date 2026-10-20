@@ -1,5 +1,9 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.server.push.FCM_BASE_URL
+import io.github.kanylbullen.tung.server.push.FcmServiceAccount
+import java.io.File
+
 /** A configuration problem the operator has to fix; main prints the message and exits. */
 class ConfigException(message: String) : RuntimeException(message)
 
@@ -19,10 +23,17 @@ data class ServerConfig(
     val trustProxy: Boolean = false,
     /** Requests per minute and client address to register and login. */
     val authRequestsPerMinute: Int = DEFAULT_AUTH_REQUESTS_PER_MINUTE,
+    /** The Firebase service account for FCM push (`TUNG_FCM_SERVICE_ACCOUNT_JSON`); null turns FCM off. */
+    val fcmServiceAccount: FcmServiceAccount? = null,
+    /** FCM's API base. Not an environment variable: only tests point it elsewhere. */
+    val fcmBaseUrl: String = FCM_BASE_URL,
+    /** How long changes are collected before one push goes out per user. Not an environment variable: tests shorten it. */
+    val pushDebounceMillis: Long = DEFAULT_PUSH_DEBOUNCE_MILLIS,
 ) {
     companion object {
         const val DEFAULT_PORT = 8080
         const val DEFAULT_AUTH_REQUESTS_PER_MINUTE = 10
+        const val DEFAULT_PUSH_DEBOUNCE_MILLIS = 2_000L
 
         fun fromEnv(env: Map<String, String> = System.getenv()): ServerConfig {
             fun value(name: String): String? = env[name]?.trim()?.takeIf { it.isNotEmpty() }
@@ -50,7 +61,25 @@ data class ServerConfig(
                 port = port,
                 publicUrl = publicUrl,
                 trustProxy = trustProxy,
+                fcmServiceAccount = value(FCM_ENV)?.let(::fcmServiceAccount),
             )
+        }
+
+        private const val FCM_ENV = "TUNG_FCM_SERVICE_ACCOUNT_JSON"
+
+        /** [raw] is the JSON itself when it starts with `{`, else a path to the file. */
+        private fun fcmServiceAccount(raw: String): FcmServiceAccount {
+            if (raw.startsWith("{")) return FcmServiceAccount.parse(raw, FCM_ENV)
+            val file = File(raw)
+            val text = try {
+                file.readText()
+            } catch (e: Exception) {
+                throw ConfigException(
+                    "$FCM_ENV is '$raw', which cannot be read (${e.javaClass.simpleName}). " +
+                        "Set it to the path of the Firebase service-account JSON inside the container, or to the JSON itself.",
+                )
+            }
+            return FcmServiceAccount.parse(text, "$FCM_ENV ($raw)")
         }
     }
 }

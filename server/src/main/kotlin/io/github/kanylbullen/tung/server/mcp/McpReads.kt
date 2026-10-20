@@ -56,6 +56,7 @@ class McpReads(
                         put("ended_at", workout.endedAt)
                         put("routine_id", workout.routineId)
                         put("program_day_id", workout.programDayId)
+                        put("started_by", workout.startedBy)
                         workout.note?.let { put("note", it) }
                         putJsonArray("exercises") {
                             workout.exercises.forEach { exercise ->
@@ -137,6 +138,7 @@ class McpReads(
                 put("started_at", workout.startedAt)
                 put("routine_id", workout.routineId)
                 put("program_day_id", workout.programDayId)
+                put("started_by", workout.startedBy)
                 put("current_set_id", current)
                 putJsonArray("exercises") {
                     workout.exercises.forEach { exercise ->

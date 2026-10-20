@@ -10,8 +10,8 @@ API documentation is served by the server itself: Swagger UI at
 [`/docs`](http://localhost:8080/docs), the specification at
 [`/openapi.yaml`](http://localhost:8080/openapi.yaml) (source:
 [`src/main/resources/openapi/openapi.yaml`](src/main/resources/openapi/openapi.yaml)).
-Swagger UI loads its JavaScript from unpkg.com; the API itself makes no
-outbound calls.
+Swagger UI loads its JavaScript from unpkg.com; the only outbound calls the
+server makes are push notifications to your devices (see "Push").
 
 ## Run it
 
@@ -38,6 +38,7 @@ from [`catalog/core.json`](../catalog/core.json) on every start.
 | `DATABASE_PASSWORD` | | |
 | `PORT` | `8080` | |
 | `TUNG_PUBLIC_URL` | | The public base URL, e.g. `https://tung.example.org`, exactly as clients reach it (scheme, host, port, no trailing slash). It is the OAuth issuer and the base of every OAuth and MCP URL, and is named as the server in `/openapi.yaml`. Set it whenever the server is used beyond localhost; see "MCP". |
+| `TUNG_FCM_SERVICE_ACCOUNT_JSON` | | A Firebase service-account key for FCM push: the path to the JSON file (inside the container) or the JSON itself (starting with `{`). Empty: FCM push is off. An unreadable or invalid key stops the server at start. See "Push". |
 | `TUNG_TRUST_PROXY` | `false` | `true` behind a reverse proxy that sets `X-Forwarded-For`/`Forwarded`, so the rate limit and the log see the client. Leave `false` when clients reach the server directly, or they can spoof their address. |
 
 ## API
@@ -60,6 +61,7 @@ caller's own: another user's ids answer 404.
 | `GET/PUT/DELETE /api/v1/workouts/{id}` | `PUT` is a full nested upsert by the client's ids. |
 | `POST /api/v1/workouts/{id}/finish` | Drops unlogged sets, as the app does. |
 | `POST /api/v1/sync` | Push changed rows, pull everything changed since your cursor. See "Sync". |
+| `GET/POST /api/v1/push/endpoints`, `DELETE /api/v1/push/endpoints/{id}` | Where the server wakes a device when another client changes your data. See "Push". |
 | `GET /api/v1/export` | Everything you have (exercises, workouts, routines, programs), as one JSON attachment. |
 | `POST /api/v1/commands/{name}` | Runs a command from core by its wire name (`start_workout`, `log_set`, `apply_plan`, `save_routine_plan`, …), the same ones the app's buttons and the MCP tools use. See "Commands". |
 | `/.well-known/oauth-*`, `/oauth/*` | The OAuth 2.1 authorization server for MCP clients. See "MCP". |
@@ -132,6 +134,10 @@ The answer has the same shape: `{"cursor": …, "changes": {…}}`.
   exist at the end fails the whole request with 409 `missing_parent`, naming
   the rows. A live child of a tombstoned parent is fine: the parent row still
   exists.
+- **`started_by`** on a workout says who started it: `phone`, `watch`,
+  `agent` (a REST command or an MCP tool; the server stamps it) or `server`
+  (reserved), null when unknown. It is set when the workout is made and never
+  changed: a newer row that carries null keeps the stored value.
 - **The catalogue is never written.** An exercise row with a catalogue id is
   your own copy of it (for its rest time) and takes only `rest_seconds` from
   the client, like `PATCH /exercises/{id}`.
@@ -226,6 +232,53 @@ back as a question with suggestions, never a guess.
 `next_workout()` and `plateaus()`: each tells the assistant to read your
 history first, to answer in your language, and to save a routine only after
 you confirm. **Resource:** `tung://catalog/core`, the core catalogue.
+
+## Push
+
+A workout an assistant starts through MCP should be on your phone now, not
+at its next 15-minute sync. So after every change to your training data
+(a sync that pushed rows, a command, an MCP tool that writes, the REST
+writes), the server sends your **other** devices an empty "sync now",
+`{"type":"sync"}`, and they sync to see what changed. Never content, so
+nothing about your training passes through Google or a push distributor.
+
+Two transports; the app picks one per device and registers it:
+
+- **UnifiedPush** needs nothing on the server. The device's distributor
+  (ntfy is the usual one, and self-hostable) gives it a URL, the app
+  registers that URL, and the server POSTs to it. The server must be able to
+  reach the URL: `https://`, or `http://` only to localhost or a private IP
+  address (a distributor on your home network).
+- **FCM** needs a Firebase project. Create one, download a service-account
+  key (Project settings, Service accounts, Generate new private key), and set
+  `TUNG_FCM_SERVICE_ACCOUNT_JSON` to the path of that file inside the
+  container or to its JSON. The app build must carry the `google-services.json`
+  of the same Firebase project.
+  Without the variable FCM is off: the server says so once at start, keeps
+  devices' FCM registrations and sends them nothing.
+
+With neither, nothing changes: devices sync every 15 minutes and when the
+app opens, as before.
+
+**Endpoints API.** `POST /api/v1/push/endpoints {device_id, transport,
+endpoint}` (write token) registers a device: `transport` is `fcm` (endpoint
+= the registration token) or `unifiedpush` (endpoint = the distributor's
+URL). One endpoint per `device_id`: registering again replaces it in place
+and keeps its id (200; new devices get 201). `GET` lists your active
+endpoints, `DELETE /api/v1/push/endpoints/{id}` revokes one. At most 20 per
+user. A client sends its own `device_id` as the `X-Tung-Device` header with
+its writes, so it is not woken by its own change; a request without the
+header (a script, an MCP client) counts as a client of its own, and every
+device is woken.
+
+**Rules.** Pushes are debounced 2 s per user: the first change opens the
+window, the rest fold into it, and one push per device goes out when it
+closes, skipping only a device that made every change in it. A pull-only
+sync wakes nobody. An endpoint that answers 404 or 410 (FCM: `UNREGISTERED`)
+is revoked; any other failure is logged at warn (endpoint id, transport and
+host only, never the URL or token) and dropped, never retried. One push per
+endpoint is in flight at a time; the timeout is 5 s. Endpoints live in
+`push_endpoints` (migration V6).
 
 ## Not in v0
 

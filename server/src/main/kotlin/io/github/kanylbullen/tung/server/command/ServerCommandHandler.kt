@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.server.command
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.clampTargetSets
 import io.github.kanylbullen.tung.core.command.Command
@@ -48,6 +49,7 @@ import io.github.kanylbullen.tung.server.WorkoutExercises
 import io.github.kanylbullen.tung.server.WorkoutStore
 import io.github.kanylbullen.tung.server.Workouts
 import io.github.kanylbullen.tung.server.lockUser
+import io.github.kanylbullen.tung.server.push.ChangeNotifier
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.CustomFunction
 import org.jetbrains.exposed.sql.Expression
@@ -78,8 +80,11 @@ class CommandService(
     private val exercises: ExerciseStore,
     private val workouts: WorkoutStore,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val notifier: ChangeNotifier = ChangeNotifier.NONE,
 ) {
-    fun handlerFor(userId: String): ServerCommandHandler = ServerCommandHandler(db, userId, catalogue, exercises, workouts, clock)
+    /** [sourceDeviceId] is the calling client's device id (push skips it), null for a client without one, as every MCP client. */
+    fun handlerFor(userId: String, sourceDeviceId: String? = null): ServerCommandHandler =
+        ServerCommandHandler(db, userId, catalogue, exercises, workouts, clock, notifier, sourceDeviceId)
 
     fun resolverFor(userId: String): ServerExerciseResolver = ServerExerciseResolver(userId, catalogue)
 }
@@ -106,13 +111,15 @@ class ServerCommandHandler(
     private val exercises: ExerciseStore,
     private val workouts: WorkoutStore,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val notifier: ChangeNotifier = ChangeNotifier.NONE,
+    private val sourceDeviceId: String? = null,
 ) : CommandHandler {
 
     val resolver = ServerExerciseResolver(userId, catalogue)
 
     override suspend fun execute(command: Command): CommandResult {
         (validate(command) as? Validation.Invalid)?.let { return Rejected(it.reasons) }
-        return try {
+        val result = try {
             db.suspendingTx {
                 lockUser(userId)
                 val result = perform(command, clock())
@@ -123,6 +130,9 @@ class ServerCommandHandler(
         } catch (e: ApiException) {
             Rejected(listOf(e.message))
         }
+        // After the commit: push the change to the user's other devices. select_current only answers ids and writes nothing.
+        if (result is Done && command !is Command.SelectCurrent) notifier.changed(userId, sourceDeviceId)
+        return result
     }
 
     private suspend fun Transaction.perform(command: Command, now: Long): CommandResult {
@@ -546,6 +556,8 @@ class ServerCommandHandler(
             it[note] = null
             it[Workouts.routineId] = routineId
             it[Workouts.programDayId] = programDayId
+            // Every server command is a REST command or an MCP tool: an assistant or a script.
+            it[startedBy] = StartedBy.AGENT
             it[updatedAt] = now
         }
         return id
