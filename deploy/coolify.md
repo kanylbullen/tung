@@ -106,7 +106,10 @@ TUNG_FCM_SERVICE_ACCOUNT_JSON=                # later, when the Firebase project
    account on the server (ops), Android app `io.github.kanylbullen.tung`
    registered through the Firebase Management API and `google-services.json`
    placed in `app/` and `wear/` (git-ignored) and stored as the repository
-   secret `GOOGLE_SERVICES_JSON` for CI (Claude).
+   secret `GOOGLE_SERVICES_JSON` for CI (Claude). **Push verified end to end
+   2026-10-20:** the phone shows "Push: FCM"; a set added through MCP on the
+   public server reached the phone's open workout screen within 15 s without
+   reopening the app (server `push_endpoints.last_used_at` set, phone synced).
 
 6. **Coolify API token expiry.** `COOLIFY1_ROOT_API_TOKEN` in Phase has expired
    once before after 30 days. If Claude reports `401` from the API, create a
