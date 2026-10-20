@@ -40,10 +40,21 @@ TUNG_FCM_SERVICE_ACCOUNT_JSON=                # later, when the Firebase project
       `/.well-known/oauth-authorization-server` verified on the LAN
       (2026-10-20: `running:healthy`, schema v7, issuer `https://tung.xuper.fun`;
       reached through Traefik on `192.168.12.155` with the app's `Host` header).
-- [ ] After the hostname exists: point the phone at `https://tung.xuper.fun`,
-      remove the temporary devserver stack and the localhost SSH tunnel,
-      re-add the MCP server in Claude Code with the public URL, and test the
-      OAuth flow end to end.
+- [x] Public hostname live (ops, 2026-10-20): `https://tung.xuper.fun` through
+      Cloudflare; `/healthz`, OAuth metadata and the `/mcp` challenge verified.
+      The full OAuth 2.1 code flow with PKCE (register → authorize form →
+      token → `initialize` → `tools/list` → `current_workout`) passes from a
+      script. Note: Cloudflare returns 403 to python-urllib's default
+      `User-Agent`; real clients and curl are fine.
+- [x] MCP server re-added in Claude Code on the owner's machine with the
+      public URL (`claude mcp add --transport http tung https://tung.xuper.fun/mcp`);
+      the browser authentication step is the owner's.
+- [x] Devserver stack stopped (`docker compose down`, volume kept; a
+      `pg_dump` of its 1 user / 2 workouts is in `/home/xup/tung-backups/`),
+      localhost SSH tunnel closed.
+- [ ] Phone pointed at the public server: the phone was off USB at the time;
+      sign in once in Settings with the test account (or your own) against
+      `https://tung.xuper.fun`.
 - [ ] Nightly backup schedule in Coolify once the S3 target exists, and one
       rehearsed restore into a scratch database.
 
