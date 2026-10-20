@@ -27,6 +27,7 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
+import io.github.kanylbullen.tung.server.routes.linkRoutes
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
 import io.github.kanylbullen.tung.core.sync.SyncRequest
 import io.ktor.server.request.receiveChannel
@@ -80,6 +81,7 @@ fun Route.apiRoutes(
     swaggerUI(path = "docs", swaggerFile = "openapi/openapi.yaml")
 
     route("/api/v1") {
+        linkRoutes(db, accounts)
         rateLimit(AUTH_RATE_LIMIT) {
             post("/auth/register") { call.respond(HttpStatusCode.Created, accounts.register(call.receive())) }
             post("/auth/login") { call.respond(accounts.login(call.receive())) }

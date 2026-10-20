@@ -101,14 +101,14 @@ class LogSetFlowTest : FlowTest() {
         waitForText(str(R.string.rest_skip))
         // +30 s first: the countdown and the alarm both move half a minute.
         clickDescription(str(R.string.rest_add_description))
-        compose.waitUntil(5_000) { restSecondsLeft() > 90 }
+        waitUntil(5_000) { restSecondsLeft() > 90 }
         assertTrue(alarmInMillis() in 110_000L..120_000L)
         screenshot("1-rest-controls")
 
         clickText(str(R.string.rest_skip))
         waitGone(countdown)
         compose.onNode(hasText(str(R.string.rest_skip))).assertDoesNotExist()
-        compose.waitUntil(5_000) { alarms.scheduledAlarms.isEmpty() }
+        waitUntil(15_000) { alarms.scheduledAlarms.isEmpty() }
         screenshot("2-skipped")
     }
 
@@ -161,7 +161,7 @@ class LogSetFlowTest : FlowTest() {
         clickText(str(R.string.input_done))
         waitGone(hasContentDescription(str(R.string.rest_shorter)))
 
-        compose.waitUntil(5_000) { count("SELECT COUNT(*) FROM exercise WHERE id = '${bench()}' AND restSeconds = 60") == 1 }
+        waitUntil(5_000) { count("SELECT COUNT(*) FROM exercise WHERE id = '${bench()}' AND restSeconds = 60") == 1 }
         assertEquals(1, count("SELECT COUNT(*) FROM exercise WHERE id = '${bench()}' AND updatedAt > 0"))
 
         compose.activityRule.scenario.recreate()

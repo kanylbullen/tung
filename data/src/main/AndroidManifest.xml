@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- The end of a rest with the app in the background (timer/RestAlarm.kt), in both apps. -->
+        <receiver
+            android:name="io.github.kanylbullen.tung.timer.RestTimerReceiver"
+            android:exported="false" />
+    </application>
+
+</manifest>

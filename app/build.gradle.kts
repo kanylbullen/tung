@@ -3,7 +3,6 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
-    id("com.google.devtools.ksp")
 }
 
 android {
@@ -42,17 +41,12 @@ android {
 
     sourceSets.getByName("main") {
         java.srcDir("src/main/kotlin")
-        // catalog/core.json and catalog/extended.json ship as assets, read straight from the repo.
-        assets.srcDirs("../catalog")
+        // catalog/core.json and catalog/extended.json come as assets of the data module (data/).
     }
 
     androidResources {
         // res/xml/locales_config.xml is maintained by hand and referenced from the manifest.
         generateLocaleConfig = false
-        // AGP's default pattern, plus what in catalog/ is not data: the tools, the README and
-        // the CC0 text. Assets have no per-directory exclude, so this pattern is the filter.
-        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~" +
-            ":!<dir>tools:!README.md:!LICENSE"
     }
     sourceSets.getByName("test") {
         java.srcDir("src/test/kotlin")
@@ -63,10 +57,6 @@ android {
         // which needs the merged resources, assets and manifest.
         unitTests.isIncludeAndroidResources = true
     }
-}
-
-ksp {
-    arg("room.generateKotlin", "true")
 }
 
 /**
@@ -92,6 +82,8 @@ tasks.withType<Test>().configureEach {
 
 dependencies {
     implementation(project(":core"))
+    // Room, the repositories, the CommandHandler, sync and the rest timer, shared with wear/.
+    implementation(project(":data"))
 
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
@@ -117,19 +109,10 @@ dependencies {
     // The Wearable Data Layer to the watch app in wear/ (wear/WearSyncService.kt).
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
 
-    // Sync with tung-server (sync/): Ktor client on OkHttp, kotlinx JSON, WorkManager for the
-    // background sync, the session token in EncryptedSharedPreferences, and the process
-    // lifecycle for "sync when the app comes to the foreground".
-    implementation("io.ktor:ktor-client-okhttp:3.0.3")
-    implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
+    // Sync itself is in data/; the app keeps WorkManager (TungApp is its Configuration.Provider)
+    // and the process lifecycle for "sync when the app comes to the foreground".
     implementation("androidx.work:work-runtime-ktx:2.10.0")
-    implementation("androidx.security:security-crypto:1.0.0")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
-
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
@@ -139,6 +122,7 @@ dependencies {
     // The fake tung-server of the sync tests (SyncClientTest, SyncFlowTest): a real HTTP
     // server in the test JVM, so the production OkHttp engine is what gets exercised.
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation(testFixtures(project(":data")))
     testImplementation("androidx.work:work-testing:2.10.0")
     // Registers the empty activity that createComposeRule() hosts content in.
     debugImplementation("androidx.compose.ui:ui-test-manifest")

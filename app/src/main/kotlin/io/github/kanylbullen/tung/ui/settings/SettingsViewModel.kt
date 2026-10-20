@@ -9,6 +9,9 @@ import io.github.kanylbullen.tung.core.sync.checkServerUrl
 import io.github.kanylbullen.tung.sync.AccountState
 import io.github.kanylbullen.tung.sync.AuthFailure
 import io.github.kanylbullen.tung.sync.AuthResult
+import io.github.kanylbullen.tung.sync.LinkCode
+import io.github.kanylbullen.tung.sync.LinkFailure
+import io.github.kanylbullen.tung.sync.LinkStartResult
 import io.github.kanylbullen.tung.sync.SyncAccount
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,10 +31,21 @@ data class SignInForm(
     @StringRes val error: Int? = null,
 )
 
+/**
+ * "Link a watch": the code from the server while it is shown, and why there
+ * is none. [error] is a string resource.
+ */
+data class WatchLinkState(
+    val code: LinkCode? = null,
+    val busy: Boolean = false,
+    @StringRes val error: Int? = null,
+)
+
 data class SettingsUiState(
     /** Null until the account has been read. */
     val account: AccountState? = null,
     val form: SignInForm = SignInForm(),
+    val watchLink: WatchLinkState = WatchLinkState(),
 )
 
 /**
@@ -41,8 +55,9 @@ data class SettingsUiState(
 class SettingsViewModel(private val account: SyncAccount) : ViewModel() {
 
     private val form = MutableStateFlow(SignInForm())
+    private val watchLink = MutableStateFlow(WatchLinkState())
 
-    val state: StateFlow<SettingsUiState> = combine(account.state, form) { a, f -> SettingsUiState(a, f) }
+    val state: StateFlow<SettingsUiState> = combine(account.state, form, watchLink) { a, f, w -> SettingsUiState(a, f, w) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     init {
@@ -91,6 +106,35 @@ class SettingsViewModel(private val account: SyncAccount) : ViewModel() {
 
     fun syncNow() {
         viewModelScope.launch { account.syncNow() }
+    }
+
+    /**
+     * Asks the server for a link code (`POST /api/v1/link/start`) that the
+     * watch trades for its own token; the screen shows it until it expires.
+     */
+    fun linkWatch() {
+        if (watchLink.value.busy) return
+        watchLink.value = WatchLinkState(busy = true)
+        viewModelScope.launch {
+            watchLink.value = when (val result = account.startLink()) {
+                is LinkStartResult.Success -> WatchLinkState(code = result.code)
+                is LinkStartResult.Failed -> WatchLinkState(error = linkMessage(result.failure))
+            }
+        }
+    }
+
+    /** Hides the code (the watch is linked, or the user changed their mind). */
+    fun closeWatchLink() {
+        watchLink.value = WatchLinkState()
+    }
+
+    @StringRes
+    private fun linkMessage(failure: LinkFailure): Int = when (failure) {
+        LinkFailure.NETWORK -> R.string.sync_error_unreachable
+        LinkFailure.RATE_LIMITED -> R.string.sync_error_rate_limited
+        LinkFailure.NOT_A_SERVER -> R.string.link_watch_error_old_server
+        LinkFailure.SIGNED_OUT, LinkFailure.NOT_SIGNED_IN -> R.string.sync_error_signed_out
+        LinkFailure.INVALID_CODE, LinkFailure.SERVER -> R.string.sync_error_server_auth
     }
 
     @StringRes

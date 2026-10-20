@@ -52,6 +52,7 @@ caller's own: another user's ids answer 404.
 | `POST /api/v1/auth/logout` | Revokes the token used. |
 | `GET /api/v1/me` | |
 | `GET/POST /api/v1/tokens`, `DELETE /api/v1/tokens/{id}` | List, create (`{name, scope}`, scope `read` or `write`) and revoke API tokens. |
+| `POST /api/v1/link/start`, `POST /api/v1/link/claim` | Sign a watch in with a six-digit code instead of a password. See "Linking a device". |
 | `GET/POST /api/v1/exercises`, `PATCH /api/v1/exercises/{id}` | The catalogue plus your own; create custom ones; rename yours, set the rest time of any. |
 | `GET /api/v1/exercises/{id}/last` | Last time: the previous finished session's sets for that exercise. |
 | `GET /api/v1/workouts?limit&before` | Newest first, exercises and sets nested. |
@@ -67,6 +68,18 @@ only as a SHA-256. A `read` token can only make GET requests. Passwords are
 hashed with Argon2id (Bouncy Castle; 19 MiB, 2 iterations). There is no OIDC
 and no OAuth yet: OAuth 2.1 arrives with the MCP server, which hosted
 assistants need.
+
+**Linking a device.** A watch cannot reasonably take an email and a
+password, so a signed-in device (the phone's Settings, "Link a watch") calls
+`POST /api/v1/link/start` with a `write` token and shows the six-digit code it
+gets, valid for ten minutes. The watch sends it to `POST /api/v1/link/claim
+{code}`, which needs no token, and receives `{token, user}`: a new `write`
+token named `watch`, revocable like any other under `/api/v1/tokens`. A code
+works once; an unknown, expired or used code is 404 `invalid_code`. Codes are
+limited to 5 a minute per user, claims to 10 a minute per client address
+(counted in the process, in `routes/LinkRoutes.kt`), and live in
+`link_codes` (migration V4), where expired rows are deleted as new codes are
+made.
 
 **Writes go by `updated_at`.** Training data keeps the ids the client
 generated. Every row (workout, workout exercise, set) carries `updated_at`,

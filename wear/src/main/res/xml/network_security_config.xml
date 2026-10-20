@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The watch talks to one host when it runs standalone: the tung-server it was
+  linked to (Settings, "Link to a server"),
+  over HTTPS with the system's CAs (no user-added CAs, no pinning).
+
+  Plain http is meant only for localhost and the local network, so a home-lab
+  server works without a certificate. A network security config cannot say
+  that: its domain entries are exact names, with no IP ranges, so it cannot
+  allow 192.168.0.0/16 and refuse the rest. Cleartext is therefore permitted
+  here, and the gate is in code: core.sync.checkServerUrl refuses http:// to
+  anything but localhost or a loopback, link-local or private IP literal, a
+  host name always needs https, and the app makes no other requests.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

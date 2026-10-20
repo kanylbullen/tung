@@ -1,7 +1,7 @@
 package io.github.kanylbullen.tung.flows
 
-import io.github.kanylbullen.tung.AppContainer
 import io.github.kanylbullen.tung.TungApp
+import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.sync.MemoryTokenStore
 import java.time.Clock
@@ -29,8 +29,8 @@ class FlowTestApp : TungApp() {
 
     val tokens = MemoryTokenStore()
 
-    override fun createContainer(): AppContainer =
-        AppContainer(this, clock = SettableClock(), createDatabase = { database }, createTokenStore = { tokens })
+    override fun createContainer(): TungContainer =
+        TungContainer(this, clock = SettableClock(), createDatabase = { database }, createTokenStore = { tokens })
 
     /** Every read goes to [today], so a test can change it after the container exists. */
     private inner class SettableClock : Clock() {

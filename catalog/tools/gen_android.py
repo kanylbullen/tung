@@ -3,16 +3,20 @@
 
 catalog/core.json is the source of truth. This script writes:
 
-  app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt
-  app/src/main/res/values/strings.xml          (en, only between the catalog markers)
-  app/src/main/res/values-<lang>/strings.xml   (<lang>, only between the catalog markers)
+  data/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt
+  <app>/src/main/res/values/strings.xml          (en, only between the catalog markers)
+  <app>/src/main/res/values-<lang>/strings.xml   (<lang>, only between the catalog markers)
+
+for each <app> in APPS: the phone app (app/) and the watch app (wear/), which
+both show exercise names from their own resources. The seed list is in the
+shared data module (data/), where the database is.
 
 English is the default locale and the fallback: every entry needs name.en, and
 SeedExercises.kt stores the English name in `name`, which the app shows when no
 `ex_<key>` resource matches. Today the only translation is values-sv.
 
 A translation takes part when its values-<lang>/strings.xml contains the catalog
-markers; <lang> is the directory qualifier and the key in `name`. Entries without
+markers (per app); <lang> is the directory qualifier and the key in `name`. Entries without
 name.<lang> are left out of that file, so Android falls back to English for them.
 
 Run it from anywhere:  python3 -I catalog/tools/gen_android.py
@@ -26,8 +30,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / "catalog" / "core.json"
-KOTLIN = ROOT / "app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt"
-RES = ROOT / "app/src/main/res"
+KOTLIN = ROOT / "data/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt"
+# The apps whose strings.xml carry the ex_* block; each has values/ with the markers.
+APPS = ["app", "wear"]
 
 # Same order as core/src/main/kotlin/io/github/kanylbullen/tung/core/Catalog.kt;
 # the muscle-group order is the order in the Kotlin list.
@@ -41,10 +46,10 @@ END = "<!-- catalog:end -->"
 HEADER = "Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py."
 
 
-def string_files():
+def string_files(res):
     """values/strings.xml is the default language; each values-<lang>/strings.xml with the markers is <lang>."""
-    files = {DEFAULT_LANGUAGE: RES / "values" / "strings.xml"}
-    for directory in sorted(RES.glob("values-*")):
+    files = {DEFAULT_LANGUAGE: res / "values" / "strings.xml"}
+    for directory in sorted(res.glob("values-*")):
         path = directory / "strings.xml"
         if not path.is_file() or BEGIN not in path.read_text(encoding="utf-8"):
             continue
@@ -161,8 +166,9 @@ def main():
     check = "--check" in sys.argv[1:]
     entries = load_core()
     outputs = {KOTLIN: render_kotlin(entries)}
-    for lang, path in string_files().items():
-        outputs[path] = render_strings(path.read_text(encoding="utf-8"), entries, lang, path)
+    for app in APPS:
+        for lang, path in string_files(ROOT / app / "src/main/res").items():
+            outputs[path] = render_strings(path.read_text(encoding="utf-8"), entries, lang, path)
     stale = []
     for path, content in outputs.items():
         current = path.read_text(encoding="utf-8") if path.exists() else None

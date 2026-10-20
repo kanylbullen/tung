@@ -12,18 +12,27 @@ import androidx.wear.compose.material.CircularProgressIndicator
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+import androidx.navigation.NavHostController
+import io.github.kanylbullen.tung.wear.AccountUi
+import io.github.kanylbullen.tung.wear.AccountViewModel
 import io.github.kanylbullen.tung.wear.AdjustField
+import io.github.kanylbullen.tung.wear.WatchMode
 import io.github.kanylbullen.tung.wear.WatchViewModel
 import kotlin.math.roundToInt
 
 private const val MAIN = "main"
 private const val ADJUST = "adjust/{field}/{setId}"
+private const val SETTINGS = "settings"
+private const val SERVERS = "servers"
+private const val LINK = "link"
 
 private fun adjustRoute(field: AdjustField, setId: String) = "adjust/${field.name}/$setId"
 
 @Composable
-fun WatchApp(viewModel: WatchViewModel) {
+fun WatchApp(viewModel: WatchViewModel, accountViewModel: AccountViewModel) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val account by accountViewModel.ui.collectAsStateWithLifecycle()
+    val link by accountViewModel.link.collectAsStateWithLifecycle()
     val navController = rememberSwipeDismissableNavController()
 
     SwipeDismissableNavHost(navController = navController, startDestination = MAIN) {
@@ -35,10 +44,12 @@ fun WatchApp(viewModel: WatchViewModel) {
                 }
                 state == null || !state.isActive -> StartScreen(
                     routines = state?.routines.orEmpty(),
+                    standalone = ui.mode == WatchMode.STANDALONE,
                     neverHeardFromPhone = state == null,
                     phoneUnreachable = ui.phoneUnreachable,
                     onStartWorkout = viewModel::startWorkout,
                     onStartRoutine = viewModel::startRoutine,
+                    onSettings = { navController.navigate(SETTINGS) },
                 )
                 else -> WorkoutScreen(
                     state = state,
@@ -49,11 +60,36 @@ fun WatchApp(viewModel: WatchViewModel) {
                     onFinish = viewModel::finishWorkout,
                     onSkipRest = viewModel::skipRest,
                     onAddRest = viewModel::addRest,
-                    claimRestBuzz = { endsAt ->
-                        (viewModel.lastBuzzedRestEnd != endsAt).also { viewModel.lastBuzzedRestEnd = endsAt }
-                    },
+                    claimRestBuzz = viewModel::claimRestBuzz,
                 )
             }
+        }
+        composable(SETTINGS) {
+            SettingsScreen(
+                ui = account,
+                onSyncNow = accountViewModel::syncNow,
+                onSignOut = accountViewModel::signOut,
+                onLinkTo = { server ->
+                    accountViewModel.beginLink(server)
+                    navController.navigate(LINK)
+                },
+                onChooseServer = { navController.navigate(SERVERS) },
+            )
+        }
+        composable(SERVERS) {
+            ServerRoute(navController, account, accountViewModel)
+        }
+        composable(LINK) {
+            if (link.linked) {
+                // Signed in: the watch is standalone now; back to its own start screen.
+                LaunchedEffect(Unit) { navController.popBackStack(MAIN, inclusive = false) }
+            }
+            LinkCodeScreen(
+                link = link,
+                onDigit = accountViewModel::type,
+                onDelete = accountViewModel::delete,
+                onSubmit = accountViewModel::submit,
+            )
         }
         composable(ADJUST) { entry ->
             val field = entry.arguments?.getString("field")?.let { name -> AdjustField.entries.firstOrNull { it.name == name } }
@@ -77,4 +113,19 @@ fun WatchApp(viewModel: WatchViewModel) {
             )
         }
     }
+}
+
+/** The server list; picking or typing one goes on to the code. */
+@Composable
+private fun ServerRoute(navController: NavHostController, account: AccountUi, accountViewModel: AccountViewModel) {
+    ServerScreen(
+        ui = account,
+        onPick = { server ->
+            accountViewModel.beginLink(server)
+            navController.navigate(LINK)
+        },
+        onTyped = { text ->
+            accountViewModel.beginLinkTyped(text).also { error -> if (error == null) navController.navigate(LINK) }
+        },
+    )
 }

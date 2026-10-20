@@ -7,7 +7,7 @@ import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.test.core.app.ApplicationProvider
 import io.github.kanylbullen.tung.MainActivity
-import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.data.R
 import io.github.kanylbullen.tung.TungApp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
