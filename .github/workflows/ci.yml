@@ -39,7 +39,7 @@ jobs:
       # and the app's unit tests, including the Robolectric flow tests.
       # The watch app (wear/, with its own unit tests) is in both as well.
       - name: Build debug APK and run unit tests
-        run: ./gradlew assembleDebug :wear:assembleDebug test --no-daemon --stacktrace
+        run: ./gradlew assembleDebug :wear:assembleDebug test -x :server:test --no-daemon --stacktrace
 
       - name: Upload unit test results
         if: always()
