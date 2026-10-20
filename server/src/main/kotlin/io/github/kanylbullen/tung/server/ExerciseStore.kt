@@ -80,20 +80,43 @@ class ExerciseStore(private val db: Db) {
                 .where { (Exercises.id eq id) and (Exercises.userId.isNull() or (Exercises.userId eq userId)) }
                 .any()
             if (taken) throw conflict("exercise_exists", "An exercise with id $id already exists.")
-            Exercises.insert {
-                it[Exercises.userId] = userId
-                it[Exercises.id] = id
-                it[nameKey] = null
-                it[Exercises.name] = name
-                it[Exercises.muscleGroup] = muscleGroup
-                it[Exercises.equipment] = equipment
-                it[isCustom] = true
-                it[Exercises.restSeconds] = restSeconds
-                it[updatedAt] = now
-            }
-            ExerciseDto(id, null, name, muscleGroup, equipment, true, restSeconds, now)
+            insertOwn(userId, id, name, muscleGroup, equipment, isCustom = true, restSeconds = restSeconds, now = now)
         }
     }
+
+    /**
+     * Inserts one of the user's own exercises in the current transaction (the
+     * caller holds the user's lock and has validated the values): a custom
+     * one, or the row of an extended-catalogue entry (`isCustom = false`, as
+     * the app's `getOrCreateExtended` makes it).
+     */
+    fun Transaction.insertOwn(
+        userId: String,
+        id: String,
+        name: String,
+        muscleGroup: String,
+        equipment: String,
+        isCustom: Boolean,
+        restSeconds: Int? = null,
+        now: Long,
+    ): ExerciseDto {
+        Exercises.insert {
+            it[Exercises.userId] = userId
+            it[Exercises.id] = id
+            it[nameKey] = null
+            it[Exercises.name] = name
+            it[Exercises.muscleGroup] = muscleGroup
+            it[Exercises.equipment] = equipment
+            it[Exercises.isCustom] = isCustom
+            it[Exercises.restSeconds] = restSeconds
+            it[updatedAt] = now
+        }
+        return ExerciseDto(id, null, name, muscleGroup, equipment, isCustom, restSeconds, now)
+    }
+
+    /** The user's row with [id], live or tombstoned, or null. */
+    fun Transaction.ownRowAnyState(userId: String, id: String): ResultRow? =
+        Exercises.selectAll().where { (Exercises.userId eq userId) and (Exercises.id eq id) }.singleOrNull()
 
     /**
      * Changes `name` and/or `rest_seconds` (null = follow the default). An own
@@ -115,40 +138,49 @@ class ExerciseStore(private val db: Db) {
         val now = System.currentTimeMillis()
         return db.tx {
             lockUser(userId)
-            val own = ownRows(userId).firstOrNull { it[Exercises.id] == id }
-            if (own != null) {
-                if (name != null && !own[Exercises.isCustom]) {
-                    throw badRequest("A catalogue exercise keeps its name; only rest_seconds can change.", "catalogue_name_fixed")
-                }
-                val updated = maxOf(now, own[Exercises.updatedAt] + 1)
-                Exercises.update({ (Exercises.userId eq userId) and (Exercises.id eq id) }) {
-                    if (name != null) it[Exercises.name] = name
-                    if (restGiven) it[restSeconds] = rest
-                    it[updatedAt] = updated
-                }
-            } else {
-                val catalogue = Exercises.selectAll().where { Exercises.userId.isNull() and (Exercises.id eq id) }.singleOrNull()
-                    ?: throw notFound("Exercise")
-                if (name != null) throw badRequest("A catalogue exercise keeps its name; only rest_seconds can change.", "catalogue_name_fixed")
-                // A deleted copy (sync can tombstone one) is revived: the key (user_id, id) is taken.
-                val deletedCopyUpdatedAt = Exercises.selectAll()
-                    .where { (Exercises.userId eq userId) and (Exercises.id eq id) }
-                    .singleOrNull()?.get(Exercises.updatedAt)
-                Exercises.upsert(Exercises.userId, Exercises.id) {
-                    it[Exercises.userId] = userId
-                    it[Exercises.id] = id
-                    it[nameKey] = catalogue[nameKey]
-                    it[Exercises.name] = catalogue[Exercises.name]
-                    it[muscleGroup] = catalogue[muscleGroup]
-                    it[equipment] = catalogue[equipment]
-                    it[isCustom] = false
-                    it[restSeconds] = if (restGiven) rest else catalogue[restSeconds]
-                    it[updatedAt] = deletedCopyUpdatedAt?.let { stored -> maxOf(now, stored + 1) } ?: now
-                    it[deletedAt] = null
-                }
-            }
-            ownRows(userId).first { it[Exercises.id] == id }.toDto()
+            patchIn(userId, id, name, restGiven, rest, now)
         }
+    }
+
+    /**
+     * [patch] in the current transaction, with values already checked; the
+     * caller holds the user's lock. Shared with the command handler's
+     * `set_rest`. Throws 404 for an exercise the user cannot see.
+     */
+    fun Transaction.patchIn(userId: String, id: String, name: String?, restGiven: Boolean, rest: Int?, now: Long): ExerciseDto {
+        val own = ownRows(userId).firstOrNull { it[Exercises.id] == id }
+        if (own != null) {
+            if (name != null && !own[Exercises.isCustom]) {
+                throw badRequest("A catalogue exercise keeps its name; only rest_seconds can change.", "catalogue_name_fixed")
+            }
+            val updated = maxOf(now, own[Exercises.updatedAt] + 1)
+            Exercises.update({ (Exercises.userId eq userId) and (Exercises.id eq id) }) {
+                if (name != null) it[Exercises.name] = name
+                if (restGiven) it[restSeconds] = rest
+                it[updatedAt] = updated
+            }
+        } else {
+            val catalogue = Exercises.selectAll().where { Exercises.userId.isNull() and (Exercises.id eq id) }.singleOrNull()
+                ?: throw notFound("Exercise")
+            if (name != null) throw badRequest("A catalogue exercise keeps its name; only rest_seconds can change.", "catalogue_name_fixed")
+            // A deleted copy (sync can tombstone one) is revived: the key (user_id, id) is taken.
+            val deletedCopyUpdatedAt = Exercises.selectAll()
+                .where { (Exercises.userId eq userId) and (Exercises.id eq id) }
+                .singleOrNull()?.get(Exercises.updatedAt)
+            Exercises.upsert(Exercises.userId, Exercises.id) {
+                it[Exercises.userId] = userId
+                it[Exercises.id] = id
+                it[nameKey] = catalogue[nameKey]
+                it[Exercises.name] = catalogue[Exercises.name]
+                it[muscleGroup] = catalogue[muscleGroup]
+                it[equipment] = catalogue[equipment]
+                it[isCustom] = false
+                it[restSeconds] = if (restGiven) rest else catalogue[restSeconds]
+                it[updatedAt] = deletedCopyUpdatedAt?.let { stored -> maxOf(now, stored + 1) } ?: now
+                it[deletedAt] = null
+            }
+        }
+        return ownRows(userId).first { it[Exercises.id] == id }.toDto()
     }
 
     /** True when [id] is a catalogue exercise or one of the user's own. */

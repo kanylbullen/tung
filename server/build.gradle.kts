@@ -29,6 +29,7 @@ application {
 val ktorVersion = "3.0.3"
 val exposedVersion = "0.56.0"
 val flywayVersion = "10.21.0"
+val mcpSdkVersion = "0.5.0"
 
 dependencies {
     implementation(project(":core"))
@@ -56,6 +57,14 @@ dependencies {
     implementation("org.bouncycastle:bcprov-jdk18on:1.79")
     implementation("ch.qos.logback:logback-classic:1.5.12")
 
+    // The MCP SDK's protocol types and Server class. 0.5.0 is the newest release
+    // built against Ktor 3.0.x (0.6+ needs Ktor 3.2 and Kotlin 2.2); its own Ktor
+    // integration only speaks the old SSE transport, so McpRoutes implements
+    // streamable HTTP over Server itself and the SDK's Ktor engines are left out.
+    implementation("io.modelcontextprotocol:kotlin-sdk:$mcpSdkVersion") {
+        exclude(group = "io.ktor")
+    }
+
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     testImplementation("junit:junit:4.13.2")
@@ -68,7 +77,13 @@ dependencies {
 // straight from the repo's catalog/ directory (the app ships the same files as
 // assets). Added to processResources rather than as a resource srcDir, because
 // a srcDir include filter would also apply to the other resource directories.
+// The version MCP clients see as serverInfo.version.
+version = "0.1.0"
+
 tasks.processResources {
+    val serverVersion = project.version.toString()
+    inputs.property("version", serverVersion)
+    filesMatching("tung-server.properties") { expand("version" to serverVersion) }
     from("../catalog") {
         include("*.json")
         into("catalog")

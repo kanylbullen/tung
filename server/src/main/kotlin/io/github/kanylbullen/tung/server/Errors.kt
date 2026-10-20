@@ -8,6 +8,8 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
+import io.github.kanylbullen.tung.server.oauth.OAuthException
+import io.github.kanylbullen.tung.server.oauth.respondOAuthError
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -21,7 +23,13 @@ data class ErrorDetail(val code: String, val message: String)
  * respond, so StatusPages turns it into `{"error": {"code", "message"}}` and the
  * status handlers below (which catch Ktor's own 401/404/405/429) leave it alone.
  */
-class ApiException(val status: HttpStatusCode, val code: String, override val message: String) : RuntimeException(message)
+class ApiException(
+    val status: HttpStatusCode,
+    val code: String,
+    override val message: String,
+    /** The `WWW-Authenticate` value of a 401; `/mcp` names its OAuth metadata here. */
+    val challenge: String = "Bearer realm=\"tung\"",
+) : RuntimeException(message)
 
 fun badRequest(message: String, code: String = "invalid_request") = ApiException(HttpStatusCode.BadRequest, code, message)
 
@@ -38,9 +46,11 @@ fun payloadTooLarge(code: String, message: String) = ApiException(HttpStatusCode
 fun Application.installErrorPages() {
     install(StatusPages) {
         exception<ApiException> { call, e ->
-            if (e.status == HttpStatusCode.Unauthorized) call.response.header(HttpHeaders.WWWAuthenticate, "Bearer realm=\"tung\"")
+            if (e.status == HttpStatusCode.Unauthorized) call.response.header(HttpHeaders.WWWAuthenticate, e.challenge)
             call.respond(e.status, ErrorBody(ErrorDetail(e.code, e.message)))
         }
+        // RFC 6749 errors from the OAuth endpoints: {"error", "error_description"}, not the API's envelope.
+        exception<OAuthException> { call, e -> call.respondOAuthError(e) }
         exception<BadRequestException> { call, e ->
             // Malformed JSON, a missing field, a wrong type: Ktor wraps the parser's message.
             val detail = generateSequence<Throwable>(e) { it.cause }.last().message ?: e.message
