@@ -8,6 +8,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.work.Configuration
 import io.github.kanylbullen.tung.core.CoreCatalog
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.command.CommandHandler
@@ -19,26 +23,44 @@ import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.data.fromAssets
+import io.github.kanylbullen.tung.sync.EncryptedTokenStore
+import io.github.kanylbullen.tung.sync.SyncAccount
+import io.github.kanylbullen.tung.sync.SyncClient
+import io.github.kanylbullen.tung.sync.SyncScheduler
+import io.github.kanylbullen.tung.sync.SyncSettings
+import io.github.kanylbullen.tung.sync.SyncStore
+import io.github.kanylbullen.tung.sync.TokenStore
+import io.github.kanylbullen.tung.sync.WorkManagerSyncScheduler
+import io.github.kanylbullen.tung.sync.syncHttpClient
 import io.github.kanylbullen.tung.timer.RestTimerController
 import io.github.kanylbullen.tung.wear.DataLayerStateWriter
 import io.github.kanylbullen.tung.wear.WearCommandHandler
 import io.github.kanylbullen.tung.wear.WearStatePublisher
 import io.github.kanylbullen.tung.wear.isWearableApiAvailable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.time.Clock
 
 /**
  * Hand-rolled dependency container. No DI framework — there is one database.
  *
- * [createDatabase] is the one seam: the app uses the file-backed default, the
+ * [createDatabase] is the main seam: the app uses the file-backed default, the
  * JVM flow tests hand in an in-memory database. [clock] says what day it is
  * for Home's "Today"; the app uses the system clock and zone, the flow tests
- * one they can set to a given weekday.
+ * one they can set to a given weekday. [createTokenStore] keeps the sync
+ * token in EncryptedSharedPreferences; the flow tests use one in memory,
+ * because Robolectric has no Android Keystore.
  */
 class AppContainer(
     context: Context,
     val clock: Clock = Clock.systemDefaultZone(),
     createDatabase: (Context) -> TungDatabase = TungDatabase::build,
+    createTokenStore: (Context) -> TokenStore = ::EncryptedTokenStore,
 ) {
+    /** For work that outlives a screen (sync triggers); never cancelled, like the process. */
+    val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     private val database: TungDatabase by lazy { createDatabase(context) }
     val workoutRepository: WorkoutRepository by lazy { WorkoutRepository(database) }
     val routineRepository: RoutineRepository by lazy { RoutineRepository(database) }
@@ -66,14 +88,27 @@ class AppContainer(
             programs = programRepository,
             resolver = AppExerciseResolver(database.exerciseDao(), { catalogueNames }, extendedCatalog),
             extendedCatalog = extendedCatalog,
+            onWorkoutFinished = { syncAccount.requestSync() },
         )
     }
 
-    /** Small settings and state outside Room: the rest timer and its default. One instance per file. */
+    /** Small settings and state outside Room: the rest timer and its default, sync's state. One instance per file. */
     private val settings: DataStore<Preferences> by lazy {
         PreferenceDataStoreFactory.create { context.preferencesDataStoreFile("settings") }
     }
     val restTimer: RestTimerController by lazy { RestTimerController(context, settings) }
+
+    // --- sync with tung-server (sync/, CLAUDE.md "Sync") ---
+    private val tokenStore: TokenStore by lazy { createTokenStore(context) }
+    private val syncSettings: SyncSettings by lazy { SyncSettings(settings) }
+    private val syncStore: SyncStore by lazy { SyncStore(database) }
+    private val syncScheduler: SyncScheduler by lazy { WorkManagerSyncScheduler(context) }
+    val syncClient: SyncClient by lazy {
+        SyncClient(syncStore, syncSettings, tokenStore, syncHttpClient(), onSignedOut = { syncAccount.signedOutByServer() })
+    }
+    val syncAccount: SyncAccount by lazy {
+        SyncAccount(syncClient, syncSettings, tokenStore, syncStore, syncScheduler, appScope)
+    }
 
     /** Mirrors the active workout to the watch (`wear/`); started by [TungApp] and `WearSyncService`. */
     val wearPublisher: WearStatePublisher by lazy {
@@ -87,7 +122,7 @@ class AppContainer(
 /** `catalog/core.json`, shipped as an asset like the extended catalogue. */
 private const val CORE_CATALOG_ASSET = "core.json"
 
-open class TungApp : Application() {
+open class TungApp : Application(), Configuration.Provider {
     val container: AppContainer by lazy { createContainer() }
 
     private var startedActivities = 0
@@ -108,7 +143,20 @@ open class TungApp : Application() {
         })
         // Without Play services there is no Data Layer and no watch to publish to (also the JVM tests).
         if (isWearableApiAvailable(this)) container.wearPublisher.start()
+        // Sync: keep the periodic work while signed in, and sync whenever the app comes to the foreground.
+        container.syncAccount.restoreSchedule()
+        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) = container.syncAccount.requestSync()
+        })
     }
+
+    /**
+     * WorkManager is initialised on demand with this configuration (the
+     * default initializer is removed in the manifest), so nothing touches it
+     * until the first sync is scheduled, and the tests can install their own.
+     */
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().build()
 
     /** Overridden only by the test application of the flow tests. */
     protected open fun createContainer(): AppContainer = AppContainer(this)

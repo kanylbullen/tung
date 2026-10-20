@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,6 +44,7 @@ fun HomeScreen(
     onOpenDetail: (String) -> Unit,
     onShowHistory: () -> Unit,
     onShowRoutines: () -> Unit,
+    onShowSettings: () -> Unit,
 ) {
     val container = appContainer()
     val vm: HomeViewModel = viewModel(
@@ -66,11 +71,22 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                Text(
-                    stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Tung.colors.text,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Tung.colors.text,
+                        modifier = Modifier.weight(1f),
+                    )
+                    // Quiet on purpose: settings are visited once, training every day.
+                    IconButton(onClick = onShowSettings) {
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = stringResource(R.string.settings_title),
+                            tint = Tung.colors.muted,
+                        )
+                    }
+                }
                 val active = state.activeWorkout
                 if (active != null) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -30,6 +30,8 @@ data class Exercise(
      * Null follows the user's default (90 s unless changed).
      */
     val restSeconds: Int? = null,
+    /** Changed here since the last push: set with `updatedAt` by every write, cleared by sync (CLAUDE.md, "Sync"). */
+    val dirty: Boolean = true,
 )
 
 @Entity(
@@ -56,6 +58,8 @@ data class Workout(
      * removing a day or deleting a program never touches history.
      */
     val programDayId: String? = null,
+    /** Changed here since the last push: set with `updatedAt` by every write, cleared by sync (CLAUDE.md, "Sync"). */
+    val dirty: Boolean = true,
 )
 
 @Entity(
@@ -83,6 +87,8 @@ data class WorkoutExercise(
     val position: Int,
     /** Epoch millis of the last write; set by the repository. */
     val updatedAt: Long,
+    /** Changed here since the last push: set with `updatedAt` by every write, cleared by sync (CLAUDE.md, "Sync"). */
+    val dirty: Boolean = true,
 )
 
 @Entity(
@@ -106,6 +112,8 @@ data class SetEntry(
     val completed: Boolean,
     /** Epoch millis of the last write; set by the repository. */
     val updatedAt: Long,
+    /** Changed here since the last push: set with `updatedAt` by every write, cleared by sync (CLAUDE.md, "Sync"). */
+    val dirty: Boolean = true,
 )
 
 /** A saved workout template: exercises in order, each with a number of sets. */
@@ -117,6 +125,8 @@ data class Routine(
     val updatedAt: Long,
     /** When a workout was last started from it; null if never. */
     val lastUsedAt: Long? = null,
+    /** Changed here since the last push: set with `updatedAt` by every write, cleared by sync (CLAUDE.md, "Sync"). */
+    val dirty: Boolean = true,
 )
 
 @Entity(
@@ -147,6 +157,8 @@ data class RoutineExercise(
     val targetReps: Int?,
     /** Epoch millis of the last write; set by the repository. */
     val updatedAt: Long,
+    /** Changed here since the last push: set with `updatedAt` by every write, cleared by sync (CLAUDE.md, "Sync"). */
+    val dirty: Boolean = true,
 )
 
 /**
@@ -162,6 +174,8 @@ data class Program(
     val isActive: Boolean,
     /** Epoch millis of the last write; set by the repository. */
     val updatedAt: Long,
+    /** Changed here since the last push: set with `updatedAt` by every write, cleared by sync (CLAUDE.md, "Sync"). */
+    val dirty: Boolean = true,
 )
 
 /**
@@ -204,6 +218,23 @@ data class ProgramDay(
     val weekdays: Int,
     /** Epoch millis of the last write; set by the repository. */
     val updatedAt: Long,
+    /** Changed here since the last push: set with `updatedAt` by every write, cleared by sync (CLAUDE.md, "Sync"). */
+    val dirty: Boolean = true,
+)
+
+/**
+ * A row deleted on this device, so sync can tell the server: [tableName] is
+ * the wire key of its table (`core.sync.SyncTable.key`), [deletedAt] the
+ * delete's time. Written by the repositories in the same transaction as the
+ * delete, for the row and every row the delete cascades to; existing queries
+ * never see it. [dirty] until pushed.
+ */
+@Entity(tableName = "tombstones", primaryKeys = ["tableName", "id"], indices = [Index("dirty")])
+data class Tombstone(
+    val tableName: String,
+    val id: String,
+    val deletedAt: Long,
+    val dirty: Boolean = true,
 )
 
 fun SetEntry.toLogged(): LoggedSet = LoggedSet(weightKg, reps)

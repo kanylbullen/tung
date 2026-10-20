@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.data
 import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.newId
+import io.github.kanylbullen.tung.core.sync.SyncTable
 import io.github.kanylbullen.tung.core.toggleWeekday
 import kotlinx.coroutines.flow.Flow
 
@@ -53,8 +54,14 @@ class ProgramRepository(
     /** Leaves no program active, if [programId] was the active one. */
     suspend fun deactivate(programId: String) = dao.setActive(programId, false, clock())
 
-    /** Deletes the program and its days. Workouts started from it are kept. */
-    suspend fun delete(programId: String) = dao.deleteProgram(programId)
+    /** Deletes the program and its days, with a tombstone for each. Workouts started from it are kept. */
+    suspend fun delete(programId: String) = db.withTransaction {
+        dao.getProgram(programId) ?: return@withTransaction
+        val now = clock()
+        db.recordDeletes(SyncTable.PROGRAM_DAYS, dao.dayIds(programId), now)
+        db.recordDeletes(SyncTable.PROGRAMS, listOf(programId), now)
+        dao.deleteProgram(programId)
+    }
 
     /** Adds [routineId] as the program's last day, with no weekdays. Returns the day's id. */
     suspend fun addDay(programId: String, routineId: String): String = db.withTransaction {
@@ -73,6 +80,7 @@ class ProgramRepository(
     /** Removes one day and closes the gap, so the rest keep counting 1, 2, 3. */
     suspend fun removeDay(dayId: String) = db.withTransaction {
         val day = dao.getDay(dayId) ?: return@withTransaction
+        db.recordDeletes(SyncTable.PROGRAM_DAYS, listOf(dayId), clock())
         dao.deleteDay(dayId)
         renumber(day.programId)
     }

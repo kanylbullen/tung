@@ -31,14 +31,21 @@ interface RoutineDao {
     @Query("SELECT * FROM routine WHERE id = :id")
     suspend fun getRoutine(id: String): Routine?
 
-    @Query("UPDATE routine SET name = :name, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE routine SET name = :name, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun rename(id: String, name: String, updatedAt: Long)
 
-    @Query("UPDATE routine SET lastUsedAt = :lastUsedAt, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE routine SET lastUsedAt = :lastUsedAt, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setLastUsedAt(id: String, lastUsedAt: Long, updatedAt: Long)
 
     @Query("DELETE FROM routine WHERE id = :id")
     suspend fun deleteRoutine(id: String)
+
+    @Query("SELECT id FROM routine_exercise WHERE routineId = :routineId")
+    suspend fun routineExerciseIds(routineId: String): List<String>
+
+    /** The program days that use [routineId]; deleting the routine cascades to them. */
+    @Query("SELECT id FROM program_day WHERE routineId = :routineId")
+    suspend fun programDayIdsUsing(routineId: String): List<String>
 
     // --- exercises within a routine ---
 
@@ -55,9 +62,9 @@ interface RoutineDao {
     @Query("SELECT * FROM routine_exercise WHERE id = :id")
     suspend fun getRoutineExercise(id: String): RoutineExercise?
 
-    @Query("UPDATE routine_exercise SET position = :position, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE routine_exercise SET position = :position, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setPosition(id: String, position: Int, updatedAt: Long)
 
-    @Query("UPDATE routine_exercise SET targetSets = :targetSets, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE routine_exercise SET targetSets = :targetSets, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setTargetSets(id: String, targetSets: Int, updatedAt: Long)
 }

@@ -33,7 +33,8 @@ import io.github.kanylbullen.tung.core.currentSet
  * screen makes goes through [execute], which validates ([validate]), resolves
  * exercise names ([resolveRef], [resolvePlan]) and then calls the
  * repositories. The repositories keep their transactions and rules; this
- * class only maps commands onto them, so a future API or MCP server that
+ * class only maps commands onto them (and asks for a sync after
+ * [Command.FinishWorkout], through [onWorkoutFinished]), so a future API or MCP server that
  * calls the same commands gets the same behaviour as the buttons.
  */
 class AppCommandHandler(
@@ -44,10 +45,18 @@ class AppCommandHandler(
     private val programs: ProgramRepository,
     private val resolver: ExerciseResolver,
     private val extendedCatalog: ExtendedCatalog,
+    private val onWorkoutFinished: () -> Unit = {},
 ) : CommandHandler {
 
     override suspend fun execute(command: Command): CommandResult {
         (validate(command) as? Validation.Invalid)?.let { return Rejected(it.reasons) }
+        val result = perform(command)
+        // A finished (or discarded) workout is worth syncing at once, whoever sent the command.
+        if (command is Command.FinishWorkout && result is Done) onWorkoutFinished()
+        return result
+    }
+
+    private suspend fun perform(command: Command): CommandResult {
         return when (command) {
             is Command.StartWorkout -> {
                 val routineId = command.routineId

@@ -1,7 +1,8 @@
 # Tung — agent manual
 
-Strength training log for Android. A local app: no backend, no login, no
-network. Everything lives in Room on the phone.
+Strength training log for Android. Local first: everything lives in Room on
+the phone and the app works fully without a network or an account. Sync with
+an optional tung-server is opt-in, from Settings (section "Sync").
 
 ## Language
 
@@ -27,7 +28,9 @@ Adding an app language:
 Kotlin 2.0.21, Jetpack Compose (BOM 2024.12.01), Material 3, Room 2.6.1 via
 KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
 DataStore 1.1.1 (small state outside Room). AGP 8.7.3,
-Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26.
+Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26. For sync only:
+Ktor client 3.0.3 (OkHttp engine, kotlinx JSON), WorkManager 2.10.0,
+androidx.security-crypto 1.0.0 (the stable release) and lifecycle-process.
 
 **No Hilt/Koin.** `AppContainer` in `TungApp.kt` holds the database and the
 repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
@@ -56,8 +59,9 @@ the same on every client — volume, best set, records, pre-fill (`LoggedSet`,
 current set (`RestTimer.kt`, `LogSet.kt`), and the catalogue models
 with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
 `ExtendedCatalog`/`ExtendedExercise` for `extended.json`, including the
-extended-catalogue search), and the command surface (`core/command/`, see
-"Commands"). Core gets the catalogue as a `String` or an
+extended-catalogue search), the command surface (`core/command/`, see
+"Commands"), and the sync protocol with its pure rules (`core/sync/`, see
+"Sync"). Core gets the catalogue as a `String` or an
 `InputStream`; where the bytes come from (APK assets, a file) is the caller's
 business. Room entities stay in the app and map to core's shapes
 (`SetEntry.toLogged()`); core never depends on Room.
@@ -74,8 +78,9 @@ only dependencies are `kotlinx-serialization-json` and
 | Directory | Contents |
 |---|---|
 | `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"). `SeedExercises.kt` is generated. |
+| `sync/` | Sync with tung-server: `SyncClient` (Ktor), `SyncStore` (Room side), `SyncAccount` (sign in/out, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver`, `RestAlerts` (vibration + notification). |
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share; programs list + one program). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share; programs list + one program), `settings` (server and account, from Home's gear). |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `ExerciseNames` (displayed exercise names). |
 | `ui/theme/` | Colour tokens, typography, theme. |
 | `../catalog/` | The exercise catalogue as open data (CC0): `core.json`, `extended.json`, generator and import scripts. Shipped as an asset directory in the APK. See `catalog/README.md`. |
@@ -216,7 +221,8 @@ catalogue exercises — a name-based UUID from `"tung:exercise:<nameKey>"`, so t
 same catalogue exercise has the same id on every device. The seeding in
 `TungDatabase` uses it, with `updatedAt = 0` for an untouched catalogue row.
 Every entity has `updatedAt` (epoch millis), and it is set by the repository on
-every insert and update; screens and ViewModels never touch it. Why:
+every insert and update, together with `dirty` (section "Sync"); screens and
+ViewModels never touch either. Why:
 preparation for sync with a server, and export/import between devices without
 id collisions. No query may sort on id — order comes from `position` or
 timestamps.
@@ -325,6 +331,71 @@ its signal to commands, never a new path into the database
   `CommandIds` keys are stable for the same reason. `CommandNamesTest` fails
   when a command has no name (the commands are nested in `Command` so it can
   list them with plain Java reflection).
+
+## Sync
+
+The app half of issue #25: the phone and a tung-server exchange changed rows
+over `POST /api/v1/sync`. The protocol is `core/.../core/sync/SyncProtocol.kt`
+(shared with the server, snake_case on the wire, one list per table, a
+tombstone is a row with `deleted_at`); the pure rules are next to it:
+`SyncPlanner` (what to push, in chunks of at most `SYNC_MAX_ROWS`, parents
+first), `SyncApplier` (how a response merges), `checkServerUrl` (https, or
+http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
+
+- **Dirty.** All eight entities have `dirty` (default `true`). The one place
+  per repository that stamps `updatedAt` stamps `dirty` with it: inserts get
+  the entity default, and every DAO `UPDATE … SET … updatedAt = :updatedAt`
+  also says `dirty = 1` (`DirtyTrackingTest` scans the DAO sources for it).
+  The seeded catalogue rows are inserted with `dirty = 0` and never pushed;
+  setting a catalogue exercise's rest time makes it dirty, and it goes up as
+  the user's copy. Only sync clears the flag (`SyncDao`).
+- **Tombstones.** `tombstones (tableName, id, deletedAt, dirty)`, `tableName`
+  being the wire key (`SyncTable.key`). Every delete path in the repositories
+  writes one in the same transaction as the delete, for the row and for every
+  row its foreign keys cascade to (`TungDatabase.recordDeletes`): sets,
+  workout exercises, workouts (including the discard in `finishWorkout`),
+  routines (their exercises and the program days that use them), programs and
+  program days. Existing queries never read the table. There is no delete path
+  for exercises.
+- **One sync** (`SyncClient.syncOnce`, always on `Dispatchers.IO`, one at a
+  time): read the dirty rows and tombstones in one transaction, plan, POST each
+  chunk with the latest cursor (5xx and I/O errors are retried twice, a 4xx
+  never), and apply each response in one Room transaction (`SyncStore.apply`):
+  strictly newer wins, equal or older is ignored (a newer local edit stays
+  dirty and goes next time), a newer tombstone deletes, a newer row brings back
+  a locally deleted one. Rows are upserted parents first (`@Upsert`, never
+  REPLACE, which would cascade) and deleted children first; a row whose parent
+  is missing, or that lacks a required field with no local row to take it
+  from, is skipped; an exercise still in use is not deleted. Then the dirty
+  flags are cleared **only for the rows that request carried and only if they
+  still have the pushed `updatedAt`**, so an edit made during the request goes
+  with the next sync. The cursor is stored after each chunk; while a response
+  comes back with `SYNC_MAX_ROWS` rows it pulls again. A 401 clears the token
+  and shows "signed out".
+- **Triggers** (`SyncAccount`, `SyncWorker`): unique periodic work every 15
+  min with a network constraint while signed in (scheduled at sign-in and
+  re-asserted at app start), and `enqueueNow` (unique, `APPEND_OR_REPLACE`)
+  after `FinishWorkout` from `AppCommandHandler`'s result path
+  (`onWorkoutFinished`) and when the app comes to the foreground
+  (`ProcessLifecycleOwner`). Exponential backoff from 30 s; network and 5xx
+  retry, 401 and other 4xx do not. Sign-out cancels both. "Sync now" in
+  Settings calls `syncOnce` directly, so the screen sees the result.
+  WorkManager is initialised on demand (`TungApp` is a
+  `Configuration.Provider`; the manifest removes its startup initializer).
+- **Account.** Settings (gear on Home) takes the server URL, email and
+  password and calls `/api/v1/auth/login` or `/register`. The session token is
+  in `EncryptedSharedPreferences` (`sync_token`, excluded from backups because
+  its Keystore key cannot be restored), never in DataStore or a log; the URL,
+  email, cursor and last result are in the `settings` DataStore
+  (`SyncSettings`). Signing in resets the cursor to 0 and marks every row
+  dirty, so a new account receives everything; signing out cancels the work,
+  forgets the token, calls `/logout` and keeps all local data.
+- **Network.** `INTERNET` is the app's only network permission and the
+  server URL its only destination. The network security config permits
+  cleartext because it cannot express "private IPs only"; `checkServerUrl` is
+  that gate.
+- **Schema.** Still `version = 1` with no migration: `dirty` and
+  `tombstones` change the schema, so a dev install must be wiped.
 
 ## Wear
 
@@ -480,8 +551,12 @@ part of `./gradlew test`. Only them:
 - `FlowTestApp` (named in `src/test/resources/robolectric.properties`)
   overrides `TungApp.createContainer()` to hand `AppContainer` an in-memory
   `TungDatabase.buildInMemory`, same schema and seed, and a settable
-  `Clock` (`FlowTestApp.today`) for Home's "Today". Those two
-  `AppContainer` parameters are the only test seams in production code.
+  `Clock` (`FlowTestApp.today`) for Home's "Today", and a `TokenStore` in
+  memory (`FlowTestApp.tokens`), because Robolectric has no Android Keystore.
+  Those three `AppContainer` parameters are the only test seams in production
+  code. Sync tests talk to `FakeSyncServer` (`src/test/.../sync/`, the
+  protocol on a MockWebServer), and `SyncFlowTest` installs WorkManager's test
+  instance (`WorkManagerTestInitHelper`) before it signs in.
 - Assertions are on semantics, with text from the English string resources
   (`str(R.string.…)`), never on pixels. Room works on its own threads, so wait
   (`waitForText`, `assertShown`) rather than assert right after a tap.
@@ -585,6 +660,6 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
 - `exportSchema = false` and no migration: if the schema changes, `version`
   must be raised and a `Migration` written before the app is used for real.
   Until the first release the schema changes at `version = 1` (last:
-  `Program`, `ProgramDay` and `Workout.programDayId`), so a dev install must
+  `dirty` on all eight entities and the `tombstones` table), so a dev install must
   be wiped (uninstall or clear data) after pulling such a change, or Room
   throws on open.

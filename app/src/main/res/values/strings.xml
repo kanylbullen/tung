@@ -246,6 +246,48 @@
     <string name="today_choose_title">Choose a day</string>
 
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
+    <!-- Settings and sync -->
+    <string name="settings_title">Settings</string>
+    <string name="sync_title">Sync</string>
+    <string name="sync_intro">Optional. Sign in to a Tung server to keep your training there and on your other devices. Without one, everything stays on this phone.</string>
+    <string name="sync_server_url">Server address</string>
+    <string name="sync_server_url_example">https://tung.example.org</string>
+    <string name="sync_email">Email</string>
+    <string name="sync_password">Password</string>
+    <string name="sync_sign_in">Sign in</string>
+    <string name="sync_create_account">Create account</string>
+    <string name="sync_signed_in_as">Signed in as %1$s</string>
+    <string name="sync_sign_out">Sign out</string>
+    <string name="sync_sign_out_hint">Signing out keeps your training on this phone.</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_syncing">Syncing…</string>
+    <string name="sync_status_never">Last sync: never</string>
+    <string name="sync_status_just_now">Last sync just now</string>
+    <plurals name="sync_status_minutes">
+        <item quantity="one">Last sync %d min ago</item>
+        <item quantity="other">Last sync %d min ago</item>
+    </plurals>
+    <plurals name="sync_status_hours">
+        <item quantity="one">Last sync %d h ago</item>
+        <item quantity="other">Last sync %d h ago</item>
+    </plurals>
+    <string name="sync_status_date">Last sync %1$s</string>
+    <string name="sync_error_network">The last sync could not reach the server. It tries again when you are online.</string>
+    <string name="sync_error_server">The server had a problem with the last sync. Sync tries again later.</string>
+    <string name="sync_error_signed_out">The server signed you out. Sign in again to keep syncing.</string>
+    <string name="sync_error_rejected">The server refused the last sync. Check that the app and the server are up to date.</string>
+    <string name="sync_error_url">Enter the server address, for example https://tung.example.org.</string>
+    <string name="sync_error_url_https">Use https://. Plain http only works for localhost and addresses on your own network.</string>
+    <string name="sync_error_fields">Enter your email and password.</string>
+    <string name="sync_error_credentials">Wrong email or password.</string>
+    <string name="sync_error_exists">There is already an account with that email. Sign in instead.</string>
+    <string name="sync_error_weak_password">The password needs at least 8 characters.</string>
+    <string name="sync_error_invalid">The server did not accept that email address. Check it and try again.</string>
+    <string name="sync_error_rate_limited">Too many attempts. Wait a minute and try again.</string>
+    <string name="sync_error_not_a_server">No Tung server answers at that address. Check it and try again.</string>
+    <string name="sync_error_unreachable">Could not reach the server. Check the address and your connection.</string>
+    <string name="sync_error_server_auth">The server had a problem. Try again in a while.</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bench press</string>

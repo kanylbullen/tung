@@ -245,6 +245,48 @@
     <string name="today_choose_title">Välj en dag</string>
 
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
+    <!-- Inställningar och synk -->
+    <string name="settings_title">Inställningar</string>
+    <string name="sync_title">Synk</string>
+    <string name="sync_intro">Valfritt. Logga in på en Tung-server för att ha din träning där och på dina andra enheter. Utan server stannar allt på den här telefonen.</string>
+    <string name="sync_server_url">Serveradress</string>
+    <string name="sync_server_url_example">https://tung.example.org</string>
+    <string name="sync_email">E-post</string>
+    <string name="sync_password">Lösenord</string>
+    <string name="sync_sign_in">Logga in</string>
+    <string name="sync_create_account">Skapa konto</string>
+    <string name="sync_signed_in_as">Inloggad som %1$s</string>
+    <string name="sync_sign_out">Logga ut</string>
+    <string name="sync_sign_out_hint">Din träning finns kvar på telefonen när du loggar ut.</string>
+    <string name="sync_now">Synka nu</string>
+    <string name="sync_syncing">Synkar…</string>
+    <string name="sync_status_never">Senaste synk: aldrig</string>
+    <string name="sync_status_just_now">Synkade nyss</string>
+    <plurals name="sync_status_minutes">
+        <item quantity="one">Synkade för %d min sedan</item>
+        <item quantity="other">Synkade för %d min sedan</item>
+    </plurals>
+    <plurals name="sync_status_hours">
+        <item quantity="one">Synkade för %d h sedan</item>
+        <item quantity="other">Synkade för %d h sedan</item>
+    </plurals>
+    <string name="sync_status_date">Synkade %1$s</string>
+    <string name="sync_error_network">Senaste synken nådde inte servern. Den försöker igen när du är uppkopplad.</string>
+    <string name="sync_error_server">Servern fick ett fel vid senaste synken. Synken försöker igen senare.</string>
+    <string name="sync_error_signed_out">Servern loggade ut dig. Logga in igen för att fortsätta synka.</string>
+    <string name="sync_error_rejected">Servern avvisade senaste synken. Kontrollera att appen och servern är uppdaterade.</string>
+    <string name="sync_error_url">Ange serverns adress, till exempel https://tung.example.org.</string>
+    <string name="sync_error_url_https">Använd https://. Okrypterad http fungerar bara mot localhost och adresser i ditt eget nätverk.</string>
+    <string name="sync_error_fields">Ange e-post och lösenord.</string>
+    <string name="sync_error_credentials">Fel e-post eller lösenord.</string>
+    <string name="sync_error_exists">Det finns redan ett konto med den e-posten. Logga in i stället.</string>
+    <string name="sync_error_weak_password">Lösenordet behöver minst 8 tecken.</string>
+    <string name="sync_error_invalid">Servern godtog inte e-postadressen. Kontrollera den och försök igen.</string>
+    <string name="sync_error_rate_limited">För många försök. Vänta en minut och försök igen.</string>
+    <string name="sync_error_not_a_server">Ingen Tung-server svarar på den adressen. Kontrollera den och försök igen.</string>
+    <string name="sync_error_unreachable">Kunde inte nå servern. Kontrollera adressen och din uppkoppling.</string>
+    <string name="sync_error_server_auth">Servern fick ett fel. Försök igen om en stund.</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bänkpress</string>

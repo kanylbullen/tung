@@ -39,6 +39,7 @@ import io.github.kanylbullen.tung.ui.routines.ProgramDetailScreen
 import io.github.kanylbullen.tung.ui.routines.ProgramsScreen
 import io.github.kanylbullen.tung.ui.routines.RoutineDetailScreen
 import io.github.kanylbullen.tung.ui.routines.RoutinesScreen
+import io.github.kanylbullen.tung.ui.settings.SettingsScreen
 import io.github.kanylbullen.tung.ui.summary.SummaryScreen
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.workout.ActiveWorkoutScreen
@@ -58,6 +59,7 @@ private object Routes {
     const val PROGRAMS = "programs"
     const val ARG_PROGRAM = "programId"
     const val PROGRAM = "program/{$ARG_PROGRAM}"
+    const val SETTINGS = "settings"
 
     fun workout(id: String) = "workout/$id"
     fun picker(id: String) = "picker/$id"
@@ -136,7 +138,11 @@ fun TungAppRoot(openWorkoutId: String? = null, onWorkoutOpened: () -> Unit = {})
                     onOpenDetail = { id -> nav.navigate(Routes.detail(id)) },
                     onShowHistory = { nav.navigateToTab(Routes.HISTORY) },
                     onShowRoutines = { nav.navigate(Routes.ROUTINES) },
+                    onShowSettings = { nav.navigate(Routes.SETTINGS) },
                 )
+            }
+            composable(Routes.SETTINGS) {
+                SettingsScreen(onBack = { nav.popBackStack() })
             }
             composable(Routes.ROUTINES) {
                 RoutinesScreen(
