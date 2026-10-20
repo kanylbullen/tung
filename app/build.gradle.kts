@@ -117,6 +117,16 @@ dependencies {
     // The Wearable Data Layer to the watch app in wear/ (wear/WearSyncService.kt).
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
 
+    // Sync with tung-server (sync/): Ktor client on OkHttp, kotlinx JSON, WorkManager for the
+    // background sync, the session token in EncryptedSharedPreferences, and the process
+    // lifecycle for "sync when the app comes to the foreground".
+    implementation("io.ktor:ktor-client-okhttp:3.0.3")
+    implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("androidx.security:security-crypto:1.0.0")
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
@@ -126,6 +136,10 @@ dependencies {
     testImplementation("androidx.test:core-ktx:1.6.1")
     testImplementation(composeBom)
     testImplementation("androidx.compose.ui:ui-test-junit4")
+    // The fake tung-server of the sync tests (SyncClientTest, SyncFlowTest): a real HTTP
+    // server in the test JVM, so the production OkHttp engine is what gets exercised.
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("androidx.work:work-testing:2.10.0")
     // Registers the empty activity that createComposeRule() hosts content in.
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

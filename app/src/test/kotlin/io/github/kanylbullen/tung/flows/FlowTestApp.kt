@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.flows
 import io.github.kanylbullen.tung.AppContainer
 import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.data.TungDatabase
+import io.github.kanylbullen.tung.sync.MemoryTokenStore
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -10,8 +11,9 @@ import java.time.ZoneId
 /**
  * The application Robolectric starts for the flow tests (see
  * `robolectric.properties`). Identical to [TungApp] except that the database
- * lives in memory, seeded with the same catalogue, and that Home's "today"
- * comes from [today]. Robolectric creates a new application per test, so every
+ * lives in memory, seeded with the same catalogue, that Home's "today"
+ * comes from [today], and that the sync token is kept in [tokens] instead of
+ * EncryptedSharedPreferences. Robolectric creates a new application per test, so every
  * test starts with an empty history.
  */
 class FlowTestApp : TungApp() {
@@ -25,7 +27,10 @@ class FlowTestApp : TungApp() {
     @Volatile
     var today: Clock = Clock.systemDefaultZone()
 
-    override fun createContainer(): AppContainer = AppContainer(this, clock = SettableClock()) { database }
+    val tokens = MemoryTokenStore()
+
+    override fun createContainer(): AppContainer =
+        AppContainer(this, clock = SettableClock(), createDatabase = { database }, createTokenStore = { tokens })
 
     /** Every read goes to [today], so a test can change it after the container exists. */
     private inner class SettableClock : Clock() {
