@@ -37,8 +37,8 @@ class RoutineFlowTest : FlowTest() {
     fun saveAFinishedWorkoutAsARoutine() {
         startWorkoutFromHome()
         addExercise("bench", benchPress)
-        enterInSheet(str(R.string.workout_edit_weight, "0"), str(R.string.input_field_weight), "80")
-        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(R.string.input_field_reps), "8")
+        enterInSheet(str(R.string.workout_edit_weight, "0"), str(R.string.input_field_weight), "80", str(R.string.workout_edit_weight, "80"))
+        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(R.string.input_field_reps), "8", str(R.string.workout_edit_reps, "8"))
         clickDescription(str(R.string.workout_mark_done, 1))
         clickDescription(str(R.string.workout_add_set_description, benchPress))
         // The second set copies the first: 80 × 8.
