@@ -24,6 +24,6 @@ interface ExerciseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(exercise: Exercise)
 
-    @Query("UPDATE exercise SET restSeconds = :restSeconds, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE exercise SET restSeconds = :restSeconds, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun updateRestSeconds(id: String, restSeconds: Int?, updatedAt: Long)
 }

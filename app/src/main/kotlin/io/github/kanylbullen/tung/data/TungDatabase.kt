@@ -21,6 +21,7 @@ private const val CATALOG_UPDATED_AT = 0L
         RoutineExercise::class,
         Program::class,
         ProgramDay::class,
+        Tombstone::class,
     ],
     version = 1,
     exportSchema = false,
@@ -30,6 +31,8 @@ abstract class TungDatabase : RoomDatabase() {
     abstract fun workoutDao(): WorkoutDao
     abstract fun routineDao(): RoutineDao
     abstract fun programDao(): ProgramDao
+    abstract fun tombstoneDao(): TombstoneDao
+    abstract fun syncDao(): SyncDao
 
     companion object {
         fun build(context: Context): TungDatabase =
@@ -50,15 +53,16 @@ abstract class TungDatabase : RoomDatabase() {
      * Runs once, inside the transaction that creates the schema. Catalogue rows
      * get the id [catalogExerciseId] derives from their key and a fixed
      * [CATALOG_UPDATED_AT], so a freshly seeded catalogue row is identical on
-     * every device.
+     * every device. They are not dirty: an untouched catalogue row is never
+     * pushed to a server, which has the same catalogue.
      */
     private object SeedCallback : Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
             SeedExercises.all.forEach { seed ->
                 db.execSQL(
-                    "INSERT INTO exercise (id, name, nameKey, muscleGroup, equipment, isCustom, updatedAt) " +
-                        "VALUES (?, ?, ?, ?, ?, 0, ?)",
+                    "INSERT INTO exercise (id, name, nameKey, muscleGroup, equipment, isCustom, updatedAt, dirty) " +
+                        "VALUES (?, ?, ?, ?, ?, 0, ?, 0)",
                     arrayOf<Any>(
                         catalogExerciseId(seed.key),
                         seed.name,

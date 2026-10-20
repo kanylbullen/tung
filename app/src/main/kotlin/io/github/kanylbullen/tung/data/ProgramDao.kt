@@ -33,18 +33,21 @@ interface ProgramDao {
     @Query("SELECT * FROM program WHERE isActive = 1 LIMIT 1")
     fun observeActiveProgram(): Flow<Program?>
 
-    @Query("UPDATE program SET name = :name, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE program SET name = :name, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun rename(id: String, name: String, updatedAt: Long)
 
     /** Deactivates every active program other than [exceptId]. */
-    @Query("UPDATE program SET isActive = 0, updatedAt = :updatedAt WHERE isActive = 1 AND id != :exceptId")
+    @Query("UPDATE program SET isActive = 0, updatedAt = :updatedAt, dirty = 1 WHERE isActive = 1 AND id != :exceptId")
     suspend fun deactivateOthers(exceptId: String, updatedAt: Long)
 
-    @Query("UPDATE program SET isActive = :isActive, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE program SET isActive = :isActive, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setActive(id: String, isActive: Boolean, updatedAt: Long)
 
     @Query("DELETE FROM program WHERE id = :id")
     suspend fun deleteProgram(id: String)
+
+    @Query("SELECT id FROM program_day WHERE programId = :programId")
+    suspend fun dayIds(programId: String): List<String>
 
     // --- days ---
 
@@ -70,10 +73,10 @@ interface ProgramDao {
     @Query("SELECT COALESCE(MAX(position), -1) FROM program_day WHERE programId = :programId")
     suspend fun maxPosition(programId: String): Int
 
-    @Query("UPDATE program_day SET position = :position, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE program_day SET position = :position, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setPosition(id: String, position: Int, updatedAt: Long)
 
-    @Query("UPDATE program_day SET weekdays = :weekdays, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE program_day SET weekdays = :weekdays, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setWeekdays(id: String, weekdays: Int, updatedAt: Long)
 
     @Query("DELETE FROM program_day WHERE id = :id")

@@ -6,6 +6,7 @@ import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.routineStartSets
 import io.github.kanylbullen.tung.core.routineTarget
+import io.github.kanylbullen.tung.core.sync.SyncTable
 import kotlinx.coroutines.flow.Flow
 
 /** All routine reads and writes, and the two bridges to workouts: save from one, start one. */
@@ -195,6 +196,16 @@ class RoutineRepository(
         if (target != re.targetSets) dao.setTargetSets(re.id, target, clock())
     }
 
-    /** Deletes the routine and its exercises. Workouts started from it are kept. */
-    suspend fun delete(routineId: String) = dao.deleteRoutine(routineId)
+    /**
+     * Deletes the routine, its exercises and the program days that use it
+     * (both cascade), with a tombstone for each. Workouts started from it are kept.
+     */
+    suspend fun delete(routineId: String) = db.withTransaction {
+        dao.getRoutine(routineId) ?: return@withTransaction
+        val now = clock()
+        db.recordDeletes(SyncTable.PROGRAM_DAYS, dao.programDayIdsUsing(routineId), now)
+        db.recordDeletes(SyncTable.ROUTINE_EXERCISES, dao.routineExerciseIds(routineId), now)
+        db.recordDeletes(SyncTable.ROUTINES, listOf(routineId), now)
+        dao.deleteRoutine(routineId)
+    }
 }

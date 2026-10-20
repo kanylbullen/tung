@@ -26,7 +26,7 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout WHERE id = :id")
     suspend fun getWorkout(id: String): Workout?
 
-    @Query("UPDATE workout SET endedAt = :endedAt, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE workout SET endedAt = :endedAt, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setEndedAt(id: String, endedAt: Long, updatedAt: Long)
 
     @Query("DELETE FROM workout WHERE id = :id")
@@ -68,6 +68,19 @@ interface WorkoutDao {
     @Query("DELETE FROM workout_exercise WHERE id = :id")
     suspend fun deleteWorkoutExercise(id: String)
 
+    @Query("SELECT id FROM workout_exercise WHERE workoutId = :workoutId")
+    suspend fun workoutExerciseIds(workoutId: String): List<String>
+
+    /** The exercises [deleteEmptyExercises] would delete. */
+    @Query(
+        """
+        SELECT id FROM workout_exercise
+        WHERE workoutId = :workoutId
+          AND NOT EXISTS (SELECT 1 FROM set_entry s WHERE s.workoutExerciseId = workout_exercise.id)
+        """
+    )
+    suspend fun emptyExerciseIds(workoutId: String): List<String>
+
     @Query(
         """
         DELETE FROM workout_exercise
@@ -88,17 +101,38 @@ interface WorkoutDao {
     @Insert
     suspend fun insertSet(set: SetEntry)
 
-    @Query("UPDATE set_entry SET weightKg = :weightKg, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE set_entry SET weightKg = :weightKg, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun updateWeight(id: String, weightKg: Double, updatedAt: Long)
 
-    @Query("UPDATE set_entry SET reps = :reps, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE set_entry SET reps = :reps, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun updateReps(id: String, reps: Int, updatedAt: Long)
 
-    @Query("UPDATE set_entry SET completed = :completed, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE set_entry SET completed = :completed, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setCompleted(id: String, completed: Boolean, updatedAt: Long)
 
     @Query("DELETE FROM set_entry WHERE id = :id")
     suspend fun deleteSet(id: String)
+
+    @Query("SELECT id FROM set_entry WHERE workoutExerciseId = :workoutExerciseId")
+    suspend fun setIds(workoutExerciseId: String): List<String>
+
+    @Query(
+        """
+        SELECT s.id FROM set_entry s JOIN workout_exercise we ON s.workoutExerciseId = we.id
+        WHERE we.workoutId = :workoutId
+        """
+    )
+    suspend fun setIdsOfWorkout(workoutId: String): List<String>
+
+    /** The sets [deleteUnloggedSets] would delete. */
+    @Query(
+        """
+        SELECT id FROM set_entry
+        WHERE (completed = 0 OR reps <= 0)
+          AND workoutExerciseId IN (SELECT id FROM workout_exercise WHERE workoutId = :workoutId)
+        """
+    )
+    suspend fun unloggedSetIds(workoutId: String): List<String>
 
     /** Removes sets that were never ticked or have no reps — see [io.github.kanylbullen.tung.core.isLogged]. */
     @Query(

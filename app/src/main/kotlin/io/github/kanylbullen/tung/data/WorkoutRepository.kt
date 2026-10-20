@@ -7,6 +7,7 @@ import io.github.kanylbullen.tung.core.command.PlannedSet
 import io.github.kanylbullen.tung.core.command.plannedSetValues
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.prefillSet
+import io.github.kanylbullen.tung.core.sync.SyncTable
 import kotlinx.coroutines.flow.Flow
 
 /** All workout reads and writes. Room runs suspend DAO calls off the main thread. */
@@ -50,7 +51,13 @@ class WorkoutRepository(
         workoutExercise.id
     }
 
-    suspend fun removeExercise(workoutExerciseId: String) = dao.deleteWorkoutExercise(workoutExerciseId)
+    /** Removes an exercise and its sets, with a tombstone for each. */
+    suspend fun removeExercise(workoutExerciseId: String) = db.withTransaction {
+        val now = clock()
+        db.recordDeletes(SyncTable.SETS, dao.setIds(workoutExerciseId), now)
+        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, listOf(workoutExerciseId), now)
+        dao.deleteWorkoutExercise(workoutExerciseId)
+    }
 
     suspend fun addSet(workoutExerciseId: String): String? = db.withTransaction {
         val we = dao.getWorkoutExercise(workoutExerciseId) ?: return@withTransaction null
@@ -123,7 +130,11 @@ class WorkoutRepository(
         if (addsNextSet(wasLast, sets.size, target)) insertPrefilledSet(we.id, we.workoutId, we.exerciseId) else null
     }
 
-    suspend fun deleteSet(setId: String) = dao.deleteSet(setId)
+    suspend fun deleteSet(setId: String) = db.withTransaction {
+        dao.getSet(setId) ?: return@withTransaction
+        db.recordDeletes(SyncTable.SETS, listOf(setId), clock())
+        dao.deleteSet(setId)
+    }
 
     suspend fun getSet(setId: String): SetEntry? = dao.getSet(setId)
 
@@ -187,17 +198,28 @@ class WorkoutRepository(
      * @return true if the workout was saved, false if it was discarded.
      */
     suspend fun finishWorkout(workoutId: String): Boolean = db.withTransaction {
+        val now = clock()
+        db.recordDeletes(SyncTable.SETS, dao.unloggedSetIds(workoutId), now)
         dao.deleteUnloggedSets(workoutId)
+        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, dao.emptyExerciseIds(workoutId), now)
         dao.deleteEmptyExercises(workoutId)
         if (dao.countLoggedSets(workoutId) == 0) {
-            dao.deleteWorkout(workoutId)
+            deleteWorkoutAt(workoutId, now)
             false
         } else {
-            val now = clock()
             dao.setEndedAt(workoutId, endedAt = now, updatedAt = now)
             true
         }
     }
 
-    suspend fun deleteWorkout(workoutId: String) = dao.deleteWorkout(workoutId)
+    /** Deletes the workout with its exercises and sets, with a tombstone for each. */
+    suspend fun deleteWorkout(workoutId: String) = db.withTransaction { deleteWorkoutAt(workoutId, clock()) }
+
+    private suspend fun deleteWorkoutAt(workoutId: String, now: Long) {
+        dao.getWorkout(workoutId) ?: return
+        db.recordDeletes(SyncTable.SETS, dao.setIdsOfWorkout(workoutId), now)
+        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, dao.workoutExerciseIds(workoutId), now)
+        db.recordDeletes(SyncTable.WORKOUTS, listOf(workoutId), now)
+        dao.deleteWorkout(workoutId)
+    }
 }
