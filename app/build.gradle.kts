@@ -30,7 +30,17 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        // What goes on our own phones: release code (R8, not debuggable), signed with the
+        // debug key so it installs over a debug build and keeps the data. A debug build of a
+        // Compose app is several times slower when scrolling (measured on the Note9, 2026-10-21).
+        create("dogfood") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
         }
     }
 
