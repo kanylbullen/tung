@@ -127,6 +127,40 @@ class CatalogTest {
         assertEquals(listOf(Muscle.HAMSTRINGS, Muscle.GLUTES), index.musclesOf("romanian_deadlift")?.primary)
     }
 
+    /**
+     * `instructions` is optional; where it is there it has English steps, none
+     * of them blank (Swedish comes later and falls back to English). The
+     * import writes them for every core entry with a free-exercise-db twin.
+     */
+    @Test
+    fun coreInstructionsAreEnglishStepsWhereTheyExist() {
+        val withSteps = core.filter { it.instructions.isNotEmpty() }
+        assertTrue("only ${withSteps.size} core entries have instructions", withSteps.size >= 60)
+        withSteps.forEach { e ->
+            val en = e.instructions["en"]
+            assertNotNull("${e.key} has instructions but no en", en)
+            assertTrue("${e.key} has no steps", !en.isNullOrEmpty())
+            e.instructions.forEach { (lang, steps) ->
+                steps.forEach { assertTrue("${e.key}: a blank $lang step", it.isNotBlank()) }
+            }
+            assertEquals(en, e.instructionsIn("sv"))
+        }
+        assertEquals(emptyList<String>(), core.single { it.key == "burpee" }.instructionsIn("en"))
+        assertTrue(core.single { it.key == "bench_press" }.instructionsIn("en").first().startsWith("Lie back on a flat bench"))
+    }
+
+    @Test
+    fun instructionsAreOptionalWhenParsing() {
+        val parsed = CoreCatalog.parse(
+            """[{"key": "a", "name": {"en": "A"}, "muscleGroup": "chest", "equipment": "other"},
+               {"key": "b", "name": {"en": "B"}, "muscleGroup": "chest", "equipment": "other", "instructions": {"en": ["One.", "Two."], "sv": ["Ett."]}}]""",
+        )
+        assertEquals(emptyMap<String, List<String>>(), parsed[0].instructions)
+        assertEquals(listOf("One.", "Two."), parsed[1].instructionsIn("en"))
+        assertEquals(listOf("Ett."), parsed[1].instructionsIn("sv"))
+        assertEquals(listOf("One.", "Two."), parsed[1].instructionsIn("de"))
+    }
+
     @Test
     fun extendedHasUniqueIdsAndNoEmptyNames() {
         assertTrue(extended.isNotEmpty())
