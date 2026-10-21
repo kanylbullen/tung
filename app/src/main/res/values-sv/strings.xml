@@ -580,6 +580,23 @@
     <string name="import_chosen_use">Som %1$s</string>
     <string name="import_chosen_create">Ny övning ”%1$s”</string>
     <string name="import_chosen_skip">Hoppas över</string>
+    <string name="import_suggestion">%1$s?</string>
+    <plurals name="import_used_in_workouts">
+        <item quantity="one">I %d pass</item>
+        <item quantity="other">I %d pass</item>
+    </plurals>
+    <string name="import_only_in_routines">Bara i rutiner</string>
+    <string name="import_create_remaining">Skapa alla återstående</string>
+    <string name="import_skip_remaining">Hoppa över alla återstående</string>
+    <string name="import_assist_action">Föreslå med assistenten</string>
+    <string name="import_assist_asking">Frågar assistenten…</string>
+    <string name="import_assist_suggests">Assistenten föreslår: %1$s · %2$s</string>
+    <string name="import_assist_no_match">Assistenten: ingen bra motsvarighet</string>
+    <string name="import_assist_accept">Godta</string>
+    <string name="import_assist_accept_all">Godta alla med hög säkerhet</string>
+    <string name="import_confidence_high">hög</string>
+    <string name="import_confidence_medium">medel</string>
+    <string name="import_confidence_low">låg</string>
     <plurals name="import_note_warm_up">
         <item quantity="one">%d uppvärmningsset importerat som vanligt set</item>
         <item quantity="other">%d uppvärmningsset importerade som vanliga set</item>
