@@ -28,7 +28,8 @@ import kotlinx.coroutines.flow.map
  * gives the same status in both modes. The current set is the state's own
  * ([WatchWorkoutState.currentSetId]: the watch's selection standalone, the
  * phone's rule in companion mode), counted against the routine's target
- * sets the state carries.
+ * sets the state carries; with every set ticked, "Bench press · all sets
+ * logged" for the exercise the state offers Add set on.
  */
 fun watchOngoing(state: WatchWorkoutState?): OngoingWorkout? {
     val workoutId = state?.workoutId ?: return null
@@ -43,7 +44,7 @@ fun watchOngoing(state: WatchWorkoutState?): OngoingWorkout? {
     return OngoingWorkout(
         workoutId = workoutId,
         startedAt = state.startedAt ?: state.updatedAt,
-        status = ongoingStatus(exercises, current),
+        status = ongoingStatus(exercises, current, state.addSetExerciseIndex()),
         startedBy = state.startedBy,
     )
 }

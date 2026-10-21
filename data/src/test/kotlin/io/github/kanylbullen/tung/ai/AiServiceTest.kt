@@ -110,7 +110,7 @@ class AiServiceTest {
         val first = workouts.getSets(exerciseId).single().id
         workouts.updateWeight(first, 80.0)
         workouts.updateReps(first, 8)
-        workouts.logSet(first)
+        workouts.logSet(first, addNext = true)
         workouts.logSet(workouts.getSets(exerciseId).last().id)
         db.openHelper.writableDatabase.execSQL("UPDATE workout SET note = 'Coach: coach@example.org'")
         clockMillis += 3_600_000L

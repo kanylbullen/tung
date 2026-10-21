@@ -162,6 +162,20 @@ class ActiveWorkoutViewModel(
         }
     }
 
+    /**
+     * The sticky button's "Add set", once every set is ticked: a copy of the
+     * exercise's last set ([Command.AddSet], as + Set), which becomes the
+     * current set (the exercise is the touched one, and the selection is
+     * cleared) and is scrolled into view, so the next tap is Log set again.
+     */
+    fun addSetFromButton(workoutExerciseId: String) {
+        select(workoutExerciseId, null)
+        launch {
+            commands.execute(Command.AddSet(workoutExerciseId)).id(CommandIds.SET_ID)
+                ?.let { requestScroll(ScrollRequest(setId = it, mode = ScrollMode.IntoView, seq = 0)) }
+        }
+    }
+
     /** A tap on an exercise's header: its first un-ticked set becomes the current set. */
     fun selectExercise(workoutExerciseId: String) {
         val exercise = state.value.exercises.firstOrNull { it.workoutExerciseId == workoutExerciseId } ?: return
@@ -234,7 +248,7 @@ class ActiveWorkoutViewModel(
     /** The tick on the row. Ticking (not un-ticking) starts the rest timer too. */
     fun setCompleted(exercise: ActiveExerciseUi, setId: String, completed: Boolean) {
         if (completed) {
-            advanceAfterLogging(state.value, setId, addedSetId = null)
+            advanceAfterLogging(state.value, setId)
         } else {
             touch(exercise.workoutExerciseId)
         }
@@ -243,9 +257,9 @@ class ActiveWorkoutViewModel(
     }
 
     /**
-     * "Log set": ticks [set], adds the next set when [set] was the exercise's
-     * last ([Command.LogSet], on the set this screen shows as current) and
-     * starts the rest timer.
+     * "Log set": ticks [set] ([Command.LogSet], on the set this screen shows
+     * as current; it adds no set, issue #64) and starts the rest timer. With
+     * that the last open set, the button turns into Add set ([addSetFromButton]).
      */
     fun logSet(exercise: ActiveExerciseUi, set: ActiveSetUi) {
         val before = state.value
@@ -280,8 +294,8 @@ class ActiveWorkoutViewModel(
     fun startRestFor(exercise: ActiveExerciseUi) = startRest(exercise)
 
     private suspend fun log(before: ActiveWorkoutUiState, set: ActiveSetUi) {
-        val added = commands.execute(Command.LogSet(workoutId, set.id)).id(CommandIds.ADDED_SET_ID)
-        advanceAfterLogging(before, set.id, added, scrollAlways = true)
+        commands.execute(Command.LogSet(workoutId, set.id))
+        advanceAfterLogging(before, set.id, scrollAlways = true)
     }
 
     fun skipRest() = setRest(rest.value?.skip())
@@ -344,23 +358,23 @@ class ActiveWorkoutViewModel(
     /**
      * Moves the current set on after the set [loggedId] was ticked, by the
      * rule in [nextCurrentAfterLogging], working on [before] (the state as it
-     * was when the set was ticked) with the set ticked and [addedSetId], the
-     * set "Log set" added after it, appended. The move clears a manual
-     * selection: the next set is always the first open one of its exercise,
-     * which is what the touched exercise gives. When the current set lands in
-     * another exercise, or [scrollAlways], it is scrolled into view.
+     * was when the set was ticked) with the set ticked. The move clears a
+     * manual selection: the next set is always the first open one of its
+     * exercise, which is what the touched exercise gives. With no open set
+     * left the logged exercise stays touched, so the button's Add set goes to
+     * it. When the current set lands in another exercise, or [scrollAlways],
+     * it is scrolled into view.
      */
-    private fun advanceAfterLogging(before: ActiveWorkoutUiState, loggedId: String, addedSetId: String?, scrollAlways: Boolean = false) {
+    private fun advanceAfterLogging(before: ActiveWorkoutUiState, loggedId: String, scrollAlways: Boolean = false) {
         val logged = before.indexOfSet(loggedId) ?: return
         val completed = before.completedMatrix().mapIndexed { e, sets ->
-            if (e != logged.exercise) sets
-            else sets.mapIndexed { i, done -> done || i == logged.set } + listOfNotNull(addedSetId?.let { false })
+            if (e != logged.exercise) sets else sets.mapIndexed { i, done -> done || i == logged.set }
         }
         val next = nextCurrentAfterLogging(completed, logged)
         val exercise = before.exercises[next?.exercise ?: logged.exercise]
         select(exercise.workoutExerciseId, null)
         if (next == null) return
-        val nextSetId = exercise.sets.getOrNull(next.set)?.id ?: addedSetId ?: return
+        val nextSetId = exercise.sets.getOrNull(next.set)?.id ?: return
         if (scrollAlways || next.exercise != logged.exercise) {
             requestScroll(ScrollRequest(setId = nextSetId, mode = ScrollMode.IntoView, seq = 0))
         }

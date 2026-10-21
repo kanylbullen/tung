@@ -5,14 +5,17 @@ import io.github.kanylbullen.tung.core.OngoingExercise
 import io.github.kanylbullen.tung.core.OngoingSet
 import io.github.kanylbullen.tung.core.OngoingStatus
 import io.github.kanylbullen.tung.core.StartedBy
+import io.github.kanylbullen.tung.core.StickyAction
 import io.github.kanylbullen.tung.core.currentSet
 import io.github.kanylbullen.tung.core.ongoingStatus
+import io.github.kanylbullen.tung.core.stickyAction
 import io.github.kanylbullen.tung.data.R
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.ui.common.displayName
+import io.github.kanylbullen.tung.wear.lastTouchedByTime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -30,6 +33,8 @@ import kotlinx.coroutines.flow.map
  * @param logSetHasReps false when that set has 0 reps: logging it would tick a
  *   set that does not count, so the action opens the workout instead, as the
  *   tick on the row opens the reps sheet.
+ * @param addSetWorkoutExerciseId with every set ticked, the workout exercise the
+ *   notification's "Add set" adds a set to ([stickyAction]); null otherwise.
  */
 data class OngoingWorkout(
     val workoutId: String,
@@ -38,12 +43,14 @@ data class OngoingWorkout(
     val startedBy: String? = null,
     val logSetId: String? = null,
     val logSetHasReps: Boolean = false,
+    val addSetWorkoutExerciseId: String? = null,
 )
 
-/** The notification's body: "Bench press · set 3 of 5", or "4 sets logged". */
+/** The notification's body: "Bench press · set 3 of 5", "4 sets logged", or "Bench press · all sets logged". */
 fun OngoingStatus.text(context: Context): String = when (this) {
     is OngoingStatus.AtSet -> context.getString(R.string.ongoing_at_set, exercise, set, of)
     is OngoingStatus.Logged -> context.resources.getQuantityString(R.plurals.ongoing_sets_logged, count, count)
+    is OngoingStatus.AllLogged -> context.getString(R.string.ongoing_all_logged, exercise)
 }
 
 /** "Started by your assistant" for a workout an assistant started through the server; null otherwise. */
@@ -90,14 +97,18 @@ internal fun ongoingWorkout(
     val ongoing = exercises.map { e ->
         OngoingExercise(name(e), e.sortedSets.map { OngoingSet(it.completed, it.reps) }, targets[e.exercise.id])
     }
-    val index = currentSet(ongoing.map { e -> e.sets.map { it.completed } })
+    val completed = ongoing.map { e -> e.sets.map { it.completed } }
+    val index = currentSet(completed)
     val set = index?.let { exercises[it.exercise].sortedSets[it.set] }
+    val touched = lastTouchedByTime(exercises)
+    val addSet = if (index == null) stickyAction(completed, lastTouchedExercise = touched) as? StickyAction.AddSet else null
     return OngoingWorkout(
         workoutId = workout.id,
         startedAt = workout.startedAt,
-        status = ongoingStatus(ongoing, index),
+        status = ongoingStatus(ongoing, index, touched),
         startedBy = workout.startedBy,
         logSetId = set?.id,
         logSetHasReps = (set?.reps ?: 0) > 0,
+        addSetWorkoutExerciseId = addSet?.let { exercises[it.exercise].workoutExercise.id },
     )
 }

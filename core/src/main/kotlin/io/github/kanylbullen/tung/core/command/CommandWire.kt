@@ -171,8 +171,19 @@ object CommandWire {
         "tick_set" to Spec(listOf(setId, req("done", Kind.BOOL, "true ticks the set, false un-ticks it."))) {
             Command.TickSet(it.id("set_id"), it.bool("done"))
         },
-        "log_set" to Spec(listOf(workoutId, opt("set_id", Kind.ID, "The set to log. Default: the first un-ticked set of the first exercise that has one."))) {
-            Command.LogSet(it.id("workout_id"), it.idOrNull("set_id"))
+        "log_set" to Spec(
+            listOf(
+                workoutId,
+                opt("set_id", Kind.ID, "The set to log. Default: the first un-ticked set of the first exercise that has one."),
+                opt(
+                    "add_next",
+                    Kind.BOOL,
+                    "Also add the next set (a copy of the logged one) when the logged set was the last of its exercise, " +
+                        "never past a routine's target sets. Default false: only tick the set; use add_set to add one.",
+                ),
+            ),
+        ) {
+            Command.LogSet(it.id("workout_id"), it.idOrNull("set_id"), it.bool("add_next"))
         },
         "select_current" to Spec(
             listOf(

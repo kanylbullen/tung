@@ -301,8 +301,8 @@ interface WorkoutDao {
     /**
      * How many sets the routine that [workoutId] was started from asks for of
      * [exerciseId], or null when the workout has no routine, the routine is
-     * gone, or the exercise is not in it. Read when "Log set" decides whether to
-     * add a set, so a routine's sets are not padded past their target.
+     * gone, or the exercise is not in it. Read when "Log set" with `addNext`
+     * decides whether to add a set, so a routine's sets are not padded past their target.
      */
     @Query(
         """

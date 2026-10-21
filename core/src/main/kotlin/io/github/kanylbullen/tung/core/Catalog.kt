@@ -25,15 +25,25 @@ enum class MuscleGroup(val key: String) {
     }
 }
 
+/**
+ * What an exercise is done with. Stored and synced as [key] (Room's `exercise.equipment`
+ * is a string), so a new value needs no schema change; a key this build does not know
+ * (a newer catalogue or client) reads as [OTHER]. The order is the order the app lists them in.
+ */
 enum class Equipment(val key: String) {
     BARBELL("barbell"),
+    EZ_BAR("ez_bar"),
     DUMBBELL("dumbbell"),
+    KETTLEBELL("kettlebell"),
     MACHINE("machine"),
     CABLE("cable"),
+    BAND("band"),
     BODYWEIGHT("bodyweight"),
+    MEDICINE_BALL("medicine_ball"),
+    EXERCISE_BALL("exercise_ball"),
     OTHER("other");
 
     companion object {
-        fun fromKey(key: String): Equipment = entries.firstOrNull { it.key == key } ?: OTHER
+        fun fromKey(key: String?): Equipment = entries.firstOrNull { it.key == key } ?: OTHER
     }
 }

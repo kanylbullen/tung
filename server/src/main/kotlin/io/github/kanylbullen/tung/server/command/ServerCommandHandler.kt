@@ -420,6 +420,8 @@ class ServerCommandHandler(
         // The app opens the reps sheet here instead of ticking; a set without reps would not count.
         if (set[Sets.reps] <= 0) return Rejected(listOf("set $setId has 0 reps: set the reps first (set_reps), then log it"))
         tick(setId, true, now)
+        // Issue #64: logging only ticks; the next set comes from add_set, or here only when the caller asks (add_next).
+        if (!command.addNext) return Done(mapOf(SET_ID to setId))
         val sets = liveSets(we[WorkoutExercises.id])
         val wasLast = sets.maxOf { it[Sets.position] } == set[Sets.position]
         val target = if (wasLast) routineTargetSets(command.workoutId, we[WorkoutExercises.exerciseId]) else null

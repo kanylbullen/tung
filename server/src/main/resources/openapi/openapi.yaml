@@ -914,7 +914,7 @@ paths:
         | `set_weight` | `set_id`, `weight_kg` (0–999), `apply_to_open_sets`? |
         | `set_reps` | `set_id`, `reps` (0–999), `apply_to_open_sets`? |
         | `tick_set` | `set_id`, `done` |
-        | `log_set` | `workout_id`, `set_id`? (default: the current set) |
+        | `log_set` | `workout_id`, `set_id`? (default: the current set), `add_next`? (default false: only tick; true also adds the next set after the exercise's last, not past a routine's target) |
         | `select_current` | `set_id`? or `workout_exercise_id`? |
         | `finish_workout` | `workout_id` |
         | `delete_workout` | `workout_id` |
@@ -1523,7 +1523,7 @@ components:
       enum: [chest, back, shoulders, biceps, triceps, legs, glutes, core, fullbody]
     Equipment:
       type: string
-      enum: [barbell, dumbbell, machine, cable, bodyweight, other]
+      enum: [barbell, ez_bar, dumbbell, kettlebell, machine, cable, band, bodyweight, medicine_ball, exercise_ball, other]
 
     Set:
       type: object

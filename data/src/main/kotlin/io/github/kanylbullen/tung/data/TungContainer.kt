@@ -197,6 +197,9 @@ class TungContainer(
     }
     val restTimer: RestTimerController by lazy { RestTimerController(this.context, settings) }
 
+    /** "My equipment": what the Exercises tab, the picker and the assistant keep to. Not synced. */
+    val equipmentSettings: EquipmentSettings by lazy { EquipmentSettings(settings) }
+
     // --- sync with tung-server (sync/, CLAUDE.md "Sync") ---
     private val tokenStore: TokenStore by lazy { createTokenStore(this.context) }
     val syncSettings: SyncSettings by lazy { SyncSettings(settings) }
@@ -232,6 +235,7 @@ class TungContainer(
             catalogueKeys = { coreCatalog.map { it.key } },
             commands = commands,
             clock = clock,
+            equipment = { equipmentSettings.current() },
         )
     }
 

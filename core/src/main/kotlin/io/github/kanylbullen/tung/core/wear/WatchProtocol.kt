@@ -71,6 +71,12 @@ data class WatchWorkoutState(
     val version: Int = WatchProtocol.VERSION,
     /** Who started the workout in progress (`core.StartedBy`), or null. Additive, like [WatchExercise.targetSets]. */
     val startedBy: String? = null,
+    /**
+     * With no [currentSetId] (every set ticked): the workout exercise the log
+     * button's "Add set" adds to (`core.stickyAction`), else null. Additive:
+     * an older watch ignores it, an older phone leaves it out.
+     */
+    val addSetWorkoutExerciseId: String? = null,
 ) {
     val isActive: Boolean get() = workoutId != null
 
@@ -131,7 +137,7 @@ sealed interface WatchCommand {
     val commandId: String
     val sentAt: Long
 
-    /** "Log set": tick [setId] and, if it was the last of its exercise, add the next set. Starts the rest. */
+    /** "Log set": tick [setId], nothing more (issue #64: no set is added). Starts the rest. */
     @Serializable
     @SerialName("log_set")
     data class LogSet(val setId: String, override val commandId: String, override val sentAt: Long) : WatchCommand
@@ -150,6 +156,20 @@ sealed interface WatchCommand {
     data class SetReps(
         val setId: String,
         val reps: Int,
+        override val commandId: String,
+        override val sentAt: Long,
+    ) : WatchCommand
+
+    /**
+     * "Add set": one set on [workoutExerciseId], a copy of its last, which
+     * becomes the current set. Sent only when the state offers it
+     * ([WatchWorkoutState.addSetWorkoutExerciseId]); an older phone does not
+     * know the type and drops the message.
+     */
+    @Serializable
+    @SerialName("add_set")
+    data class AddSet(
+        val workoutExerciseId: String,
         override val commandId: String,
         override val sentAt: Long,
     ) : WatchCommand

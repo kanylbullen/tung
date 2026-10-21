@@ -48,7 +48,9 @@ class CommandTest {
         client.done(token, "set_reps", """{"set_id": "${firstSet.id}", "reps": 8}""")
         val logged = client.done(token, "log_set", """{"workout_id": "$workoutId"}""")
         assertEquals(firstSet.id, logged["setId"]!!.str, "without set_id the current set is logged")
-        val addedSet = assertNotNull(logged["addedSetId"], "the last set of the exercise adds the next one").str
+        assertNull(logged["addedSetId"], "log_set only ticks, even the exercise's last set (issue #64)")
+        assertEquals(1, client.authedGet("/api/v1/workouts/$workoutId", token).workout().exercises.single().sets.size)
+        val addedSet = client.done(token, "add_set", """{"workout_exercise_id": "$weId"}""")["setId"]!!.str
 
         val inProgress = client.authedGet("/api/v1/workouts/$workoutId", token).workout()
         val sets = inProgress.exercises.single { it.id == weId }.sets
@@ -68,6 +70,24 @@ class CommandTest {
         client.done(token, "add_exercise", """{"workout_id": "$next", "exercise": {"key": "bench_press"}}""")
         val prefilled = client.authedGet("/api/v1/workouts/$next", token).workout().exercises.single().sets.single()
         assertEquals(80.0 to 8, prefilled.weightKg to prefilled.reps)
+    }
+
+    @Test
+    fun logSetWithAddNextAddsACopyAfterTheLastSet() = tungTest {
+        val token = client.register()
+        val workoutId = client.done(token, "start_workout")["workoutId"]!!.str
+        val weId = client.done(token, "add_exercise", """{"workout_id": "$workoutId", "exercise": {"key": "bench_press"}, "sets": 2}""")["workoutExerciseId"]!!.str
+        val (first, second) = client.authedGet("/api/v1/workouts/$workoutId", token).workout().exercises.single().sets
+        client.done(token, "set_weight", """{"set_id": "${first.id}", "weight_kg": 80, "apply_to_open_sets": true}""")
+        client.done(token, "set_reps", """{"set_id": "${first.id}", "reps": 8, "apply_to_open_sets": true}""")
+        val notLast = client.done(token, "log_set", """{"workout_id": "$workoutId", "set_id": "${first.id}", "add_next": true}""")
+        assertNull(notLast["addedSetId"], "not the exercise's last set: nothing added")
+        val last = client.done(token, "log_set", """{"workout_id": "$workoutId", "set_id": "${second.id}", "add_next": true}""")
+        val added = assertNotNull(last["addedSetId"], "add_next after the last set adds the next one").str
+        val sets = client.authedGet("/api/v1/workouts/$workoutId", token).workout().exercises.single { it.id == weId }.sets
+        assertEquals(listOf(first.id, second.id, added), sets.map { it.id })
+        assertEquals(listOf(true, true, false), sets.map { it.completed })
+        assertEquals(80.0 to 8, sets[2].weightKg to sets[2].reps, "the added set copies the one just logged")
     }
 
     @Test
@@ -170,9 +190,9 @@ class CommandTest {
 
         val bench = workout.exercises[0].sets
         client.done(token, "set_weight", """{"set_id": "${bench[0].id}", "weight_kg": 60, "apply_to_open_sets": true}""")
-        client.done(token, "log_set", """{"workout_id": "$workoutId", "set_id": "${bench[0].id}"}""")
-        val last = client.done(token, "log_set", """{"workout_id": "$workoutId", "set_id": "${bench[1].id}"}""")
-        assertNull(last["addedSetId"], "the routine's second set of two adds no third")
+        client.done(token, "log_set", """{"workout_id": "$workoutId", "set_id": "${bench[0].id}", "add_next": true}""")
+        val last = client.done(token, "log_set", """{"workout_id": "$workoutId", "set_id": "${bench[1].id}", "add_next": true}""")
+        assertNull(last["addedSetId"], "with add_next, the routine's second set of two still adds no third")
         val after = client.authedGet("/api/v1/workouts/$workoutId", token).workout().exercises[0].sets
         assertEquals(listOf(60.0, 60.0), after.map { it.weightKg }, "apply_to_open_sets wrote both")
 

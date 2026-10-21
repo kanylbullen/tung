@@ -101,10 +101,6 @@ fun TrainingScreen(onBack: () -> Unit) {
     }
 }
 
-/**
- * Where "My equipment" (issue #65, its `EquipmentSettings` in `data/`) goes:
- * a row in Training, under the default rest. Empty until that lands; the
- * merge replaces this body with #65's row (or its call).
- */
+/** "My equipment" (issue #65): the row and its sheet, under the default rest. */
 @Composable
-private fun ColumnScope.MyEquipmentSlot() = Unit
+private fun ColumnScope.MyEquipmentSlot() = EquipmentSection()

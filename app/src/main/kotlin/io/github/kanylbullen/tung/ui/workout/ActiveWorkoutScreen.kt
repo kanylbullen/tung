@@ -285,7 +285,8 @@ fun ActiveWorkoutScreen(
     }
     LaunchedEffect(rest == null) { if (rest == null) restControlsOpen = false }
 
-    val current = state.current
+    val sticky = state.sticky
+    val current = (sticky as? StickyButton.LogSet)?.current
 
     // The ViewModel asks for a scroll (a set added, an exercise added, the current set moved on).
     // A set or exercise that was just written may not be in the list yet; the effect waits for it.
@@ -363,7 +364,7 @@ fun ActiveWorkoutScreen(
             }
         },
         bottomBar = {
-            if (!state.loading && !state.missing && (current != null || state.exercises.isNotEmpty())) {
+            if (!state.loading && !state.missing && sticky != null) {
                 val echo = voiceState.echo
                 val askable = echo is VoiceEcho.NotUnderstood && aiConfigured
                 val echoShown = echo != null &&
@@ -373,7 +374,7 @@ fun ActiveWorkoutScreen(
                     ?: echoText
                     ?: if (voiceState.listening && !voiceState.handsFree) stringResource(R.string.voice_listening) else null
                 LogSetBar(
-                    current = current,
+                    sticky = sticky,
                     voice = voiceState,
                     line = line,
                     lineMuted = voiceState.partial != null || echoText == null,
@@ -390,13 +391,17 @@ fun ActiveWorkoutScreen(
                     onMicLongPress = { onMic(handsFree = true) },
                     onStopHandsFree = voice::stop,
                     onClick = {
-                        current?.let { c ->
-                            // Logging a set without reps would just be removed on finish, so ask for reps first.
-                            if (c.set.reps <= 0) {
-                                editing = EditTarget(c.set.id, Field.REPS)
-                            } else {
-                                vm.logSet(c.exercise, c.set)
+                        when (sticky) {
+                            is StickyButton.LogSet -> {
+                                val c = sticky.current
+                                // Logging a set without reps would just be removed on finish, so ask for reps first.
+                                if (c.set.reps <= 0) {
+                                    editing = EditTarget(c.set.id, Field.REPS)
+                                } else {
+                                    vm.logSet(c.exercise, c.set)
+                                }
                             }
+                            is StickyButton.AddSet -> vm.addSetFromButton(sticky.exercise.workoutExerciseId)
                         }
                     },
                 )
@@ -545,11 +550,12 @@ fun ActiveWorkoutScreen(
  * the list is scrolled, which a button at the end of the list would not be.
  * The mic button sits left of it, and above both the voice line: what was
  * heard or understood, and the "Listening" chip while hands-free mode is on.
- * With every set logged only the mic remains, for "finish workout" or "add a set".
+ * With every set logged it reads "Add set · Bench press · 80 × 8" for the
+ * exercise just logged (issue #64): logging never adds a set by itself.
  */
 @Composable
 private fun LogSetBar(
-    current: CurrentSet?,
+    sticky: StickyButton,
     voice: VoiceUiState,
     line: String?,
     lineMuted: Boolean,
@@ -578,16 +584,25 @@ private fun LogSetBar(
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MicButton(active = voice.listening || voice.handsFree, onTap = onMic, onLongPress = onMicLongPress)
-            if (current != null) {
-                val set = current.set
-                val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
-                val name = exerciseDisplayName(current.exercise.nameKey, current.exercise.name)
-                PrimaryButton(
-                    text = stringResource(R.string.workout_log_set, name, localWeight(set.weightKg), reps),
-                    onClick = onClick,
-                    modifier = Modifier.weight(1f),
-                )
+            val text = when (sticky) {
+                is StickyButton.LogSet -> {
+                    val set = sticky.current.set
+                    val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
+                    val name = exerciseDisplayName(sticky.current.exercise.nameKey, sticky.current.exercise.name)
+                    stringResource(R.string.workout_log_set, name, localWeight(set.weightKg), reps)
+                }
+                is StickyButton.AddSet -> {
+                    val name = exerciseDisplayName(sticky.exercise.nameKey, sticky.exercise.name)
+                    val set = sticky.copyOf
+                    if (set == null) {
+                        stringResource(R.string.workout_sticky_add_set_empty, name)
+                    } else {
+                        val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
+                        stringResource(R.string.workout_sticky_add_set, name, localWeight(set.weightKg), reps)
+                    }
+                }
             }
+            PrimaryButton(text = text, onClick = onClick, modifier = Modifier.weight(1f))
         }
     }
 }

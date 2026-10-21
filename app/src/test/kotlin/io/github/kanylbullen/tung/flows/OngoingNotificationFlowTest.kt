@@ -114,6 +114,49 @@ class OngoingNotificationFlowTest : FlowTest() {
     }
 
     /**
+     * Issue #64: a routine of one bench set. The notification's Log set ticks
+     * it and adds nothing; the body reads "Bench press · all sets logged" and
+     * the action is "Add set", which adds a copy of the set without opening
+     * anything. The notification is back at Log set, and the stale Add set,
+     * sent again, adds nothing.
+     */
+    @Test
+    fun withEverySetLoggedTheActionIsAddSet() {
+        runBlocking {
+            val routineId = app.container.commands.execute(
+                Command.SaveRoutinePlan(
+                    RoutinePlan("Bench", listOf(RoutinePlanExercise(ExerciseRef.ByKey("bench_press"), targetSets = 1, targetReps = 8))),
+                ),
+            ).id(CommandIds.ROUTINE_ID)
+            app.container.commands.execute(Command.StartRoutine(checkNotNull(routineId)))
+        }
+        waitUntil { body(ongoing()) == str(DataR.string.ongoing_at_set, benchPress, 1, 1) }
+        action(checkNotNull(ongoing()), str(DataR.string.ongoing_log_set)).actionIntent.send()
+        waitUntil { body(ongoing()) == str(DataR.string.ongoing_all_logged, benchPress) }
+        assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))
+        val shown = checkNotNull(ongoing())
+        assertEquals(
+            listOf(str(DataR.string.ongoing_add_set), str(DataR.string.ongoing_finish)),
+            shown.actions?.map { it.title.toString() },
+        )
+
+        val addSet = action(shown, str(DataR.string.ongoing_add_set)).actionIntent
+        assertEquals(OngoingWorkoutReceiver::class.java.name, shadowOf(addSet).savedIntent.component?.className)
+        addSet.send()
+        waitUntil { count("SELECT COUNT(*) FROM set_entry") == 2 }
+        assertEquals(1, count("SELECT COUNT(*) FROM set_entry WHERE completed = 0 AND position = 1 AND reps = 8"))
+        waitUntil { body(ongoing()) == str(DataR.string.ongoing_at_set, benchPress, 2, 2) }
+        assertNotNull(checkNotNull(ongoing()).actions?.firstOrNull { it.title.toString() == str(DataR.string.ongoing_log_set) })
+
+        // Stale: a set is open again, so the old Add set does nothing.
+        addSet.send()
+        waitUntil { body(ongoing()) == str(DataR.string.ongoing_at_set, benchPress, 2, 2) }
+        Thread.sleep(500)
+        compose.waitForIdle()
+        assertEquals(2, count("SELECT COUNT(*) FROM set_entry"))
+    }
+
+    /**
      * A workout an assistant started through the server (arrived by sync,
      * `startedBy = agent`) shows "Started by your assistant". With no sets
      * there is nothing to log: only "Finish". Discarding it removes the

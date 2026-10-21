@@ -80,7 +80,8 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
  * exercise adds it to that workout or routine and calls [onPicked]. Without
  * one it is the Exercises tab: the whole catalogue by muscle group, with a
  * chip per group, and a row opens the exercise page ([onOpenExercise], with
- * the page's ref, `core.catalog.ExercisePageRef.route`).
+ * the page's ref, `core.catalog.ExercisePageRef.route`). Both have the
+ * "My equipment" chip ([EquipmentChip], its [EquipmentSheet]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,6 +106,8 @@ fun ExercisesScreen(
                 container.workoutRepository,
                 container.catalogueMuscles,
                 now = { container.clock.millis() },
+                equipmentSettings = container.equipmentSettings,
+                routines = container.routineRepository,
             ) {
                 it.displayName(appContext)
             }
@@ -114,7 +117,9 @@ fun ExercisesScreen(
     LaunchedEffect(locale) { vm.setLocale(locale) }
     val state by vm.state.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
+    val equipment by vm.equipment.collectAsStateWithLifecycle()
     var creating by rememberSaveable { mutableStateOf(false) }
+    var choosingEquipment by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -152,6 +157,19 @@ fun ExercisesScreen(
             item(key = "search") {
                 SearchField(query, vm::setQuery)
             }
+            if (!vm.isPicker && state.chips.isNotEmpty()) {
+                item(key = "chips") {
+                    GroupChips(state.chips, state.selectedGroup, vm::setGroup)
+                }
+            }
+            // "My equipment": under the group chips in the tab, under the search in the picker.
+            if (vm.filtersEquipment) {
+                item(key = "equipment") {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
+                        EquipmentChip(equipment, onClick = { choosingEquipment = true })
+                    }
+                }
+            }
             if (state.suggested.isNotEmpty()) {
                 item(key = "suggested") {
                     SectionHeader(stringResource(R.string.picker_suggested))
@@ -169,11 +187,6 @@ fun ExercisesScreen(
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     )
-                }
-            }
-            if (!vm.isPicker && state.chips.isNotEmpty()) {
-                item(key = "chips") {
-                    GroupChips(state.chips, state.selectedGroup, vm::setGroup)
                 }
             }
             state.browse.forEach { section ->
@@ -219,6 +232,10 @@ fun ExercisesScreen(
                 }
             }
         }
+    }
+
+    if (choosingEquipment) {
+        EquipmentSheet(equipment, onChange = vm::setEquipment, onDismiss = { choosingEquipment = false })
     }
 
     if (creating) {
@@ -436,7 +453,7 @@ private fun CreateExerciseDialog(
 }
 
 @Composable
-private fun Choice(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun Choice(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     FilterChip(
         selected = selected,
         onClick = onClick,

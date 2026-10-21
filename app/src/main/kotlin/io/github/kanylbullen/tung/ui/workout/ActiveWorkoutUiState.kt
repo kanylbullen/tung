@@ -3,7 +3,8 @@ package io.github.kanylbullen.tung.ui.workout
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.SetIndex
-import io.github.kanylbullen.tung.core.currentSet
+import io.github.kanylbullen.tung.core.StickyAction
+import io.github.kanylbullen.tung.core.stickyAction
 import io.github.kanylbullen.tung.core.isLogged
 
 data class ActiveSetUi(
@@ -30,6 +31,15 @@ data class ActiveExerciseUi(
 
 /** The set "Log set" acts on, with its exercise. */
 data class CurrentSet(val exercise: ActiveExerciseUi, val set: ActiveSetUi)
+
+/** What the sticky button does ([io.github.kanylbullen.tung.core.stickyAction]). */
+sealed interface StickyButton {
+    /** "Log set · Bench press · 80 × 8". */
+    data class LogSet(val current: CurrentSet) : StickyButton
+
+    /** "Add set · Bench press · 80 × 8": every set is ticked; a copy of [copyOf] (the exercise's last set, if any) is added. */
+    data class AddSet(val exercise: ActiveExerciseUi, val copyOf: ActiveSetUi?) : StickyButton
+}
 
 /**
  * A one-shot request to scroll the list, consumed by the screen once done.
@@ -79,11 +89,17 @@ data class ActiveWorkoutUiState(
 
     /** See [io.github.kanylbullen.tung.core.currentSet]. */
     val current: CurrentSet?
+        get() = (sticky as? StickyButton.LogSet)?.current
+
+    /** See [io.github.kanylbullen.tung.core.stickyAction]: Log set, Add set once every set is ticked, or null with no exercises. */
+    val sticky: StickyButton?
         get() {
             val touched = exercises.indexOfFirst { it.workoutExerciseId == lastTouchedExerciseId }.takeIf { it >= 0 }
-            val index = currentSet(completedMatrix(), indexOfSet(selectedSetId), touched) ?: return null
-            val exercise = exercises[index.exercise]
-            return CurrentSet(exercise, exercise.sets[index.set])
+            return when (val action = stickyAction(completedMatrix(), indexOfSet(selectedSetId), touched)) {
+                is StickyAction.LogSet -> exercises[action.at.exercise].let { e -> StickyButton.LogSet(CurrentSet(e, e.sets[action.at.set])) }
+                is StickyAction.AddSet -> exercises[action.exercise].let { e -> StickyButton.AddSet(e, action.copyOf?.let(e.sets::get)) }
+                null -> null
+            }
         }
 
     /** Per exercise in screen order, each set's ticked state: the shape the core rules take. */

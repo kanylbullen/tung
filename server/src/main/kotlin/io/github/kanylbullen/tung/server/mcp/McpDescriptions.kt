@@ -40,13 +40,13 @@ object McpDescriptions {
             "Sets a set's repetitions (0 to 999). With apply_to_open_sets, every un-ticked set of the same exercise gets them too. " +
             "set_id comes from current_workout.",
         "tick_set" to
-            "Ticks (done: true) or un-ticks one set and nothing else. When the user has just done a set, use log_set instead, which " +
-            "also prepares the next set.",
+            "Ticks (done: true) or un-ticks one set and nothing else. When the user has just done a set, use log_set instead.",
         "log_set" to
-            "Logs a set the user has just done: ticks it and, if it was the exercise's last set, adds the next one pre-filled with the " +
-            "same numbers (never past a routine's target sets). Without set_id it logs the current set (current_set_id in " +
+            "Logs a set the user has just done: ticks it, and adds no set. Without set_id it logs the current set (current_set_id in " +
             "current_workout). Set the real weight and reps first with set_weight and set_reps if they differ; a set with 0 reps is " +
-            "refused. Returns ids.setId and, when a set was added, ids.addedSetId.",
+            "refused. When the user does another set of an exercise whose sets are all ticked, add it with add_set (a copy of the " +
+            "last set). With add_next: true it also adds the next set, pre-filled with the same numbers, when the logged set was the " +
+            "exercise's last (never past a routine's target sets). Returns ids.setId and, when a set was added, ids.addedSetId.",
         "select_current" to
             "Checks which set would be the current one: set_id itself, or the first un-ticked set of workout_exercise_id. Changes " +
             "nothing; returns ids.setId and ids.workoutExerciseId, which you can pass to log_set.",
