@@ -101,6 +101,9 @@ sealed interface Command {
     /** Creates a routine from a plan (a dictated programme), not from a workout. */
     data class SaveRoutinePlan(val plan: RoutinePlan) : Command
 
+    /** Creates an empty routine called [name], to be filled with [AddRoutineExercise]. */
+    data class CreateRoutine(val name: String) : Command
+
     data class RenameRoutine(val routineId: String, val name: String) : Command
 
     /** Deletes a routine; workouts started from it are kept. */

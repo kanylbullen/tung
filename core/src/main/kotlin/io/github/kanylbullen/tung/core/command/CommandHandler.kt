@@ -41,7 +41,7 @@ fun CommandResult.id(key: String): String? = (this as? CommandResult.Done)?.ids?
  * - [SET_ID]: AddSet (the new set); LogSet (the set logged); SelectCurrent.
  * - [ADDED_SET_ID]: LogSet, when it added the next set.
  * - [EXERCISE_ID]: CreateExercise; AddExercise (the exercise it resolved to).
- * - [ROUTINE_ID]: SaveRoutine, SaveRoutinePlan.
+ * - [ROUTINE_ID]: SaveRoutine, SaveRoutinePlan, CreateRoutine.
  * - [ROUTINE_EXERCISE_ID]: AddRoutineExercise (the new row); [EXERCISE_ID] with it (the exercise it resolved to).
  * - [PROGRAM_ID]: CreateProgram.
  * - [PROGRAM_DAY_ID]: AddProgramDay.

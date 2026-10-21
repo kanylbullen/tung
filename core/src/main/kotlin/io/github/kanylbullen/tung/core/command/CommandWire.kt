@@ -189,6 +189,7 @@ object CommandWire {
         "save_routine_plan" to Spec(
             listOf(name, req("exercises", Kind.ROUTINE_EXERCISES, "The routine's exercises in order.")),
         ) { Command.SaveRoutinePlan(RoutinePlan(it.text("name"), it.routineExercises("exercises"))) },
+        "create_routine" to Spec(listOf(name)) { Command.CreateRoutine(it.text("name")) },
         "rename_routine" to Spec(listOf(routineId, name)) { Command.RenameRoutine(it.id("routine_id"), it.text("name")) },
         "delete_routine" to Spec(listOf(routineId)) { Command.DeleteRoutine(it.id("routine_id")) },
         "move_routine_exercise" to Spec(listOf(routineExerciseId, delta)) {

@@ -77,6 +77,9 @@ object McpDescriptions {
             "optional. Unknown names come back as questions (status needs_answers) and nothing is saved. Only call this after the " +
             "user has confirmed the routine. Returns ids.routineId: start it with start_routine, or add it to a program with " +
             "add_program_day. $REF",
+        "create_routine" to
+            "Creates an empty routine (a workout template) called name, to be filled with add_routine_exercise. To save a whole " +
+            "routine at once use save_routine_plan instead. Returns ids.routineId.",
         "rename_routine" to "Renames a routine. $IDS",
         "delete_routine" to
             "Deletes a routine and the program days that use it. Workouts done from it stay in the history. Confirm with the user first.",
