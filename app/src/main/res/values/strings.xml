@@ -347,6 +347,16 @@
     <string name="sync_error_not_a_server">No Tung server answers at that address. Check it and try again.</string>
     <string name="sync_error_unreachable">Could not reach the server. Check the address and your connection.</string>
     <string name="sync_error_server_auth">The server had a problem. Try again in a while.</string>
+    <string name="sync_google_sign_in">Sign in with Google</string>
+    <string name="sync_google_or_email">Or with email and password</string>
+    <string name="sync_google_linked">Google linked</string>
+    <string name="sync_error_google_rejected">The server did not accept the Google sign-in. Try again.</string>
+    <string name="sync_error_google_unverified">Google has not verified this account\'s email address. Use a password, or another Google account.</string>
+    <string name="sync_error_google_mismatch">This email belongs to an account linked to another Google account. Sign in with that one or with your password.</string>
+    <string name="sync_error_google_not_offered">This server does not offer Sign in with Google. Use your email and password.</string>
+    <string name="sync_error_google_no_account">There is no Google account on this phone. Add one in the phone\'s settings, or use your email and password.</string>
+    <string name="sync_error_google_unavailable">Sign in with Google needs Google Play services on this phone. Use your email and password.</string>
+    <string name="sync_error_google_failed">Google sign-in did not work. Try again, or use your email and password.</string>
 
     <!-- Settings: Health Connect (ui/settings/HealthConnectSection.kt) -->
     <string name="health_title">Health Connect</string>

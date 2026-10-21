@@ -30,7 +30,9 @@ KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
 DataStore 1.1.1 (small state outside Room). AGP 8.7.3,
 Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26. For sync only:
 Ktor client 3.0.3 (OkHttp engine, kotlinx JSON), WorkManager 2.10.0,
-androidx.security-crypto 1.0.0 (the stable release) and lifecycle-process.
+androidx.security-crypto 1.0.0 (the stable release) and lifecycle-process;
+for Sign in with Google, Credential Manager (`androidx.credentials` 1.3.0
+with its Play services provider) and `googleid` 1.1.1, in `app/` only.
 
 **No Hilt/Koin.** `TungContainer` (in `data/`, built by `TungApp` and by the
 watch's `TungWearApp`) holds the database and the repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
@@ -91,7 +93,7 @@ databases. The packages are the ones the files had in `app/`:
 | Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
 |---|---|
 | `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
-| `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
+| `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
 | `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set). See "Ongoing workout and push". |
@@ -126,6 +128,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 |---|---|
 | `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
+| `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`. |
 | `ui/theme/` | Colour tokens, typography, theme. |
@@ -531,7 +534,20 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   WorkManager is initialised on demand (`TungApp` and `TungWearApp` are
   `Configuration.Provider`s; each manifest removes its startup initializer).
 - **Account.** Settings (gear on Home) takes the server URL, email and
-  password and calls `/api/v1/auth/login` or `/register`. The session token is
+  password and calls `/api/v1/auth/login` or `/register`. **Sign in with
+  Google** (issue #51): whenever the form shows a valid server address the
+  ViewModel asks `GET /api/v1/auth/methods` (`SyncAccount.authMethods`;
+  600 ms after typing stops, on `Dispatchers.Default` so the pause is real
+  time under Robolectric; a 404 from an older server means password only),
+  and shows "Sign in with Google" only when it names a client id.
+  `GoogleSignIn` (`app/.../auth/`, made by `TungApp.createGoogleSignIn()`,
+  which `FlowTestApp` overrides with `FakeGoogleSignIn`, like
+  `createSpeechInput`) gets an ID token for that id from Credential Manager
+  (`AndroidGoogleSignIn`: `GetGoogleIdOption`, all accounts, no
+  auto-select, a nonce); `SyncAccount.signInWithGoogle` trades it at
+  `/api/v1/auth/google` and finishes like `signIn`. "Google linked" under the
+  account comes from `SyncSettings.googleLinked`, set at sign-in and
+  refreshed from `/me` when Settings opens. The watch keeps the link code. The session token is
   in `EncryptedSharedPreferences` (`sync_token`, excluded from backups because
   its Keystore key cannot be restored), never in DataStore or a log; the URL,
   email, cursor and last result are in the `settings` DataStore
@@ -1020,7 +1036,33 @@ fallback, and only on a tap.
 - **Tokens:** `tung_` + 32 random bytes, SHA-256 in `api_tokens`; sessions
   are tokens named `session`. A `read` token gets 403 on anything but GET.
   `api_tokens.expires_at` (V5) is null except on OAuth tokens; `authenticate`
-  refuses expired ones. No OIDC.
+  refuses expired ones.
+- **Sign in with Google** (issue #51; `auth/GoogleIdTokens.kt`,
+  `Accounts.googleUser`, V10): only with `TUNG_GOOGLE_CLIENT_ID` (comma-separated
+  ids; the first is what `GET /api/v1/auth/methods` hands clients; without it
+  `/auth/google` is 404 `not_configured` and nothing Google is shown). An ID
+  token is verified by hand with `java.security`: RS256, Google's issuer,
+  audience in the ids, `exp` with 60 s leeway, `iat`, the signature against
+  the JWK of its `kid` from `ServerConfig.googleJwksUrl` (cached per
+  `max-age`, else 1 h; an unknown kid refetches, at most once a minute);
+  failures are 401 `invalid_google_token`, an unreachable key set 503.
+  **Linking rule:** by `users.google_sub`; else, only when `email_verified`,
+  the user with that email gets the `google_sub` (and keeps the password);
+  else a new user with `password_hash NULL`. An unverified email linked to
+  nothing is 401 `email_not_verified`; never link on it. A null
+  `password_hash` refuses password login after the same Argon2 work as a
+  wrong password (`verifyCredentials`). `POST /api/v1/auth/google` answers
+  what `/login` answers (`Accounts.session`); `/me` has `has_password` and
+  `google_linked`. **The consent page** renders the GIS button (its CSP and
+  referrer policy widen only then); GIS posts to `POST /oauth/google`, which
+  checks `g_csrf_token` (cookie = field) and the button's `state` (the
+  authorization request, HMAC-signed by `GoogleConsent` with a per-process
+  key, because our SameSite=Strict CSRF cookie is not sent on Google's
+  cross-site POST), resolves the user the same way and renders the consent
+  step with a `google_ticket` (HMAC, ten minutes, bound to the CSRF token
+  and client) that `POST /oauth/authorize` takes instead of the password.
+  Tests: `GoogleSignInTest` (a test RSA key and a JWK set on a JDK
+  `HttpServer`; `ServerConfig.clock` exists for expiry).
 - **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST
   /api/v1/link/start` (write token) gives a six-digit code valid ten minutes,
   unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)

@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server
 
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -14,6 +15,9 @@ import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import io.github.kanylbullen.tung.core.newId
+import io.github.kanylbullen.tung.server.auth.GoogleIdTokens
+import io.github.kanylbullen.tung.server.auth.GoogleIdentity
+import org.jetbrains.exposed.sql.ResultRow
 
 private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+$")
 private const val MIN_PASSWORD = 8
@@ -22,8 +26,12 @@ private const val MAX_PASSWORD = 1024
 /** last_used_at is written at most this often per token, so reads do not each cost a write. */
 private const val LAST_USED_RESOLUTION_MS = 60_000L
 
-/** Users, passwords, session tokens and API tokens. One table holds both kinds of token. */
-class Accounts(private val db: Db) {
+/**
+ * Users, passwords, Google sign-in, session tokens and API tokens. One table
+ * holds both kinds of token. [google] is null when the instance has no
+ * Google client id (`TUNG_GOOGLE_CLIENT_ID`).
+ */
+class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
 
     suspend fun register(credentials: Credentials): SessionDto {
         val email = normalizeEmail(credentials.email)
@@ -43,7 +51,10 @@ class Accounts(private val db: Db) {
                     it[passwordHash] = hash
                     it[createdAt] = now
                 }
-                SessionDto(insertToken(userId, Tokens.SESSION_NAME, Tokens.SCOPE_WRITE, now).token, UserDto(userId, email, now))
+                SessionDto(
+                    insertToken(userId, Tokens.SESSION_NAME, Tokens.SCOPE_WRITE, now).token,
+                    UserDto(userId, email, now, hasPassword = true, googleLinked = false),
+                )
             }
         } catch (e: ExposedSQLException) {
             if (e.sqlState == "23505") throw emailTaken() else throw e
@@ -52,8 +63,79 @@ class Accounts(private val db: Db) {
 
     suspend fun login(credentials: Credentials): SessionDto {
         val user = verifyCredentials(credentials) ?: throw unauthorized("invalid_credentials", "Wrong email or password.")
+        return session(user)
+    }
+
+    /**
+     * `POST /auth/google`: verifies the ID token, finds or links or creates
+     * the user ([googleUser]) and answers what [login] answers.
+     */
+    suspend fun signInWithGoogle(idToken: String): SessionDto = session(googleUser(verifyGoogle(idToken)))
+
+    /** A new session token for [user]: the one way login, Google sign-in and registration end. */
+    private suspend fun session(user: UserDto): SessionDto {
         val token = db.tx { insertToken(user.id, Tokens.SESSION_NAME, Tokens.SCOPE_WRITE, System.currentTimeMillis()) }
         return SessionDto(token.token, user)
+    }
+
+    /** The identity in a Google ID token; 404 `not_configured` when the instance has no Google client id. */
+    suspend fun verifyGoogle(idToken: String): GoogleIdentity {
+        val google = google ?: throw ApiException(
+            HttpStatusCode.NotFound,
+            "not_configured",
+            "Sign in with Google is not set up on this server.",
+        )
+        return google.verify(idToken)
+    }
+
+    /**
+     * The user a verified Google identity signs in as. By `google_sub` first;
+     * else, when Google says the email is verified, the account with that
+     * email, which gets the `google_sub` (the link: its password keeps
+     * working); else a new account without a password. An unverified email
+     * that matches no linked account is refused: it proves nothing about who
+     * owns the address. The consent page and `POST /auth/google` both use it.
+     */
+    suspend fun googleUser(identity: GoogleIdentity): UserDto {
+        repeat(2) { attempt ->
+            try {
+                return db.tx { resolveGoogleUser(identity) }
+            } catch (e: ExposedSQLException) {
+                // Two first sign-ins at once: the loser hits the unique index and finds the winner's row next time.
+                if (e.sqlState != "23505" || attempt == 1) throw e
+            }
+        }
+        error("unreachable")
+    }
+
+    private fun Transaction.resolveGoogleUser(identity: GoogleIdentity): UserDto {
+        Users.selectAll().where { Users.googleSub eq identity.sub }.singleOrNull()?.let { return it.toUserDto() }
+        val email = identity.email
+        if (email == null || !identity.emailVerified) {
+            throw unauthorized(
+                "email_not_verified",
+                "Google has not verified this account's email address, so it cannot sign in to Tung. Use your password, or a Google account with a verified email.",
+            )
+        }
+        val existing = Users.selectAll().where { Users.email eq email }.singleOrNull()
+        if (existing != null) {
+            if (existing[Users.googleSub] != null) {
+                throw conflict("google_account_mismatch", "This email belongs to an account linked to another Google account. Sign in with that one or with your password.")
+            }
+            Users.update({ (Users.id eq existing[Users.id]) and Users.googleSub.isNull() }) { it[googleSub] = identity.sub }
+            return user(existing[Users.id])
+        }
+        if (email.length > 254 || !EMAIL_PATTERN.matches(email)) throw unauthorized("invalid_google_token", "The Google account has no usable email address.")
+        val userId = newId()
+        val now = System.currentTimeMillis()
+        Users.insert {
+            it[id] = userId
+            it[Users.email] = email
+            it[passwordHash] = null
+            it[googleSub] = identity.sub
+            it[createdAt] = now
+        }
+        return UserDto(userId, email, now, hasPassword = false, googleLinked = true)
     }
 
     /**
@@ -63,11 +145,11 @@ class Accounts(private val db: Db) {
     suspend fun verifyCredentials(credentials: Credentials): UserDto? {
         val email = credentials.email.trim().lowercase()
         val user = db.tx { Users.selectAll().where { Users.email eq email }.singleOrNull() }
-        val ok = withContext(Dispatchers.Default) {
-            Passwords.verify(credentials.password, user?.get(Users.passwordHash) ?: Passwords.dummyHash) && user != null
-        }
+        // A user without a password (Google only) is refused like a wrong password, after the same work.
+        val hash = user?.get(Users.passwordHash)
+        val ok = withContext(Dispatchers.Default) { Passwords.verify(credentials.password, hash ?: Passwords.dummyHash) && hash != null }
         if (!ok || user == null) return null
-        return UserDto(user[Users.id], user[Users.email], user[Users.createdAt])
+        return user.toUserDto()
     }
 
     /** The principal for a bearer token, or null when it is unknown, revoked or expired. */
@@ -94,9 +176,16 @@ class Accounts(private val db: Db) {
     suspend fun me(userId: String): UserDto = db.tx { user(userId) }
 
     fun Transaction.user(userId: String): UserDto {
-        val row = Users.selectAll().where { Users.id eq userId }.single()
-        return UserDto(row[Users.id], row[Users.email], row[Users.createdAt])
+        return Users.selectAll().where { Users.id eq userId }.single().toUserDto()
     }
+
+    private fun ResultRow.toUserDto() = UserDto(
+        id = this[Users.id],
+        email = this[Users.email],
+        createdAt = this[Users.createdAt],
+        hasPassword = this[Users.passwordHash] != null,
+        googleLinked = this[Users.googleSub] != null,
+    )
 
     suspend fun listTokens(principal: TokenPrincipal): TokenList = db.tx {
         val tokens = ApiTokens.selectAll()

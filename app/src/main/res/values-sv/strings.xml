@@ -343,6 +343,16 @@
     <string name="sync_error_not_a_server">Ingen Tung-server svarar på den adressen. Kontrollera den och försök igen.</string>
     <string name="sync_error_unreachable">Kunde inte nå servern. Kontrollera adressen och din uppkoppling.</string>
     <string name="sync_error_server_auth">Servern fick ett fel. Försök igen om en stund.</string>
+    <string name="sync_google_sign_in">Logga in med Google</string>
+    <string name="sync_google_or_email">Eller med e-post och lösenord</string>
+    <string name="sync_google_linked">Google kopplat</string>
+    <string name="sync_error_google_rejected">Servern godtog inte Google-inloggningen. Försök igen.</string>
+    <string name="sync_error_google_unverified">Google har inte verifierat kontots e-postadress. Använd ett lösenord eller ett annat Google-konto.</string>
+    <string name="sync_error_google_mismatch">E-postadressen hör till ett konto som är kopplat till ett annat Google-konto. Logga in med det eller med ditt lösenord.</string>
+    <string name="sync_error_google_not_offered">Den här servern erbjuder inte inloggning med Google. Använd e-post och lösenord.</string>
+    <string name="sync_error_google_no_account">Det finns inget Google-konto på telefonen. Lägg till ett i telefonens inställningar, eller använd e-post och lösenord.</string>
+    <string name="sync_error_google_unavailable">Inloggning med Google kräver Google Play-tjänster på telefonen. Använd e-post och lösenord.</string>
+    <string name="sync_error_google_failed">Google-inloggningen fungerade inte. Försök igen, eller använd e-post och lösenord.</string>
 
     <!-- Settings: Health Connect (ui/settings/HealthConnectSection.kt) -->
     <string name="health_title">Health Connect</string>
