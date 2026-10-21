@@ -40,6 +40,11 @@ class RoutinesViewModel(
         RoutinesUiState(loading = false, routines = list, canStart = active == null, activeProgram = program?.name)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RoutinesUiState())
 
+    /** Creates an empty routine called [name]; [onCreated] gets its id, to open it. */
+    fun create(name: String, onCreated: (String) -> Unit) {
+        viewModelScope.launch { commands.execute(Command.CreateRoutine(name)).id(CommandIds.ROUTINE_ID)?.let(onCreated) }
+    }
+
     fun start(routineId: String, onReady: (String) -> Unit) {
         viewModelScope.launch { commands.execute(Command.StartRoutine(routineId)).id(CommandIds.WORKOUT_ID)?.let(onReady) }
     }

@@ -78,7 +78,8 @@ class ProgramFlowTest : FlowTest() {
         waitForText(str(R.string.program_new))
         clickDescription(str(R.string.action_back))
         waitForText(str(R.string.programs_entry_active, "Push pull"))
-        clickDescription(str(R.string.action_back))
+        // Routines is a tab now, with no back arrow: Home is the tab next to it.
+        clickText(str(R.string.nav_home))
         waitForText(rotatingLine(1, 2, "Push day"))
         assertShown(hasText("Push pull"))
         screenshot("4-home-day-1")
@@ -150,7 +151,8 @@ class ProgramFlowTest : FlowTest() {
         waitForText(str(R.string.program_new))
         clickDescription(str(R.string.action_back))
         waitForText(str(R.string.programs_entry_active, "Weekly"))
-        clickDescription(str(R.string.action_back))
+        // Routines is a tab now, with no back arrow: Home is the tab next to it.
+        clickText(str(R.string.nav_home))
         waitForText(str(R.string.today_fixed, "Push day"))
         assertShown(startToday("Push day") and isEnabled())
         compose.onNode(hasText(str(R.string.today_rest))).assertDoesNotExist()

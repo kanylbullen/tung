@@ -193,7 +193,7 @@
     <!-- Routines -->
     <string name="routines_title">Routines</string>
     <string name="routines_all">All</string>
-    <string name="routines_empty">No routines. Save a finished workout as a routine from its summary or from its menu in History.</string>
+    <string name="routines_empty">No routines. Create one with + New routine, or save a finished workout as a routine from its summary or from its menu in History.</string>
     <string name="routine_start">Start</string>
     <string name="routine_start_description">Start %1$s</string>
     <string name="routine_last">Last: %1$s</string>
@@ -235,6 +235,11 @@
     <string name="routine_edit_target_reps">Change the target reps of %1$s</string>
     <string name="routine_target_reps_title">Target reps · %1$s</string>
     <string name="routine_error_target_reps">Enter a whole number between 1 and 999.</string>
+    <string name="nav_routines">Routines</string>
+    <string name="routine_new">+ New routine</string>
+    <string name="routine_new_title">New routine</string>
+    <string name="routine_create">Create</string>
+    <string name="routine_empty_hint">Add exercises with + Exercise</string>
 
     <!-- Programs -->
     <string name="programs_title">Programs</string>

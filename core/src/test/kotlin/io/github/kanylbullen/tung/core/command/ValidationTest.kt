@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.command.Command.AddRoutineExercise
 import io.github.kanylbullen.tung.core.command.Command.ApplyPlan
 import io.github.kanylbullen.tung.core.command.Command.CreateProgram
+import io.github.kanylbullen.tung.core.command.Command.CreateRoutine
 import io.github.kanylbullen.tung.core.command.Command.LogSet
 import io.github.kanylbullen.tung.core.command.Command.RemoveRoutineExercise
 import io.github.kanylbullen.tung.core.command.Command.SaveRoutine
@@ -78,6 +79,13 @@ class ValidationTest {
         invalid(SaveRoutine("w", "   "))
         valid(SaveRoutine("w", "Push day"))
         invalid(CreateProgram(" ", ProgramMode.FIXED))
+    }
+
+    @Test
+    fun aNewRoutineNeedsOnlyANameAndMayBeEmpty() {
+        valid(CreateRoutine("Legs"))
+        assertEquals(listOf("name must not be blank"), invalid(CreateRoutine("")))
+        assertEquals(listOf("name must not be blank"), invalid(CreateRoutine("   ")))
     }
 
     @Test

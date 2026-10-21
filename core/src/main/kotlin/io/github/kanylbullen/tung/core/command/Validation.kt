@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.core.command.Command.AdjustTargetSets
 import io.github.kanylbullen.tung.core.command.Command.ApplyPlan
 import io.github.kanylbullen.tung.core.command.Command.CreateExercise
 import io.github.kanylbullen.tung.core.command.Command.CreateProgram
+import io.github.kanylbullen.tung.core.command.Command.CreateRoutine
 import io.github.kanylbullen.tung.core.command.Command.DeactivateProgram
 import io.github.kanylbullen.tung.core.command.Command.DeleteProgram
 import io.github.kanylbullen.tung.core.command.Command.DeleteRoutine
@@ -164,6 +165,7 @@ fun validate(command: Command): Validation {
                 planned.targetReps?.let { reps(it, "$at: target reps") }
             }
         }
+        is CreateRoutine -> name(command.name)
         is RenameRoutine -> {
             id(command.routineId, "routineId")
             name(command.name)

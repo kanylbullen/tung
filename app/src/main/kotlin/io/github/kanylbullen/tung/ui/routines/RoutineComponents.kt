@@ -46,6 +46,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 /**
  * A routine as one list row: name on top, exercise count and when it was last
  * done below, and a Start button. [onClick] opens it for editing, where offered.
+ * Start is disabled for a routine with no exercises, whatever [startEnabled] says.
  */
 @Composable
 fun RoutineRow(
@@ -74,7 +75,7 @@ fun RoutineRow(
         val description = stringResource(R.string.routine_start_description, row.name)
         Button(
             onClick = onStart,
-            enabled = startEnabled,
+            enabled = startEnabled && row.exerciseCount > 0,
             shape = TungCorner,
             colors = ButtonDefaults.buttonColors(
                 containerColor = Tung.colors.raised,
@@ -105,8 +106,8 @@ fun defaultRoutineName(report: WorkoutReport): String {
 }
 
 /**
- * Asks for a name; used to save a workout as a routine and to rename a routine
- * or a program. [errorText] is shown when Save is tapped with no name.
+ * Asks for a name; used to save a workout as a routine, to create an empty
+ * routine and to rename a routine or a program. [errorText] is shown when Save is tapped with no name.
  */
 @Composable
 fun RoutineNameDialog(

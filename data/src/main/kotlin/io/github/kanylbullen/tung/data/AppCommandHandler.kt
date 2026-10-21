@@ -123,6 +123,7 @@ class AppCommandHandler(
                 routines.saveFromWorkout(command.workoutId, command.name)?.let { Done(mapOf(ROUTINE_ID to it)) }
                     ?: Rejected(listOf("the workout has no logged set to save"))
             is Command.SaveRoutinePlan -> saveRoutinePlan(command)
+            is Command.CreateRoutine -> Done(mapOf(ROUTINE_ID to routines.create(command.name)))
             is Command.RenameRoutine -> {
                 routines.rename(command.routineId, command.name)
                 Done()
