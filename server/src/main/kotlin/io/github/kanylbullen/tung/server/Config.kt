@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.server.auth.GOOGLE_JWKS_URL
 import io.github.kanylbullen.tung.server.push.FCM_BASE_URL
 import io.github.kanylbullen.tung.server.push.FcmServiceAccount
 import io.github.kanylbullen.tung.server.push.HostResolver
@@ -38,6 +39,16 @@ data class ServerConfig(
     val pushAllowPrivate: Boolean = false,
     /** How endpoint host names are resolved for that check. Not an environment variable: tests hand in a table. */
     val pushResolver: HostResolver = HostResolver.SYSTEM,
+    /**
+     * `TUNG_GOOGLE_CLIENT_ID`: the OAuth client ids whose Google ID tokens
+     * sign users in (comma-separated; the first is the one `/auth/methods`
+     * hands to clients). Empty turns Sign in with Google off.
+     */
+    val googleClientIds: List<String> = emptyList(),
+    /** Google's JWK set. Not an environment variable: only tests point it elsewhere. */
+    val googleJwksUrl: String = GOOGLE_JWKS_URL,
+    /** The time for Google token expiry. Not an environment variable: tests set it. */
+    val clock: () -> Long = System::currentTimeMillis,
 ) {
     companion object {
         const val DEFAULT_PORT = 8080
@@ -77,6 +88,8 @@ data class ServerConfig(
                 trustProxy = trustProxy,
                 fcmServiceAccount = value(FCM_ENV)?.let(::fcmServiceAccount),
                 pushAllowPrivate = pushAllowPrivate,
+                googleClientIds = value("TUNG_GOOGLE_CLIENT_ID")
+                    ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty(),
             )
         }
 

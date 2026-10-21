@@ -45,6 +45,21 @@ class FakeSyncServer : Dispatcher() {
     /** Whether [linkCode] has been claimed. */
     @Volatile var linkClaimed = false
 
+    /** The Google client id `/auth/methods` names; null: the server does not offer Google (and `/auth/google` is 404). */
+    @Volatile var googleClientId: String? = null
+
+    /** The one Google ID token `/auth/google` accepts; anything else is 401 `invalid_google_token`. */
+    @Volatile var googleIdToken = "google-id-token"
+
+    /** The email `/auth/google` signs in as. */
+    @Volatile var googleEmail = "lifter@gmail.com"
+
+    /** Every id token `/auth/google` was sent. */
+    val googleTokens = CopyOnWriteArrayList<String>()
+
+    /** What `/me` says about Google: linked after a Google sign-in, or when a test sets it. */
+    @Volatile var googleLinked = false
+
     /** Every sync request as received, before any auth check. */
     val syncRequests = CopyOnWriteArrayList<SyncRequest>()
 
@@ -131,7 +146,36 @@ class FakeSyncServer : Dispatcher() {
     private fun route(request: RecordedRequest): MockResponse = when (request.path) {
         "/api/v1/auth/login", "/api/v1/auth/register" -> {
             authPaths += request.path
-            json(if (request.path.orEmpty().endsWith("register")) 201 else 200, """{"token":"$token","user":{"id":"u","email":"lifter@example.org","created_at":0}}""")
+            json(
+                if (request.path.orEmpty().endsWith("register")) 201 else 200,
+                """{"token":"$token","user":{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked}}""",
+            )
+        }
+        // Not in authPaths: Settings asks for it whenever the form shows a server.
+        "/api/v1/auth/methods" -> {
+            val google = googleClientId?.let { """{"client_id":"$it"}""" } ?: "null"
+            json(200, """{"password":true,"google":$google}""")
+        }
+        "/api/v1/auth/google" -> {
+            authPaths += request.path
+            val sent = Regex("\"id_token\"\\s*:\\s*\"([^\"]*)\"").find(request.body.readUtf8())?.groupValues?.get(1)
+            sent?.let { googleTokens += it }
+            when {
+                googleClientId == null -> json(404, """{"error":{"code":"not_configured","message":"Sign in with Google is not set up on this server."}}""")
+                sent == null -> json(400, """{"error":{"code":"invalid_request","message":"id_token is missing."}}""")
+                sent != googleIdToken -> json(401, """{"error":{"code":"invalid_google_token","message":"The Google token's signature is not valid."}}""")
+                else -> {
+                    googleLinked = true
+                    json(200, """{"token":"$token","user":{"id":"g","email":"$googleEmail","created_at":0,"has_password":false,"google_linked":true}}""")
+                }
+            }
+        }
+        "/api/v1/me" -> {
+            if (request.getHeader("Authorization") != "Bearer $token") {
+                json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
+            } else {
+                json(200, """{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked}""")
+            }
         }
         "/api/v1/auth/logout" -> {
             authPaths += request.path

@@ -98,6 +98,10 @@ fun Route.apiRoutes(
         rateLimit(AUTH_RATE_LIMIT) {
             post("/auth/register") { call.respond(HttpStatusCode.Created, accounts.register(call.receive())) }
             post("/auth/login") { call.respond(accounts.login(call.receive())) }
+            post("/auth/google") { call.respond(accounts.signInWithGoogle(call.receive<GoogleSignIn>().idToken)) }
+        }
+        get("/auth/methods") {
+            call.respond(AuthMethods(password = true, google = accounts.google?.let { GoogleMethod(it.clientIds.first()) }))
         }
 
         authenticate(BEARER) {

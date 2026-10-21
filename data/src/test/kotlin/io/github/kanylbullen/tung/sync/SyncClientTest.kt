@@ -355,4 +355,53 @@ class SyncClientTest {
         assertEquals(0, first.dirtyRows())
         assertEquals(0, second.dirtyRows())
     }
+
+    @Test
+    fun authMethodsSayWhetherTheServerOffersGoogle() {
+        val phone = Device()
+        assertEquals(
+            AuthMethodsResult.Success(AuthMethods(password = true, googleClientId = null)),
+            runBlocking { phone.client.authMethods(fake.baseUrl) },
+        )
+        fake.googleClientId = "1234-web.apps.googleusercontent.com"
+        assertEquals(
+            AuthMethodsResult.Success(AuthMethods(password = true, googleClientId = "1234-web.apps.googleusercontent.com")),
+            runBlocking { phone.client.authMethods(fake.baseUrl) },
+        )
+        // A server from before the route answers 404: the password only.
+        assertEquals(
+            AuthMethodsResult.Success(AuthMethods(password = true, googleClientId = null)),
+            runBlocking { phone.client.authMethods(fake.baseUrl + "/old") },
+        )
+        assertEquals(
+            AuthMethodsResult.Failed(AuthFailure.NETWORK),
+            runBlocking { phone.client.authMethods("http://127.0.0.1:1") },
+        )
+    }
+
+    @Test
+    fun loginWithGoogleTradesTheIdTokenForASession() {
+        val phone = Device()
+        fake.googleClientId = "1234-web.apps.googleusercontent.com"
+        val ok = runBlocking { phone.client.loginWithGoogle(fake.baseUrl, fake.googleIdToken) }
+        assertEquals(AuthResult.Success(fake.token, "lifter@gmail.com", googleLinked = true), ok)
+        assertEquals(listOf(fake.googleIdToken), fake.googleTokens)
+
+        val rejected = runBlocking { phone.client.loginWithGoogle(fake.baseUrl, "forged") }
+        assertEquals(AuthResult.Failed(AuthFailure.GOOGLE_REJECTED, 401), rejected)
+
+        fake.googleClientId = null
+        val notOffered = runBlocking { phone.client.loginWithGoogle(fake.baseUrl, fake.googleIdToken) }
+        assertEquals(AuthResult.Failed(AuthFailure.GOOGLE_NOT_OFFERED, 404), notOffered)
+    }
+
+    @Test
+    fun meSaysWhetherGoogleIsLinked() {
+        val phone = Device()
+        assertEquals(AccountInfo("lifter@example.org", hasPassword = true, googleLinked = false), runBlocking { phone.client.me() })
+        fake.googleLinked = true
+        assertEquals(true, runBlocking { phone.client.me() }?.googleLinked)
+        phone.tokens.write("tung_dead")
+        assertNull(runBlocking { phone.client.me() })
+    }
 }

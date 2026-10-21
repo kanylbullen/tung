@@ -18,6 +18,8 @@ data class AccountState(
     val signedIn: Boolean?,
     val sync: SyncState,
     val syncing: Boolean,
+    /** A Google account is linked to this account (shown as "Google linked"). */
+    val googleLinked: Boolean = false,
 )
 
 /**
@@ -39,12 +41,11 @@ class SyncAccount(
     private val signedIn = MutableStateFlow<Boolean?>(null)
 
     val state: Flow<AccountState> = combine(
-        settings.serverUrl,
-        settings.email,
+        combine(settings.serverUrl, settings.email, settings.googleLinked, ::Triple),
         settings.state,
         signedIn.onStart { isSignedIn() },
         client.running,
-    ) { url, email, sync, signedIn, running -> AccountState(url, email, signedIn, sync, running) }
+    ) { (url, email, google), sync, signedIn, running -> AccountState(url, email, signedIn, sync, running, google) }
 
     suspend fun isSignedIn(): Boolean =
         signedIn.value ?: withContext(Dispatchers.IO) { tokens.read() != null }.also { signedIn.value = it }
@@ -58,14 +59,35 @@ class SyncAccount(
      */
     suspend fun signIn(serverUrl: String, email: String, password: String, create: Boolean): AuthResult {
         val result = client.authenticate(serverUrl, email.trim(), password, create)
-        if (result is AuthResult.Success) storeSession(serverUrl, result.token, result.email)
+        if (result is AuthResult.Success) storeSession(serverUrl, result.token, result.email, result.googleLinked)
         return result
     }
 
-    private suspend fun storeSession(serverUrl: String, token: String, email: String) {
+    /** What [serverUrl] offers for signing in (the Google button shows only when it names a client id). */
+    suspend fun authMethods(serverUrl: String): AuthMethodsResult = client.authMethods(serverUrl)
+
+    /**
+     * Signs in with a Google ID token (from Credential Manager, for the
+     * client id [authMethods] named) at [serverUrl], an address
+     * `core.sync.checkServerUrl` accepted. From there on it is the same as
+     * [signIn]: token stored, cursor 0, everything dirty, work scheduled.
+     */
+    suspend fun signInWithGoogle(serverUrl: String, idToken: String): AuthResult {
+        val result = client.loginWithGoogle(serverUrl, idToken)
+        if (result is AuthResult.Success) storeSession(serverUrl, result.token, result.email, result.googleLinked)
+        return result
+    }
+
+    /** Asks the server (`/me`) whether a Google account is linked, so Settings shows it after a link made elsewhere. */
+    suspend fun refreshAccount() {
+        if (!isSignedIn()) return
+        client.me()?.let { settings.setGoogleLinked(it.googleLinked) }
+    }
+
+    private suspend fun storeSession(serverUrl: String, token: String, email: String, googleLinked: Boolean = false) {
         withContext(Dispatchers.IO) {
             tokens.write(token)
-            settings.signedIn(serverUrl, email)
+            settings.signedIn(serverUrl, email, googleLinked)
             store.markEverythingDirty()
         }
         signedIn.value = true

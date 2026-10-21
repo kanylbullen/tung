@@ -40,6 +40,7 @@ from [`catalog/core.json`](../catalog/core.json) on every start.
 | `TUNG_PUBLIC_URL` | | The public base URL, e.g. `https://tung.example.org`, exactly as clients reach it (scheme, host, port, no trailing slash). It is the OAuth issuer and the base of every OAuth and MCP URL, and is named as the server in `/openapi.yaml`. Set it whenever the server is used beyond localhost; see "MCP". |
 | `TUNG_FCM_SERVICE_ACCOUNT_JSON` | | A Firebase service-account key for FCM push: the path to the JSON file (inside the container) or the JSON itself (starting with `{`). Empty: FCM push is off. An unreadable or invalid key stops the server at start. See "Push". |
 | `TUNG_PUSH_ALLOW_PRIVATE` | `false` | `true` lets UnifiedPush endpoints be plain `http://` and private, loopback or link-local addresses: for a self-hosted instance whose push distributor (ntfy) is on the same LAN. Leave `false` on any instance others can register on: the server would then POST to addresses inside your network. See "Push". |
+| `TUNG_GOOGLE_CLIENT_ID` | | The Google OAuth client id (a Web application client, `….apps.googleusercontent.com`) whose ID tokens sign users in; several comma-separated are accepted, and the first is the one clients are told to use. Empty: nothing Google-related is shown or served. See "Sign in with Google". |
 | `TUNG_TRUST_PROXY` | `false` | `true` behind a reverse proxy that sets `X-Forwarded-For`/`Forwarded`, so the rate limit and the log see the client. Leave `false` when clients reach the server directly, or they can spoof their address. |
 
 ## API
@@ -52,8 +53,10 @@ caller's own: another user's ids answer 404.
 |---|---|
 | `GET /healthz` | No auth. 200 when the database answers, 503 otherwise. |
 | `POST /api/v1/auth/register`, `/login` | `{email, password}` → a session token. 10 requests a minute per client address. |
+| `POST /api/v1/auth/google` | `{id_token}` → a session token, as `/login` answers. Only with `TUNG_GOOGLE_CLIENT_ID`, else 404 `not_configured`. Rate-limited like login. See "Sign in with Google". |
+| `GET /api/v1/auth/methods` | No auth. `{"password": true, "google": {"client_id": "…"}}`, or `"google": null` without a Google client id. |
 | `POST /api/v1/auth/logout` | Revokes the token used. |
-| `GET /api/v1/me` | |
+| `GET /api/v1/me` | The account, with `has_password` and `google_linked`. |
 | `GET/POST /api/v1/tokens`, `DELETE /api/v1/tokens/{id}` | List, create (`{name, scope}`, scope `read` or `write`) and revoke API tokens. |
 | `POST /api/v1/link/start`, `POST /api/v1/link/claim` | Sign a watch in with a six-digit code instead of a password. See "Linking a device". |
 | `GET/POST /api/v1/exercises`, `PATCH /api/v1/exercises/{id}` | The catalogue plus your own; create custom ones; rename yours, set the rest time of any. |
@@ -77,7 +80,9 @@ only as a SHA-256. A `read` token can only make GET requests. Passwords are
 hashed with Argon2id (Bouncy Castle; 19 MiB, 2 iterations). MCP clients get
 their tokens through OAuth (see "MCP"); those are ordinary API tokens named
 `mcp:<client>` that expire after 30 days unless the client refreshes them
-(`expires_at` in the token list). There is no OIDC.
+(`expires_at` in the token list). Besides the password, an instance can
+sign users in with Google (see "Sign in with Google"); there is no other
+external identity provider.
 
 **Linking a device.** A watch cannot reasonably take an email and a
 password, so a signed-in device (the phone's Settings, "Link a watch") calls
@@ -98,6 +103,67 @@ and a write replaces the stored row only when it is strictly newer; equal or
 older writes are ignored row by row, so replays are harmless and a stale
 device cannot overwrite a newer edit. Deletes are tombstones (`deleted_at`).
 Sync uses the same rule.
+
+## Sign in with Google
+
+Optional, next to email and password, in the app (Settings) and on the
+OAuth consent page that MCP clients send you to. Off until the operator sets
+`TUNG_GOOGLE_CLIENT_ID`; the app learns the client id from
+`GET /api/v1/auth/methods` and never hardcodes one, so every instance uses
+its own.
+
+**Verification** (`auth/GoogleIdTokens.kt`, no Google library): the ID
+token must be RS256, issued by `accounts.google.com`, for one of the
+configured client ids, unexpired (60 s leeway for clock skew) and carry
+`iat`; its signature is checked against Google's key set
+(`https://www.googleapis.com/oauth2/v3/certs`), kept as long as its
+`Cache-Control: max-age` says (an hour without one) and fetched again, at
+most once a minute, when a token names a key it does not have. A rejected
+token is 401 `invalid_google_token`; a key set that cannot be fetched is 503
+`google_unavailable`.
+
+**Which account.** The account already linked to that Google account
+(`users.google_sub`, migration V10). Else, when Google says the email is
+verified, the account with that email: it gets linked and keeps its
+password. Else a new account without a password, which can only sign in with
+Google (password login answers 401 like a wrong password). An email Google
+has not verified that is linked to nothing is refused (401
+`email_not_verified`); an email whose account is linked to another Google
+account is 409 `google_account_mismatch`. `/api/v1/me` says `has_password`
+and `google_linked`.
+
+**The consent page** shows "Continue with Google" (Google Identity Services,
+`https://accounts.google.com/gsi/client`, redirect mode) above the password
+form, and only then loads anything from elsewhere; its Content Security
+Policy allows exactly GIS's script, styles, iframe and fetches under
+`accounts.google.com/gsi/`, and the referrer policy sends Google the origin.
+Google posts the credential to `POST /oauth/google` with its `g_csrf_token`
+(cookie and field must match) and the button's `state`, the authorization
+request signed by this server; the token is verified and the account chosen
+exactly as above, and the page asks Allow or Deny, then the client gets its
+code as after a password. The signing key is made at start, so a page opened
+before a restart has to be reopened.
+
+**Setting it up.** In the Google Cloud console (the Firebase project's own
+GCP project works), *APIs & Services → Credentials → Create credentials →
+OAuth client ID*, type **Web application**:
+
+- *Authorised JavaScript origins*: the public URL, exactly
+  `TUNG_PUBLIC_URL` (e.g. `https://tung.example.org`), for the button on the
+  consent page.
+- *Authorised redirect URIs*: `https://tung.example.org/oauth/google`, where
+  Google posts the credential in redirect mode.
+- The OAuth consent screen (*Google Auth Platform → Branding*) needs an app
+  name and a support email; the scopes are only `openid`, `email` and
+  `profile`, which need no verification.
+
+Set its client id as `TUNG_GOOGLE_CLIENT_ID` and redeploy. The Android app
+uses **the same web client id** as Credential Manager's `serverClientId`;
+it also needs an *Android* OAuth client in the same project, with the
+package name `io.github.kanylbullen.tung` and the SHA-1 of the signing key
+(`keytool -list -v -keystore …`, or Play Console's app signing page), or
+Google refuses to hand the app a token. The Android client's id is never
+configured anywhere; Google matches it by package and signature.
 
 ## Sync
 
@@ -328,8 +394,9 @@ endpoint is in flight at a time; the timeout is 5 s. Endpoints live in
 The app's server setting and sync client (the app half of
 [#25](https://github.com/kanylbullen/tung/issues/25)), paging of large sync
 answers, a server-to-client MCP event stream (GET `/mcp`
-answers 405; the server sends nothing unasked), OIDC, password reset, email
-verification and account deletion.
+answers 405; the server sends nothing unasked), identity providers other
+than Google, setting a password on a Google-only account, unlinking Google,
+password reset, email verification and account deletion.
 
 ## Develop
 

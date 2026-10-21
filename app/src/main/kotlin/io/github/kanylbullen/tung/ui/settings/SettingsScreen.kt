@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,7 +17,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -39,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.core.sync.PushChoice
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncState
@@ -63,6 +69,9 @@ fun SettingsScreen(onBack: () -> Unit) {
     val container = appContainer()
     val vm: SettingsViewModel = viewModel(factory = factoryOf { SettingsViewModel(container.syncAccount, container.push) })
     val state by vm.state.collectAsStateWithLifecycle()
+    // Credential Manager shows Google's account sheet over this activity.
+    val context = LocalContext.current
+    val google = remember { (context.applicationContext as TungApp).createGoogleSignIn() }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -108,6 +117,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     onPassword = vm::onPassword,
                     onSignIn = { vm.signIn(create = false) },
                     onCreate = { vm.signIn(create = true) },
+                    onGoogle = { vm.signInWithGoogle { clientId -> google.idToken(context, clientId) } },
                 )
             }
             HealthConnectSection()
@@ -125,6 +135,9 @@ private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: ()
             color = Tung.colors.text,
         )
         Text(account.serverUrl.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+        if (account.googleLinked) {
+            Text(stringResource(R.string.sync_google_linked), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+        }
     }
     Text(syncStatusText(account.sync), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     PrimaryButton(
@@ -258,6 +271,7 @@ private fun SignInForm(
     onPassword: (String) -> Unit,
     onSignIn: () -> Unit,
     onCreate: () -> Unit,
+    onGoogle: () -> Unit,
 ) {
     Text(stringResource(R.string.sync_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     // After the server ended the session, say so above the form.
@@ -275,6 +289,11 @@ private fun SignInForm(
         colors = tungFieldColors(),
         modifier = Modifier.fillMaxWidth(),
     )
+    // Only when this server offers it (`/auth/methods`); the client id comes from there.
+    if (form.googleClientId != null) {
+        GoogleButton(onClick = onGoogle, enabled = !form.busy)
+        Text(stringResource(R.string.sync_google_or_email), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+    }
     OutlinedTextField(
         value = form.email,
         onValueChange = onEmail,
@@ -301,6 +320,25 @@ private fun SignInForm(
     }
     PrimaryButton(text = stringResource(R.string.sync_sign_in), onClick = onSignIn, enabled = !form.busy)
     SecondaryButton(text = stringResource(R.string.sync_create_account), onClick = onCreate)
+}
+
+/**
+ * "Sign in with Google": an outlined button with the text, in the app's own
+ * colours (Google's branding allows a neutral button; one accent stays the
+ * primary "Sign in").
+ */
+@Composable
+private fun GoogleButton(onClick: () -> Unit, enabled: Boolean) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        shape = TungCorner,
+        border = BorderStroke(1.dp, Tung.colors.border),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = Tung.colors.text, disabledContentColor = Tung.colors.muted),
+    ) {
+        Text(stringResource(R.string.sync_google_sign_in), style = MaterialTheme.typography.labelLarge)
+    }
 }
 
 /** "Last sync 2 min ago", "Last sync: never", or the last failure in words. */

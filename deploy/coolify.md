@@ -29,6 +29,7 @@ TUNG_PUBLIC_URL=https://tung.xuper.fun        # must be the exact URL clients us
 TUNG_TRUST_PROXY=true                         # behind Traefik/cloudflared: rate limits see the client
 TUNG_PUSH_ALLOW_PRIVATE=false                 # public instance: never POST to internal addresses
 TUNG_FCM_SERVICE_ACCOUNT_JSON=                # later, when the Firebase project exists
+TUNG_GOOGLE_CLIENT_ID=                        # Sign in with Google: the web client id from the GCP project (server/README.md); empty = off
 ```
 
 ## Who does what

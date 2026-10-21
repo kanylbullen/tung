@@ -12,6 +12,9 @@ info:
     `Authorization: Bearer tung_…`. A token with scope `read` can only make GET
     requests. MCP clients get their tokens through OAuth 2.1 (`/oauth/…`):
     ordinary API tokens named `mcp:<client>` that expire unless refreshed.
+    An instance with a Google client id also signs users in with a Google ID
+    token (`/api/v1/auth/google`); `/api/v1/auth/methods` says which methods
+    it offers.
 
     **Ids and `updated_at`.** Training data keeps the ids the client generated
     (lower-case UUIDs). Every row has `updated_at` (epoch milliseconds), and a
@@ -139,6 +142,75 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/auth/google:
+    post:
+      tags: [auth]
+      summary: Sign in with Google
+      description: |
+        Trades a Google ID token (from Android Credential Manager or Google
+        Identity Services, issued to the instance's client id) for a session
+        token, exactly as `/auth/login` answers. The token must be RS256,
+        issued by Google, for one of the configured client ids, unexpired
+        (60 s leeway) and signed with a key from Google's JWK set. The user is
+        the one already linked to the Google account; else, when Google says
+        the email is verified, the account with that email, which is linked
+        and keeps its password; else a new account without a password. An
+        unverified email that is linked to nothing is refused. Rate-limited
+        per client address like login. Without `TUNG_GOOGLE_CLIENT_ID` the
+        route answers 404 `not_configured`.
+      operationId: signInWithGoogle
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GoogleSignIn" }
+      responses:
+        "200":
+          description: Signed in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401":
+          description: "`invalid_google_token` (expired, wrong audience, bad signature, unknown key) or `email_not_verified`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: "`not_configured`: this instance has no Google client id."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: "`google_account_mismatch`: the email's account is linked to another Google account."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503":
+          description: "`google_unavailable`: Google's signing keys could not be fetched."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/auth/methods:
+    get:
+      tags: [auth]
+      summary: How this instance signs users in
+      description: |
+        Password sign-in is always offered. `google` names the OAuth client id
+        to request Google ID tokens for (Credential Manager's
+        `serverClientId`), or is null when the instance has none.
+      operationId: authMethods
+      security: []
+      responses:
+        "200":
+          description: The sign-in methods.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthMethods" }
 
   /api/v1/auth/logout:
     post:
@@ -1029,6 +1101,9 @@ paths:
       description: |
         The page's form: the authorization request again, `email`, `password`,
         `action` (`allow` or `deny`) and a CSRF token matched against a cookie.
+        After "Continue with Google" the form carries `google_ticket` (from
+        `/oauth/google`, ten minutes, bound to the CSRF token and the client)
+        instead of `email` and `password`.
         Allow with the right credentials redirects with a single-use `code`
         (five minutes) bound to the client, redirect URI, user, scope and code
         challenge. Rate limited like login.
@@ -1048,6 +1123,45 @@ paths:
         "302": { description: "Back to the redirect URI with `code`, `state` and `iss`, or with `error=access_denied`." }
         "400":
           description: An error page (expired form, unknown client).
+          content:
+            text/html:
+              schema: { type: string }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /oauth/google:
+    post:
+      tags: [oauth]
+      summary: Continue with Google (the consent page's Google button)
+      description: |
+        Where Google Identity Services' redirect mode posts the credential
+        from the consent page's button: `credential` (the ID token),
+        `g_csrf_token` (matched against the cookie of that name) and `state`
+        (the authorization request, signed by this server). The token is
+        verified and the user resolved as in `POST /api/v1/auth/google`; the
+        answer is the consent step (Allow or Deny), whose form posts to
+        `/oauth/authorize`. Rate limited like login. Only when the instance
+        has a Google client id; otherwise an error page with 404.
+      operationId: oauthGoogle
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, additionalProperties: { type: string } }
+      responses:
+        "200":
+          description: The consent step for the signed-in user, or the login page again with why Google sign-in was refused.
+          content:
+            text/html:
+              schema: { type: string }
+        "302": { description: "An error sent back to the client's redirect URI." }
+        "400":
+          description: An error page (CSRF mismatch, expired or forged state, unknown client).
+          content:
+            text/html:
+              schema: { type: string }
+        "404":
+          description: Google sign-in is not set up on this server.
           content:
             text/html:
               schema: { type: string }
@@ -1267,11 +1381,36 @@ components:
 
     User:
       type: object
-      required: [id, email, created_at]
+      required: [id, email, created_at, has_password, google_linked]
       properties:
         id: { $ref: "#/components/schemas/Uuid" }
         email: { type: string }
         created_at: { $ref: "#/components/schemas/Millis" }
+        has_password:
+          type: boolean
+          description: False for an account made with Google that has no password; password login is refused for it.
+        google_linked:
+          type: boolean
+          description: A Google account is linked, so Sign in with Google reaches this user.
+
+    GoogleSignIn:
+      type: object
+      required: [id_token]
+      properties:
+        id_token: { type: string, description: "A Google ID token (JWT) issued to the instance's client id." }
+
+    AuthMethods:
+      type: object
+      required: [password, google]
+      properties:
+        password: { type: boolean, const: true }
+        google:
+          oneOf:
+            - type: object
+              required: [client_id]
+              properties:
+                client_id: { type: string, examples: ["1234-abc.apps.googleusercontent.com"] }
+            - { type: "null" }
 
     Session:
       type: object

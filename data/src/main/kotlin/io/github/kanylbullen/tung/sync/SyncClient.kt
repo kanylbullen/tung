@@ -17,6 +17,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -68,9 +69,21 @@ sealed interface SyncResult {
 }
 
 sealed interface AuthResult {
-    data class Success(val token: String, val email: String) : AuthResult
+    /** [googleLinked]: the account has a Google account linked (the server's `user.google_linked`). */
+    data class Success(val token: String, val email: String, val googleLinked: Boolean = false) : AuthResult
     data class Failed(val failure: AuthFailure, val status: Int? = null) : AuthResult
 }
+
+/** `GET /api/v1/auth/methods`: password sign-in, and Google's with the client id to ask Google for, or null. */
+data class AuthMethods(val password: Boolean, val googleClientId: String?)
+
+sealed interface AuthMethodsResult {
+    data class Success(val methods: AuthMethods) : AuthMethodsResult
+    data class Failed(val failure: AuthFailure) : AuthMethodsResult
+}
+
+/** `GET /api/v1/me`: the signed-in account as the server has it. */
+data class AccountInfo(val email: String, val hasPassword: Boolean, val googleLinked: Boolean)
 
 enum class AuthFailure {
     /** 401 on login. */
@@ -90,6 +103,18 @@ enum class AuthFailure {
 
     /** 404 or 405: something answers, but not tung-server's API. */
     NOT_A_SERVER,
+
+    /** 401 `invalid_google_token` on Google sign-in: the server did not accept Google's token. */
+    GOOGLE_REJECTED,
+
+    /** 401 `email_not_verified`: Google has not verified the account's email, and no account is linked to it. */
+    GOOGLE_EMAIL_UNVERIFIED,
+
+    /** 409 `google_account_mismatch`: the email's account is linked to another Google account. */
+    GOOGLE_ACCOUNT_MISMATCH,
+
+    /** 404 `not_configured`: this server does not offer Google sign-in. */
+    GOOGLE_NOT_OFFERED,
 
     /** No connection, refused, timed out. */
     NETWORK,
@@ -254,7 +279,7 @@ class SyncClient(
                 }
                 if (response.status.isSuccess()) {
                     val session = response.body<Session>()
-                    AuthResult.Success(session.token, session.user?.email ?: email)
+                    AuthResult.Success(session.token, session.user?.email ?: email, session.user?.googleLinked == true)
                 } else {
                     AuthResult.Failed(authFailure(response), response.status.value)
                 }
@@ -266,6 +291,86 @@ class SyncClient(
                 AuthResult.Failed(AuthFailure.SERVER)
             }
         }
+
+    /**
+     * `GET /api/v1/auth/methods` at [baseUrl]: whether the server offers Google
+     * sign-in and with which client id. A server from before the route (404)
+     * offers the password only.
+     */
+    suspend fun authMethods(baseUrl: String): AuthMethodsResult = withContext(Dispatchers.IO) {
+        try {
+            val response = http.get(baseUrl + METHODS_PATH)
+            when {
+                response.status.isSuccess() -> {
+                    val body = response.body<MethodsBody>()
+                    AuthMethodsResult.Success(AuthMethods(body.password, body.google?.clientId?.takeIf { it.isNotBlank() }))
+                }
+                response.status.value == 404 -> AuthMethodsResult.Success(AuthMethods(password = true, googleClientId = null))
+                response.status.value == 405 -> AuthMethodsResult.Failed(AuthFailure.NOT_A_SERVER)
+                response.status.value == 429 -> AuthMethodsResult.Failed(AuthFailure.RATE_LIMITED)
+                else -> AuthMethodsResult.Failed(AuthFailure.SERVER)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            AuthMethodsResult.Failed(AuthFailure.NETWORK)
+        } catch (e: Exception) {
+            AuthMethodsResult.Failed(AuthFailure.SERVER)
+        }
+    }
+
+    /**
+     * `POST /api/v1/auth/google {id_token}` at [baseUrl]: a Google ID token
+     * for the server's client id, traded for a session token as `/login`
+     * answers. Stores nothing; [SyncAccount] does.
+     */
+    suspend fun loginWithGoogle(baseUrl: String, idToken: String): AuthResult = withContext(Dispatchers.IO) {
+        try {
+            val response = http.post(baseUrl + GOOGLE_PATH) {
+                contentType(ContentType.Application.Json)
+                setBody(GoogleBody(idToken))
+            }
+            if (response.status.isSuccess()) {
+                val session = response.body<Session>()
+                AuthResult.Success(session.token, session.user?.email.orEmpty(), session.user?.googleLinked ?: true)
+            } else {
+                val code = runCatching { response.body<ErrorBody>().error.code }.getOrNull()
+                AuthResult.Failed(
+                    when {
+                        code == "email_not_verified" -> AuthFailure.GOOGLE_EMAIL_UNVERIFIED
+                        code == "google_account_mismatch" -> AuthFailure.GOOGLE_ACCOUNT_MISMATCH
+                        code == "not_configured" -> AuthFailure.GOOGLE_NOT_OFFERED
+                        response.status.value == 401 -> AuthFailure.GOOGLE_REJECTED
+                        response.status.value == 400 -> AuthFailure.INVALID_REQUEST
+                        else -> authFailure(response)
+                    },
+                    response.status.value,
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            AuthResult.Failed(AuthFailure.NETWORK)
+        } catch (e: Exception) {
+            AuthResult.Failed(AuthFailure.SERVER)
+        }
+    }
+
+    /** `GET /api/v1/me` with this device's token; null when signed out, offline or refused. */
+    suspend fun me(): AccountInfo? = withContext(Dispatchers.IO) {
+        val baseUrl = settings.serverUrl() ?: return@withContext null
+        val token = tokens.read() ?: return@withContext null
+        try {
+            val response = http.get(baseUrl + ME_PATH) { bearerAuth(token) }
+            if (!response.status.isSuccess()) return@withContext null
+            val user = response.body<SessionUser>()
+            AccountInfo(user.email.orEmpty(), user.hasPassword ?: true, user.googleLinked ?: false)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     /**
      * `POST /api/v1/link/start` with this device's token: a code another
@@ -415,8 +520,22 @@ class SyncClient(
     @Serializable
     private data class Session(val token: String, val user: SessionUser? = null)
 
+    /** The server's user; the flags are null from a server from before Google sign-in. */
     @Serializable
-    private data class SessionUser(val email: String? = null)
+    private data class SessionUser(
+        val email: String? = null,
+        @SerialName("has_password") val hasPassword: Boolean? = null,
+        @SerialName("google_linked") val googleLinked: Boolean? = null,
+    )
+
+    @Serializable
+    private data class GoogleBody(@SerialName("id_token") val idToken: String)
+
+    @Serializable
+    private data class MethodsBody(val password: Boolean = true, val google: GoogleMethodBody? = null)
+
+    @Serializable
+    private data class GoogleMethodBody(@SerialName("client_id") val clientId: String)
 
     @Serializable
     private data class ErrorBody(val error: ErrorDetail)
@@ -428,6 +547,9 @@ class SyncClient(
         const val LOGIN_PATH = "/api/v1/auth/login"
         const val REGISTER_PATH = "/api/v1/auth/register"
         const val LOGOUT_PATH = "/api/v1/auth/logout"
+        const val GOOGLE_PATH = "/api/v1/auth/google"
+        const val METHODS_PATH = "/api/v1/auth/methods"
+        const val ME_PATH = "/api/v1/me"
         const val LINK_START_PATH = "/api/v1/link/start"
         const val LINK_CLAIM_PATH = "/api/v1/link/claim"
     }
