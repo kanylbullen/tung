@@ -236,6 +236,7 @@ class TungContainer(
             commands = commands,
             clock = clock,
             equipment = { equipmentSettings.current() },
+            catalogue = { io.github.kanylbullen.tung.core.ai.aiCatalogue(coreCatalog) },
         )
     }
 
