@@ -50,6 +50,16 @@ class FlowTestApp : TungApp() {
 
     override fun createGoogleSignIn(): GoogleSignIn = google
 
+    /**
+     * The server a fresh Account screen starts with, and asks `/auth/methods`
+     * of as it opens: never the real default (`BuildConfig.DEFAULT_SERVER_URL`).
+     * A closed port on localhost unless a test points it at its [io.github.kanylbullen.tung.sync.FakeSyncServer].
+     */
+    @Volatile
+    var defaultServer: String = "http://127.0.0.1:9"
+
+    override val defaultServerUrl: String get() = defaultServer
+
     /** Health Connect: available, nothing granted, nothing to read, until a test says otherwise. */
     val healthConnect = FakeHealthConnect()
 

@@ -94,7 +94,7 @@ class AssistantFlowTest : FlowTest() {
             ),
         )
 
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_assistant)
         waitForText(str(R.string.ai_settings_intro))
         // http is fine here: the stand-in listens on localhost.
         fill(str(R.string.ai_base_url), server.url("/v1").toString())
@@ -106,7 +106,7 @@ class AssistantFlowTest : FlowTest() {
         assertEquals("sk-flow-test", app.aiKeys.token)
         assertEquals(0, server.requestCount)
 
-        clickDescription(str(R.string.action_back))
+        leaveSettings()
         openAssistantFromHome()
         screenshot("2-assistant")
         ask(R.string.ai_ask_program)

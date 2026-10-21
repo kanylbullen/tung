@@ -26,6 +26,9 @@ android {
         // The app's languages: English (values/, the default) and Swedish. Libraries bring
         // dozens of locales of their own; only these ship. Same list as res/xml/locales_config.xml.
         resourceConfigurations += listOf("en", "sv")
+        // The server Settings starts with (issue #67): the public tung-server. A self-hoster's
+        // fork changes this one line; anyone can still pick another server in Settings.
+        buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://tung.xuper.fun\"")
     }
 
     buildTypes {
@@ -55,6 +58,8 @@ android {
 
     buildFeatures {
         compose = true
+        // DEFAULT_SERVER_URL, and the version and build type in Settings' About.
+        buildConfig = true
     }
 
     sourceSets.getByName("main") {

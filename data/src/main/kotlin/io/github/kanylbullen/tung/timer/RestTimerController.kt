@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import io.github.kanylbullen.tung.core.DEFAULT_REST_SECONDS
+import io.github.kanylbullen.tung.core.MAX_REST_SECONDS
 import io.github.kanylbullen.tung.core.RestTimer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -25,8 +26,13 @@ class RestTimerController(
     private val settings: DataStore<Preferences>,
 ) {
 
-    /** The rest for exercises without their own setting. No screen changes it yet. */
+    /** The rest for exercises without their own setting; Settings' Training sets it ([setDefaultSeconds]). */
     val defaultSeconds: Flow<Int> = settings.data.map { it[DEFAULT_SECONDS] ?: DEFAULT_REST_SECONDS }
+
+    /** Stores the default rest, clamped to 0 (off) .. [MAX_REST_SECONDS]. */
+    suspend fun setDefaultSeconds(seconds: Int) {
+        settings.edit { it[DEFAULT_SECONDS] = seconds.coerceIn(0, MAX_REST_SECONDS) }
+    }
 
     /** The timer stored for [workoutId], or null if none is (or it belongs to another workout). */
     suspend fun stored(workoutId: String): RestTimer? {

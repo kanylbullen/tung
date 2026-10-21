@@ -122,7 +122,8 @@ class EquipmentFlowTest : FlowTest() {
         chooseBodyweightOnly()
 
         clickText(str(R.string.nav_home))
-        clickDescription(str(R.string.settings_title))
+        // "My equipment" lives in Settings' Training group since #67.
+        openSettingsGroup(R.string.settings_group_training)
         waitFor(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG))
         assertShown(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(R.string.my_equipment_title)))
         assertShown(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(R.string.equipment_bodyweight)))
@@ -136,7 +137,7 @@ class EquipmentFlowTest : FlowTest() {
         waitGone(hasTestTag(EQUIPMENT_SHEET_TAG))
         assertEquals(EquipmentFilter.ALL, stored())
 
-        clickDescription(str(R.string.action_back))
+        leaveSettings()
         clickText(str(R.string.nav_exercises))
         waitFor(chip(str(R.string.my_equipment_chip_all)))
         waitForText(str(R.string.ex_bench_press))

@@ -58,13 +58,20 @@ class PushFlowTest : FlowTest() {
         compose.onNode(field).performTextReplacement(text)
     }
 
+    /** Signs in on Settings' Account and stays there. */
     private fun signIn() {
-        clickDescription(str(R.string.settings_title))
-        fill(str(R.string.sync_server_url), fake.baseUrl)
+        openSettingsGroup(R.string.settings_group_account)
+        useServer(fake.baseUrl)
         fill(str(R.string.sync_email), "lifter@example.org")
         fill(str(R.string.sync_password), "correct horse battery")
         clickText(str(R.string.sync_sign_in))
         waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
+    }
+
+    /** From one Settings group to another, through the list. */
+    private fun switchGroup(group: Int) {
+        clickDescription(str(R.string.action_back))
+        clickText(str(group))
     }
 
     /**
@@ -86,11 +93,13 @@ class PushFlowTest : FlowTest() {
         val (body, auth) = fake.pushRegistrations.first()
         assertEquals(PushEndpointRequest(deviceId(), PushTransport.FCM, "fcm-token-1"), body)
         assertEquals("Bearer ${fake.token}", auth)
+        switchGroup(R.string.settings_group_devices)
         waitForText(str(R.string.push_status_fcm))
         waitForText(str(R.string.push_registered))
         compose.onNode(hasText(str(R.string.push_choose_distributor))).assertDoesNotExist()
         screenshot("1-settings-push-fcm")
 
+        switchGroup(R.string.settings_group_account)
         clickText(str(R.string.sync_now))
         waitUntil { fake.syncDevices.isNotEmpty() }
         assertEquals(deviceId(), fake.syncDevices.last())
@@ -123,6 +132,7 @@ class PushFlowTest : FlowTest() {
             PushEndpointRequest(deviceId(), PushTransport.UNIFIED_PUSH, "https://ntfy.example.org/upAbC123?up=1"),
             fake.pushRegistrations.first().first,
         )
+        switchGroup(R.string.settings_group_devices)
         waitForText(str(R.string.push_status_unifiedpush, "ntfy"))
         waitForText(str(R.string.push_registered_at, "ntfy.example.org"))
         screenshot("1-settings-push-ntfy")
@@ -140,6 +150,7 @@ class PushFlowTest : FlowTest() {
     @Test
     fun withoutATransportSettingsSaysItSyncsEvery15Minutes() {
         signIn()
+        switchGroup(R.string.settings_group_devices)
         waitForText(str(R.string.push_status_none))
         assertTrue(fake.pushRegistrations.isEmpty())
     }

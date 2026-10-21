@@ -43,7 +43,7 @@ class ImportSectionViewModel(private val imports: ImportService) : ViewModel() {
  * Settings' "Import" section (CLAUDE.md, "Import"): "Import from Jefit" opens
  * the system file picker (`ACTION_OPEN_DOCUMENT`), and the chosen file goes
  * to the import's preview ([onImportFile]). The last import can be undone
- * here too, after its summary is gone. One call site in [SettingsScreen].
+ * here too, after its summary is gone. One call site, [DataSettingsScreen].
  */
 @Composable
 fun ImportSection(onImportFile: (Uri) -> Unit) {

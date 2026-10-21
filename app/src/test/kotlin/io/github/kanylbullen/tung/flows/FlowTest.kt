@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.test.core.app.ApplicationProvider
@@ -156,6 +157,27 @@ abstract class FlowTest {
     }
 
     // --- steps several flows share, written as a person would do them ---
+
+    /** Settings from Home's gear, then the group titled [group] (a `settings_group_*` string) (issue #67). */
+    protected fun openSettingsGroup(@StringRes group: Int) {
+        clickDescription(str(R.string.settings_title))
+        clickText(str(group))
+    }
+
+    /** From a Settings group back to Home: the group's back, then the list's. */
+    protected fun leaveSettings() {
+        clickDescription(str(R.string.action_back))
+        waitForText(str(R.string.settings_group_about))
+        clickDescription(str(R.string.action_back))
+    }
+
+    /** On Account, signed out: "Use another server" and [url] in the field it reveals. */
+    protected fun useServer(url: String) {
+        clickText(str(R.string.sync_use_another_server))
+        val field = hasSetTextAction() and hasText(str(R.string.sync_server_url))
+        waitFor(field)
+        compose.onNode(field).performScrollTo().performTextReplacement(url)
+    }
 
     protected fun startWorkoutFromHome() {
         // The button is disabled until Home has read the database; a tap before that does nothing.

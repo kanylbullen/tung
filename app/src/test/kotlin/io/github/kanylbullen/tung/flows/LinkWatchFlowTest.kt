@@ -38,7 +38,7 @@ class LinkWatchFlowTest : FlowTest() {
         compose.onNode(field).performTextReplacement(text)
     }
 
-    /** Settings scrolls; the watch section is below the account. */
+    /** Devices may scroll. */
     private fun scrollAndClick(text: String) {
         waitForText(text)
         compose.onNode(hasText(text)).performScrollTo().performClick()
@@ -46,13 +46,16 @@ class LinkWatchFlowTest : FlowTest() {
 
     @Test
     fun settingsShowsASixDigitCodeForTheWatch() {
-        clickDescription(str(R.string.settings_title))
-        fill(str(R.string.sync_server_url), fake.baseUrl)
+        openSettingsGroup(R.string.settings_group_account)
+        useServer(fake.baseUrl)
         fill(str(R.string.sync_email), "lifter@example.org")
         fill(str(R.string.sync_password), "correct horse battery")
         clickText(str(R.string.sync_sign_in))
         waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
 
+        // The watch is in Devices, next to Account.
+        clickDescription(str(R.string.action_back))
+        clickText(str(R.string.settings_group_devices))
         scrollAndClick(str(R.string.link_watch))
         waitForText("042 917")
         waitForText(str(R.string.link_watch_hint))

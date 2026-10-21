@@ -147,14 +147,13 @@ class AiSettingsViewModel(private val settings: AiSettings, private val ai: AiSe
     }
 }
 
-/** Settings' "Assistant" section; its items go into the settings column. */
+/** Settings' "Assistant" group ([AssistantSettingsScreen], whose top bar names it); its items go into the page's column. */
 @Composable
 fun AiSection() {
     val container = appContainer()
     val vm: AiSettingsViewModel = viewModel(factory = factoryOf { AiSettingsViewModel(container.aiSettings, container.ai) })
     val form by vm.state.collectAsStateWithLifecycle()
 
-    Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
     Text(stringResource(R.string.ai_settings_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     if (!form.loaded) return
 

@@ -1,78 +1,159 @@
 package io.github.kanylbullen.tung.ui.settings
 
-import androidx.compose.foundation.BorderStroke
+import androidx.annotation.StringRes
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.kanylbullen.tung.BuildConfig
 import io.github.kanylbullen.tung.R
-import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.core.sync.PushChoice
-import io.github.kanylbullen.tung.core.sync.SyncFailure
-import io.github.kanylbullen.tung.core.sync.SyncState
-import io.github.kanylbullen.tung.push.PushStatus
-import io.github.kanylbullen.tung.sync.AccountState
-import io.github.kanylbullen.tung.ui.common.PrimaryButton
-import io.github.kanylbullen.tung.ui.common.SecondaryButton
+import io.github.kanylbullen.tung.health.HealthAvailability
 import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.common.clockText
 import io.github.kanylbullen.tung.ui.common.factoryOf
-import io.github.kanylbullen.tung.ui.common.localDate
-import io.github.kanylbullen.tung.ui.common.rememberNow
-import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
-import io.github.kanylbullen.tung.ui.theme.TungCorner
-import java.net.URI
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-/** Settings, reached from Home's gear: sync and the account, import from other apps, Health Connect, the assistant. */
+/** Settings' groups, in the order the list shows them; each opens its own screen at [route]. */
+enum class SettingsGroup(val route: String, @StringRes val title: Int) {
+    ACCOUNT("settings/account", R.string.settings_group_account),
+    DEVICES("settings/devices", R.string.settings_group_devices),
+    TRAINING("settings/training", R.string.settings_group_training),
+    ASSISTANT("settings/assistant", R.string.settings_group_assistant),
+    HEALTH_CONNECT("settings/health", R.string.settings_group_health),
+    DATA("settings/data", R.string.settings_group_data),
+    ABOUT("settings/about", R.string.settings_group_about),
+}
+
+/**
+ * Settings, reached from Home's gear: the groups as calm list rows, a title
+ * and a one-line live summary each ("Signed in as …", "Push: FCM",
+ * "Default rest 1:30 · kg"). A tap opens the group's own screen.
+ */
+@Composable
+fun SettingsScreen(onBack: () -> Unit, onOpenGroup: (SettingsGroup) -> Unit) {
+    val container = appContainer()
+    val vm: SettingsViewModel = viewModel(
+        factory = factoryOf { SettingsViewModel(container.syncAccount, container.push, container.restTimer, container.aiSettings, container.imports) },
+    )
+    val summary by vm.state.collectAsStateWithLifecycle()
+    val health: HealthConnectViewModel = viewModel(factory = factoryOf { HealthConnectViewModel(container.healthConnect, container.healthConnectSettings) })
+    val healthState by health.state.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(health) {
+        health.refresh()
+        onPauseOrDispose { }
+    }
+
+    SettingsPage(title = stringResource(R.string.settings_title), onBack = onBack, padded = false) {
+        SettingsGroup.entries.forEach { group ->
+            val line = when (group) {
+                SettingsGroup.ACCOUNT -> accountSummary(summary)
+                SettingsGroup.DEVICES -> devicesSummary(summary)
+                SettingsGroup.TRAINING -> summary.restDefaultSeconds?.let {
+                    stringResource(R.string.settings_summary_training, restText(it))
+                }
+                SettingsGroup.ASSISTANT -> summary.ai?.let { ai ->
+                    if (ai.configured) ai.model.trim() else stringResource(R.string.settings_summary_not_set_up)
+                }
+                SettingsGroup.HEALTH_CONNECT -> stringResource(
+                    when {
+                        healthState.availability != HealthAvailability.AVAILABLE -> R.string.settings_summary_health_unavailable
+                        healthState.write && healthState.read -> R.string.settings_summary_health_both
+                        healthState.write -> R.string.settings_summary_health_write
+                        healthState.read -> R.string.settings_summary_health_read
+                        else -> R.string.settings_summary_health_off
+                    },
+                )
+                SettingsGroup.DATA -> summary.lastImport?.let { stringResource(R.string.settings_summary_last_import, shortDate(it.at)) }
+                    ?: stringResource(R.string.settings_summary_data)
+                SettingsGroup.ABOUT -> stringResource(R.string.settings_summary_about, BuildConfig.VERSION_NAME, BuildConfig.BUILD_TYPE)
+            }
+            GroupRow(stringResource(group.title), line.orEmpty()) { onOpenGroup(group) }
+        }
+    }
+}
+
+@Composable
+private fun accountSummary(summary: SettingsSummary): String? {
+    val account = summary.account ?: return null
+    return when (account.signedIn) {
+        null -> null
+        true -> stringResource(R.string.sync_signed_in_as, account.email.orEmpty())
+        false -> stringResource(R.string.settings_summary_signed_out)
+    }
+}
+
+@Composable
+private fun devicesSummary(summary: SettingsSummary): String? {
+    val account = summary.account ?: return null
+    if (account.signedIn != true) return stringResource(R.string.settings_summary_devices_signed_out)
+    return when (val choice = summary.push.choice) {
+        null -> stringResource(R.string.settings_summary_devices)
+        PushChoice.Fcm -> stringResource(R.string.push_status_fcm)
+        is PushChoice.UnifiedPush -> stringResource(R.string.push_status_unifiedpush, summary.push.distributorLabel ?: choice.distributor)
+        PushChoice.None -> stringResource(R.string.push_status_none)
+    }
+}
+
+/** "21 Oct": the date of a recent thing, in the app's language. */
+private fun shortDate(epochMillis: Long): String =
+    DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()).format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
+
+/** A group of Settings as one list row: its name, and what it is set to below. */
+@Composable
+private fun GroupRow(title: String, summary: String, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .heightIn(min = 64.dp)
+            .padding(start = 20.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
+        if (summary.isNotEmpty()) {
+            Text(summary, style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * One page of Settings: a top bar with back and [title], and the [content]
+ * in a scrolling column, spaced like the rest of the app ([padded] false for
+ * full-width list rows).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onImportFile: (android.net.Uri) -> Unit = {}) {
-    val container = appContainer()
-    val vm: SettingsViewModel = viewModel(factory = factoryOf { SettingsViewModel(container.syncAccount, container.push) })
-    val state by vm.state.collectAsStateWithLifecycle()
-    // Credential Manager shows Google's account sheet over this activity.
-    val context = LocalContext.current
-    val google = remember { (context.applicationContext as TungApp).createGoogleSignIn() }
-
+fun SettingsPage(title: String, onBack: () -> Unit, padded: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     Scaffold(
         containerColor = Tung.colors.background,
         topBar = {
@@ -86,7 +167,7 @@ fun SettingsScreen(onBack: () -> Unit, onImportFile: (android.net.Uri) -> Unit =
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
-                title = { Text(stringResource(R.string.settings_title)) },
+                title = { Text(title) },
             )
         },
     ) { padding ->
@@ -96,270 +177,9 @@ fun SettingsScreen(onBack: () -> Unit, onImportFile: (android.net.Uri) -> Unit =
                 .padding(padding)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(stringResource(R.string.sync_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
-            val account = state.account
-            when (account?.signedIn) {
-                null -> Unit
-                true -> {
-                    SignedIn(account, onSyncNow = vm::syncNow, onSignOut = vm::signOut) {
-                        Push(state.push, onChoose = vm::chooseDistributor)
-                    }
-                    WatchLink(state.watchLink, onLink = vm::linkWatch, onClose = vm::closeWatchLink)
-                }
-                false -> SignInForm(
-                    form = state.form,
-                    lastError = account.sync.lastError,
-                    onServerUrl = vm::onServerUrl,
-                    onEmail = vm::onEmail,
-                    onPassword = vm::onPassword,
-                    onSignIn = { vm.signIn(create = false) },
-                    onCreate = { vm.signIn(create = true) },
-                    onGoogle = { vm.signInWithGoogle { clientId -> google.idToken(context, clientId) } },
-                )
-            }
-            EquipmentSection()
-            ImportSection(onImportFile)
-            HealthConnectSection()
-            AiSection()
-        }
-    }
-}
-
-@Composable
-private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: () -> Unit, push: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            stringResource(R.string.sync_signed_in_as, account.email.orEmpty()),
-            style = MaterialTheme.typography.bodyLarge,
-            color = Tung.colors.text,
+                .then(if (padded) Modifier.padding(horizontal = 20.dp, vertical = 8.dp) else Modifier.padding(vertical = 8.dp)),
+            verticalArrangement = Arrangement.spacedBy(if (padded) 16.dp else 0.dp),
+            content = content,
         )
-        Text(account.serverUrl.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-        if (account.googleLinked) {
-            Text(stringResource(R.string.sync_google_linked), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-        }
-    }
-    Text(syncStatusText(account.sync), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-    PrimaryButton(
-        text = stringResource(if (account.syncing) R.string.sync_syncing else R.string.sync_now),
-        onClick = onSyncNow,
-        enabled = !account.syncing,
-    )
-    push()
-    SecondaryButton(text = stringResource(R.string.sync_sign_out), onClick = onSignOut)
-    Text(stringResource(R.string.sync_sign_out_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-}
-
-/**
- * How the server wakes this phone ("Push: FCM", "Push: ntfy", or none and the
- * 15-minute sync), whether the server has the endpoint, and the choice among
- * several UnifiedPush distributors.
- */
-@Composable
-private fun Push(push: PushStatus, onChoose: (String) -> Unit) {
-    val choice = push.choice ?: return
-    var choosing by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            when (choice) {
-                PushChoice.Fcm -> stringResource(R.string.push_status_fcm)
-                is PushChoice.UnifiedPush -> stringResource(R.string.push_status_unifiedpush, push.distributorLabel ?: choice.distributor)
-                PushChoice.None -> stringResource(R.string.push_status_none)
-            },
-            style = MaterialTheme.typography.bodyLarge,
-            color = Tung.colors.text,
-        )
-        if (choice != PushChoice.None) {
-            val host = push.endpoint?.takeIf { choice is PushChoice.UnifiedPush }?.let { runCatching { URI(it).host }.getOrNull() }
-            Text(
-                when {
-                    !push.registered -> stringResource(R.string.push_not_registered)
-                    host != null -> stringResource(R.string.push_registered_at, host)
-                    else -> stringResource(R.string.push_registered)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = Tung.colors.muted,
-            )
-        }
-    }
-    if (choice is PushChoice.UnifiedPush && push.distributors.size > 1) {
-        SecondaryButton(text = stringResource(R.string.push_choose_distributor), onClick = { choosing = true })
-    }
-    if (choosing) {
-        AlertDialog(
-            onDismissRequest = { choosing = false },
-            containerColor = Tung.colors.raised,
-            tonalElevation = 0.dp,
-            shape = TungCorner,
-            title = { Text(stringResource(R.string.push_choose_title)) },
-            text = {
-                Column {
-                    push.distributors.forEach { distributor ->
-                        TextButton(
-                            onClick = {
-                                choosing = false
-                                onChoose(distributor.packageName)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            val current = (choice as? PushChoice.UnifiedPush)?.distributor == distributor.packageName
-                            Text(
-                                distributor.label,
-                                color = if (current) Tung.colors.accentText else Tung.colors.text,
-                                fontWeight = if (current) FontWeight.Bold else null,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { choosing = false }) {
-                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
-                }
-            },
-        )
-    }
-}
-
-/**
- * "Link a watch": a six-digit code from the server, shown large with what is
- * left of its ten minutes, for the watch to type on its number pad.
- */
-@Composable
-private fun WatchLink(link: WatchLinkState, onLink: () -> Unit, onClose: () -> Unit) {
-    Text(stringResource(R.string.link_watch_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
-    val code = link.code
-    if (code == null) {
-        Text(stringResource(R.string.link_watch_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-        link.error?.let {
-            Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
-        }
-        SecondaryButton(text = stringResource(if (link.busy) R.string.link_watch_busy else R.string.link_watch), onClick = onLink)
-        return
-    }
-    val now = rememberNow(intervalMillis = 1_000L)
-    val left = ((code.expiresAt - now).coerceAtLeast(0L) + 999L) / 1_000L
-    val spoken = code.code.toList().joinToString(" ")
-    Text(
-        text = code.code.chunked(3).joinToString(" "),
-        style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
-        color = if (left > 0) Tung.colors.text else Tung.colors.muted,
-        modifier = Modifier.semantics { contentDescription = spoken },
-    )
-    if (left > 0) {
-        Text(
-            stringResource(R.string.link_watch_valid_for, clockText(left * 1_000L)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Tung.colors.muted,
-        )
-        Text(stringResource(R.string.link_watch_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-        SecondaryButton(text = stringResource(R.string.link_watch_done), onClick = onClose)
-    } else {
-        Text(stringResource(R.string.link_watch_expired), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
-        SecondaryButton(text = stringResource(R.string.link_watch_new_code), onClick = onLink)
-    }
-}
-
-@Composable
-private fun SignInForm(
-    form: SignInForm,
-    lastError: String?,
-    onServerUrl: (String) -> Unit,
-    onEmail: (String) -> Unit,
-    onPassword: (String) -> Unit,
-    onSignIn: () -> Unit,
-    onCreate: () -> Unit,
-    onGoogle: () -> Unit,
-) {
-    Text(stringResource(R.string.sync_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-    // After the server ended the session, say so above the form.
-    if (SyncFailure.fromKey(lastError) == SyncFailure.SIGNED_OUT) {
-        Text(stringResource(R.string.sync_error_signed_out), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
-    }
-    OutlinedTextField(
-        value = form.serverUrl,
-        onValueChange = onServerUrl,
-        label = { Text(stringResource(R.string.sync_server_url)) },
-        placeholder = { Text(stringResource(R.string.sync_server_url_example)) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
-        shape = TungCorner,
-        colors = tungFieldColors(),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    // Only when this server offers it (`/auth/methods`); the client id comes from there.
-    if (form.googleClientId != null) {
-        GoogleButton(onClick = onGoogle, enabled = !form.busy)
-        Text(stringResource(R.string.sync_google_or_email), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-    }
-    OutlinedTextField(
-        value = form.email,
-        onValueChange = onEmail,
-        label = { Text(stringResource(R.string.sync_email)) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false),
-        shape = TungCorner,
-        colors = tungFieldColors(),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    OutlinedTextField(
-        value = form.password,
-        onValueChange = onPassword,
-        label = { Text(stringResource(R.string.sync_password)) },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
-        shape = TungCorner,
-        colors = tungFieldColors(),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    form.error?.let {
-        Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
-    }
-    PrimaryButton(text = stringResource(R.string.sync_sign_in), onClick = onSignIn, enabled = !form.busy)
-    SecondaryButton(text = stringResource(R.string.sync_create_account), onClick = onCreate)
-}
-
-/**
- * "Sign in with Google": an outlined button with the text, in the app's own
- * colours (Google's branding allows a neutral button; one accent stays the
- * primary "Sign in").
- */
-@Composable
-private fun GoogleButton(onClick: () -> Unit, enabled: Boolean) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-        shape = TungCorner,
-        border = BorderStroke(1.dp, Tung.colors.border),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = Tung.colors.text, disabledContentColor = Tung.colors.muted),
-    ) {
-        Text(stringResource(R.string.sync_google_sign_in), style = MaterialTheme.typography.labelLarge)
-    }
-}
-
-/** "Last sync 2 min ago", "Last sync: never", or the last failure in words. */
-@Composable
-private fun syncStatusText(sync: SyncState): String {
-    when (SyncFailure.fromKey(sync.lastError)) {
-        SyncFailure.NETWORK -> return stringResource(R.string.sync_error_network)
-        SyncFailure.SERVER -> return stringResource(R.string.sync_error_server)
-        SyncFailure.SIGNED_OUT -> return stringResource(R.string.sync_error_signed_out)
-        SyncFailure.REJECTED -> return stringResource(R.string.sync_error_rejected)
-        null -> Unit
-    }
-    val at = sync.lastSyncAt ?: return stringResource(R.string.sync_status_never)
-    val now = rememberNow(intervalMillis = 30_000L)
-    val minutes = ((now - at).coerceAtLeast(0L) / 60_000L).toInt()
-    return when {
-        minutes < 1 -> stringResource(R.string.sync_status_just_now)
-        minutes < 60 -> pluralStringResource(R.plurals.sync_status_minutes, minutes, minutes)
-        minutes < 24 * 60 -> pluralStringResource(R.plurals.sync_status_hours, minutes / 60, minutes / 60)
-        else -> stringResource(R.string.sync_status_date, localDate(at))
     }
 }

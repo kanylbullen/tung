@@ -23,7 +23,7 @@ class HealthConnectFlowTest : FlowTest() {
     private val writeLabel get() = str(R.string.health_write)
     private val readLabel get() = str(R.string.health_read)
 
-    /** Settings scrolls; Health Connect is the last section. */
+    /** Settings' Health Connect group may scroll. */
     private fun scrollTo(text: String) {
         waitForText(text)
         compose.onNode(hasText(text)).performScrollTo()
@@ -60,7 +60,7 @@ class HealthConnectFlowTest : FlowTest() {
             )
         }
 
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_health)
         scrollTo(writeLabel)
         assertShown(hasText(writeLabel) and isOff())
         screenshot("1-settings-off")
@@ -70,7 +70,7 @@ class HealthConnectFlowTest : FlowTest() {
         assertShown(hasText(readLabel) and isOn())
         screenshot("2-settings-on")
         assertEquals(2, fake.permissionRequests.get())
-        clickDescription(str(R.string.action_back))
+        leaveSettings()
 
         logAndFinishOneSet()
         waitUntil(10_000) { count("SELECT COUNT(*) FROM workout WHERE healthConnectId IS NOT NULL AND avgHeartRate IS NOT NULL") == 1 }
@@ -98,11 +98,11 @@ class HealthConnectFlowTest : FlowTest() {
     fun notOptedInNothingIsWrittenOrRead() {
         fake.samples = { start, _ -> HealthSamples(heartRate = listOf(HeartRateSample(start, 120))) }
 
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_health)
         scrollTo(readLabel)
         assertShown(hasText(writeLabel) and isOff())
         assertShown(hasText(readLabel) and isOff())
-        clickDescription(str(R.string.action_back))
+        leaveSettings()
 
         val checksBefore = fake.availabilityChecks.get()
         logAndFinishOneSet()
@@ -129,7 +129,7 @@ class HealthConnectFlowTest : FlowTest() {
     @Test
     fun unavailableShowsAHintAndNoSwitches() {
         fake.availability = HealthAvailability.UNAVAILABLE
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_health)
         scrollTo(str(R.string.health_unavailable))
         compose.onNode(hasText(writeLabel)).assertDoesNotExist()
         compose.onNode(hasText(readLabel)).assertDoesNotExist()
