@@ -10,7 +10,10 @@ import org.jetbrains.exposed.sql.Table
 object Users : Table("users") {
     val id = text("id")
     val email = text("email")
-    val passwordHash = text("password_hash")
+    /** V10: null for a user who signed in with Google only; such a user cannot log in with a password. */
+    val passwordHash = text("password_hash").nullable()
+    /** V10: the `sub` of the linked Google account, null when none is linked. */
+    val googleSub = text("google_sub").nullable()
     val createdAt = long("created_at")
     override val primaryKey = PrimaryKey(id)
 }
