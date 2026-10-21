@@ -716,6 +716,8 @@
     <string name="progress_change_down">−%1$s kg</string>
     <string name="progress_change_3m">%1$s in 3 months</string>
     <string name="progress_no_change_3m">No change in 3 months</string>
+    <string name="progress_change_12m">%1$s in 12 months</string>
+    <string name="progress_no_change_12m">No change in 12 months</string>
     <plurals name="progress_sessions">
         <item quantity="one">%d session</item>
         <item quantity="other">%d sessions</item>
@@ -724,6 +726,7 @@
     <string name="progress_e1rm_value">Est. 1RM %1$s kg</string>
     <!-- The sparkline for a screen reader. -->
     <string name="progress_sparkline_summary">Estimated 1RM, 3 months: from %1$s to %2$s kg</string>
+    <string name="progress_sparkline_summary_12m">Estimated 1RM, 12 months: from %1$s to %2$s kg</string>
     <string name="progress_open_exercise">Open progress for %1$s</string>
     <!-- Metric chips and their names inside a sentence. -->
     <string name="progress_metric_e1rm">Est. 1RM</string>
@@ -739,6 +742,8 @@
     <string name="progress_range_3m_long">3 months</string>
     <string name="progress_range_1y_long">1 year</string>
     <string name="progress_range_all_long">all time</string>
+    <!-- The Progress tab's span for its exercise rows: 3M (progress_range_3m) or 12M. -->
+    <string name="progress_range_12m">12M</string>
     <!-- A chart for a screen reader: "Estimated 1RM, 3 months: from 92 to 101 kg". -->
     <string name="progress_chart_summary">%1$s, %2$s: from %3$s to %4$s kg</string>
     <string name="progress_chart_summary_empty">%1$s, %2$s: not enough sessions for a chart</string>

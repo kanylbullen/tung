@@ -12,6 +12,7 @@ import io.github.kanylbullen.tung.core.progress.progressOverview
 import io.github.kanylbullen.tung.core.progress.sessionPoints
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.data.ExerciseRepository
+import io.github.kanylbullen.tung.data.ProgressSettings
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate
 
@@ -30,16 +32,24 @@ data class ProgressUiState(
     val overview: ProgressOverview = ProgressOverview.EMPTY,
     /** The exercises by id, for their names. */
     val exercises: Map<String, Exercise> = emptyMap(),
+    /** The span of the exercise rows' sparkline and change: 3 or 12 months ([ProgressSettings]). */
+    val rowsRange: ProgressRange = ProgressSettings.DEFAULT,
 )
 
 /**
  * The Progress tab: one read of every logged set of finished workouts
  * ([WorkoutRepository.observeProgressSets]), summed by core's
  * [progressOverview] off the main thread. "Today" and the zone come from
- * [clock], the container's.
+ * [clock], the container's. The rows' span is [ProgressSettings]'s, so it
+ * outlives the screen.
  */
-class ProgressViewModel(workouts: WorkoutRepository, exercises: ExerciseRepository, private val clock: Clock) : ViewModel() {
-    val state: StateFlow<ProgressUiState> =
+class ProgressViewModel(
+    workouts: WorkoutRepository,
+    exercises: ExerciseRepository,
+    private val settings: ProgressSettings,
+    private val clock: Clock,
+) : ViewModel() {
+    private val data =
         combine(workouts.observeProgressSets(), exercises.observeExercises()) { sets, all ->
             val today = LocalDate.now(clock)
             ProgressUiState(
@@ -49,7 +59,14 @@ class ProgressViewModel(workouts: WorkoutRepository, exercises: ExerciseReposito
                 exercises = all.associateBy { it.id },
             )
         }.flowOn(Dispatchers.Default)
+
+    val state: StateFlow<ProgressUiState> =
+        combine(data, settings.rowsRange) { d, range -> d.copy(rowsRange = range) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProgressUiState())
+
+    fun setRowsRange(value: ProgressRange) {
+        viewModelScope.launch { settings.setRowsRange(value) }
+    }
 }
 
 data class ExerciseProgressUiState(

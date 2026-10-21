@@ -706,12 +706,15 @@
     <string name="progress_change_down">−%1$s kg</string>
     <string name="progress_change_3m">%1$s på 3 månader</string>
     <string name="progress_no_change_3m">Ingen förändring på 3 månader</string>
+    <string name="progress_change_12m">%1$s på 12 månader</string>
+    <string name="progress_no_change_12m">Ingen förändring på 12 månader</string>
     <plurals name="progress_sessions">
         <item quantity="one">%d pass</item>
         <item quantity="other">%d pass</item>
     </plurals>
     <string name="progress_e1rm_value">Uppsk. 1RM %1$s kg</string>
     <string name="progress_sparkline_summary">Uppskattad 1RM, 3 månader: från %1$s till %2$s kg</string>
+    <string name="progress_sparkline_summary_12m">Uppskattad 1RM, 12 månader: från %1$s till %2$s kg</string>
     <string name="progress_open_exercise">Öppna framsteg för %1$s</string>
     <string name="progress_metric_e1rm">Uppsk. 1RM</string>
     <string name="progress_metric_top_set">Tyngsta set</string>
@@ -725,6 +728,7 @@
     <string name="progress_range_3m_long">3 månader</string>
     <string name="progress_range_1y_long">1 år</string>
     <string name="progress_range_all_long">all tid</string>
+    <string name="progress_range_12m">12 mån</string>
     <string name="progress_chart_summary">%1$s, %2$s: från %3$s till %4$s kg</string>
     <string name="progress_chart_summary_empty">%1$s, %2$s: för få pass för ett diagram</string>
     <string name="progress_chart_empty">Logga övningen i två pass så syns ett diagram</string>
