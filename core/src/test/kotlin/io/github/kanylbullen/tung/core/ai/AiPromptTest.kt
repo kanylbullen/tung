@@ -97,7 +97,7 @@ class AiPromptTest {
         assertTrue(prompt.system.contains("exactly one JSON object"))
         assertTrue(prompt.system.contains("\"routines\""))
         assertTrue(prompt.system.contains("\"target_sets\""))
-        assertTrue(prompt.system.contains("\"sv\""))
+        assertTrue(prompt.system.contains("in Swedish."))
         // The data is the context's JSON, verbatim, after the question.
         val json = prompt.user.substringAfter("My training data (JSON):\n")
         assertEquals(c, Json.decodeFromString(AiContext.serializer(), json))

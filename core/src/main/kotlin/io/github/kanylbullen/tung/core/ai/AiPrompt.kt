@@ -66,9 +66,10 @@ internal val AiContextJson = Json { encodeDefaults = true }
 
 /**
  * The prompt for [request] over [context]. English, like the MCP prompts it
- * follows; [language] (a BCP 47 tag, the app's locale) is the language the
- * model writes its text fields in. The model is told to answer with one JSON
- * object in the shape [parseAiAnswer] reads and nothing else.
+ * follows; [language] (a BCP 47 tag, the language the app displays) names,
+ * through [aiLanguageName], the language the model writes its text fields
+ * in. The model is told to answer with one JSON object in the shape
+ * [parseAiAnswer] reads and nothing else.
  */
 fun buildAiPrompt(request: AiRequest, context: AiContext, language: String = "en"): AiPrompt {
     // Matching sends only what the request carries: never the training data in [context].
@@ -94,7 +95,7 @@ private fun rules(language: String): String =
         "fits, give its usual English name instead: \"name\": \"Cable fly\". An exercise that is not in the catalogue is " +
         "dropped, so prefer keys.\n" +
         "- Weights are in kilograms. Base every number on the history; never invent history the data does not show.\n" +
-        "- Write the text fields (names, rationale, observation, suggestion) in the language with the tag \"$language\".\n" +
+        "- Write the text fields (names, rationale, observation, suggestion) in ${aiLanguageName(language)}.\n" +
         "- Keep text short and plain."
 
 private fun schemaFor(request: AiRequest): String = when (request) {

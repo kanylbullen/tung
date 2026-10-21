@@ -22,6 +22,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -31,7 +32,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.ai.AiConfidence
@@ -44,6 +44,7 @@ import io.github.kanylbullen.tung.core.importing.ImportBundle
 import io.github.kanylbullen.tung.core.importing.ImportChoice
 import io.github.kanylbullen.tung.core.importing.SkipReason
 import io.github.kanylbullen.tung.importing.ImportResult
+import io.github.kanylbullen.tung.ui.common.ConfidenceTag
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
@@ -65,7 +66,8 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 @Composable
 fun ImportScreen(vm: ImportViewModel, onBack: () -> Unit, onPick: () -> Unit, onDone: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val language = LocalConfiguration.current.locales[0].toLanguageTag()
+    // The language the app shows, not the phone's locale: en-SE is English (issue #75).
+    val language = stringResource(R.string.ai_language_tag)
     Scaffold(
         containerColor = Tung.colors.background,
         topBar = {
@@ -277,15 +279,26 @@ private fun ReviewRow(
             if (exercise == null) {
                 Muted(stringResource(R.string.import_assist_no_match))
             } else {
-                Text(
-                    stringResource(R.string.import_assist_suggests, exerciseDisplayName(exercise.nameKey, exercise.displayName), confidenceText(p.confidence)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Tung.colors.text,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.import_assist_suggests, exerciseDisplayName(exercise.nameKey, exercise.displayName)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Tung.colors.text,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    ConfidenceTag(p.confidence)
+                }
             }
             if (p.note.isNotBlank()) Muted(p.note)
             if (exercise != null) {
-                Choice(stringResource(R.string.import_assist_accept), selected = chosenId == exercise.id, onClick = { onUse(exercise) })
+                // The loud button only where the assistant is sure; once accepted the row says "As …" and Accept rests.
+                val accept = stringResource(R.string.import_assist_accept)
+                val accepted = chosenId == exercise.id
+                if (p.confidence == AiConfidence.HIGH) {
+                    PrimaryButton(text = accept, onClick = { onUse(exercise) }, enabled = !accepted)
+                } else {
+                    SecondaryButton(text = accept, onClick = { onUse(exercise) }, enabled = !accepted)
+                }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -295,15 +308,6 @@ private fun ReviewRow(
         }
     }
 }
-
-@Composable
-private fun confidenceText(confidence: AiConfidence): String = stringResource(
-    when (confidence) {
-        AiConfidence.HIGH -> R.string.import_confidence_high
-        AiConfidence.MEDIUM -> R.string.import_confidence_medium
-        AiConfidence.LOW -> R.string.import_confidence_low
-    },
-)
 
 @Composable
 private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {

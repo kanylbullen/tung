@@ -106,7 +106,7 @@ private fun matchRules(language: String): String =
         "candidate with the same equipment as the name; if only a different load fits, give it with low confidence and " +
         "say so in the note; if nothing fits, ref is null and the user creates their own exercise.\n" +
         "- Only use keys from the catalogue and extended_ids from the candidates; anything else is dropped.\n" +
-        "- Write the note in the language with the tag \"$language\". Keep it short and plain."
+        "- Write the note in ${aiLanguageName(language)}. Keep it short and plain."
 
 /** How sure the model is of a match. Anything else it writes reads as [LOW]. */
 enum class AiConfidence(val key: String) {

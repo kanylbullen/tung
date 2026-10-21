@@ -25,6 +25,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.robolectric.annotation.Config
 
 /**
  * The in-app assistant as a person meets it: the provider set up in Settings
@@ -176,5 +177,39 @@ class AssistantFlowTest : FlowTest() {
         waitForText(str(R.string.workout_finish))
         waitForText(str(R.string.ex_bench_press))
         assertEquals(2, count("SELECT COUNT(*) FROM set_entry WHERE weightKg = 82.5 AND completed = 0"))
+    }
+
+    /**
+     * Issue #75: the owner's Pixel is `en-SE-u-fw-mon-ms-metric-mu-celsius`
+     * and shows the app in English, but the model was handed that tag and
+     * wrote Swedish. The request names the language the app shows, by name,
+     * and carries no tag the region could be read from.
+     */
+    @Test
+    @Config(qualifiers = "en-rSE-w411dp-h891dp-xhdpi")
+    fun anEnglishAppInSwedenAsksForEnglish() {
+        assertEquals("English", askNextWorkoutAndReadTheLanguage())
+    }
+
+    @Test
+    @Config(qualifiers = "sv-rSE-w411dp-h891dp-xhdpi")
+    fun aSwedishAppAsksForSwedish() {
+        assertEquals("Swedish", askNextWorkoutAndReadTheLanguage())
+    }
+
+    /** Asks "Next workout" (sent at once, the first review done) and returns the language the system message names. */
+    private fun askNextWorkoutAndReadTheLanguage(): String {
+        runBlocking {
+            app.container.aiSettings.save(AiProviderKind.OPENAI_COMPATIBLE, server.url("/v1").toString().trimEnd('/'), "test-model", jsonMode = true)
+            app.container.aiSettings.setKey("sk-flow-test")
+            app.container.aiSettings.markPayloadShown()
+        }
+        server.enqueue(answer("""{"rationale": "Bench day.", "exercises": [{"key": "bench_press", "sets": [{"weight_kg": 80, "reps": 8}]}]}"""))
+        openAssistantFromHome()
+        ask(R.string.ai_ask_next)
+        waitForText(str(R.string.ai_start_workout))
+        val body = server.takeRequest().body.readUtf8()
+        assertFalse("a locale tag was sent", body.contains("en-SE") || body.contains("sv-SE"))
+        return checkNotNull(Regex("""Write the text fields \([^)]*\) in (\w+)\.""").find(body)) { "no language in the request" }.groupValues[1]
     }
 }
