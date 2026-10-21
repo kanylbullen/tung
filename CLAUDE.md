@@ -2,7 +2,7 @@
 
 Strength training log for Android. Local first: everything lives in Room on
 the phone and the app works fully without a network or an account. Sync with
-an optional tung-server is opt-in, from Settings (section "Sync").
+an optional tung-server is opt-in, from Settings → Account.
 
 ## Language
 
@@ -133,7 +133,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (server and account, from Home's gear, and "Link a watch"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -145,6 +145,30 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 The app's most important query is `WorkoutDao.previousSessionSets` — the sets
 for an exercise from the latest finished workout that contains it. It drives
 both "Last: 80 × 8" and the pre-fill of new sets.
+
+### Settings
+
+Home's gear opens `settings`, a list of groups (issue #67): calm list rows,
+each a title and a one-line live summary (`SettingsScreen` and its read-only
+`SettingsViewModel`; Health Connect's line comes from
+`HealthConnectViewModel`). A row opens `settings/<group>`
+(`SettingsGroup`, `settingsGraph` in `SettingsNavigation.kt`, one call in
+`TungAppRoot`); each group page is a `SettingsPage` (top bar, back, scrolling
+column). All in `app/.../ui/settings/`:
+
+| Group | Route | Summary | What is there |
+|---|---|---|---|
+| Account | `settings/account` | "Signed in as …" / "Not signed in" | `AccountScreen` + `AccountViewModel`: the server (default, see "Sync", "Account"), sign-in, sync status, Sync now, Sign out |
+| Devices | `settings/devices` | the push transport, or "Link a watch once signed in" | `DevicesScreen` + `DevicesViewModel`: "Link a watch" and push (needs an account; signed out, a hint and "Go to Account") |
+| Training | `settings/training` | "Default rest 1:30 · kg" | `TrainingScreen`: the default rest (−/+ 30 s, 0–300 s), the unit (kg), and `MyEquipmentSlot` for "My equipment" (issue #65) |
+| Assistant | `settings/assistant` | the model, or "Not set up" | `AiSection` |
+| Health Connect | `settings/health` | "Writing workouts", "Off", … | `HealthConnectSection` |
+| Data | `settings/data` | "Last import 21 Oct" | `ImportSection` (import's `onDone` pops back here) |
+| About | `settings/about` | "Version 0.1.0 · dogfood" | `AboutScreen` in `SettingsGroups.kt`: version and build type (`BuildConfig`), AGPL-3.0 with the source link, the catalogue's credit (core CC0, free-exercise-db Unlicense) |
+
+A section's own composable keeps its logic and has no title of its own: the
+page's top bar names it. Flow tests go in through `openSettingsGroup`,
+`useServer` and `leaveSettings` (`FlowTest`).
 
 ### Routines
 
@@ -298,7 +322,8 @@ on the row is the secondary way: it ticks only, and also starts the timer.
 wall clock); what is left is always `remainingAt(now)`, never a counter. The
 active workout's ViewModel holds it and writes it to its `SavedStateHandle`
 and, through `RestTimerController`, to DataStore (`settings` file, also the
-global default `rest_default_seconds`, 90 s, with no screen yet) and to an
+global default `rest_default_seconds`, 90 s, set in Settings → Training through
+`RestTimerController.setDefaultSeconds`) and to an
 alarm. A new ViewModel restores it from saved state, else from DataStore,
 and drops one that already ended. The rest per exercise is
 `Exercise.restSeconds` (null = default, 0 = off), set from the exercise's menu
@@ -732,13 +757,24 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   Settings calls `syncOnce` directly, so the screen sees the result.
   WorkManager is initialised on demand (`TungApp` and `TungWearApp` are
   `Configuration.Provider`s; each manifest removes its startup initializer).
-- **Account.** Settings (gear on Home) takes the server URL, email and
-  password and calls `/api/v1/auth/login` or `/register`. **Sign in with
-  Google** (issue #51): whenever the form shows a valid server address the
-  ViewModel asks `GET /api/v1/auth/methods` (`SyncAccount.authMethods`;
-  600 ms after typing stops, on `Dispatchers.Default` so the pause is real
-  time under Robolectric; a 404 from an older server means password only),
-  and shows "Sign in with Google" only when it names a client id.
+- **Account.** Settings → Account (`ui/settings/AccountScreen.kt`,
+  `AccountViewModel`) takes email and password and calls
+  `/api/v1/auth/login` or `/register`. **The server defaults to
+  `https://tung.xuper.fun`** (issue #67): `BuildConfig.DEFAULT_SERVER_URL`
+  in `app/build.gradle.kts`, one line for a self-hoster's fork, read through
+  `TungApp.defaultServerUrl` (which `FlowTestApp` overrides with
+  `defaultServer`, a closed localhost port, so no test ever reaches the real
+  one). With no stored server it is shown read-only at the bottom of the form;
+  "Use another server" turns it into the field, and a stored server other than
+  the default shows as the field from the start. Signed out the order is
+  "Sign in with Google" (when offered), "Or with email and password", the
+  fields, Sign in, Create account. **Sign in with Google** (issue #51): the
+  ViewModel asks `GET /api/v1/auth/methods` (`SyncAccount.authMethods`) **at
+  once when the form shows** (the screen opens, or after signing out), and
+  again 600 ms after typing in the server field stops (on
+  `Dispatchers.Default` so the pause is real time under Robolectric; a 404
+  from an older server means password only), and shows "Sign in with Google"
+  only when it names a client id. The list of groups never asks a server.
   `GoogleSignIn` (`app/.../auth/`, made by `TungApp.createGoogleSignIn()`,
   which `FlowTestApp` overrides with `FakeGoogleSignIn`, like
   `createSpeechInput`) gets an ID token for that id from Credential Manager
@@ -746,7 +782,7 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   auto-select, a nonce); `SyncAccount.signInWithGoogle` trades it at
   `/api/v1/auth/google` and finishes like `signIn`. "Google linked" under the
   account comes from `SyncSettings.googleLinked`, set at sign-in and
-  refreshed from `/me` when Settings opens. The watch keeps the link code. The session token is
+  refreshed from `/me` when Account opens. The watch keeps the link code. The session token is
   in `EncryptedSharedPreferences` (`sync_token`, excluded from backups because
   its Keystore key cannot be restored), never in DataStore or a log; the URL,
   email, cursor and last result are in the `settings` DataStore
@@ -818,7 +854,7 @@ filled by the phone's publisher), offered as "Link to <host>"; otherwise a
 list of recent servers (`SyncSettings.recentServers`) and a text field, where
 a bare host means https (`checkWatchServerInput`). Then a six-digit number pad
 (`ui/LinkCodeScreen.kt`, `LinkCodeInput`) whose sixth digit claims the code
-the phone's Settings shows ("Link a watch"), through
+the phone's Settings → Devices shows ("Link a watch"), through
 `SyncAccount.signInWithCode`.
 
 **Protocol** (`core/.../core/wear/WatchProtocol.kt`, JSON, shared by both
@@ -913,7 +949,7 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   token or UnifiedPush endpoint with `POST /api/v1/push/endpoints` under the
   device id, follows `onNewToken`/`onNewEndpoint`, and deletes the endpoint
   in `SyncAccount.signOut` before the token is forgotten (`beforeSignOut`).
-  Settings shows the transport and offers "Choose UnifiedPush distributor"
+  Settings → Devices shows the transport and offers "Choose UnifiedPush distributor"
   when several are installed. `TungFirebaseMessagingService` and
   `TungUnifiedPushReceiver` (connector 2.5.0) are in data's manifest.
 - **Firebase is optional at build time.** `firebase-messaging` comes through
@@ -966,8 +1002,8 @@ to Health Connect, it stores what the phone syncs.
   allow), `planHealthSession` and `aggregateVitals`.
 - **Two opt-ins**, `health_connect_write` and `health_connect_read` in the
   `settings` DataStore (`HealthConnectSettings`), both off by default and not
-  synced: Settings' last section (`ui/settings/HealthConnectSection.kt`, one
-  call in `SettingsScreen`) has a switch for each, which turns on only after
+  synced: Settings → Health Connect (`ui/settings/HealthConnectSection.kt`, one
+  call in `HealthConnectSettingsScreen`) has a switch for each, which turns on only after
   Health Connect's permission sheet granted its permissions
   (`WRITE_EXERCISE`; `READ_HEART_RATE` + `READ_ACTIVE_CALORIES_BURNED`, all
   declared in the phone's manifest) and shows off when a permission was
@@ -1091,7 +1127,7 @@ Jefit is done; Strong and Hevy follow in the same frame.
   `ImportService` (`container.imports`) reads (adapter, alias table from the
   assets, resolution, all on `Dispatchers.Default`), applies, undoes, and
   remembers the last import in the `settings` DataStore (`ImportHistory`).
-- **app.** Settings' "Import" section (`ui/settings/ImportSection.kt`):
+- **app.** Settings → Data (`ui/settings/ImportSection.kt`, in `DataSettingsScreen`):
   "Import from Jefit" opens the system file picker (`ACTION_OPEN_DOCUMENT`,
   `text/*` and `*/*`), and "Undo last import" while one is remembered. The
   file goes to `import?uri=…` (`ui/importing/`): read on IO (at most 64 MB),
@@ -1158,8 +1194,8 @@ tung-server never sees the key or the request.
   no training data). `TungContainer(createAiKeyStore = …)` is the seam;
   `FlowTestApp.aiKeys` keeps the key in memory.
 - **app**: the Assistant screen (`ui/ai/`), reached from the **last row on
-  Home**; Settings' "Assistant" section is `ui/settings/AiSection.kt`, one
-  call in `SettingsScreen`. A program proposal is confirmed with "Save
+  Home**; Settings → Assistant is `ui/settings/AiSection.kt`, one
+  call in `AssistantSettingsScreen` (the Assistant screen's "Open settings" goes straight there). A program proposal is confirmed with "Save
   program": `SaveRoutinePlan` per routine, then `CreateProgram` (rotating)
   and `AddProgramDay` in order; the program is not activated. A next workout
   is `ApplyPlan`. Plateaus are only shown.
@@ -1482,8 +1518,11 @@ part of `./gradlew test`. Only them:
   data's test fixtures, none by default), and Health Connect
   (`FlowTestApp.healthConnect`, a `FakeHealthConnect` from data's test
   fixtures: available, nothing granted, nothing to read by default), and the
-  assistant's API key in memory (`FlowTestApp.aiKeys`). Those six
-  `TungContainer` parameters are the only test seams in production code. Sync tests talk to `FakeSyncServer` (data's test fixtures,
+  assistant's API key in memory (`FlowTestApp.aiKeys`), and Account's default
+  server (`FlowTestApp.defaultServer`, a closed localhost port; a test that
+  wants the default to answer points it at its `FakeSyncServer`). Those six
+  `TungContainer` parameters, and `TungApp`'s `createSpeechInput`,
+  `createGoogleSignIn` and `defaultServerUrl`, are the only test seams in production code. Sync tests talk to `FakeSyncServer` (data's test fixtures,
   `data/src/testFixtures/.../sync/`, the protocol and the link routes on a
   MockWebServer), and `SyncFlowTest` installs WorkManager's test
   instance (`WorkManagerTestInitHelper`) before it signs in.
