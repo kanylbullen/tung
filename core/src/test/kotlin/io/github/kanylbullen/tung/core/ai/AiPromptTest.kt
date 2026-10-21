@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.core.ai
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.core.catalog.EquipmentFilter
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -9,6 +11,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
@@ -125,5 +128,37 @@ class AiPromptTest {
         assertEquals(buildAiPrompt(AiRequest.NextWorkout, c, language = "sv").system, prompt.system)
         assertEquals(c, Json.decodeFromString(AiContext.serializer(), prompt.user.substringAfter("My training data (JSON):\n")))
         assertEquals("free_text", AiRequest.FreeText(heard).key)
+    }
+
+    /** With everything (the default) the context has no equipment field at all, so the request is what it was before. */
+    @Test
+    fun equipmentIsLeftOutWhenTheUserHasEverything() {
+        assertNull(context().equipment)
+        val all = buildAiContext(now, zone, emptyList(), emptyList(), emptyList(), emptyList(), equipment = EquipmentFilter.ALL)
+        assertNull(all.equipment)
+        val o = Json.parseToJsonElement(AiContextJson.encodeToString(AiContext.serializer(), all)) as JsonObject
+        assertFalse("equipment" in o)
+        assertFalse(buildAiPrompt(AiRequest.Program, all).user.contains("I only have this equipment"))
+    }
+
+    /** Narrowed, the keys go in [Equipment] order, and a program or next workout is told to stay within them. */
+    @Test
+    fun narrowedEquipmentIsSentAndTheProgramAndNextWorkoutStayWithinIt() {
+        val c = buildAiContext(
+            now, zone, emptyList(), emptyList(), emptyList(), listOf("push_up"),
+            equipment = setOf(Equipment.KETTLEBELL, Equipment.BODYWEIGHT, Equipment.DUMBBELL),
+        )
+        assertEquals(listOf("dumbbell", "kettlebell", "bodyweight"), c.equipment)
+        val o = Json.parseToJsonElement(AiContextJson.encodeToString(AiContext.serializer(), c)) as JsonObject
+        assertEquals(listOf("dumbbell", "kettlebell", "bodyweight"), o.getValue("equipment").jsonArray.map { it.jsonPrimitive.content })
+
+        for (request in listOf(AiRequest.Program, AiRequest.NextWorkout)) {
+            val user = buildAiPrompt(request, c).user
+            assertTrue(request.key, user.contains("I only have this equipment: dumbbell, kettlebell, bodyweight"))
+            assertTrue(request.key, user.contains("Use only exercises done with it"))
+            assertEquals(c, Json.decodeFromString(AiContext.serializer(), user.substringAfter("My training data (JSON):\n")))
+        }
+        assertFalse(buildAiPrompt(AiRequest.Plateaus, c).user.contains("I only have this equipment"))
+        assertTrue(buildAiPrompt(AiRequest.Program, c).system.contains("equipment, what they have to train with"))
     }
 }
