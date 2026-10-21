@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.sync
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -21,6 +22,9 @@ class SyncSettings(private val store: DataStore<Preferences>) {
 
     val serverUrl: Flow<String?> = store.data.map { it[SERVER_URL] }
     val email: Flow<String?> = store.data.map { it[EMAIL] }
+
+    /** The account has a Google account linked, as the server last said (sign-in, `/me`). */
+    val googleLinked: Flow<Boolean> = store.data.map { it[GOOGLE_LINKED] ?: false }
     /**
      * Servers this device has signed in to, most recent first, at most
      * [RECENT_LIMIT]: what a watch offers so nobody types a URL twice.
@@ -36,11 +40,12 @@ class SyncSettings(private val store: DataStore<Preferences>) {
     suspend fun cursor(): Long = state.first().cursor
 
     /** A new sign-in: the server and the account, and sync starts over from cursor 0. */
-    suspend fun signedIn(serverUrl: String, email: String) = store.edit {
+    suspend fun signedIn(serverUrl: String, email: String, googleLinked: Boolean = false) = store.edit {
         val recent = it[RECENT]?.split('\n')?.filter { url -> url.isNotBlank() && url != serverUrl }.orEmpty()
         it[RECENT] = (listOf(serverUrl) + recent).take(RECENT_LIMIT).joinToString("\n")
         it[SERVER_URL] = serverUrl
         it[EMAIL] = email
+        it[GOOGLE_LINKED] = googleLinked
         it[CURSOR] = 0L
         it.remove(LAST_SYNC_AT)
         it.remove(LAST_ERROR)
@@ -51,6 +56,8 @@ class SyncSettings(private val store: DataStore<Preferences>) {
         it.remove(LAST_SYNC_AT)
         if (failure == null) it.remove(LAST_ERROR) else it[LAST_ERROR] = failure.key
     }
+
+    suspend fun setGoogleLinked(linked: Boolean) = store.edit { it[GOOGLE_LINKED] = linked }
 
     suspend fun setCursor(cursor: Long) = store.edit { it[CURSOR] = cursor }
 
@@ -79,6 +86,7 @@ class SyncSettings(private val store: DataStore<Preferences>) {
         val RECENT = stringPreferencesKey("sync_recent_servers")
         val SERVER_URL = stringPreferencesKey("sync_server_url")
         val EMAIL = stringPreferencesKey("sync_email")
+        val GOOGLE_LINKED = booleanPreferencesKey("sync_google_linked")
         val CURSOR = longPreferencesKey("sync_cursor")
         val LAST_SYNC_AT = longPreferencesKey("sync_last_at")
         val LAST_ERROR = stringPreferencesKey("sync_last_error")
