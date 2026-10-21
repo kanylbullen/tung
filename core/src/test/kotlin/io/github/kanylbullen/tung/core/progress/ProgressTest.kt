@@ -349,6 +349,17 @@ class ProgressTest {
         assertNull(beatsRecord(50.0, 12, records))
     }
 
+    @Test
+    fun repsThatWouldBeatTheEstimate() {
+        // Best estimate 90 × 8 = 114.
+        val records = records(set("w1", at("2026-09-01"), 90.0, 8))
+        assertEquals(9, repsToBeatE1rm(90.0, records))
+        assertEquals(3, repsToBeatE1rm(105.0, records)) // 105 × 3 = 115.5; × 2 = 112
+        assertEquals(1, repsToBeatE1rm(115.0, records))
+        assertNull(repsToBeatE1rm(50.0, records)) // 50 × 12 = 70
+        assertNull(repsToBeatE1rm(90.0, ExerciseRecords.EMPTY))
+    }
+
     // --- recent records and overview ---
 
     @Test

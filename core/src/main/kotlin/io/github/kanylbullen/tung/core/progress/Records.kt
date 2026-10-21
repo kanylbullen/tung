@@ -114,6 +114,16 @@ fun beatsRecord(weightKg: Double, reps: Int, records: ExerciseRecords): RecordKi
     return null
 }
 
+/**
+ * The fewest reps at [weightKg] that would beat the best estimated 1RM, or
+ * null when none within 1–[E1RM_MAX_REPS] would (the weight is too light) or
+ * there is no estimate to beat. "What beats your record" in a workout.
+ */
+fun repsToBeatE1rm(weightKg: Double, records: ExerciseRecords): Int? {
+    val best = records.bestE1rm?.value ?: return null
+    return (1..E1RM_MAX_REPS).firstOrNull { reps -> (estimatedOneRepMax(weightKg, reps) ?: 0.0) > best }
+}
+
 /** A record with the exercise it belongs to, for the Progress tab's "Recent records". */
 data class RecentRecord(val exerciseId: String, val record: PersonalRecord)
 
