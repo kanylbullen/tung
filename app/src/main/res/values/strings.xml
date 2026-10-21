@@ -461,6 +461,8 @@
     <string name="health_rationale_off">You can turn either off in Tung\'s Settings and revoke the permissions in Health Connect at any time.</string>
 
     <!-- Assistant: in-app AI with your own key (BYOK) -->
+    <!-- The language this resource set is in, as a BCP 47 tag: what the assistant is told to write in (issue #75). Each translation sets its own tag. -->
+    <string name="ai_language_tag">en</string>
     <string name="ai_title">Assistant</string>
     <string name="ai_entry_hint">A program, today\'s workout or where you are stuck, from a model with your own key</string>
     <string name="ai_intro">Each button sends your training history, routines and programs to the provider set up in Settings, with your own key, and only when you tap it. Never your email, name or device.</string>

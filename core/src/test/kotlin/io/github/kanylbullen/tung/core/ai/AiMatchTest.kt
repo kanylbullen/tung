@@ -94,7 +94,7 @@ class AiMatchTest {
         assertTrue(prompt.system.contains("exactly one JSON object"))
         assertTrue(prompt.system.contains("\"matches\""))
         assertTrue(prompt.system.contains("Never map across load types"))
-        assertTrue(prompt.system.contains("\"sv\""))
+        assertTrue(prompt.system.contains("in Swedish."))
         assertTrue(prompt.user.contains("Stiff-Legged_Dumbbell_Deadlift"))
         assertEquals("match_exercises", request.key)
     }

@@ -454,6 +454,7 @@
     <string name="health_rationale_off">Du kan slå av båda i Tungs inställningar och ta bort behörigheterna i Health Connect när du vill.</string>
 
     <!-- Assistant: in-app AI with your own key (BYOK) -->
+    <string name="ai_language_tag">sv</string>
     <string name="ai_title">Assistent</string>
     <string name="ai_entry_hint">Ett program, dagens pass eller var du har kört fast, från en modell med din egen nyckel</string>
     <string name="ai_intro">Varje knapp skickar din träningshistorik, dina rutiner och program till leverantören du ställt in under Inställningar, med din egen nyckel, och bara när du trycker. Aldrig din e-post, ditt namn eller din enhet.</string>

@@ -35,7 +35,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -77,7 +76,8 @@ fun AssistantScreen(
     val container = appContainer()
     val vm: AssistantViewModel = viewModel(factory = factoryOf { AssistantViewModel(container.ai, container.aiSettings) })
     val state by vm.state.collectAsStateWithLifecycle()
-    val language = LocalConfiguration.current.locales[0].toLanguageTag()
+    // The language the app shows, not the phone's locale: en-SE is English (issue #75).
+    val language = stringResource(R.string.ai_language_tag)
     var menuOpen by remember { mutableStateOf(false) }
     // The same path as the buttons: "What is sent" first when it is due, then the proposal.
     LaunchedEffect(ask, state.configured) {

@@ -31,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.ai.AiConfidence
@@ -65,7 +64,8 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 @Composable
 fun ImportScreen(vm: ImportViewModel, onBack: () -> Unit, onPick: () -> Unit, onDone: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val language = LocalConfiguration.current.locales[0].toLanguageTag()
+    // The language the app shows, not the phone's locale: en-SE is English (issue #75).
+    val language = stringResource(R.string.ai_language_tag)
     Scaffold(
         containerColor = Tung.colors.background,
         topBar = {
