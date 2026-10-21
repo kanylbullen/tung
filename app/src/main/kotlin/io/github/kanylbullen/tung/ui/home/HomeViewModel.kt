@@ -111,7 +111,8 @@ class HomeViewModel(
             // The clock is read here rather than taken from the ticker, so any change
             // in the data also picks up a new day.
             today = program?.let { todayUi(it, LocalDate.now(clock)) },
-            routines = routineRows,
+            // The few used most recently; the Routines tab, behind "All", has every one.
+            routines = routineRows.take(HOME_ROUTINES),
             recent = finished.take(RECENT_COUNT),
             hasMore = finished.size > RECENT_COUNT,
         )
@@ -137,6 +138,9 @@ class HomeViewModel(
 
     private companion object {
         const val RECENT_COUNT = 5
+
+        /** How many routines Home shows, most recently used first. */
+        const val HOME_ROUTINES = 3
 
         fun todayUi(active: ActiveProgram, date: LocalDate): TodayUi? {
             if (active.days.isEmpty()) return null
