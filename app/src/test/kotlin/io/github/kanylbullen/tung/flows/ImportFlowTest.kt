@@ -13,6 +13,7 @@ import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -21,6 +22,7 @@ import io.github.kanylbullen.tung.core.ai.AiProviderKind
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.core.importing.JefitImport
 import io.github.kanylbullen.tung.core.importing.nameUsage
+import io.github.kanylbullen.tung.data.RoutineRepository
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -172,6 +174,50 @@ class ImportFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("plank")}'"))
         // Monday's routine has it too.
         assertEquals(1, count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '${catalogExerciseId("plank")}'"))
+    }
+
+    /**
+     * "Delete routines from the last import (N)" (issue #79): after an import
+     * of three routines it offers 3, and 2 once one of them is gone. It deletes
+     * only those, never a routine of the person's own nor the imported
+     * workouts, and goes away; "Undo last import" afterwards still removes the
+     * import's workouts.
+     */
+    @Test
+    fun deleteTheLastImportsRoutinesThenUndo() {
+        val ownWorkout = seedFinishedWorkout(System.currentTimeMillis() - 86_400_000L, bench(), 60.0, 8)
+        runBlocking { RoutineRepository(db).saveFromWorkout(ownWorkout, "Mine") }
+        openImport(fixture.readText())
+        scrollToInList("Heel Walking")
+        clickText(str(R.string.import_choice_skip))
+        importNow()
+        assertEquals(4, count("SELECT COUNT(*) FROM routine"))
+        clickText(str(R.string.import_done))
+
+        scrollToInSettings(str(R.string.import_delete_routines, 3))
+        screenshot("1-shortcut")
+        val oneImported = db.openHelper.readableDatabase.query("SELECT id FROM routine WHERE name != 'Mine' LIMIT 1").use { it.moveToFirst(); it.getString(0) }
+        runBlocking { RoutineRepository(db).delete(oneImported) }
+        scrollToInSettings(str(R.string.import_delete_routines, 2))
+
+        compose.onNode(hasText(str(R.string.import_delete_routines, 2))).performClick()
+        waitFor(isDialog())
+        assertShown(hasText(plural(R.plurals.routines_delete_many_title, 2, 2)))
+        assertShown(hasText(str(R.string.import_delete_routines_body)))
+        screenshot("2-confirm")
+        clickInDialog(str(R.string.routine_delete_confirm))
+        waitUntil { count("SELECT COUNT(*) FROM routine") == 1 }
+        assertEquals(1, count("SELECT COUNT(*) FROM routine WHERE name = 'Mine'"))
+        waitGone(hasText(str(R.string.import_delete_routines, 2)))
+        assertEquals("the import's workouts stay", 4, count("SELECT COUNT(*) FROM workout WHERE importSource = 'jefit'"))
+
+        scrollToInSettings(str(R.string.import_undo_last))
+        compose.onNode(hasText(str(R.string.import_undo_last))).performClick()
+        waitUntil { count("SELECT COUNT(*) FROM workout WHERE importSource = 'jefit'") == 0 }
+        waitGone(hasText(str(R.string.import_undo_last)))
+        assertEquals("the person's own workout and routine stay", 1, count("SELECT COUNT(*) FROM workout"))
+        assertEquals(1, count("SELECT COUNT(*) FROM routine"))
+        screenshot("3-after-undo")
     }
 
     private fun openImport(text: String) {
