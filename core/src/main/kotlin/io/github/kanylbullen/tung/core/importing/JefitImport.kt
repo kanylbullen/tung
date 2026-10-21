@@ -175,7 +175,7 @@ object JefitImport : ImportAdapter {
                         dayLogs,
                     )
                 } else {
-                    workout(id("workout", "date", date?.toString() ?: "none"), null, null, dayLogs)
+                    workout(id("workout", "date", date?.toString() ?: "none"), null, null, dayLogs, preferDate = true)
                 }
                 if (workout == null) skip(SkipReason.SESSION_WITHOUT_TIME) else result += workout
             }
@@ -186,17 +186,25 @@ object JefitImport : ImportAdapter {
         /**
          * A workout of [logs] in the order they were logged: from [startSeconds]
          * to [endSeconds] when the session has them, else from the logs' own
-         * times, else noon on their date. Null when there is no time at all.
+         * times, else noon on their date. A day of loose logs ([preferDate])
+         * takes noon on its date first: their `logTime` is only the date's
+         * midnight where the export was made, which is the day before further
+         * west. Null when there is no time at all.
          */
-        private fun workout(id: String, startSeconds: Long?, endSeconds: Long?, logs: List<Log>): ImportedWorkout? {
+        private fun workout(id: String, startSeconds: Long?, endSeconds: Long?, logs: List<Log>, preferDate: Boolean = false): ImportedWorkout? {
             val ordered = logs.sortedWith(compareBy<Log> { it.seconds ?: Long.MAX_VALUE }.thenBy { it.order })
             val logTimes = logs.mapNotNull { it.seconds }
+            val noon = logs.firstNotNullOfOrNull { it.date }?.atTime(LocalTime.NOON)?.atZone(zone)?.toInstant()?.toEpochMilli()
             val startMillis = startSeconds?.let { it * 1000 }
+                ?: noon?.takeIf { preferDate }
                 ?: logTimes.minOrNull()?.let { it * 1000 }
-                ?: logs.firstNotNullOfOrNull { it.date }?.atTime(LocalTime.NOON)?.atZone(zone)?.toInstant()?.toEpochMilli()
+                ?: noon
                 ?: return null
-            val endMillis = listOfNotNull(endSeconds?.let { it * 1000 }, logTimes.maxOrNull()?.let { it * 1000 }.takeIf { endSeconds == null })
-                .maxOrNull()?.coerceAtLeast(startMillis) ?: startMillis
+            val endMillis = when {
+                endSeconds != null -> endSeconds * 1000
+                preferDate && noon != null -> startMillis
+                else -> logTimes.maxOrNull()?.let { it * 1000 } ?: startMillis
+            }.coerceAtLeast(startMillis)
             return ImportedWorkout(id, startMillis, endMillis, ordered.map { it.exercise })
         }
 

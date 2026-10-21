@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.command.ExerciseRef
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.MuscleGroup
@@ -88,7 +89,10 @@ fun ExercisesScreen(
     onBack: (() -> Unit)?,
     onPicked: () -> Unit,
     onOpenExercise: (String) -> Unit = {},
+    /** With [PickerTarget.Choose]: the exercise tapped, which this screen does not add anywhere. */
+    onChosen: (ExerciseRef) -> Unit = {},
 ) {
+    val choosing = target == PickerTarget.Choose
     val container = appContainer()
     val appContext = LocalContext.current.applicationContext
     val vm: ExercisesViewModel = viewModel(
@@ -121,7 +125,15 @@ fun ExercisesScreen(
                     scrolledContainerColor = Tung.colors.background,
                 ),
                 title = {
-                    Text(stringResource(if (vm.isPicker) R.string.picker_title else R.string.exercises_title))
+                    Text(
+                        stringResource(
+                            when {
+                                choosing -> R.string.import_pick_title
+                                vm.isPicker -> R.string.picker_title
+                                else -> R.string.exercises_title
+                            },
+                        ),
+                    )
                 },
                 navigationIcon = {
                     if (onBack != null) {
@@ -179,7 +191,11 @@ fun ExercisesScreen(
                 items(group.exercises, key = { "ex-${it.exercise.id}" }) { named ->
                     ExerciseRow(
                         exercise = named,
-                        onClick = if (vm.isPicker) ({ vm.pick(named.exercise.id, onPicked) }) else null,
+                        onClick = when {
+                            choosing -> ({ onChosen(ExerciseRef.ById(named.exercise.id)) })
+                            vm.isPicker -> ({ vm.pick(named.exercise.id, onPicked) })
+                            else -> null
+                        },
                     )
                 }
             }
@@ -188,12 +204,18 @@ fun ExercisesScreen(
                     SectionHeader(stringResource(R.string.picker_more))
                 }
                 items(state.more, key = { "ext-${it.id}" }) { entry ->
-                    ExtendedRow(entry, onClick = { vm.pickExtended(entry, onPicked) })
+                    ExtendedRow(
+                        entry,
+                        onClick = { if (choosing) onChosen(ExerciseRef.Extended(entry.id)) else vm.pickExtended(entry, onPicked) },
+                    )
                 }
             }
-            item(key = "create") {
-                Box(Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-                    SecondaryButton(text = stringResource(R.string.exercises_create), onClick = { creating = true })
+            // Choosing for the import's review: "Create custom" is one of the review's own choices.
+            if (!choosing) {
+                item(key = "create") {
+                    Box(Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
+                        SecondaryButton(text = stringResource(R.string.exercises_create), onClick = { creating = true })
+                    }
                 }
             }
         }

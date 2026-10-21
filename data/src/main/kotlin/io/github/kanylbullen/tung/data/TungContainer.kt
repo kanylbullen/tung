@@ -20,6 +20,7 @@ import io.github.kanylbullen.tung.health.HealthConnectGateway
 import io.github.kanylbullen.tung.health.HealthConnectRecorder
 import io.github.kanylbullen.tung.health.HealthConnectSettings
 import io.github.kanylbullen.tung.core.importing.ImportAliases
+import io.github.kanylbullen.tung.importing.ImportHistory
 import io.github.kanylbullen.tung.importing.ImportService
 import io.github.kanylbullen.tung.importing.Importer
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
@@ -119,6 +120,7 @@ class TungContainer(
                 }
             },
             zone = { clock.zone },
+            history = ImportHistory(settings),
         )
     }
 

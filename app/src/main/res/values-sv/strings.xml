@@ -498,6 +498,120 @@
     <string name="voice_ask_assistant">Fråga assistenten</string>
     <string name="ai_voice_heard">Du sa: ”%1$s”</string>
 
+    <!-- Import från andra appar (ui/importing/, Inställningar) -->
+    <string name="import_section">Import</string>
+    <string name="import_jefit">Importera från Jefit</string>
+    <string name="import_jefit_hint">Exportera dina data på jefit.com (My Jefit → Settings → Data Controls → Export Data) och välj sedan CSV-filen här.</string>
+    <string name="import_title">Importera från Jefit</string>
+    <string name="import_reading">Läser filen …</string>
+    <string name="import_not_recognised">Det här är ingen Jefit-export. Välj CSV-filen från Jefits Export Data.</string>
+    <string name="import_unreadable">Filen gick inte att läsa. Välj den igen.</string>
+    <string name="import_empty">Filen har inga pass eller rutiner att importera.</string>
+    <string name="import_date_range">%1$s – %2$s</string>
+    <plurals name="import_workouts">
+        <item quantity="one">%d pass</item>
+        <item quantity="other">%d pass</item>
+    </plurals>
+    <plurals name="import_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d set</item>
+    </plurals>
+    <plurals name="import_routines">
+        <item quantity="one">%d rutin</item>
+        <item quantity="other">%d rutiner</item>
+    </plurals>
+    <string name="import_review_title">Övningar att kontrollera</string>
+    <string name="import_review_hint">De här namnen har ingen exakt motsvarighet i Tung. Välj en övning, skapa en med namnet från Jefit eller hoppa över den.</string>
+    <string name="import_choice_pick">Välj</string>
+    <string name="import_choice_create">Skapa</string>
+    <string name="import_choice_skip">Hoppa över</string>
+    <string name="import_chosen_none">Inte bestämt</string>
+    <string name="import_chosen_use">Som %1$s</string>
+    <string name="import_chosen_create">Ny övning ”%1$s”</string>
+    <string name="import_chosen_skip">Hoppas över</string>
+    <plurals name="import_note_warm_up">
+        <item quantity="one">%d uppvärmningsset importerat som vanligt set</item>
+        <item quantity="other">%d uppvärmningsset importerade som vanliga set</item>
+    </plurals>
+    <plurals name="import_note_drop">
+        <item quantity="one">%d dropset importerat som vanligt set</item>
+        <item quantity="other">%d dropset importerade som vanliga set</item>
+    </plurals>
+    <plurals name="import_note_failure">
+        <item quantity="one">%d set till utmattning importerat som vanligt set</item>
+        <item quantity="other">%d set till utmattning importerade som vanliga set</item>
+    </plurals>
+    <plurals name="import_note_other">
+        <item quantity="one">%1$d %2$s-set importerat som vanligt set</item>
+        <item quantity="other">%1$d %2$s-set importerade som vanliga set</item>
+    </plurals>
+    <string name="import_skipped_title">Importeras inte</string>
+    <plurals name="import_skip_session_without_exercises">
+        <item quantity="one">%d pass utan övningar</item>
+        <item quantity="other">%d pass utan övningar</item>
+    </plurals>
+    <plurals name="import_skip_session_without_time">
+        <item quantity="one">%d pass utan tid</item>
+        <item quantity="other">%d pass utan tid</item>
+    </plurals>
+    <plurals name="import_skip_cardio">
+        <item quantity="one">%d konditionsövning</item>
+        <item quantity="other">%d konditionsövningar</item>
+    </plurals>
+    <plurals name="import_skip_cardio_log">
+        <item quantity="one">%d rad i konditionsloggen</item>
+        <item quantity="other">%d rader i konditionsloggen</item>
+    </plurals>
+    <plurals name="import_skip_log_without_sets">
+        <item quantity="one">%d övning utan loggade set</item>
+        <item quantity="other">%d övningar utan loggade set</item>
+    </plurals>
+    <plurals name="import_skip_set_without_reps">
+        <item quantity="one">%d set utan repetitioner</item>
+        <item quantity="other">%d set utan repetitioner</item>
+    </plurals>
+    <plurals name="import_skip_set_unreadable">
+        <item quantity="one">%d set som inte gick att läsa</item>
+        <item quantity="other">%d set som inte gick att läsa</item>
+    </plurals>
+    <plurals name="import_skip_set_without_log">
+        <item quantity="one">%d set utan sin övning</item>
+        <item quantity="other">%d set utan sin övning</item>
+    </plurals>
+    <plurals name="import_skip_stray_header">
+        <item quantity="one">%d upprepad rubrikrad</item>
+        <item quantity="other">%d upprepade rubrikrader</item>
+    </plurals>
+    <plurals name="import_skip_routine_without_exercises">
+        <item quantity="one">%d rutindag utan övningar</item>
+        <item quantity="other">%d rutindagar utan övningar</item>
+    </plurals>
+    <plurals name="import_skip_duplicate_routine">
+        <item quantity="one">%d dubblerad rutindag</item>
+        <item quantity="other">%d dubblerade rutindagar</item>
+    </plurals>
+    <string name="import_action">Importera</string>
+    <string name="import_decide_first">Bestäm dig för varje övning ovan för att importera.</string>
+    <string name="import_importing">Importerar …</string>
+    <string name="import_done_title">Importen är klar</string>
+    <string name="import_done_added">Tillagt: %1$s</string>
+    <plurals name="import_done_already">
+        <item quantity="one">%d pass fanns redan och lämnades som det var</item>
+        <item quantity="other">%d pass fanns redan och lämnades som de var</item>
+    </plurals>
+    <string name="import_undo">Ångra importen</string>
+    <plurals name="import_undone">
+        <item quantity="one">Importen ångrad: %d pass borttaget</item>
+        <item quantity="other">Importen ångrad: %d pass borttagna</item>
+    </plurals>
+    <string name="import_done">Klar</string>
+    <string name="import_pick_title">Välj övning</string>
+    <plurals name="import_last">
+        <item quantity="one">Senaste importen: %1$d pass, %2$s</item>
+        <item quantity="other">Senaste importen: %1$d pass, %2$s</item>
+    </plurals>
+    <string name="import_undo_last">Ångra senaste importen</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bänkpress</string>

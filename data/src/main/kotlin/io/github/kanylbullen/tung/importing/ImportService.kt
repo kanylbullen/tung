@@ -1,6 +1,10 @@
 package io.github.kanylbullen.tung.importing
 
+import io.github.kanylbullen.tung.core.command.ExerciseCandidate
+import io.github.kanylbullen.tung.core.command.ExerciseRef
 import io.github.kanylbullen.tung.core.command.ExerciseResolver
+import io.github.kanylbullen.tung.core.command.RefResolution
+import io.github.kanylbullen.tung.core.command.resolveRef
 import io.github.kanylbullen.tung.core.importing.ImportAliases
 import io.github.kanylbullen.tung.core.importing.ImportBundle
 import io.github.kanylbullen.tung.core.importing.ImportChoice
@@ -9,6 +13,8 @@ import io.github.kanylbullen.tung.core.importing.adapterFor
 import io.github.kanylbullen.tung.core.importing.importExerciseNames
 import io.github.kanylbullen.tung.core.importing.resolveImportNames
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
 
@@ -42,7 +48,14 @@ class ImportService(
     /** The alias table of a source, `catalog/aliases/<source>.json`; empty when there is none. */
     private val aliases: suspend (source: String) -> ImportAliases,
     private val zone: () -> ZoneId,
+    /** Remembers the last import for "Undo last import" in Settings; null keeps nothing (tests). */
+    private val history: ImportHistory? = null,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
+
+    /** The last import on this device, until it is undone. */
+    val lastImport: Flow<LastImport?> = history?.last ?: flowOf(null)
+
     suspend fun read(text: String): ImportRead = withContext(Dispatchers.Default) {
         val adapter = adapterFor(text) ?: return@withContext ImportRead.NotRecognised
         val bundle = adapter.parse(text, zone())
@@ -50,7 +63,24 @@ class ImportService(
         ImportRead.Ready(ImportPreview(bundle, matches))
     }
 
-    suspend fun apply(bundle: ImportBundle, choices: Map<String, ImportChoice>): ImportResult = importer.apply(bundle, choices)
+    suspend fun apply(bundle: ImportBundle, choices: Map<String, ImportChoice>): ImportResult {
+        val result = importer.apply(bundle, choices)
+        if (result.workoutsAdded > 0 || result.routineIds.isNotEmpty()) history?.remember(bundle.source, result, clock())
+        return result
+    }
 
-    suspend fun undo(result: ImportResult): Int = importer.undo(result.batchId, result.routineIds)
+    /** Undoes [result]'s import; returns how many workouts it removed. */
+    suspend fun undo(result: ImportResult): Int = undo(result.batchId, result.routineIds)
+
+    /** Undoes [last] (from [lastImport]). */
+    suspend fun undo(last: LastImport): Int = undo(last.batchId, last.routineIds)
+
+    private suspend fun undo(batchId: String, routineIds: List<String>): Int {
+        val removed = importer.undo(batchId, routineIds)
+        history?.forget(batchId)
+        return removed
+    }
+
+    /** The exercise a picker's choice names (a row, or an extended entry not picked yet), for the review; null if gone. */
+    suspend fun candidate(ref: ExerciseRef): ExerciseCandidate? = (resolveRef(ref, resolver) as? RefResolution.Resolved)?.exercise
 }

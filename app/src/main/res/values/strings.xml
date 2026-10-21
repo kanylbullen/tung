@@ -502,6 +502,120 @@
     <string name="voice_ask_assistant">Ask the assistant</string>
     <string name="ai_voice_heard">You said: \'%1$s\'</string>
 
+    <!-- Import from other apps (ui/importing/, Settings) -->
+    <string name="import_section">Import</string>
+    <string name="import_jefit">Import from Jefit</string>
+    <string name="import_jefit_hint">Export your data on jefit.com (My Jefit → Settings → Data Controls → Export Data), then choose the CSV file here.</string>
+    <string name="import_title">Import from Jefit</string>
+    <string name="import_reading">Reading the file…</string>
+    <string name="import_not_recognised">This is not a Jefit export. Choose the CSV file from Jefit\'s Export Data.</string>
+    <string name="import_unreadable">The file could not be read. Choose it again.</string>
+    <string name="import_empty">The file has no workouts or routines to import.</string>
+    <string name="import_date_range">%1$s – %2$s</string>
+    <plurals name="import_workouts">
+        <item quantity="one">%d workout</item>
+        <item quantity="other">%d workouts</item>
+    </plurals>
+    <plurals name="import_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d sets</item>
+    </plurals>
+    <plurals name="import_routines">
+        <item quantity="one">%d routine</item>
+        <item quantity="other">%d routines</item>
+    </plurals>
+    <string name="import_review_title">Exercises to check</string>
+    <string name="import_review_hint">These names have no exact match in Tung. Choose an exercise, create one with the Jefit name, or skip it.</string>
+    <string name="import_choice_pick">Choose</string>
+    <string name="import_choice_create">Create</string>
+    <string name="import_choice_skip">Skip</string>
+    <string name="import_chosen_none">Not decided</string>
+    <string name="import_chosen_use">As %1$s</string>
+    <string name="import_chosen_create">New exercise “%1$s”</string>
+    <string name="import_chosen_skip">Skipped</string>
+    <plurals name="import_note_warm_up">
+        <item quantity="one">%d warm-up set imported as a normal set</item>
+        <item quantity="other">%d warm-up sets imported as normal sets</item>
+    </plurals>
+    <plurals name="import_note_drop">
+        <item quantity="one">%d drop set imported as a normal set</item>
+        <item quantity="other">%d drop sets imported as normal sets</item>
+    </plurals>
+    <plurals name="import_note_failure">
+        <item quantity="one">%d failure set imported as a normal set</item>
+        <item quantity="other">%d failure sets imported as normal sets</item>
+    </plurals>
+    <plurals name="import_note_other">
+        <item quantity="one">%1$d %2$s set imported as a normal set</item>
+        <item quantity="other">%1$d %2$s sets imported as normal sets</item>
+    </plurals>
+    <string name="import_skipped_title">Not imported</string>
+    <plurals name="import_skip_session_without_exercises">
+        <item quantity="one">%d session without exercises</item>
+        <item quantity="other">%d sessions without exercises</item>
+    </plurals>
+    <plurals name="import_skip_session_without_time">
+        <item quantity="one">%d session without a time</item>
+        <item quantity="other">%d sessions without a time</item>
+    </plurals>
+    <plurals name="import_skip_cardio">
+        <item quantity="one">%d cardio exercise</item>
+        <item quantity="other">%d cardio exercises</item>
+    </plurals>
+    <plurals name="import_skip_cardio_log">
+        <item quantity="one">%d cardio log entry</item>
+        <item quantity="other">%d cardio log entries</item>
+    </plurals>
+    <plurals name="import_skip_log_without_sets">
+        <item quantity="one">%d exercise without logged sets</item>
+        <item quantity="other">%d exercises without logged sets</item>
+    </plurals>
+    <plurals name="import_skip_set_without_reps">
+        <item quantity="one">%d set without reps</item>
+        <item quantity="other">%d sets without reps</item>
+    </plurals>
+    <plurals name="import_skip_set_unreadable">
+        <item quantity="one">%d set that could not be read</item>
+        <item quantity="other">%d sets that could not be read</item>
+    </plurals>
+    <plurals name="import_skip_set_without_log">
+        <item quantity="one">%d set without its exercise</item>
+        <item quantity="other">%d sets without their exercise</item>
+    </plurals>
+    <plurals name="import_skip_stray_header">
+        <item quantity="one">%d repeated header row</item>
+        <item quantity="other">%d repeated header rows</item>
+    </plurals>
+    <plurals name="import_skip_routine_without_exercises">
+        <item quantity="one">%d routine day without exercises</item>
+        <item quantity="other">%d routine days without exercises</item>
+    </plurals>
+    <plurals name="import_skip_duplicate_routine">
+        <item quantity="one">%d duplicate routine day</item>
+        <item quantity="other">%d duplicate routine days</item>
+    </plurals>
+    <string name="import_action">Import</string>
+    <string name="import_decide_first">Decide on each exercise above to import.</string>
+    <string name="import_importing">Importing…</string>
+    <string name="import_done_title">Import finished</string>
+    <string name="import_done_added">Added %1$s</string>
+    <plurals name="import_done_already">
+        <item quantity="one">%d workout was already here and was left as it is</item>
+        <item quantity="other">%d workouts were already here and were left as they are</item>
+    </plurals>
+    <string name="import_undo">Undo import</string>
+    <plurals name="import_undone">
+        <item quantity="one">Import undone: %d workout removed</item>
+        <item quantity="other">Import undone: %d workouts removed</item>
+    </plurals>
+    <string name="import_done">Done</string>
+    <string name="import_pick_title">Choose exercise</string>
+    <plurals name="import_last">
+        <item quantity="one">Last import: %1$d workout, %2$s</item>
+        <item quantity="other">Last import: %1$d workouts, %2$s</item>
+    </plurals>
+    <string name="import_undo_last">Undo last import</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bench press</string>

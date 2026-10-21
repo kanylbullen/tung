@@ -35,7 +35,7 @@ class JefitImportTest {
     fun oneWorkoutPerSessionAndPerDayOfLooseLogsOldestFirst() {
         assertEquals("jefit", bundle.source)
         assertEquals(
-            listOf("2023-02-24T18:00", "2023-02-27T00:00", "2023-03-06T18:00", "2023-03-13T18:00").map(::millis),
+            listOf("2023-02-24T18:00", "2023-02-27T12:00", "2023-03-06T18:00", "2023-03-13T18:00").map(::millis),
             bundle.workouts.map { it.startedAt },
         )
         assertEquals(12, bundle.setCount)
@@ -80,8 +80,8 @@ class JefitImportTest {
         // 30 × 0 is not a logged set.
         assertEquals(listOf(30.0 to 8), adopted.exercises[1].sets.map { it.weightKg to it.reps })
         assertEquals(millis("2023-02-24T19:00"), adopted.endedAt)
-        // A day with no session gets one at its logs' time.
-        assertEquals(listOf("Barbell Bent Over Row"), workoutAt("2023-02-27T00:00").exercises.map { it.name })
+        // A day with no session gets one at noon on its date.
+        assertEquals(listOf("Barbell Bent Over Row"), workoutAt("2023-02-27T12:00").exercises.map { it.name })
     }
 
     @Test

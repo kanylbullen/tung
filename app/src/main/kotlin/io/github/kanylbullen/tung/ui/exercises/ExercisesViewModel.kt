@@ -56,6 +56,9 @@ sealed interface PickerTarget {
     data class Workout(val workoutId: String) : PickerTarget
 
     data class Routine(val routineId: String) : PickerTarget
+
+    /** Only choose: the tap hands the exercise back ([ExercisesScreen]'s `onChosen`) and changes nothing. The import's review uses it. */
+    data object Choose : PickerTarget
 }
 
 /** An exercise with the name the user sees, which is also what the search matches. */
@@ -269,7 +272,7 @@ class ExercisesViewModel(
     private fun addCommand(exercise: ExerciseRef): Command? = when (val t = target) {
         is PickerTarget.Workout -> Command.AddExercise(t.workoutId, exercise)
         is PickerTarget.Routine -> Command.AddRoutineExercise(t.routineId, exercise)
-        null -> null
+        PickerTarget.Choose, null -> null
     }
 
     /** Creates a custom exercise; in picker mode it also goes straight into the workout or routine. */
