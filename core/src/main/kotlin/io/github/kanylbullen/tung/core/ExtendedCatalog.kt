@@ -36,8 +36,9 @@ data class ExtendedExercise(
  * The extended catalogue (`catalog/extended.json`). Where the bytes come from
  * is the caller's business: the app hands in an asset stream
  * (`ExtendedCatalog.fromAssets` in the app's `data` package). It is not in
- * Room: the picker searches it, and an entry becomes a Room row only when
- * picked (`ExerciseRepository.getOrCreateExtended` in the app). Read once, on
+ * Room: the picker searches it and the Exercises tab lists it, and an entry
+ * becomes a Room row only when added somewhere
+ * (`ExerciseRepository.getOrCreateExtended` in the app). Read once, on
  * [io], the first time [all] is called, then kept in memory.
  */
 class ExtendedCatalog(
