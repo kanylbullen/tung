@@ -502,6 +502,75 @@
     <string name="voice_ask_assistant">Ask the assistant</string>
     <string name="ai_voice_heard">You said: \'%1$s\'</string>
 
+    <!-- Progress (ui/progress, CLAUDE.md "Progress") -->
+    <string name="nav_progress">Progress</string>
+    <string name="progress_title">Progress</string>
+    <string name="progress_empty">Finish a workout to see your progress here</string>
+    <string name="progress_overview">Last 12 weeks</string>
+    <string name="progress_workouts_per_week">Workouts per week</string>
+    <string name="progress_volume_per_week">Volume per week, kg</string>
+    <string name="progress_workouts_total">Workouts</string>
+    <plurals name="progress_streak_label">
+        <item quantity="one">Week in a row</item>
+        <item quantity="other">Weeks in a row</item>
+    </plurals>
+    <!-- The bar charts for a screen reader. %1$d workouts in 12 weeks, %2$d this week. -->
+    <string name="progress_workouts_summary">Workouts per week, last 12 weeks: %1$d in total, %2$d this week</string>
+    <string name="progress_volume_summary">Volume per week, last 12 weeks: %1$s kg in total, %2$s kg this week</string>
+    <string name="progress_exercises">Exercises</string>
+    <string name="progress_records_recent">Recent records</string>
+    <string name="progress_records">Records</string>
+    <string name="progress_last_sessions">Last sessions</string>
+    <!-- A change with its sign and unit: "+7.5 kg", "−2.5 kg". -->
+    <string name="progress_change_up">+%1$s kg</string>
+    <string name="progress_change_down">−%1$s kg</string>
+    <string name="progress_change_3m">%1$s in 3 months</string>
+    <string name="progress_no_change_3m">No change in 3 months</string>
+    <plurals name="progress_sessions">
+        <item quantity="one">%d session</item>
+        <item quantity="other">%d sessions</item>
+    </plurals>
+    <!-- An exercise row: "Est. 1RM 101 kg". -->
+    <string name="progress_e1rm_value">Est. 1RM %1$s kg</string>
+    <!-- The sparkline for a screen reader. -->
+    <string name="progress_sparkline_summary">Estimated 1RM, 3 months: from %1$s to %2$s kg</string>
+    <string name="progress_open_exercise">Open progress for %1$s</string>
+    <!-- Metric chips and their names inside a sentence. -->
+    <string name="progress_metric_e1rm">Est. 1RM</string>
+    <string name="progress_metric_top_set">Top set</string>
+    <string name="progress_metric_volume">Volume</string>
+    <string name="progress_metric_e1rm_long">Estimated 1RM</string>
+    <string name="progress_metric_top_set_long">Top set</string>
+    <string name="progress_metric_volume_long">Session volume</string>
+    <!-- Range chips and their names inside a sentence. -->
+    <string name="progress_range_3m">3M</string>
+    <string name="progress_range_1y">1Y</string>
+    <string name="progress_range_all">All</string>
+    <string name="progress_range_3m_long">3 months</string>
+    <string name="progress_range_1y_long">1 year</string>
+    <string name="progress_range_all_long">all time</string>
+    <!-- A chart for a screen reader: "Estimated 1RM, 3 months: from 92 to 101 kg". -->
+    <string name="progress_chart_summary">%1$s, %2$s: from %3$s to %4$s kg</string>
+    <string name="progress_chart_summary_empty">%1$s, %2$s: not enough sessions for a chart</string>
+    <string name="progress_chart_empty">Log this exercise in two workouts to see a chart</string>
+    <string name="progress_record_heaviest">Heaviest weight</string>
+    <string name="progress_record_e1rm">Best estimated 1RM</string>
+    <string name="progress_record_reps">Most reps</string>
+    <string name="progress_record_volume">Best session volume</string>
+    <!-- A record's value: "100 kg", "114 kg (90 × 8)". -->
+    <string name="progress_kg">%1$s kg</string>
+    <string name="progress_e1rm_from">%1$s kg (%2$s × %3$d)</string>
+    <!-- The sheet inside a workout. -->
+    <string name="workout_progress_for">Progress for %1$s</string>
+    <string name="progress_sheet_title">%1$s · progress</string>
+    <string name="progress_no_history">No finished workouts with this exercise yet</string>
+    <string name="progress_beats_heaviest">%1$s × %2$d would be your heaviest weight</string>
+    <string name="progress_beats_e1rm">%1$s × %2$d would be a new best estimated 1RM</string>
+    <string name="progress_beats_reps">%1$s × %2$d would be your most reps at %1$s kg or more</string>
+    <string name="progress_no_record">%1$s × %2$d is no new record</string>
+    <!-- The progress row on an exercise page. -->
+    <string name="exercise_progress">Progress</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bench press</string>
