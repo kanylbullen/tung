@@ -1,7 +1,9 @@
 package io.github.kanylbullen.tung.core.command
 
 import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.core.command.Command.AddExercise
 import io.github.kanylbullen.tung.core.command.Command.AddRoutineExercise
+import io.github.kanylbullen.tung.core.command.Command.AddSet
 import io.github.kanylbullen.tung.core.command.Command.ApplyPlan
 import io.github.kanylbullen.tung.core.command.Command.CreateProgram
 import io.github.kanylbullen.tung.core.command.Command.CreateRoutine
@@ -50,6 +52,20 @@ class ValidationTest {
         valid(SetReps("s", 999))
         invalid(SetReps("s", -1))
         invalid(SetReps("s", 1000))
+    }
+
+    @Test
+    fun anAddedExerciseOrAddSetCreatesOneToTwentySets() {
+        valid(AddExercise("w", bench))
+        valid(AddExercise("w", bench, sets = 1))
+        valid(AddExercise("w", bench, sets = 20))
+        assertEquals(listOf("sets must be between 1 and 20"), invalid(AddExercise("w", bench, sets = 0)))
+        invalid(AddExercise("w", bench, sets = 21))
+        valid(AddSet("we"))
+        valid(AddSet("we", count = 1))
+        valid(AddSet("we", count = 20))
+        assertEquals(listOf("count must be between 1 and 20"), invalid(AddSet("we", count = 0)))
+        invalid(AddSet("we", count = 21))
     }
 
     @Test

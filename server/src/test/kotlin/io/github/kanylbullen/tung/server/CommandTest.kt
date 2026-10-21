@@ -71,6 +71,47 @@ class CommandTest {
     }
 
     @Test
+    fun anAddedExerciseGetsLastSessionsSetsOrTheCountAskedFor() = tungTest {
+        val token = client.register()
+        val workoutId = client.done(token, "start_workout")["workoutId"]!!.str
+        suspend fun sets(id: String, weId: String) =
+            client.authedGet("/api/v1/workouts/$id", token).workout().exercises.single { it.id == weId }.sets
+
+        val weId = client.done(token, "add_exercise", """{"workout_id": "$workoutId", "exercise": {"key": "bench_press"}}""")["workoutExerciseId"]!!.str
+        val first = sets(workoutId, weId)
+        assertEquals(listOf(0.0 to 0), first.map { it.weightKg to it.reps }, "no history: one set of 0 x 0")
+
+        client.done(token, "set_weight", """{"set_id": "${first[0].id}", "weight_kg": 60}""")
+        client.done(token, "set_reps", """{"set_id": "${first[0].id}", "reps": 8}""")
+        val added = client.done(token, "add_set", """{"workout_exercise_id": "$weId", "count": 2}""")["setId"]!!.str
+        val three = sets(workoutId, weId)
+        assertEquals(added, three[1].id, "add_set returns the first set it added")
+        assertEquals(List(3) { 60.0 to 8 }, three.map { it.weightKg to it.reps }, "each added set copies the one before")
+        client.done(token, "set_reps", """{"set_id": "${three[2].id}", "reps": 6}""")
+        three.forEach { client.done(token, "tick_set", """{"set_id": "${it.id}", "done": true}""") }
+        client.done(token, "finish_workout", """{"workout_id": "$workoutId"}""")
+
+        val next = client.done(token, "start_workout")["workoutId"]!!.str
+        val benchAgain = client.done(token, "add_exercise", """{"workout_id": "$next", "exercise": {"key": "bench_press"}}""")["workoutExerciseId"]!!.str
+        assertEquals(
+            listOf(60.0 to 8, 60.0 to 8, 60.0 to 6),
+            sets(next, benchAgain).map { it.weightKg to it.reps },
+            "as many sets as last session, each from its own position",
+        )
+        assertTrue(sets(next, benchAgain).none { it.completed })
+        val five = client.done(token, "add_exercise", """{"workout_id": "$next", "exercise": {"key": "bench_press"}, "sets": 5}""")["workoutExerciseId"]!!.str
+        assertEquals(listOf(60.0 to 8, 60.0 to 8, 60.0 to 6, 60.0 to 6, 60.0 to 6), sets(next, five).map { it.weightKg to it.reps })
+        val squat = client.done(token, "add_exercise", """{"workout_id": "$next", "exercise": {"key": "back_squat"}, "sets": 4}""")["workoutExerciseId"]!!.str
+        assertEquals(List(4) { 0.0 to 0 }, sets(next, squat).map { it.weightKg to it.reps })
+
+        val tooMany = client.command(token, "add_exercise", """{"workout_id": "$next", "exercise": {"key": "deadlift"}, "sets": 21}""")
+        assertEquals(HttpStatusCode.UnprocessableEntity, tooMany.status)
+        assertTrue(tooMany.bodyAsText().contains("sets must be between 1 and 20"), tooMany.bodyAsText())
+        val none = client.command(token, "add_set", """{"workout_exercise_id": "$squat", "count": 0}""")
+        assertEquals(HttpStatusCode.UnprocessableEntity, none.status)
+    }
+
+    @Test
     fun aChangeMadeByCommandIsPulledBySync() = tungTest {
         val token = client.register()
         val workoutId = client.done(token, "start_workout")["workoutId"]!!.str

@@ -57,7 +57,7 @@ class DirtyTrackingTest {
     @Test
     fun everyWriteMarksItsRowDirty() = runBlocking {
         val workoutId = workouts.startOrResumeWorkout()
-        val workoutExerciseId = workouts.addExercise(workoutId, bench)
+        val workoutExerciseId = workouts.addExercise(workoutId, bench, sets = 1)
         val setId = workouts.getSets(workoutExerciseId).single().id
         assertEquals(1, count("SELECT COUNT(*) FROM set_entry WHERE dirty = 1"))
 
@@ -89,7 +89,7 @@ class DirtyTrackingTest {
     @Test
     fun removingAnExerciseTombstonesItAndItsSets() = runBlocking {
         val workoutId = workouts.startOrResumeWorkout()
-        val workoutExerciseId = workouts.addExercise(workoutId, bench)
+        val workoutExerciseId = workouts.addExercise(workoutId, bench, sets = 1)
         workouts.addSet(workoutExerciseId)
         val oneSet = workouts.getSets(workoutExerciseId).first().id
 
@@ -106,11 +106,11 @@ class DirtyTrackingTest {
     @Test
     fun finishingTombstonesWhatItDropsAndDiscardingTombstonesTheWorkout() = runBlocking {
         val kept = workouts.startOrResumeWorkout()
-        val keptExercise = workouts.addExercise(kept, bench)
+        val keptExercise = workouts.addExercise(kept, bench, sets = 1)
         val logged = workouts.getSets(keptExercise).single().id
         workouts.updateReps(logged, 5)
         workouts.logSet(logged) // adds an unticked set, dropped on finish
-        workouts.addExercise(kept, catalogExerciseId("back_squat"))
+        workouts.addExercise(kept, catalogExerciseId("back_squat"), sets = 1)
         now = 7_000
         workouts.finishWorkout(kept)
         assertEquals(2, tombstones(SyncTable.SETS)) // the unticked bench set and the squat's set
@@ -118,7 +118,7 @@ class DirtyTrackingTest {
         assertEquals(0, tombstones(SyncTable.WORKOUTS))
 
         val discarded = workouts.startOrResumeWorkout()
-        workouts.addExercise(discarded, bench)
+        workouts.addExercise(discarded, bench, sets = 1)
         now = 8_000
         workouts.finishWorkout(discarded)
         assertEquals(1, tombstones(SyncTable.SETS))
@@ -129,8 +129,8 @@ class DirtyTrackingTest {
     @Test
     fun deletingAWorkoutTombstonesEverythingInIt() = runBlocking {
         val workoutId = workouts.startOrResumeWorkout()
-        workouts.addSet(workouts.addExercise(workoutId, bench))
-        workouts.addExercise(workoutId, catalogExerciseId("back_squat"))
+        workouts.addSet(workouts.addExercise(workoutId, bench, sets = 1))
+        workouts.addExercise(workoutId, catalogExerciseId("back_squat"), sets = 1)
         now = 9_000
         workouts.deleteWorkout(workoutId)
         assertEquals(3, tombstones(SyncTable.SETS))

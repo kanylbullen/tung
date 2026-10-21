@@ -19,6 +19,9 @@ import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.hasSetTextAction
@@ -167,13 +170,54 @@ abstract class FlowTest {
         compose.onNode(hasSetTextAction()).performTextReplacement(query)
     }
 
-    /** From the active workout: opens the picker, searches and taps the exercise called [name]. */
+    /**
+     * From the active workout: opens the picker, searches and taps the exercise
+     * called [name]. An exercise with no history opens its weight sheet at once
+     * (issue #55); this dismisses it, leaving the one empty set the flows that
+     * call this expect. [addExerciseFirstTime] keeps it open.
+     */
     protected fun addExercise(query: String, name: String) {
+        addExerciseFirstTime(query, name)
+        if (lastAddedIsEmpty()) {
+            waitForDescription(str(R.string.input_field_weight))
+            dismissSheet(str(R.string.input_field_weight))
+        }
+    }
+
+    /** [addExercise] without dismissing the first-time weight sheet. */
+    protected fun addExerciseFirstTime(query: String, name: String) {
         clickText(str(R.string.workout_add_exercise))
         searchPicker(query)
         clickText(name)
         waitForText(str(R.string.workout_finish))
         waitForText(name)
+    }
+
+    /** Whether the exercise added last to the workout in progress has one set of 0 × 0, i.e. no history. */
+    protected fun lastAddedIsEmpty(): Boolean = db.openHelper.readableDatabase.query(
+        """
+        SELECT COUNT(*), MAX(s.weightKg), MAX(s.reps) FROM set_entry s WHERE s.workoutExerciseId = (
+            SELECT we.id FROM workout_exercise we JOIN workout w ON we.workoutId = w.id
+            WHERE w.endedAt IS NULL ORDER BY we.position DESC LIMIT 1
+        )
+        """.trimIndent(),
+    ).use { c -> c.moveToFirst() && c.getInt(0) == 1 && c.getDouble(1) == 0.0 && c.getInt(2) == 0 }
+
+    /**
+     * What Material 3's sheet scrim says to a screen reader ("Close sheet", in
+     * the app's language); its click dismisses the sheet. Compose UI's own
+     * string, merged into the app's resources.
+     */
+    private fun sheetScrimDescription(): String =
+        app.getString(app.resources.getIdentifier("close_sheet", "string", app.packageName))
+
+    /** Closes the open bottom sheet the way a tap outside it does, and waits until [fieldDescription] is gone. */
+    protected fun dismissSheet(fieldDescription: String) {
+        val scrim = hasContentDescription(sheetScrimDescription())
+        waitFor(scrim)
+        // The action, not a tap at its centre: there the sheet itself covers the scrim.
+        compose.onAllNodes(scrim).onFirst().performSemanticsAction(SemanticsActions.OnClick)
+        waitGone(hasContentDescription(fieldDescription))
     }
 
     /** Opens the number sheet from the cell described as [cellDescription], types [text] and taps Done. */
@@ -217,7 +261,7 @@ abstract class FlowTest {
             var now = startedAt
             val repo = WorkoutRepository(db, clock = { now })
             val workoutId = repo.startOrResumeWorkout()
-            val workoutExerciseId = repo.addExercise(workoutId, exerciseId)
+            val workoutExerciseId = repo.addExercise(workoutId, exerciseId, sets = 1)
             val setId = db.openHelper.readableDatabase
                 .query("SELECT id FROM set_entry WHERE workoutExerciseId = ?", arrayOf(workoutExerciseId))
                 .use { c -> c.moveToFirst(); c.getString(0) }

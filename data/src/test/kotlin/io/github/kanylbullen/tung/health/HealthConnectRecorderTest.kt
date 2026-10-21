@@ -56,7 +56,7 @@ class HealthConnectRecorderTest {
         now = START
         val workoutId = workouts.startOrResumeWorkout()
         for ((key, reps) in listOf("bench_press" to 8, "cable_fly" to 12)) {
-            val workoutExerciseId = workouts.addExercise(workoutId, catalogExerciseId(key))
+            val workoutExerciseId = workouts.addExercise(workoutId, catalogExerciseId(key), sets = 1)
             val setId = workouts.getSets(workoutExerciseId).single().id
             workouts.updateReps(setId, reps)
             workouts.setCompleted(setId, true)

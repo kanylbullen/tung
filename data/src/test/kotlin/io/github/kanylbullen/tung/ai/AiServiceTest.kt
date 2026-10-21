@@ -106,7 +106,7 @@ class AiServiceTest {
     private fun seedHistory() = runBlocking {
         clockMillis = now.toEpochMilli() - 2 * 86_400_000L
         val workoutId = workouts.startOrResumeWorkout()
-        val exerciseId = workouts.addExercise(workoutId, catalogExerciseId("bench_press"))
+        val exerciseId = workouts.addExercise(workoutId, catalogExerciseId("bench_press"), sets = 1)
         val first = workouts.getSets(exerciseId).single().id
         workouts.updateWeight(first, 80.0)
         workouts.updateReps(first, 8)

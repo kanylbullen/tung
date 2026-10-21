@@ -90,7 +90,7 @@ class SyncClientTest {
         /** A finished workout of bench press: one logged set of 80 × 8, plus a second set never ticked (dropped on finish). */
         fun finishedWorkout(): Pair<String, String> = runBlocking {
             val workoutId = workouts.startOrResumeWorkout()
-            val workoutExerciseId = workouts.addExercise(workoutId, bench)
+            val workoutExerciseId = workouts.addExercise(workoutId, bench, sets = 1)
             val first = setIds(workoutExerciseId).single()
             workouts.addSet(workoutExerciseId)
             workouts.updateWeight(first, 80.0)
@@ -164,7 +164,7 @@ class SyncClientTest {
         val phone = Device()
         val (workoutId, workoutExerciseId) = runBlocking {
             val workoutId = phone.workouts.startOrResumeWorkout()
-            workoutId to phone.workouts.addExercise(workoutId, bench)
+            workoutId to phone.workouts.addExercise(workoutId, bench, sets = 1)
         }
         runBlocking {
             phone.workouts.addSet(workoutExerciseId)
@@ -284,7 +284,7 @@ class SyncClientTest {
         val phone = Device()
         val (workoutId, workoutExerciseId) = runBlocking {
             val workoutId = phone.workouts.startOrResumeWorkout()
-            workoutId to phone.workouts.addExercise(workoutId, bench)
+            workoutId to phone.workouts.addExercise(workoutId, bench, sets = 1)
         }
         // Up to one row over the limit: the workout, its exercise and SYNC_MAX_ROWS - 1 + 1 sets.
         phone.db.openHelper.writableDatabase.apply {

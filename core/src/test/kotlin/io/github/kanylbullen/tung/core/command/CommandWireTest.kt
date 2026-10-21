@@ -96,6 +96,24 @@ class CommandWireTest {
     }
 
     @Test
+    fun addExerciseTakesASetCountAndAddSetACount() {
+        val bench = ExerciseRef.ByKey("bench_press")
+        assertEquals(Command.AddExercise(id, bench, null), decoded("add_exercise", samples.getValue("add_exercise")))
+        assertEquals(Command.AddExercise(id, bench, 4), decoded("add_exercise", """{"workout_id": "$id", "exercise": $ex, "sets": 4}"""))
+        assertEquals(Command.AddExercise(id, bench, null), decoded("add_exercise", """{"workout_id": "$id", "exercise": $ex, "sets": null}"""))
+        assertEquals(Command.AddSet(id, null), decoded("add_set", samples.getValue("add_set")))
+        assertEquals(Command.AddSet(id, 3), decoded("add_set", """{"workout_exercise_id": "$id", "count": "3"}"""))
+        fun reasons(name: String, body: String) = (CommandWire.decode(name, obj(body)) as WireDecoding.Invalid).reasons
+        assertTrue(reasons("add_exercise", """{"workout_id": "$id", "exercise": $ex, "sets": 2.5}""").contains("sets must be a whole number"))
+        assertTrue(reasons("add_set", """{"workout_exercise_id": "$id", "count": "many"}""").contains("count must be a whole number"))
+        listOf("add_exercise" to "sets", "add_set" to "count").forEach { (name, field) ->
+            val schema = CommandWire.schema(name)!!
+            assertTrue("$name declares $field", field in schema["properties"]!!.jsonObject)
+            assertTrue("$field is optional", schema["required"]!!.jsonArray.none { it.jsonPrimitive.content == field })
+        }
+    }
+
+    @Test
     fun routineEditingFieldsMapOntoTheCommand() {
         val bench = ExerciseRef.ByKey("bench_press")
         assertEquals(Command.AddRoutineExercise(id, bench, 4, 8), decoded("add_routine_exercise", samples.getValue("add_routine_exercise")))

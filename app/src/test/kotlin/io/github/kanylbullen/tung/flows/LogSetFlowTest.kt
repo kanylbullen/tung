@@ -198,7 +198,7 @@ class LogSetFlowTest : FlowTest() {
         var now = startedAt
         val repo = WorkoutRepository(db, clock = { now })
         val workoutId = repo.startOrResumeWorkout()
-        val workoutExerciseId = repo.addExercise(workoutId, exerciseId)
+        val workoutExerciseId = repo.addExercise(workoutId, exerciseId, sets = 1)
         repeat(sets.size - 1) { repo.addSet(workoutExerciseId) }
         val ids = db.openHelper.readableDatabase
             .query("SELECT id FROM set_entry WHERE workoutExerciseId = ? ORDER BY position", arrayOf(workoutExerciseId))
