@@ -213,6 +213,10 @@ class ServerCommandHandler(
             }
             is Command.SaveRoutine -> saveRoutine(command, now)
             is Command.SaveRoutinePlan -> saveRoutinePlan(command, now)
+            is Command.CreateRoutine -> {
+                nameTooLong(command.name)?.let { return it }
+                Done(mapOf(ROUTINE_ID to insertRoutine(command.name.trim(), emptyList(), now)))
+            }
             is Command.RenameRoutine -> {
                 nameTooLong(command.name)?.let { return it }
                 liveRoutine(command.routineId) ?: return noSuch("routine", command.routineId)

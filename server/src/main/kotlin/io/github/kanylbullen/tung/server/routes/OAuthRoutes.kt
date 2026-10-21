@@ -4,7 +4,9 @@ import io.github.kanylbullen.tung.server.AUTH_RATE_LIMIT
 import io.github.kanylbullen.tung.server.Accounts
 import io.github.kanylbullen.tung.server.ApiJson
 import io.github.kanylbullen.tung.server.Credentials
+import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.ServerConfig
+import io.github.kanylbullen.tung.server.oauth.GoogleConsent
 import io.github.kanylbullen.tung.server.oauth.AUTH_NONE
 import io.github.kanylbullen.tung.server.oauth.AUTH_SECRET_BASIC
 import io.github.kanylbullen.tung.server.oauth.AUTH_SECRET_POST
@@ -51,6 +53,8 @@ import java.security.MessageDigest
 import java.util.Base64
 
 private const val CSRF_COOKIE = "tung_oauth_csrf"
+/** The double-submit cookie Google Identity Services sets and posts back as a field. */
+private const val GOOGLE_CSRF = "g_csrf_token"
 private const val MAX_REGISTRATION_BYTES = 64L * 1024
 private const val MAX_REDIRECT_URIS = 10
 private const val MAX_REDIRECT_URI_LENGTH = 2000
@@ -79,6 +83,18 @@ private data class ClientRegistration(
  * with rotating refresh tokens. The access tokens are ordinary API tokens.
  */
 fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStore) {
+    val googleConsent = GoogleConsent(config.clock)
+
+    /** The "Continue with Google" button for this request, or null when the instance has no Google client id. */
+    fun ApplicationCall.googleButton(request: ConsentPage.Request): ConsentPage.GoogleButton? = accounts.google?.let {
+        ConsentPage.GoogleButton(it.clientIds.first(), "${publicBaseUrl(config)}/oauth/google", googleConsent.state(request))
+    }
+
+    suspend fun ApplicationCall.consentPage(request: ConsentPage.Request, csrf: String, email: String = "", error: String? = null) {
+        val google = googleButton(request)
+        respondPage(ConsentPage.render(request, csrf, email, error, google), google = google != null)
+    }
+
     get("/.well-known/oauth-authorization-server") { call.respond(authorizationServerMetadata(call.publicBaseUrl(config))) }
     get("/.well-known/oauth-protected-resource") { call.respond(protectedResourceMetadata(call.publicBaseUrl(config))) }
     // RFC 9728 §3.1 puts the metadata of https://host/mcp under this path; some clients look here first.
@@ -88,7 +104,7 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
         when (val checked = checkAuthorization(call.request.queryParameters, store)) {
             is Checked.DeadEnd -> call.respondPage(ConsentPage.error(checked.message), HttpStatusCode.BadRequest)
             is Checked.Refused -> call.redirectWithError(config, checked)
-            is Checked.Ok -> call.respondPage(ConsentPage.render(checked.request, call.csrfToken()))
+            is Checked.Ok -> call.consentPage(checked.request, call.csrfToken())
         }
     }
 
@@ -114,15 +130,63 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
                     Checked.Refused(request.redirectUri, "access_denied", "The user denied access.", request.state),
                 )
             }
-            val email = form["email"].orEmpty()
-            val user = accounts.verifyCredentials(Credentials(email, form["password"].orEmpty()))
-            if (user == null) {
-                call.respondPage(ConsentPage.render(request, cookie, email, "Wrong email or password."))
-                return@post
+            val userId = if (form["google_ticket"] != null) {
+                // Signed in with Google on /oauth/google: the ticket names the user, bound to this browser's CSRF token.
+                googleConsent.readTicket(form["google_ticket"], cookie, request.clientId) ?: return@post call.respondPage(
+                    ConsentPage.error("This Google sign-in has expired. Go back to the app and connect again."),
+                    HttpStatusCode.BadRequest,
+                )
+            } else {
+                val email = form["email"].orEmpty()
+                val user = accounts.verifyCredentials(Credentials(email, form["password"].orEmpty()))
+                if (user == null) {
+                    call.consentPage(request, cookie, email, "Wrong email or password.")
+                    return@post
+                }
+                user.id
             }
-            val code = store.createCode(request.clientId, user.id, request.redirectUri, request.scope, request.codeChallenge, request.resource)
+            val code = store.createCode(request.clientId, userId, request.redirectUri, request.scope, request.codeChallenge, request.resource)
             val params = listOfNotNull("code" to code, request.state?.let { "state" to it }, "iss" to call.publicBaseUrl(config))
             call.respondRedirect(withQuery(request.redirectUri, params), permanent = false)
+        }
+
+        /*
+         * Google Identity Services' redirect mode posts here from
+         * accounts.google.com: `credential` (the ID token), `g_csrf_token`
+         * (also set as a cookie by GIS on our page; both must match, as GIS
+         * documents) and `state`, the signed authorization request from the
+         * button. The token is verified and the user resolved exactly as
+         * `POST /api/v1/auth/google` does; then the consent step follows, like
+         * after a password, in a form that posts to /oauth/authorize.
+         */
+        post("/oauth/google") {
+            if (accounts.google == null) {
+                return@post call.respondPage(ConsentPage.error("Sign in with Google is not set up on this server."), HttpStatusCode.NotFound)
+            }
+            val form = call.receiveParameters()
+            val gCookie = call.request.cookies[GOOGLE_CSRF]
+            val gSent = form[GOOGLE_CSRF]
+            if (gCookie.isNullOrEmpty() || gSent.isNullOrEmpty() || !MessageDigest.isEqual(gCookie.toByteArray(), gSent.toByteArray())) {
+                return@post call.respondPage(ConsentPage.error("The Google sign-in did not come from this server's page."), HttpStatusCode.BadRequest)
+            }
+            val params = googleConsent.readState(form["state"]) ?: return@post call.respondPage(
+                ConsentPage.error("This page has expired or did not come from this server."),
+                HttpStatusCode.BadRequest,
+            )
+            val request = when (val checked = checkAuthorization(params, store)) {
+                is Checked.DeadEnd -> return@post call.respondPage(ConsentPage.error(checked.message), HttpStatusCode.BadRequest)
+                is Checked.Refused -> return@post call.redirectWithError(config, checked)
+                is Checked.Ok -> checked.request
+            }
+            val csrf = call.csrfToken()
+            val user = try {
+                accounts.googleUser(accounts.verifyGoogle(form["credential"].orEmpty()))
+            } catch (e: ApiException) {
+                if (e.status.value >= 500) throw e
+                // 200 like a wrong password: StatusPages would replace a 401's page with the API's JSON.
+                return@post call.consentPage(request, csrf, error = e.message)
+            }
+            call.respondPage(ConsentPage.renderSignedIn(request, csrf, user.email, googleConsent.ticket(user.id, csrf, request.clientId)))
         }
     }
 
@@ -305,11 +369,27 @@ private fun ApplicationCall.csrfToken(): String {
     return token
 }
 
-private suspend fun ApplicationCall.respondPage(html: String, status: HttpStatusCode = HttpStatusCode.OK) {
+/**
+ * The page's headers. With the Google button ([google]) the CSP also lets in
+ * exactly what Google Identity Services needs (its script, its styles, its
+ * iframe and its fetches, all under accounts.google.com/gsi/), and the
+ * referrer policy sends the origin cross-origin, which GIS checks against
+ * the client's authorised JavaScript origins; never the path or query.
+ */
+private suspend fun ApplicationCall.respondPage(html: String, status: HttpStatusCode = HttpStatusCode.OK, google: Boolean = false) {
     response.header(HttpHeaders.CacheControl, "no-store")
     response.header("X-Frame-Options", "DENY")
-    response.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'")
-    response.header("Referrer-Policy", "no-referrer")
+    response.header(
+        "Content-Security-Policy",
+        if (google) {
+            "default-src 'none'; script-src https://accounts.google.com/gsi/client; " +
+                "style-src 'unsafe-inline' https://accounts.google.com/gsi/style; frame-src https://accounts.google.com/gsi/; " +
+                "connect-src https://accounts.google.com/gsi/; frame-ancestors 'none'; base-uri 'none'"
+        } else {
+            "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'"
+        },
+    )
+    response.header("Referrer-Policy", if (google) "strict-origin-when-cross-origin" else "no-referrer")
     respondText(html, ContentType.Text.Html.withParameter("charset", "utf-8"), status)
 }
 

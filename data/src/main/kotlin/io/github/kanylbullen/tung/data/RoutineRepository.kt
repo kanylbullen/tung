@@ -95,6 +95,20 @@ class RoutineRepository(
     }
 
     /**
+     * Creates an empty routine called [name], stamped and dirty like every
+     * write; its exercises are added one by one with [addExercise].
+     *
+     * @return the new routine's id.
+     */
+    suspend fun create(name: String): String {
+        val trimmed = name.trim()
+        require(trimmed.isNotEmpty()) { "a routine needs a name" }
+        val routine = Routine(id = newId(), name = trimmed, updatedAt = clock(), lastUsedAt = null)
+        dao.insertRoutine(routine)
+        return routine.id
+    }
+
+    /**
      * Starts a workout from [routineId]: the routine's exercises in order, each
      * with its target number of sets, unticked and pre-filled from the previous
      * session position by position ([routineStartSets]). Marks the routine used.

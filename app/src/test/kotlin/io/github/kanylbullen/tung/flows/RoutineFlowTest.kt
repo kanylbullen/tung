@@ -68,7 +68,8 @@ class RoutineFlowTest : FlowTest() {
 
         clickText(str(R.string.summary_done))
         waitForText("Push day")
-        assertShown(hasText(str(R.string.routines_title)))
+        // Home's Routines section: its title is also the tab's label, so look for its "All".
+        assertShown(hasText(str(R.string.routines_all)))
         assertShown(hasText(routineDetails(1, str(R.string.routine_never))))
         assertShown(hasText(str(R.string.home_recent)))
         screenshot("3-home-with-routine")

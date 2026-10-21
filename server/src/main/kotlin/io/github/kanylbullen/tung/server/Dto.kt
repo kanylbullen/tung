@@ -10,7 +10,27 @@ import kotlinx.serialization.Serializable
 data class Credentials(val email: String, val password: String)
 
 @Serializable
-data class UserDto(val id: String, val email: String, val createdAt: Long)
+data class UserDto(
+    val id: String,
+    val email: String,
+    val createdAt: Long,
+    /** False for an account made with Google that never set a password: password login is refused. */
+    val hasPassword: Boolean,
+    /** A Google account is linked: signing in with Google reaches this user. */
+    val googleLinked: Boolean,
+)
+
+/** `POST /api/v1/auth/google`: a Google ID token (a JWT) from Credential Manager or Google Identity Services. */
+@Serializable
+data class GoogleSignIn(val idToken: String)
+
+/** `GET /api/v1/auth/methods`: how this instance lets users sign in. */
+@Serializable
+data class AuthMethods(val password: Boolean, val google: GoogleMethod?)
+
+/** The OAuth client id clients pass to Google (Credential Manager's `serverClientId`). */
+@Serializable
+data class GoogleMethod(val clientId: String)
 
 @Serializable
 data class SessionDto(val token: String, val user: UserDto)

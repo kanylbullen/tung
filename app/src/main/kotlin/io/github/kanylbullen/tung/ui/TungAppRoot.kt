@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -93,8 +94,9 @@ private data class Tab(val route: String, @StringRes val label: Int)
 
 private val tabs = listOf(
     Tab(Routes.HOME, R.string.nav_home),
-    Tab(Routes.HISTORY, R.string.nav_history),
+    Tab(Routes.ROUTINES, R.string.nav_routines),
     Tab(Routes.EXERCISES, R.string.nav_exercises),
+    Tab(Routes.HISTORY, R.string.nav_history),
 )
 
 private val idArgument = listOf(navArgument(Routes.ARG_ID) { type = NavType.StringType })
@@ -163,7 +165,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                     onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) },
                     onOpenDetail = { id -> nav.navigate(Routes.detail(id)) },
                     onShowHistory = { nav.navigateToTab(Routes.HISTORY) },
-                    onShowRoutines = { nav.navigate(Routes.ROUTINES) },
+                    onShowRoutines = { nav.navigateToTab(Routes.ROUTINES) },
                     onShowSettings = { nav.navigate(Routes.SETTINGS) },
                     onShowAssistant = { nav.navigate(Routes.assistant()) },
                 )
@@ -176,7 +178,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                     ask = entry.arguments?.getString(Routes.ARG_ASK),
                     onBack = { nav.popBackStack() },
                     onOpenSettings = { nav.navigate(Routes.SETTINGS) },
-                    onProgramSaved = { nav.navigate(Routes.ROUTINES) { popUpTo(Routes.HOME) } },
+                    onProgramSaved = { nav.navigateToTab(Routes.ROUTINES) },
                     onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) { popUpTo(Routes.HOME) } },
                 )
             }
@@ -185,7 +187,6 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
             }
             composable(Routes.ROUTINES) {
                 RoutinesScreen(
-                    onBack = { nav.popBackStack() },
                     onOpenRoutine = { id -> nav.navigate(Routes.routine(id)) },
                     onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) { popUpTo(Routes.HOME) } },
                     onShowPrograms = { nav.navigate(Routes.PROGRAMS) },
@@ -298,5 +299,6 @@ private fun NavHostController.navigateToTab(route: String) {
 private fun tabIcon(route: String): Painter = when (route) {
     Routes.HISTORY -> painterResource(R.drawable.ic_history)
     Routes.EXERCISES -> painterResource(R.drawable.ic_dumbbell)
+    Routes.ROUTINES -> rememberVectorPainter(Icons.AutoMirrored.Filled.List)
     else -> rememberVectorPainter(Icons.Filled.Home)
 }

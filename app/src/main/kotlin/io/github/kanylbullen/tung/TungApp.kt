@@ -8,6 +8,8 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
+import io.github.kanylbullen.tung.auth.AndroidGoogleSignIn
+import io.github.kanylbullen.tung.auth.GoogleSignIn
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.health.AndroidHealthConnectGateway
 import io.github.kanylbullen.tung.data.TungHost
@@ -90,4 +92,12 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
      * scripted fake; not a container seam, because nothing in `data/` hears.
      */
     open fun createSpeechInput(): SpeechInput = AndroidSpeechInput(this)
+
+    /**
+     * Sign in with Google for Settings (CLAUDE.md, "Sync", "Account"):
+     * Credential Manager. Overridden by the flow tests' application with a
+     * fake, like [createSpeechInput]; not a container seam, since `data/`
+     * only ever sees the ID token.
+     */
+    open fun createGoogleSignIn(): GoogleSignIn = AndroidGoogleSignIn()
 }
