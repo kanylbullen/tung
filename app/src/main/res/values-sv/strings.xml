@@ -612,6 +612,65 @@
     </plurals>
     <string name="import_undo_last">Ångra senaste importen</string>
 
+    <!-- Progress (ui/progress, CLAUDE.md "Progress") -->
+    <string name="nav_progress">Framsteg</string>
+    <string name="progress_title">Framsteg</string>
+    <string name="progress_empty">Avsluta ett pass så syns dina framsteg här</string>
+    <string name="progress_overview">Senaste 12 veckorna</string>
+    <string name="progress_workouts_per_week">Pass per vecka</string>
+    <string name="progress_volume_per_week">Volym per vecka, kg</string>
+    <string name="progress_workouts_total">Pass</string>
+    <plurals name="progress_streak_label">
+        <item quantity="one">Vecka i rad</item>
+        <item quantity="other">Veckor i rad</item>
+    </plurals>
+    <string name="progress_workouts_summary">Pass per vecka, senaste 12 veckorna: %1$d totalt, %2$d den här veckan</string>
+    <string name="progress_volume_summary">Volym per vecka, senaste 12 veckorna: %1$s kg totalt, %2$s kg den här veckan</string>
+    <string name="progress_exercises">Övningar</string>
+    <string name="progress_records_recent">Senaste rekord</string>
+    <string name="progress_records">Rekord</string>
+    <string name="progress_last_sessions">Senaste passen</string>
+    <string name="progress_change_up">+%1$s kg</string>
+    <string name="progress_change_down">−%1$s kg</string>
+    <string name="progress_change_3m">%1$s på 3 månader</string>
+    <string name="progress_no_change_3m">Ingen förändring på 3 månader</string>
+    <plurals name="progress_sessions">
+        <item quantity="one">%d pass</item>
+        <item quantity="other">%d pass</item>
+    </plurals>
+    <string name="progress_e1rm_value">Uppsk. 1RM %1$s kg</string>
+    <string name="progress_sparkline_summary">Uppskattad 1RM, 3 månader: från %1$s till %2$s kg</string>
+    <string name="progress_open_exercise">Öppna framsteg för %1$s</string>
+    <string name="progress_metric_e1rm">Uppsk. 1RM</string>
+    <string name="progress_metric_top_set">Tyngsta set</string>
+    <string name="progress_metric_volume">Volym</string>
+    <string name="progress_metric_e1rm_long">Uppskattad 1RM</string>
+    <string name="progress_metric_top_set_long">Tyngsta set</string>
+    <string name="progress_metric_volume_long">Volym per pass</string>
+    <string name="progress_range_3m">3 mån</string>
+    <string name="progress_range_1y">1 år</string>
+    <string name="progress_range_all">Allt</string>
+    <string name="progress_range_3m_long">3 månader</string>
+    <string name="progress_range_1y_long">1 år</string>
+    <string name="progress_range_all_long">all tid</string>
+    <string name="progress_chart_summary">%1$s, %2$s: från %3$s till %4$s kg</string>
+    <string name="progress_chart_summary_empty">%1$s, %2$s: för få pass för ett diagram</string>
+    <string name="progress_chart_empty">Logga övningen i två pass så syns ett diagram</string>
+    <string name="progress_record_heaviest">Tyngsta vikt</string>
+    <string name="progress_record_e1rm">Bästa uppskattade 1RM</string>
+    <string name="progress_record_reps">Flest reps</string>
+    <string name="progress_record_volume">Största volym per pass</string>
+    <string name="progress_kg">%1$s kg</string>
+    <string name="progress_e1rm_from">%1$s kg (%2$s × %3$d)</string>
+    <string name="workout_progress_for">Framsteg för %1$s</string>
+    <string name="progress_sheet_title">%1$s · framsteg</string>
+    <string name="progress_no_history">Inga avslutade pass med övningen än</string>
+    <string name="progress_beats_heaviest">%1$s × %2$d vore din tyngsta vikt</string>
+    <string name="progress_beats_e1rm">%1$s × %2$d vore ny bästa uppskattade 1RM</string>
+    <string name="progress_beats_reps">%1$s × %2$d vore flest reps på %1$s kg eller mer</string>
+    <string name="progress_no_record">%1$s × %2$d är inget nytt rekord</string>
+    <string name="exercise_progress">Framsteg</string>
+
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->
     <string name="ex_bench_press">Bänkpress</string>

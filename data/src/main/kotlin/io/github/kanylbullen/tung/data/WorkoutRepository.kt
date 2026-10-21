@@ -13,6 +13,7 @@ import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.picker.HistoricWorkout
 import io.github.kanylbullen.tung.core.picker.SUGGESTION_HISTORY_LIMIT
 import io.github.kanylbullen.tung.core.prefillSet
+import io.github.kanylbullen.tung.core.progress.ProgressSet
 import io.github.kanylbullen.tung.core.sync.SyncTable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -232,6 +233,14 @@ class WorkoutRepository(
                 },
             )
         }
+
+    /** Every logged set of every finished workout, live, for the Progress tab; `core.progress` does the sums. */
+    fun observeProgressSets(): Flow<List<ProgressSet>> =
+        dao.observeProgressSets().map { rows -> rows.map { it.toProgressSet() } }
+
+    /** [observeProgressSets] for one exercise. */
+    fun observeProgressSets(exerciseId: String): Flow<List<ProgressSet>> =
+        dao.observeProgressSets(exerciseId).map { rows -> rows.map { it.toProgressSet() } }
 
     suspend fun previousSessionSets(exerciseId: String, excludeWorkoutId: String): List<LoggedSet> =
         dao.previousSessionSets(exerciseId, excludeWorkoutId).map { it.toLogged() }

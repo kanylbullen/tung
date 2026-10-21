@@ -248,6 +248,42 @@ interface WorkoutDao {
     )
     fun observeExerciseHistory(exerciseId: String): Flow<List<ExerciseHistoryRow>>
 
+    /**
+     * Every counted set (ticked, reps > 0) in finished workouts, of every
+     * exercise, with its exercise and the workout's start: the one read behind
+     * the Progress tab (`core.progress.progressOverview`). Imported workouts are
+     * ordinary finished workouts and count the same.
+     */
+    @Query(
+        """
+        SELECT we.exerciseId AS exerciseId, w.id AS workoutId, we.id AS workoutExerciseId, w.startedAt AS startedAt,
+            we.position AS exercisePosition, s.position AS setPosition, s.weightKg AS weightKg, s.reps AS reps
+        FROM set_entry s
+        JOIN workout_exercise we ON s.workoutExerciseId = we.id
+        JOIN workout w ON we.workoutId = w.id
+        WHERE w.endedAt IS NOT NULL
+          AND s.completed = 1 AND s.reps > 0
+        ORDER BY w.startedAt, we.position, s.position
+        """
+    )
+    fun observeProgressSets(): Flow<List<ProgressSetRow>>
+
+    /** [observeProgressSets] for one exercise: the exercise progress screen and the sheet in a workout. */
+    @Query(
+        """
+        SELECT we.exerciseId AS exerciseId, w.id AS workoutId, we.id AS workoutExerciseId, w.startedAt AS startedAt,
+            we.position AS exercisePosition, s.position AS setPosition, s.weightKg AS weightKg, s.reps AS reps
+        FROM set_entry s
+        JOIN workout_exercise we ON s.workoutExerciseId = we.id
+        JOIN workout w ON we.workoutId = w.id
+        WHERE we.exerciseId = :exerciseId
+          AND w.endedAt IS NOT NULL
+          AND s.completed = 1 AND s.reps > 0
+        ORDER BY w.startedAt, we.position, s.position
+        """
+    )
+    fun observeProgressSets(exerciseId: String): Flow<List<ProgressSetRow>>
+
     /** Heaviest completed set for an exercise in finished workouts started before [before]. */
     @Query(
         """

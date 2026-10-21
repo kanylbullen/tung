@@ -74,11 +74,17 @@ import kotlinx.coroutines.launch
  * One exercise: name, equipment and group, the muscle map, the two actions,
  * the user's history (when it has a Room row) and the instructions. [ref] is
  * the route's `{ref}` (`core.catalog.ExercisePageRef.route`). After "Add to
- * workout" the page calls [onOpenWorkout] with the workout in progress.
+ * workout" the page calls [onOpenWorkout] with the workout in progress;
+ * "Progress" under the history calls [onOpenProgress] with the exercise's id.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExerciseDetailScreen(ref: ExercisePageRef, onBack: () -> Unit, onOpenWorkout: (String) -> Unit) {
+fun ExerciseDetailScreen(
+    ref: ExercisePageRef,
+    onBack: () -> Unit,
+    onOpenWorkout: (String) -> Unit,
+    onOpenProgress: (String) -> Unit = {},
+) {
     val container = appContainer()
     val appContext = LocalContext.current.applicationContext
     val vm: ExerciseDetailViewModel = viewModel(
@@ -204,6 +210,17 @@ fun ExerciseDetailScreen(ref: ExercisePageRef, onBack: () -> Unit, onOpenWorkout
                                 color = Tung.colors.text,
                             )
                         }
+                    }
+                    item(key = "progress") {
+                        val exerciseId = when (ref) {
+                            is ExercisePageRef.Library -> ref.exerciseId
+                            is ExercisePageRef.Extended -> ref.exerciseId
+                        }
+                        SecondaryButton(
+                            text = stringResource(R.string.exercise_progress),
+                            onClick = { onOpenProgress(exerciseId) },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
                     }
                 }
             }

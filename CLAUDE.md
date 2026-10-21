@@ -73,7 +73,9 @@ extended-catalogue search), the command surface (`core/command/`, see
 "Commands"), the picker's suggestions (`core/picker/`, see "Smart picker"),
 the Exercises tab's browse list and the catalogue by id (`core/catalog/`),
 the muscle map's shapes (`core/muscles/BodyMap.kt`) and an exercise's history
-(`ExerciseHistory.kt`; see "Exercises tab and exercise page"), the sync protocol with its pure rules (`core/sync/`, see
+(`ExerciseHistory.kt`; see "Exercises tab and exercise page"), progress
+(`core/progress/`: estimated 1RM, sessions, weeks, streak, records; see
+"Progress"), the sync protocol with its pure rules (`core/sync/`, see
 "Sync"), and the import adapters (`core/importing/`, see "Import"). Core gets the catalogue as a `String` or an
 `InputStream`; where the bytes come from (APK assets, a file) is the caller's
 business. Room entities live in `data/` and map to core's shapes
@@ -121,7 +123,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 - **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`,
   `RoutineEditingCommandsTest` (`create_routine` and the routine-editing
   commands through `AppCommandHandler`), `AddExerciseCommandsTest`
-  (`add_exercise` set counts and pre-fill, `add_set` with a count), `ImporterTest` and `SyncMappingImportTest` (see "Import"), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
+  (`add_exercise` set counts and pre-fill, `add_set` with a count), `ProgressSetsTest` (the progress reads), `ImporterTest` and `SyncMappingImportTest` (see "Import"), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
   application). `FakeSyncServer` and `MemoryTokenStore` are Kotlin test
   fixtures (`data/src/testFixtures`, `testImplementation(testFixtures(project(":data")))`
   in the apps), which needs `android.experimental.enableTestFixturesKotlinSupport`
@@ -131,11 +133,11 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (server and account, from Home's gear, and "Link a watch"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
-| `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`. |
+| `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`; `charts/` holds the Canvas charts (`LineChart`, `BarChart`, `Sparkline`, `niceTicks`; see "Progress"). |
 | `ui/theme/` | Colour tokens, typography, theme. |
 | `wear/` | The phone's side of the Data Layer for a companion watch (section "Wear"). |
 | `../catalog/` | The exercise catalogue as open data (CC0): `core.json`, `extended.json`, generator and import scripts. Shipped as an asset directory of `data/`. See `catalog/README.md`. |
@@ -168,7 +170,8 @@ deleting a routine (which cascades to its `RoutineExercise` rows) never
 touches history.
 
 **The Routines tab** (`Routes.ROUTINES`, `ui/routines/RoutinesScreen.kt`) is
-the second of the bottom bar's tabs, Home · Routines · Exercises · History,
+the second of the bottom bar's tabs, Home · Routines · Exercises · History ·
+Progress,
 switched with `navigateToTab` (`saveState`/`restoreState`, like the others):
 the Programs row on top, then every routine by last use, each with Start and
 its detail behind a tap; routine and program details are pushed on top of the
@@ -487,7 +490,8 @@ through `container.catalogueDetails`; nothing of it is in Room.
   finished workouts and core's `exerciseHistory` sums them: how many workouts,
   the best set (`bestSet`, weight × reps) and last session's sets (the first
   time the exercise appears in the latest workout, as `previousSessionSets`
-  picks it).
+  picks it). Under it, once there is history, **Progress** opens the
+  exercise's progress (`progress/{exerciseId}`, see "Progress").
 
 **The muscle map** (`MuscleMap(primary, secondary)` in `ui/exercises/`)
 draws a front and a back body with Compose `Path`s: primary muscles in
@@ -502,6 +506,97 @@ the back). `BodyMapTest` checks that each of the 21 muscles has a region,
 that every point is in 0..1 and inside its outline, and that the map is
 symmetric. It is drawn at 160 dp high. No photos: free-exercise-db's images
 have no documented origin.
+
+### Progress
+
+Issue #60. The last tab, after History, and two ways into one exercise's
+progress. **All computation is pure in core**, `core/progress/` (package
+`io.github.kanylbullen.tung.core.progress`, `ProgressTest`), so the tab, the
+sheet and later the server and MCP compute the same:
+
+- **`estimatedOneRepMax(weight, reps)`**: Epley, `w × (1 + reps / 30)`, only
+  for 1–12 reps (`E1RM_MAX_REPS`); a single is the weight; null otherwise.
+- **`ProgressSet`**: one set with its exercise, workout, workout exercise,
+  the workout's start, positions and `completed`; **only logged sets count**
+  (`isLogged`: ticked and reps > 0), and every function drops the rest
+  whatever it is given.
+- **`sessionPoints(sets, zone)`**: one `SessionPoint` per workout (an
+  exercise added twice is one session), oldest first, with the date in the
+  zone, the sets, the best estimate and its set, the top set (heaviest, ties
+  to more reps) and the session volume; `value(ProgressMetric)` for `E1RM`,
+  `TOP_SET`, `VOLUME`. `exerciseProgress(sets, zone)`: every exercise with a
+  session, most recently trained first.
+- **Ranges** (`ProgressRange`: `THREE_MONTHS`, `ONE_YEAR`, `ALL`) count back
+  from today (`startOn`, inclusive; `within`). **`change(points, metric)`**:
+  first to last value in the points given, null with fewer than two.
+- **Weeks**: `weekStart` is the ISO week's Monday (1 January 2026 is in the
+  week of 29 December 2025); `weeklyBuckets(sets, today, zone, weeks = 12)`
+  has every week, empty ones as zeros, with the workouts that have a logged
+  set in it and their volume. **`weeklyStreak`**: consecutive weeks with a
+  workout back from this week; an empty *current* week does not break it
+  (counting starts from last week), an empty earlier week does.
+- **Records** (`exerciseRecords(sessions)`, `RecordKind` in rank order):
+  heaviest weight, best estimated 1RM, most reps (of equal reps the heavier
+  set), best session volume, each with its set, workout and date. A tie never
+  takes a record: the first session to reach a value keeps it.
+  `mostRepsAtOrAbove(weight, sets)`. **`beatsRecord(weight, reps, records)`**
+  is the highest-ranked record a proposed set would beat: heavier than ever,
+  else a better estimate, else more reps than ever at that weight or heavier;
+  null with no reps, no history (nothing to beat, like `isNewRecord`) or when
+  it only equals. Session volume is never answered for one set.
+  `repsToBeatE1rm(weight, records)`: the fewest reps at that weight that beat
+  the best estimate. `recentRecords` (`RECENT_RECORDS` = 5): standing records
+  across exercises, newest first, leaving out an exercise's first session
+  (it beat nothing) and keeping one per exercise and workout.
+  `progressOverview` bundles weeks, streak, exercises and recent records.
+
+**data**: `WorkoutDao.observeProgressSets()` (every exercise) and
+`observeProgressSets(exerciseId)`: the counted sets of finished workouts with
+exercise id and start, as `ProgressSetRow` (a query result in
+`ProgressRows.kt`, not an entity: no schema change), one query per screen.
+`WorkoutRepository.observeProgressSets` maps them to `ProgressSet`. Imported
+workouts are ordinary finished workouts and count the same; the workout in
+progress never counts.
+
+**app, `ui/progress/`** (`ProgressViewModel` and `ExerciseProgressViewModel`
+compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
+
+- **The Progress tab** (`Routes.PROGRESS`, `ProgressScreen`, icon
+  `ic_trending_up`): "Last 12 weeks" with workouts and weeks in a row, bars
+  for workouts and volume per week; **Exercises**, most recently trained
+  first, each row "Est. 1RM 112 kg · +14 kg in 3 months" (or "No change", or
+  the session count when 3 months hold fewer than two estimates) with a
+  sparkline of the 3 months' estimates; **Recent records**. A row opens the
+  exercise's progress.
+- **Exercise progress** (`progress/{exerciseId}`, `ExerciseProgressScreen`):
+  metric chips (Est. 1RM · Top set · Volume) above a line chart, range chips
+  (3M · 1Y · All) below it, the records with dates, the last five sessions'
+  sets. Reached from the tab and from the exercise page's **Progress**.
+  Estimates and volumes are written in whole kilos, a top set as lifted.
+- **The sheet in a workout** (`ProgressSheet`): each exercise header in the
+  active workout has a trend button ("Progress for Bench press") next to its
+  menu. The sheet shows the record line for the exercise's current set (the
+  screen's current set if it is this exercise's, else its first open set):
+  "96 × 7 would be a new best estimated 1RM", "… would be your heaviest
+  weight", "… your most reps at 96 kg or more", else the reps at that weight
+  that would beat the estimate, else "is no new record"; then the estimate
+  over 3 months (compact) and the last three sessions. It writes nothing; the
+  open sheet is `rememberSaveable` state on the screen, and dismissing it
+  leaves the list, its scroll and the selection as they were. Both screens
+  share `ExerciseProgressViewModel`, keyed `progress-<exerciseId>`.
+
+**Charts, `ui/common/charts/`**, drawn with Compose `Canvas`, no chart
+library: `LineChart` (line plus a dot per point, the last one larger, x
+proportional to the date), `BarChart` (a zero is a short baseline mark), and
+`Sparkline` (no axes). One accent (`Tung.colors.accent`) for the data,
+`border` for grid lines, labels muted, 12sp, tabular; at most four y labels
+(`niceTicks`: steps of 1, 2, 2.5, 5 × 10ⁿ, `NiceTicksTest`), the first and
+last date under the x axis as the locale writes a short month and day
+(`shortDate`, `getBestDateTimePattern("MMMd")`). **Each chart is one semantics
+node whose content description is its summary** ("Estimated 1RM, 3 months:
+from 98 to 112 kg"), which is what a screen reader says and what
+`ProgressFlowTest` asserts; with fewer than two sessions in range the chart is
+"Log this exercise in two workouts to see a chart" and the summary says so.
 
 ## Commands
 
