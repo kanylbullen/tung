@@ -1,0 +1,146 @@
+
+### SETTING ###########################################
+
+row_id,USERID,TIMESTAMP,gender,currentRoutine,DOB,name,length,mass,dbversion,vibration,alarm,timer,sets,targetrep,age,zonedifference,location,use_location,screenon,auto_lock,lastlogs,preloadreps,exp_level,fit_goal,audio_reminder,audio_exercise_tips,audio_personal_tips,week_start
+11,4242,"2023-04-01 10:00:00",X,1,2000-01-01,," cm"," kg",,,,60,3,10,0,1,,0,1,1,0,1,0,1,0,0,0,1
+
+######################################################
+
+### PROFILE ###########################################
+
+row_id,USERID,TIMESTAMP,_id,mydate,weight,fatpercent,chest,arms,waist,calves,height,hips,thighs,shoulders,neck,forearms,logTime
+21,4242,"2023-04-01 10:00:00",1,2023-01-01,70,0,0,0,0,0,170,0,0,0,0,0,1672570800
+
+######################################################
+
+### ROUTINES ##########################################
+
+row_id,USERID,TIMESTAMP,_id,name,difficulty,focus,dayaweek,description,daytype,tags,rdb_id,bannerCode,progression_flag
+31,4242,"2023-04-01 10:00:00",1,"Home Gym ",0,0,2,,0," ",0,,0
+
+row_id,USERID,TIMESTAMP,_id,name,difficulty,focus,dayaweek,description,daytype,tags,rdb_id,bannerCode,progression_flag
+32,4242,"2023-04-01 10:00:00",100001,"Test Five",0,0,3,,1,,0,,0
+
+row_id,USERID,TIMESTAMP,package,_id,name,day,dayIndex,interval_mode,rest_day,week,sort_order,day_completed_timestamp
+41,4242,"2023-04-01 10:00:00",1,7,"Day A",1,1,0,0,0,0,
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+51,4242,"2023-04-01 10:00:00",1,0,58,1,7,"Barbell Squat",3,60,"",1,1,"5,5,5",0,0,0,sec,1,0,
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+52,4242,"2023-04-01 10:00:00",1,0,59,1,7,"Barbell Bench Press",4,60,"",1,0,"8,8,6,6",0,0,0,sec,1,0,
+
+
+row_id,USERID,TIMESTAMP,package,_id,name,day,dayIndex,interval_mode,rest_day,week,sort_order,day_completed_timestamp
+42,4242,"2023-04-01 10:00:00",1,8,"Day A",1,2,0,0,0,1,
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+53,4242,"2023-04-01 10:00:00",1,0,60,1,8,"Barbell Squat",3,60,"",1,1,"5,5,5",0,0,0,sec,1,0,
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+54,4242,"2023-04-01 10:00:00",1,0,61,1,8,"Barbell Bench Press",4,60,"",1,0,"8,8,6,6",0,0,0,sec,1,0,
+
+
+row_id,USERID,TIMESTAMP,package,_id,name,day,dayIndex,interval_mode,rest_day,week,sort_order,day_completed_timestamp
+43,4242,"2023-04-01 10:00:00",100001,1,Monday,1,1,0,0,0,0,
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+55,4242,"2023-04-01 10:00:00",1,0,62,1,1,"Barbell Deadlift",1,60,"",1,0,"5",0,0,0,sec,1,0,
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+56,4242,"2023-04-01 10:00:00",1,0,63,1,1,"Heel Walking",2,60,"",1,1,"0",0,0,0,sec,1,0,
+
+
+row_id,USERID,TIMESTAMP,package,_id,name,day,dayIndex,interval_mode,rest_day,week,sort_order,day_completed_timestamp
+44,4242,"2023-04-01 10:00:00",100001,2,Thursday,4,2,0,0,0,1,
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+57,4242,"2023-04-01 10:00:00",1,0,64,1,2,"Dumbbell Shoulder Press",3,60,"",1,0,"10,10,10",0,0,0,sec,1,0,
+
+
+row_id,USERID,TIMESTAMP,package,_id,name,day,dayIndex,interval_mode,rest_day,week,sort_order,day_completed_timestamp
+45,4242,"2023-04-01 10:00:00",100001,3,"Empty day",5,3,0,0,0,2,
+
+######################################################
+
+### WORKOUT SESSIONS ##################################
+
+rowid,_id,USERID,edit_time,day_id,total_time,workout_time,rest_time,wasted_time,total_exercise,total_weight,recordbreak,starttime,endtime,workout_mode,TIMESTAMP,calories,avg_heart_rate
+61,1,4242,1678125600,7,3600,1200,1200,1200,2,1000,0,1678122000,1678125600,0,"2023-04-01 10:00:00",0,0
+62,2,4242,1678730400,7,3600,1200,1200,1200,2,1000,0,0,1678730400,0,"2023-04-01 10:00:00",0,0
+63,3,4242,1677261600,7,3600,1200,1200,1200,2,1000,0,1677258000,1677261600,0,"2023-04-01 10:00:00",0,0
+64,4,4242,1679940000,7,3600,1200,1200,1200,2,1000,0,1679936400,1679940000,0,"2023-04-01 10:00:00",0,0
+65,5,4242,1679335200,7,3600,1200,1200,1200,2,1000,0,1679331600,1679335200,0,"2023-04-01 10:00:00",0,0
+
+######################################################
+
+### EXERCISE LOGS #####################################
+
+USERID,TIMESTAMP,belongSys,logs,_id,record,mydate,eid,ename,day_item_id,belongsession,logTime,interval_logs,auto_generated
+4242,"2023-04-01 10:00:00",1,"40.0x8,50.0x8",1,0,2023-02-24,1,"Barbell Squat",7,0,1677193200,,
+4242,"2023-04-01 10:00:00",1,"30.0x8,30.0x0",2,0,2023-02-24,1,"Barbell Bench Press",7,0,1677193200,,
+USERID,TIMESTAMP,belongSys,logs,_id,record,mydate,eid,ename,day_item_id,belongsession,logTime,interval_logs,auto_generated
+4242,"2023-04-01 10:00:00",1,"35x10",3,0,2023-02-27,1,"Barbell Bent Over Row",7,0,1677452400,,
+4242,"2023-04-01 10:00:00",1,"60x5,70x5,80x5",11,0,2023-03-06,1,"Barbell Deadlift",7,1,1678122300,,
+4242,"2023-04-01 10:00:00",1,"0x0,0x0,0x0,0x8,0x1",12,0,2023-03-06,1,"Heel Walking",7,1,1678123000,,
+4242,"2023-04-01 10:00:00",1,"12x10,12x10",13,0,2023-03-13,1,"Dumbbell Shoulder Press",7,2,1678726800,,
+4242,"2023-04-01 10:00:00",1,"25x8,20x10",16,0,2023-03-13,1,"Barbell Curl",7,2,1678727400,,
+4242,"2023-04-01 10:00:00",0,"0x1,0x900",14,0,2023-03-20,1,"swimming ",7,5,1679331700,,
+4242,"2023-04-01 10:00:00",1,"0x0",15,0,2023-03-20,1,"Barbell Squat",7,5,1679332000,,
+
+######################################################
+
+### EXERCISE SET LOGS #################################
+
+_id,userid,exercise_log_id,set_index,weight_lbs,reps,calories,distance_mi,speed_mph,laps,duration,set_type,log_time,TIMESTAMP
+71,4242,11,0,132.2774,5,,,,,,warm-up,1678122071,"2023-04-01 10:00:00"
+72,4242,11,1,154.3236,5,,,,,,default,1678122072,"2023-04-01 10:00:00"
+73,4242,11,2,176.3698,5,,,,,,default,1678122073,"2023-04-01 10:00:00"
+74,4242,12,0,,8,,,,,1,default,1678122074,"2023-04-01 10:00:00"
+75,4242,12,1,,,,,,,1,default,1678122075,"2023-04-01 10:00:00"
+76,4242,16,0,55.1156,8,,,,,,default,1678122076,"2023-04-01 10:00:00"
+77,4242,16,1,44.0925,10,,,,,,drop,1678122077,"2023-04-01 10:00:00"
+78,4242,14,0,,,,,,,900,default,1678122078,"2023-04-01 10:00:00"
+79,4242,99,0,100,5,,,,,,default,1678122079,"2023-04-01 10:00:00"
+
+######################################################
+
+### EXERCISE RECORDS ##################################
+
+row_id,USERID,TIMESTAMP,_id,belongSys,record,eid,target1RM,mydate,goalDate,recordReachTime,sort_order
+81,4242,"2023-04-01 10:00:00",1,1,90,1,0,,0,1678122300,0
+
+######################################################
+
+### CARDIO LOGS #######################################
+
+row_id,TIMESTAMP,USERID,_id,weeklyLogId,eid,belongSys,lap,duration,speed,distance,calorie,mydate
+91,"2023-04-01 10:00:00",4242,1,0,1,0,1,900,1,1,1,2023-03-20
+
+######################################################
+
+### CARDIO EXERCISE LOGS ##############################
+
+userid,TIMESTAMP,cardio_logs,_id,el_id,calorie_logs,distance_logs,speed_logs,lap_logs,row_id
+4242,"2023-04-01 10:00:00",0x900,1,14,-1.0,-1.0,-1.0,-1.0,92
+
+######################################################
+
+### CUSTOM EXERCISES ##################################
+
+row_id,USERID,TIMESTAMP,rating,name,description,image2,image1,bodypart,bodypart3,bodypart2,_id,equip1,equip2,recordtype,link,hashcode,unilateral,sys_exercise_map_id
+93,4242,"2023-04-01 10:00:00",0,"swimming ",,0,0,6,0,3,1,4,0,2,,,1,
+
+######################################################
+
+### FAVORITE EXERCISES ################################
+
+
+
+######################################################
+
+### NOTES #############################################
+
+
+
+######################################################
