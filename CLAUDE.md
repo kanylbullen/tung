@@ -116,7 +116,8 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
   without the library knowing either app.
 - **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`,
   `RoutineEditingCommandsTest` (`create_routine` and the routine-editing
-  commands through `AppCommandHandler`), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
+  commands through `AppCommandHandler`), `AddExerciseCommandsTest`
+  (`add_exercise` set counts and pre-fill, `add_set` with a count), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
   application). `FakeSyncServer` and `MemoryTokenStore` are Kotlin test
   fixtures (`data/src/testFixtures`, `testImplementation(testFixtures(project(":data")))`
   in the apps), which needs `android.experimental.enableTestFixturesKotlinSupport`
@@ -151,7 +152,9 @@ order, each with `targetSets` and a nullable `targetReps`. "Save as routine"
 sets each, filled by `core.routineStartSets`: the existing pre-fill rule at
 each set's own position, so set 1 gets last session's set 1, set 2 last
 session's set 2; past the end of last session a set repeats the one before
-it, and with no history at all the sets start at 0 kg × `targetReps`. Start
+it, and with no history at all the sets start at 0 kg × `targetReps`
+(`core.addedExerciseSets`, which `add_exercise` uses, is the same rule with
+no target reps). Start
 also sets `lastUsedAt`, which orders Home's Routines section and the Routines
 tab. There is at most one workout in progress, so `start` returns that one
 instead of creating a second, and the Start buttons are disabled while it
@@ -255,6 +258,25 @@ above in view. Requests: the new set after + Set, the new current set after
 Log set (the set it added, or the next exercise's), the new current set when a
 tick moves it to another exercise, and the new exercise's header to the top
 after Add exercise.
+
+**Adding an exercise** (issue #55) gives it as many sets as it had last
+session, pre-filled position by position (`add_exercise` without `sets`, see
+"Commands"), so with history nothing opens. **The first time** (no history:
+one set of 0 × 0) the weight sheet opens at once for set 1: the ViewModel
+sees the one new exercise in the Flow (`noteAddedExercise`; the picker in
+`ui/exercises/` runs the command, the workout screen only reacts) and puts a
+one-shot `FirstTimeRequest` in the UI state, which the screen turns into an
+`EditTarget(firstTime = true)` once the set is on screen, then calls
+`onFirstTimeHandled`. That weight sheet's Done writes the weight and opens
+the reps sheet for the same set; in this flow only, the reps sheet has
+**Sets: 3 · 4 · 5 · 6 · 8** above Done (`SetCountChips`, default 3 =
+`DEFAULT_ROUTINE_TARGET_SETS`; radio buttons described "4 sets"), and Done
+writes the reps, then one `AddSet(count = n − 1)` so every set is a copy of
+set 1 (`finishFirstTime`, after the weight's write). Set 1 stays current.
+Dismissing either sheet leaves the one set (with the weight, if the first
+sheet was confirmed). The sheet is keyed on its `EditTarget`, so the second
+sheet starts fresh. + Set is unchanged. A plan (`ApplyPlan`) that adds
+several exercises at once never opens it.
 Tapping the button executes `Command.LogSet(workoutId, setId)` with the set
 the screen shows as current, which calls `WorkoutRepository.logSet`, one transaction:
 tick the set and, **only if it was the last set of its exercise**, add the next
@@ -436,7 +458,7 @@ its signal to commands, never a new path into the database
   existing repositories, which keep their transactions and rules. It runs
   `validate(command)` first (pure, in core: weight 0–999 kg, reps 0–999,
   planned sets 1–50, a routine's target sets 1–20 and target reps 1–999
-  (or none), rest 0–3600 s, weekday
+  (or none), `add_exercise.sets` and `add_set.count` 1–20, rest 0–3600 s, weekday
   1–7, no blank names or ids, no empty plans) and returns `Rejected(reasons)`
   without touching anything when it fails. A new mutation = a new `Command`
   data class, a name in `CommandNames`, a branch in `validate` and in the
@@ -461,6 +483,17 @@ its signal to commands, never a new path into the database
   nothing ticked. A number the plan leaves out comes from the pre-fill rule
   (`plannedSetValues`). `SaveRoutinePlan(RoutinePlan)` does the same for a
   routine.
+- **`AddExercise(workoutId, exercise, sets)`**, wire `add_exercise` with an
+  optional `sets` (1–20): that many sets, else as many as the exercise had
+  last session (`previousSessionSets` in the app, `lastSessionIn` on the
+  server), at least one; each pre-filled at its own position by
+  `core.addedExerciseSets` (the rule of `routineStartSets`: last session's set
+  at that position, past its end the set before, 0 × 0 with no history).
+  Nothing ticked. **`AddSet(workoutExerciseId, count)`**, wire `add_set` with
+  an optional `count` (1–20, default 1): that many sets, each a copy of the
+  one before, in one transaction; `setId` is the first added set. Both
+  handlers (`WorkoutRepository.addExercise`/`addSet`, `ServerCommandHandler`)
+  follow the same rule.
 - **`CreateRoutine(name)`** makes an empty routine (only a non-blank name;
   returns `routineId`), to be filled with `AddRoutineExercise`;
   `SaveRoutinePlan` refuses an empty plan, so this is how a routine starts
@@ -1195,6 +1228,11 @@ part of `./gradlew test`. Only them:
   output, so a run restored from the build cache restores them too. They are
   drawn with `View.draw`, because `captureToImage()` times out under
   Robolectric on API 34.
+- **`addExercise(query, name)` dismisses the first-time weight sheet** an
+  exercise with no history opens (issue #55, `dismissSheet` runs the sheet
+  scrim's click action, "Close sheet" in the app's language), so flows that add an exercise and then
+  edit its cells read as before; `addExerciseFirstTime` keeps it open
+  (`AddExerciseFlowTest`).
 - **A dialog with a text field needs `DialogProperties(usePlatformDefaultWidth = false)`**
   (plus `Modifier.padding(horizontal = 24.dp)`). With the platform width,
   Compose never goes idle under Robolectric at the flow tests' `w411dp-h891dp`,
