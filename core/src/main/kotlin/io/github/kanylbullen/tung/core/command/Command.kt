@@ -36,13 +36,24 @@ sealed interface Command {
     /** Starts a workout from a routine, or returns the one in progress; [programDayId] when started from a program day. */
     data class StartRoutine(val routineId: String, val programDayId: String? = null) : Command
 
-    /** Adds an exercise at the end of the workout, with a first set pre-filled from last time. */
-    data class AddExercise(val workoutId: String, val exercise: ExerciseRef) : Command
+    /**
+     * Adds an exercise at the end of the workout with [sets] sets (1..20), or,
+     * when null, as many as the exercise had last session (one with no
+     * history). Each set is pre-filled at its own position
+     * ([io.github.kanylbullen.tung.core.addedExerciseSets]): last session's
+     * set 1, set 2, …, past its end a copy of the set before, 0 × 0 with no
+     * history.
+     */
+    data class AddExercise(val workoutId: String, val exercise: ExerciseRef, val sets: Int? = null) : Command
 
     data class RemoveExercise(val workoutExerciseId: String) : Command
 
-    /** Adds a set to an exercise, pre-filled by the usual rule. */
-    data class AddSet(val workoutExerciseId: String) : Command
+    /**
+     * Adds [count] sets (1..20, null for one) to an exercise, each pre-filled
+     * by the usual rule: a copy of the set before it, else last session's set
+     * at that position.
+     */
+    data class AddSet(val workoutExerciseId: String, val count: Int? = null) : Command
 
     data class RemoveSet(val setId: String) : Command
 

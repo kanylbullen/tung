@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.StartedBy
+import io.github.kanylbullen.tung.core.addedExerciseSets
 import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.clampTargetSets
 import io.github.kanylbullen.tung.core.command.Command
@@ -158,7 +159,8 @@ class ServerCommandHandler(
             }
             is Command.AddSet -> {
                 val we = liveWorkoutExercise(command.workoutExerciseId) ?: return noSuch("exercise in a workout", command.workoutExerciseId)
-                Done(mapOf(SET_ID to insertPrefilledSet(we, now)))
+                // Each a copy of the one before: the usual rule, applied [count] times. The first new set is returned.
+                Done(mapOf(SET_ID to List(command.count ?: 1) { insertPrefilledSet(we, now) }.first()))
             }
             is Command.RemoveSet -> {
                 liveSet(command.setId) ?: return noSuch("set", command.setId)
@@ -401,7 +403,9 @@ class ServerCommandHandler(
         liveWorkout(command.workoutId) ?: return noSuch("workout", command.workoutId)
         val exerciseId = rowFor(exercise, now)
         val weId = insertWorkoutExercise(command.workoutId, exerciseId, nextExercisePosition(command.workoutId), now)
-        insertPrefilledSet(command.workoutId, weId, exerciseId, now)
+        // sets given: that many; else as many as last session had, at least one, each at its own position.
+        addedExerciseSets(command.sets, previousSession(exerciseId, command.workoutId))
+            .forEachIndexed { position, values -> insertSet(weId, position, values, now) }
         return Done(mapOf(WORKOUT_EXERCISE_ID to weId, EXERCISE_ID to exerciseId))
     }
 

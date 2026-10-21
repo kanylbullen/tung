@@ -907,9 +907,9 @@ paths:
         |---|---|
         | `start_workout` | `routine_id`?, `program_day_id`? |
         | `start_routine` | `routine_id`, `program_day_id`? |
-        | `add_exercise` | `workout_id`, `exercise` |
+        | `add_exercise` | `workout_id`, `exercise`, `sets`? (1–20; default: as many as last session, at least 1) |
         | `remove_exercise` | `workout_exercise_id` |
-        | `add_set` | `workout_exercise_id` |
+        | `add_set` | `workout_exercise_id`, `count`? (1–20, default 1) |
         | `remove_set` | `set_id` |
         | `set_weight` | `set_id`, `weight_kg` (0–999), `apply_to_open_sets`? |
         | `set_reps` | `set_id`, `reps` (0–999), `apply_to_open_sets`? |

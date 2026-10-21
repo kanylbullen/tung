@@ -46,6 +46,10 @@ import io.github.kanylbullen.tung.core.command.Command.ToggleProgramWeekday
 const val MIN_PLANNED_SETS = 1
 const val MAX_PLANNED_SETS = 50
 
+/** Fewest and most sets one `add_exercise` or `add_set` can create. */
+const val MIN_ADDED_SETS = 1
+const val MAX_ADDED_SETS = 20
+
 /** The longest rest timer a command may set, in seconds. The app's menu offers 0–300. */
 const val MAX_REST_SECONDS = 3600
 
@@ -61,7 +65,8 @@ sealed interface Validation {
  * Checks a command on its own, without the database: numbers in range
  * (weight 0..[MAX_WEIGHT_KG] kg, reps 0..[MAX_REPS], planned sets
  * [MIN_PLANNED_SETS]..[MAX_PLANNED_SETS], a routine's target sets
- * [MIN_TARGET_SETS]..[MAX_TARGET_SETS] and target reps 1..[MAX_REPS], rest 0..[MAX_REST_SECONDS] s, weekday
+ * [MIN_TARGET_SETS]..[MAX_TARGET_SETS] and target reps 1..[MAX_REPS], sets
+ * added at once [MIN_ADDED_SETS]..[MAX_ADDED_SETS], rest 0..[MAX_REST_SECONDS] s, weekday
  * 1..7), names and ids not blank, plans not empty. Whether the ids exist is the
  * handler's business. Pure, so the app, the server and a client checking
  * before it sends all agree.
@@ -82,6 +87,9 @@ fun validate(command: Command): Validation {
     }
     fun targetReps(value: Int?, field: String = "target reps") {
         if (value != null && value !in 1..MAX_REPS) reasons += "$field must be between 1 and $MAX_REPS"
+    }
+    fun addedSets(value: Int?, field: String) {
+        if (value != null && value !in MIN_ADDED_SETS..MAX_ADDED_SETS) reasons += "$field must be between $MIN_ADDED_SETS and $MAX_ADDED_SETS"
     }
     fun ref(value: ExerciseRef, field: String = "exercise") {
         val text = when (value) {
@@ -106,9 +114,13 @@ fun validate(command: Command): Validation {
         is AddExercise -> {
             id(command.workoutId, "workoutId")
             ref(command.exercise)
+            addedSets(command.sets, "sets")
         }
         is RemoveExercise -> id(command.workoutExerciseId, "workoutExerciseId")
-        is AddSet -> id(command.workoutExerciseId, "workoutExerciseId")
+        is AddSet -> {
+            id(command.workoutExerciseId, "workoutExerciseId")
+            addedSets(command.count, "count")
+        }
         is RemoveSet -> id(command.setId, "setId")
         is SetWeight -> {
             id(command.setId, "setId")

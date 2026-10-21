@@ -77,7 +77,7 @@ class AppCommandHandler(
                 Done()
             }
             is Command.AddSet ->
-                workouts.addSet(command.workoutExerciseId)?.let { Done(mapOf(SET_ID to it)) }
+                workouts.addSet(command.workoutExerciseId, command.count ?: 1)?.let { Done(mapOf(SET_ID to it)) }
                     ?: Rejected(listOf("no exercise ${command.workoutExerciseId} in the workout"))
             is Command.RemoveSet -> {
                 workouts.deleteSet(command.setId)
@@ -198,7 +198,7 @@ class AppCommandHandler(
         workouts.getWorkout(command.workoutId) ?: return Rejected(listOf("no workout ${command.workoutId}"))
         val entries = extendedEntries(listOf(exercise))
         val workoutExerciseId = db.withTransaction {
-            workouts.addExercise(command.workoutId, rowFor(exercise, entries))
+            workouts.addExercise(command.workoutId, rowFor(exercise, entries), command.sets)
         }
         return Done(mapOf(WORKOUT_EXERCISE_ID to workoutExerciseId, EXERCISE_ID to exercise.id))
     }

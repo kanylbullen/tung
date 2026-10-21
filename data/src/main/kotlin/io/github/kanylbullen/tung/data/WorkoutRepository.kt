@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.data
 
 import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.addedExerciseSets
 import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.command.PlannedSet
 import io.github.kanylbullen.tung.core.command.plannedSetValues
@@ -48,18 +49,36 @@ class WorkoutRepository(
         }
     }
 
-    /** Adds an exercise at the end, with a first set already filled in from last time. */
-    suspend fun addExercise(workoutId: String, exerciseId: String): String = db.withTransaction {
+    /**
+     * Adds an exercise at the end with [sets] sets, or, when null, as many as
+     * it had last session (one with no history), each filled in from last time
+     * at its own position ([addedExerciseSets]).
+     */
+    suspend fun addExercise(workoutId: String, exerciseId: String, sets: Int? = null): String = db.withTransaction {
+        val now = clock()
         val position = dao.maxExercisePosition(workoutId) + 1
         val workoutExercise = WorkoutExercise(
             id = newId(),
             workoutId = workoutId,
             exerciseId = exerciseId,
             position = position,
-            updatedAt = clock(),
+            updatedAt = now,
         )
         dao.insertWorkoutExercise(workoutExercise)
-        insertPrefilledSet(workoutExercise.id, workoutId, exerciseId)
+        val previous = dao.previousSessionSets(exerciseId, workoutId).map { it.toLogged() }
+        addedExerciseSets(sets, previous).forEachIndexed { setPosition, values ->
+            dao.insertSet(
+                SetEntry(
+                    id = newId(),
+                    workoutExerciseId = workoutExercise.id,
+                    position = setPosition,
+                    weightKg = values.weightKg,
+                    reps = values.reps,
+                    completed = false,
+                    updatedAt = now,
+                ),
+            )
+        }
         workoutExercise.id
     }
 
@@ -71,9 +90,15 @@ class WorkoutRepository(
         dao.deleteWorkoutExercise(workoutExerciseId)
     }
 
-    suspend fun addSet(workoutExerciseId: String): String? = db.withTransaction {
+    /**
+     * Adds [count] sets after the last one, each pre-filled by the usual rule
+     * (a copy of the set before it). One transaction.
+     *
+     * @return the id of the first added set, or null when there is no such exercise.
+     */
+    suspend fun addSet(workoutExerciseId: String, count: Int = 1): String? = db.withTransaction {
         val we = dao.getWorkoutExercise(workoutExerciseId) ?: return@withTransaction null
-        insertPrefilledSet(we.id, we.workoutId, we.exerciseId)
+        List(count.coerceAtLeast(1)) { insertPrefilledSet(we.id, we.workoutId, we.exerciseId) }.first()
     }
 
     private suspend fun insertPrefilledSet(workoutExerciseId: String, workoutId: String, exerciseId: String): String {

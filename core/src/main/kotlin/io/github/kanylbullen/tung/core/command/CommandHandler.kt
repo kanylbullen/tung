@@ -38,7 +38,7 @@ fun CommandResult.id(key: String): String? = (this as? CommandResult.Done)?.ids?
  *   reused); FinishWorkout only when the workout was saved, absent when it was
  *   discarded for having nothing logged.
  * - [WORKOUT_EXERCISE_ID]: AddExercise; SelectCurrent.
- * - [SET_ID]: AddSet (the new set); LogSet (the set logged); SelectCurrent.
+ * - [SET_ID]: AddSet (the new set, the first of them with a count); LogSet (the set logged); SelectCurrent.
  * - [ADDED_SET_ID]: LogSet, when it added the next set.
  * - [EXERCISE_ID]: CreateExercise; AddExercise (the exercise it resolved to).
  * - [ROUTINE_ID]: SaveRoutine, SaveRoutinePlan, CreateRoutine.

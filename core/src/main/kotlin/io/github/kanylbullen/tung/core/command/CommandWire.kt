@@ -143,11 +143,24 @@ object CommandWire {
         "start_routine" to Spec(listOf(routineId, programDayId)) {
             Command.StartRoutine(it.id("routine_id"), it.idOrNull("program_day_id"))
         },
-        "add_exercise" to Spec(listOf(workoutId, req("exercise", Kind.EXERCISE, EXERCISE_DESCRIPTION))) {
-            Command.AddExercise(it.id("workout_id"), it.exercise("exercise"))
+        "add_exercise" to Spec(
+            listOf(
+                workoutId,
+                req("exercise", Kind.EXERCISE, EXERCISE_DESCRIPTION),
+                opt(
+                    "sets",
+                    Kind.INT,
+                    "How many sets to create, 1 to 20, each pre-filled from last session at its position. " +
+                        "Default: as many as last session had, or 1 with no history.",
+                ),
+            ),
+        ) {
+            Command.AddExercise(it.id("workout_id"), it.exercise("exercise"), it.intOrNull("sets"))
         },
         "remove_exercise" to Spec(listOf(workoutExerciseId)) { Command.RemoveExercise(it.id("workout_exercise_id")) },
-        "add_set" to Spec(listOf(workoutExerciseId)) { Command.AddSet(it.id("workout_exercise_id")) },
+        "add_set" to Spec(
+            listOf(workoutExerciseId, opt("count", Kind.INT, "How many sets to add, 1 to 20, each a copy of the one before. Default 1.")),
+        ) { Command.AddSet(it.id("workout_exercise_id"), it.intOrNull("count")) },
         "remove_set" to Spec(listOf(setId)) { Command.RemoveSet(it.id("set_id")) },
         "set_weight" to Spec(listOf(setId, req("weight_kg", Kind.NUMBER, "Weight in kilograms, 0 to 999."), applyToOpen)) {
             Command.SetWeight(it.id("set_id"), it.double("weight_kg"), it.bool("apply_to_open_sets"))
