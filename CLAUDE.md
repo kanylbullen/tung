@@ -1446,6 +1446,17 @@ Only the core tests, fast and without AGP: `./gradlew :core:test --no-daemon`.
 Results land in `core/build/test-results/test/` and
 `<module>/build/test-results/testDebugUnitTest/`.
 
+**On a phone, install `dogfood`, not `debug`:** `./gradlew :app:assembleDogfood`
+gives `app/build/outputs/apk/dogfood/app-dogfood.apk`, release code (R8, not
+debuggable) signed with the debug key, so `adb install -r` replaces a debug
+build and keeps the data. A debug build of a Compose app is several times
+slower: on the Note9, scrolling the Exercises tab had 34 % janky frames and a
+90th percentile of 150 ms as debug, 11 % and 32 ms as dogfood (2026-10-21).
+Release has R8 on (`isMinifyEnabled`, `isShrinkResources`); the app's own
+rules are in `app/proguard-rules.pro` and should stay empty unless the app
+itself reflects on a class. The flow tests run unminified, so after a change
+to dependencies or reflection, start the dogfood build once and sync.
+
 APKs: `app/build/outputs/apk/debug/app-debug.apk` and
 `wear/build/outputs/apk/debug/wear-debug.apk` (`:wear:assembleDebug`). The first build downloads
 dependencies and takes a few minutes.
