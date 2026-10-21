@@ -1,0 +1,16 @@
+{
+  "id": "msg_01HaikuThinkingOnly7Qx2",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-5-5",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "",
+      "signature": "EuYBCkQYAiJAq8vB3mT0nWcR1Lz5hJp9Xk2fQ6sYd4uE7gA0oN3tI8bV1cM5rK9wH2jF6xD0eS4aU7yP3lZ8qT1vO5nG"
+    }
+  ],
+  "stop_reason": "max_tokens",
+  "stop_sequence": null,
+  "usage": { "input_tokens": 3120, "output_tokens": 4096 }
+}

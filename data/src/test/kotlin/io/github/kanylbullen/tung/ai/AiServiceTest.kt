@@ -233,6 +233,22 @@ class AiServiceTest {
         assertNull(testRequest.getHeader("Authorization"))
     }
 
+    @Test
+    fun aClaude5AnswerWithOnlyThinkingIsOutOfRoomAndARefusalIsDeclined() = runBlocking {
+        settings.save(AiProviderKind.ANTHROPIC, server.url("/").toString().trimEnd('/'), "claude-haiku-5-5", jsonMode = false)
+
+        val thinkingOnly = """{"type": "message", "role": "assistant", "model": "claude-haiku-5-5", "content": [{"type": "thinking", "thinking": "", "signature": "EuYB"}], "stop_reason": "max_tokens"}"""
+        server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(thinkingOnly))
+        assertEquals(AiOutcome.Failed(AiFailure.OUT_OF_ROOM), service.send(checkNotNull(service.prepare(AiRequest.NextWorkout, "en"))))
+        val sent = Json.parseToJsonElement(server.takeRequest().body.readUtf8()) as kotlinx.serialization.json.JsonObject
+        assertEquals("16000", sent.getValue("max_tokens").toString())
+        assertEquals("{\"effort\":\"low\"}", sent.getValue("output_config").toString())
+
+        val refusal = """{"type": "message", "role": "assistant", "content": [], "stop_reason": "refusal", "stop_details": {"category": "cyber"}}"""
+        server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(refusal))
+        assertEquals(AiOutcome.Failed(AiFailure.DECLINED), service.send(checkNotNull(service.prepare(AiRequest.NextWorkout, "en"))))
+    }
+
     /**
      * "Suggest with the assistant" in the import review: the request holds the
      * names, their candidates and the catalogue, and nothing of the history,
