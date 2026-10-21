@@ -122,6 +122,14 @@ sealed interface Command {
     /** Deletes a routine; workouts started from it are kept. */
     data class DeleteRoutine(val routineId: String) : Command
 
+    /**
+     * Deletes several routines at once, each as [DeleteRoutine] does (its
+     * exercises and the program days that use it go too; workouts started from
+     * it are kept), in one transaction. 1..[MAX_DELETE_ROUTINES] ids; a
+     * duplicate counts once.
+     */
+    data class DeleteRoutines(val ids: List<String>) : Command
+
     /** Moves one routine exercise [delta] places (-1 up, +1 down). */
     data class MoveRoutineExercise(val routineExerciseId: String, val delta: Int) : Command
 

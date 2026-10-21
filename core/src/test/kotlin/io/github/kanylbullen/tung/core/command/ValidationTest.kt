@@ -183,4 +183,14 @@ class ValidationTest {
         val reasons = invalid(SaveRoutinePlan(RoutinePlan(" ", listOf(RoutinePlanExercise(ExerciseRef.ByKey(""), 0, -1)))))
         assertEquals(4, reasons.size)
     }
+
+    @Test
+    fun deleteRoutinesTakesOneTo500Ids() {
+        valid(Command.DeleteRoutines(listOf("a")))
+        valid(Command.DeleteRoutines(List(MAX_DELETE_ROUTINES) { "r$it" }))
+        valid(Command.DeleteRoutines(listOf("a", "a")))
+        invalid(Command.DeleteRoutines(emptyList()))
+        invalid(Command.DeleteRoutines(List(MAX_DELETE_ROUTINES + 1) { "r$it" }))
+        assertEquals(listOf("routine ids must not be blank"), invalid(Command.DeleteRoutines(listOf("a", " "))))
+    }
 }

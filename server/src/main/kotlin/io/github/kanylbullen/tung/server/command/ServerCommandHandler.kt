@@ -10,6 +10,7 @@ import io.github.kanylbullen.tung.core.clampTargetSets
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.DELETED_COUNT
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
@@ -230,15 +231,16 @@ class ServerCommandHandler(
             }
             is Command.DeleteRoutine -> {
                 liveRoutine(command.routineId) ?: return noSuch("routine", command.routineId)
-                // The program days that use it go too, as the foreign key cascades in the app; positions keep their gap, as there.
-                tombstone(ProgramDays, ProgramDays.updatedAt, ProgramDays.deletedAt, now) {
-                    (ProgramDays.userId eq userId) and (ProgramDays.routineId eq command.routineId)
-                }
-                tombstone(RoutineExercises, RoutineExercises.updatedAt, RoutineExercises.deletedAt, now) {
-                    (RoutineExercises.userId eq userId) and (RoutineExercises.routineId eq command.routineId)
-                }
-                tombstone(Routines, Routines.updatedAt, Routines.deletedAt, now) { (Routines.userId eq userId) and (Routines.id eq command.routineId) }
+                deleteRoutine(command.routineId, now)
                 Done()
+            }
+            is Command.DeleteRoutines -> {
+                // The live ones go; ids that are gone are skipped like the app's, but naming none that exists is an error here.
+                val ids = command.ids.distinct()
+                val live = ids.filter { liveRoutine(it) != null }
+                if (live.isEmpty()) return ids.singleOrNull()?.let { noSuch("routine", it) } ?: Rejected(listOf("none of the ${ids.size} routines exists"))
+                live.forEach { deleteRoutine(it, now) }
+                Done(mapOf(DELETED_COUNT to live.size.toString()))
             }
             is Command.MoveRoutineExercise -> {
                 val re = liveRoutineExercise(command.routineExerciseId) ?: return noSuch("exercise in a routine", command.routineExerciseId)
@@ -577,6 +579,20 @@ class ServerCommandHandler(
             .where { (Sets.userId eq userId) and (Sets.workoutExerciseId eq workoutExerciseId) and Sets.deletedAt.isNull() }
             .orderBy(Sets.position, SortOrder.ASC)
             .toList()
+
+    /**
+     * Tombstones a routine, its exercises and the program days that use it, as the
+     * foreign keys cascade in the app; the days' positions keep their gap, as there.
+     */
+    private fun Transaction.deleteRoutine(routineId: String, now: Long) {
+        tombstone(ProgramDays, ProgramDays.updatedAt, ProgramDays.deletedAt, now) {
+            (ProgramDays.userId eq userId) and (ProgramDays.routineId eq routineId)
+        }
+        tombstone(RoutineExercises, RoutineExercises.updatedAt, RoutineExercises.deletedAt, now) {
+            (RoutineExercises.userId eq userId) and (RoutineExercises.routineId eq routineId)
+        }
+        tombstone(Routines, Routines.updatedAt, Routines.deletedAt, now) { (Routines.userId eq userId) and (Routines.id eq routineId) }
+    }
 
     private fun Transaction.liveRoutine(id: String): ResultRow? =
         Routines.selectAll().where { (Routines.userId eq userId) and (Routines.id eq id) and Routines.deletedAt.isNull() }.singleOrNull()

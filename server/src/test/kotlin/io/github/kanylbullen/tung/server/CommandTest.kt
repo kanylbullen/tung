@@ -232,6 +232,47 @@ class CommandTest {
     }
 
     @Test
+    fun deleteRoutinesTakesSeveralInOneGo() = tungTest {
+        val token = client.register()
+        suspend fun export() = ApiJson.decodeFromString(ExportDocument.serializer(), client.authedGet("/api/v1/export", token).bodyAsText())
+        suspend fun routine(name: String) = client.done(
+            token,
+            "save_routine_plan",
+            """{"name": "$name", "exercises": [{"exercise": {"key": "bench_press"}, "target_sets": 1, "target_reps": 5}]}""",
+        )["routineId"]!!.str
+        val a = routine("A")
+        val b = routine("B")
+        val kept = routine("Kept")
+        val program = client.done(token, "create_program", """{"name": "P", "mode": "rotating"}""")["programId"]!!.str
+        val dayA = client.done(token, "add_program_day", """{"program_id": "$program", "routine_id": "$a"}""")["programDayId"]!!.str
+        val dayKept = client.done(token, "add_program_day", """{"program_id": "$program", "routine_id": "$kept"}""")["programDayId"]!!.str
+        val workoutId = client.done(token, "start_routine", """{"routine_id": "$a"}""")["workoutId"]!!.str
+        client.done(token, "log_set", """{"workout_id": "$workoutId"}""")
+        client.done(token, "finish_workout", """{"workout_id": "$workoutId"}""")
+        val exercisesOfAB = export().routines.filter { it.id in setOf(a, b) }.flatMap { r -> r.exercises.map { it.id } }.toSet()
+
+        // A duplicate counts once and an unknown id is skipped, as in the app.
+        val ids = client.done(token, "delete_routines", """{"routine_ids": ["$a", "$b", "$a", "${id()}"]}""")
+        assertEquals("2", ids["deletedCount"]!!.str)
+
+        val after = export()
+        assertEquals(listOf(kept), after.routines.map { it.id })
+        assertEquals(listOf(dayKept), after.programs.single().days.map { it.id }, "A's program day goes with it")
+        assertEquals(a, client.authedGet("/api/v1/workouts/$workoutId", token).workout().routineId, "history is kept")
+        val changes = client.synced(token).changes
+        assertEquals(setOf(a, b), changes.routines.filter { it.deletedAt != null }.map { it.id }.toSet())
+        assertEquals(exercisesOfAB, changes.routineExercises.filter { it.deletedAt != null }.map { it.id }.toSet())
+        assertEquals(setOf(dayA), changes.programDays.filter { it.deletedAt != null }.map { it.id }.toSet())
+
+        // Naming only routines that are gone is a refusal, and so is an empty list.
+        val none = client.command(token, "delete_routines", """{"routine_ids": ["$a", "${id()}"]}""")
+        assertEquals(HttpStatusCode.UnprocessableEntity, none.status)
+        assertEquals("rejected", none.json()["status"]!!.str)
+        assertEquals(HttpStatusCode.UnprocessableEntity, client.command(token, "delete_routines", """{"routine_ids": []}""").status)
+        assertEquals(listOf(kept), export().routines.map { it.id })
+    }
+
+    @Test
     fun aSavedRoutineCanBeEdited() = tungTest {
         val token = client.register()
         suspend fun export() = ApiJson.decodeFromString(ExportDocument.serializer(), client.authedGet("/api/v1/export", token).bodyAsText())

@@ -85,6 +85,10 @@ object McpDescriptions {
         "rename_routine" to "Renames a routine. $IDS",
         "delete_routine" to
             "Deletes a routine and the program days that use it. Workouts done from it stay in the history. Confirm with the user first.",
+        "delete_routines" to
+            "Deletes several routines at once (routine_ids, 1 to 500), each with the program days that use it, in one go. " +
+                "Workouts done from them stay in the history. Ids that no longer exist are skipped; rejected only when none exists. " +
+                "Returns ids.deletedCount. Confirm with the user first, naming how many.",
         "move_routine_exercise" to "Moves an exercise within its routine: delta -1 moves it up one place, 1 down. routine_exercise_id comes from routines.",
         "adjust_target_sets" to
             "Changes how many sets a routine asks for of one exercise by delta (1 adds a set, -1 removes one; kept within 1 to 20). " +
