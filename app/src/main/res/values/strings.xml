@@ -492,13 +492,15 @@
     <string name="ai_plateaus_none">No plateaus found: what you train regularly is still moving.</string>
     <string name="ai_plateau_since">Since %1$s</string>
     <string name="ai_error_network">Could not reach the provider. Check the address and your connection.</string>
-    <string name="ai_error_timeout">The provider did not answer within a minute. Try again in a while.</string>
+    <string name="ai_error_timeout">The provider did not answer within two minutes. Try again in a while.</string>
     <string name="ai_error_unauthorized">The provider refused the key. Check it in Settings.</string>
     <string name="ai_error_not_found">Nothing answers at that address, or the model does not exist. Check both in Settings.</string>
     <string name="ai_error_rate_limited">The provider\'s limit is reached. Wait a while, or check your quota.</string>
     <string name="ai_error_rejected">The provider refused the request.</string>
     <string name="ai_error_server">The provider had a problem. Try again in a while.</string>
     <string name="ai_error_no_answer">The provider answered with nothing. Try again.</string>
+    <string name="ai_error_out_of_room">The model ran out of room before answering. Try again, or use a model that thinks less.</string>
+    <string name="ai_error_declined">The model declined this request.</string>
     <string name="ai_error_unreadable">The answer was not in the form Tung asked for. Try again, or use a stronger model.</string>
     <string name="ai_error_nothing_usable">The answer named no exercise Tung knows, so there is nothing to show. Try again.</string>
     <string name="ai_error_provider_says">The provider says: %1$s</string>

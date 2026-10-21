@@ -20,8 +20,8 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.SocketTimeoutException
 
-/** How long one assistant call may take in all, connecting and answering. */
-const val AI_TIMEOUT_MILLIS = 60_000L
+/** How long one assistant call may take in all, connecting and answering: two minutes, as answers are not streamed and a model may think first. */
+const val AI_TIMEOUT_MILLIS = 120_000L
 
 /**
  * The assistant's HTTP client: OkHttp with [timeoutMillis] for the whole
@@ -46,7 +46,7 @@ fun aiHttpClient(timeoutMillis: Long = AI_TIMEOUT_MILLIS): HttpClient = HttpClie
     }
 }
 
-/** Why a call gave no usable answer, in the words the screen shows ([AiService] adds the last three). */
+/** Why a call gave no usable answer, in the words the screen shows ([AiService] adds the last five). */
 enum class AiFailure {
     /** No model named in Settings. */
     NOT_CONFIGURED,
@@ -72,8 +72,14 @@ enum class AiFailure {
     /** 5xx, or an overloaded provider. */
     SERVER,
 
-    /** A 2xx with no text in it. */
+    /** A 2xx with no text in it, and no reason given. */
     NO_ANSWER,
+
+    /** A 2xx with no text because the token limit was reached first (`max_tokens`, `length`): the model thought it away. */
+    OUT_OF_ROOM,
+
+    /** A 2xx in which the model declined the request (`stop_reason: refusal`). */
+    DECLINED,
 
     /** Text that is not the JSON asked for. */
     UNREADABLE,

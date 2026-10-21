@@ -22,7 +22,8 @@ import io.github.kanylbullen.tung.core.ai.AiResolution
 import io.github.kanylbullen.tung.core.ai.AiRoutine
 import io.github.kanylbullen.tung.core.ai.AiRoutineExercise
 import io.github.kanylbullen.tung.core.ai.aiHttpRequest
-import io.github.kanylbullen.tung.core.ai.aiResponseText
+import io.github.kanylbullen.tung.core.ai.AiReply
+import io.github.kanylbullen.tung.core.ai.aiReply
 import io.github.kanylbullen.tung.core.ai.buildAiContext
 import io.github.kanylbullen.tung.core.ai.buildAiMatchPrompt
 import io.github.kanylbullen.tung.core.ai.buildAiPrompt
@@ -141,7 +142,12 @@ class AiService(
             is AiHttpResult.Failed -> return AiOutcome.Failed(result.failure, result.message)
             is AiHttpResult.Ok -> result.body
         }
-        val text = aiResponseText(prepared.call.provider, body) ?: return AiOutcome.Failed(AiFailure.NO_ANSWER)
+        val text = when (val reply = aiReply(prepared.call.provider, body)) {
+            is AiReply.Text -> reply.text
+            AiReply.OutOfRoom -> return AiOutcome.Failed(AiFailure.OUT_OF_ROOM)
+            AiReply.Declined -> return AiOutcome.Failed(AiFailure.DECLINED)
+            AiReply.Empty -> return AiOutcome.Failed(AiFailure.NO_ANSWER)
+        }
         val draft = when (val parse = parseAiAnswer(prepared.request, text, prepared.catalogueKeys)) {
             is AiParse.Malformed -> return AiOutcome.Failed(AiFailure.UNREADABLE)
             is AiParse.Parsed -> parse.draft
