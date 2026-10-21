@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.ui.routines
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,10 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -28,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -48,6 +54,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
  * done below, and a Start button. [onClick] opens it for editing, where offered.
  * Start is disabled for a routine with no exercises, whatever [startEnabled] says.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RoutineRow(
     row: RoutineSummaryRow,
@@ -55,14 +62,25 @@ fun RoutineRow(
     startEnabled: Boolean,
     onStart: () -> Unit,
     onClick: (() -> Unit)? = null,
+    /** Where offered (the Routines tab): a long press, or the screen reader's "Select" action, starts selection mode. */
+    onLongClick: (() -> Unit)? = null,
+    /** Non-null in selection mode: whether this row is selected. A tap then toggles it ([onClick]) and Start is hidden. */
+    selected: Boolean? = null,
 ) {
     val details = listOf(
         pluralStringResource(R.plurals.exercise_count, row.exerciseCount, row.exerciseCount),
         lastUsedText(row.lastUsedAt, now),
     ).joinToString(stringResource(R.string.row_separator))
     val base = Modifier.fillMaxWidth()
+    val selectLabel = stringResource(R.string.routines_select)
+    val interaction = when {
+        selected != null && onClick != null -> base.selectable(selected = selected, role = Role.Checkbox, onClick = onClick)
+        onClick != null && onLongClick != null -> base.combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = selectLabel)
+        onClick != null -> base.clickable(onClick = onClick)
+        else -> base
+    }
     Row(
-        modifier = (if (onClick != null) base.clickable(onClick = onClick) else base)
+        modifier = interaction
             .heightIn(min = 64.dp)
             .padding(start = 20.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -72,21 +90,35 @@ fun RoutineRow(
             Text(details, style = Tung.numbers.inline, color = Tung.colors.muted)
         }
         Spacer(Modifier.width(12.dp))
-        val description = stringResource(R.string.routine_start_description, row.name)
-        Button(
-            onClick = onStart,
-            enabled = startEnabled && row.exerciseCount > 0,
-            shape = TungCorner,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Tung.colors.raised,
-                contentColor = Tung.colors.text,
-                disabledContainerColor = Tung.colors.background,
-                disabledContentColor = Tung.colors.muted,
-            ),
-            elevation = null,
-            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = description },
-        ) {
-            Text(stringResource(R.string.routine_start), style = MaterialTheme.typography.labelLarge)
+        if (selected != null) {
+            // The row carries the selected state for a screen reader; the box only shows it.
+            Checkbox(
+                checked = selected,
+                onCheckedChange = null,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Tung.colors.accent,
+                    checkmarkColor = Tung.colors.onAccent,
+                    uncheckedColor = Tung.colors.muted,
+                ),
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
+        } else {
+            val description = stringResource(R.string.routine_start_description, row.name)
+            Button(
+                onClick = onStart,
+                enabled = startEnabled && row.exerciseCount > 0,
+                shape = TungCorner,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Tung.colors.raised,
+                    contentColor = Tung.colors.text,
+                    disabledContainerColor = Tung.colors.background,
+                    disabledContentColor = Tung.colors.muted,
+                ),
+                elevation = null,
+                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = description },
+            ) {
+                Text(stringResource(R.string.routine_start), style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }

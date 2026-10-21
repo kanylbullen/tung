@@ -33,7 +33,7 @@ fun HealthConnectSettingsScreen(onBack: () -> Unit) {
     SettingsPage(title = stringResource(R.string.settings_group_health), onBack = onBack) { HealthConnectSection() }
 }
 
-/** Settings' Data: import from Jefit and undo the last import (CLAUDE.md, "Import"). */
+/** Settings' Data: import from Jefit, undo the last import, delete its routines (CLAUDE.md, "Import"). */
 @Composable
 fun DataSettingsScreen(onBack: () -> Unit, onImportFile: (Uri) -> Unit) {
     SettingsPage(title = stringResource(R.string.settings_group_data), onBack = onBack) { ImportSection(onImportFile) }
