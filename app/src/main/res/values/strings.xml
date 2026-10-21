@@ -200,6 +200,22 @@
     <string name="equipment_cable">Cable</string>
     <string name="equipment_bodyweight">Bodyweight</string>
     <string name="equipment_other">Other</string>
+    <string name="equipment_ez_bar">EZ bar</string>
+    <string name="equipment_kettlebell">Kettlebell</string>
+    <string name="equipment_band">Band</string>
+    <string name="equipment_medicine_ball">Medicine ball</string>
+    <string name="equipment_exercise_ball">Exercise ball</string>
+    <!-- "My equipment": the chip under the Exercises tab's group chips and in the picker, its sheet, and the row in Settings -->
+    <string name="my_equipment_chip_all">Equipment: All</string>
+    <!-- How many kinds of equipment are ticked, e.g. "Equipment: 3" -->
+    <string name="my_equipment_chip_count">Equipment: %1$d</string>
+    <string name="my_equipment_title">My equipment</string>
+    <string name="my_equipment_intro">Exercises that need equipment you do not have are hidden from the lists and the suggestions. Exercises already in a workout or routine always show.</string>
+    <string name="my_equipment_everything">Everything</string>
+    <string name="my_equipment_bodyweight_only">Bodyweight only</string>
+    <string name="my_equipment_done">Done</string>
+    <!-- Settings' row when more than three are ticked, e.g. "5 of 11" -->
+    <string name="my_equipment_some">%1$d of %2$d</string>
 
     <!-- History -->
     <string name="history_title">History</string>

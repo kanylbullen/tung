@@ -37,7 +37,10 @@ APPS = ["app", "wear"]
 # Same order as core/src/main/kotlin/io/github/kanylbullen/tung/core/Catalog.kt;
 # the muscle-group order is the order in the Kotlin list.
 MUSCLE_GROUPS = ["chest", "back", "shoulders", "biceps", "triceps", "legs", "glutes", "core", "fullbody"]
-EQUIPMENT = ["barbell", "dumbbell", "machine", "cable", "bodyweight", "other"]
+EQUIPMENT = [
+    "barbell", "ez_bar", "dumbbell", "kettlebell", "machine", "cable", "band",
+    "bodyweight", "medicine_ball", "exercise_ball", "other",
+]  # core.Equipment's keys
 # The language of values/ and the fallback name; every entry must have it.
 DEFAULT_LANGUAGE = "en"
 

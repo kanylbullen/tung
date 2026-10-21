@@ -1,6 +1,10 @@
 package io.github.kanylbullen.tung.core.ai
 
+import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.catalog.EquipmentFilter
 import io.github.kanylbullen.tung.core.isLogged
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -18,6 +22,7 @@ import java.time.ZoneId
  * Snake case on the wire, like the MCP read tools, so a model that knows one
  * knows the other. Weights are kilograms ([unit]).
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class AiContext(
     val unit: String = "kg",
@@ -30,6 +35,11 @@ data class AiContext(
     val programs: List<AiProgram>,
     /** The core catalogue's keys: what a model may name an exercise by (`bench_press`). */
     @SerialName("catalogue_keys") val catalogueKeys: List<String>,
+    /**
+     * "My equipment" as [Equipment] keys, when the user has narrowed it; null
+     * (and then left out of the JSON) when they have everything.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val equipment: List<String>? = null,
 )
 
 /** One finished workout: its local [date], the routine it was started from (if it still exists) and what was logged. */
@@ -107,7 +117,8 @@ data class AiHistoryWorkout(val startedAtMillis: Long, val routineName: String?,
  * Builds the context from plain shapes. History: workouts that started within
  * [AI_HISTORY_DAYS] days before [now], newest first, at most
  * [AI_HISTORY_WORKOUTS]; only logged sets, and exercises and workouts left
- * empty by that are dropped. Dates are local dates in [zone].
+ * empty by that are dropped. Dates are local dates in [zone]. [equipment] is
+ * sent only when it is narrower than everything.
  */
 fun buildAiContext(
     now: Instant,
@@ -116,6 +127,8 @@ fun buildAiContext(
     routines: List<AiRoutine>,
     programs: List<AiProgram>,
     catalogueKeys: Collection<String>,
+    /** "My equipment"; [EquipmentFilter.ALL] (or null) sends nothing. */
+    equipment: Set<Equipment>? = null,
 ): AiContext {
     val today = LocalDate.ofInstant(now, zone)
     val since = now.minusSeconds(AI_HISTORY_DAYS * 86_400L).toEpochMilli()
@@ -141,5 +154,6 @@ fun buildAiContext(
         routines = routines,
         programs = programs,
         catalogueKeys = catalogueKeys.sorted(),
+        equipment = equipment?.takeIf { EquipmentFilter.isNarrowed(it) }?.let(EquipmentFilter::toKeys),
     )
 }

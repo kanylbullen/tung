@@ -97,7 +97,7 @@ databases. The packages are the ones the files had in `app/`:
 
 | Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
@@ -407,6 +407,23 @@ exercise thus gets the same row on every device, and after that it is an
 ordinary exercise (it shows in the tab and among the core matches, and
 disappears from "More exercises").
 
+**Equipment values** (`core.Equipment`, issue #65): `barbell`, `ez_bar`,
+`dumbbell`, `kettlebell`, `machine`, `cable`, `band`, `bodyweight`,
+`medicine_ball`, `exercise_ball`, `other`, in the order the app lists them.
+The import maps free-exercise-db's `kettlebells`, `bands`, `e-z curl bar`,
+`medicine ball`, `exercise ball` and `body only` to their own value; `foam
+roll`, `other` and null stay `other` (table in `catalog/README.md`).
+`Exercise.equipment` in Room is the **key as a string**, so a new value needs
+no schema change, and `Equipment.fromKey` reads an unknown key (a newer
+catalogue or client) as `other`. Adding a value: the enum, `EQUIPMENT` in
+both catalogue scripts, `equipmentLabel` and an `equipment_<key>` string in
+both languages, and the `Equipment` enum in the server's `openapi.yaml`
+(`OpenApiCoverageTest`). **The server validates synced rows against its own
+enum** (`SyncValidation`): a phone with a new value pushing a picked
+extended exercise that carries it gets a 4xx from an older server until that
+server is redeployed (rows stay dirty, nothing is lost), so deploy the server
+before or with the app.
+
 **Instructions.** Extended entries carry free-exercise-db's `instructions`.
 The core entries that have a twin there (64 of 70; the import drops the twin
 from `extended.json`) get the twin's steps in `core.json` as
@@ -442,6 +459,10 @@ layers, with A the last exercise in the workout:
   −2 for A's own main muscle, −1 for abs and obliques unless nothing else is
   left. Exercises already in the workout are never suggested.
 
+The candidates are narrowed to "My equipment" first (see "Exercises tab and
+exercise page"); the workout's own exercises stay in the list given to
+`suggest`, which reads their groups and never proposes them.
+
 **Hand-over:** once A has three observations (recent workouts with A and
 another exercise) the learned score is tripled, so the user's habits win;
 before that the heuristic separates what history does not. Each row's reason
@@ -466,6 +487,25 @@ ViewModel only feeds them, recomputing the rows when Room, the catalogue or
 the language changes and the sections per keystroke. About 680 rows: always a
 `LazyColumn` with stable keys (`b-<ref>`). A row opens the exercise page; the
 picker keeps its behaviour (Suggested, "More exercises", add on tap).
+
+**My equipment** (issue #65). Under the group chips (in the picker, under the
+search) one chip, "Equipment: All" or "Equipment: 3", opens `EquipmentSheet`
+(`ui/exercises/EquipmentSheet.kt`): "Everything" and "Bodyweight only", then a
+checkbox per `Equipment`; every tap is saved at once and the last ticked box
+cannot be unticked. Settings has the same sheet behind its "My equipment"
+row (`ui/settings/EquipmentSection.kt`). The set lives in the `settings`
+DataStore (`data/EquipmentSettings`, key `my_equipment`, `container.equipmentSettings`),
+**not synced**; unset (and choosing everything) means all, so a value added
+later is included for a user who never narrowed it. The filter is pure in
+core (`core/catalog/EquipmentFilter.kt`: `passes`, `filterByEquipment` with
+an allow-list, and `browse`/`browseGroups` take `available`): the tab, the
+picker's list, "More exercises" and Suggested apply it; bodyweight is a value
+like the others, so unticking it hides bodyweight exercises. **An exercise
+already in the workout or routine always shows** in the picker (the
+ViewModel passes their ids as the allow-list; Suggested still never proposes
+them). The import's chooser (`PickerTarget.Choose`) is not narrowed: it maps
+history done with whatever there was. `EquipmentFlowTest` covers the tab, the
+picker and Settings.
 
 **The exercise page** (`ui/exercises/ExerciseDetail*`, route
 `exercise/{ref}`). The ref is `core.catalog.ExercisePageRef`: a Room id, or
@@ -1132,7 +1172,9 @@ tung-server never sees the key or the request.
   `NextWorkout`, `Plateaus`); `AiContext`, built by `buildAiContext` from plain
   shapes: finished workouts of the last 90 days (at most 30, logged sets only,
   exercise key and name), routines, programs, today's date and weekday, the
-  core catalogue's keys, unit kg. The shape has no field for an email, a name,
+  core catalogue's keys, unit kg, and `equipment` (the "My equipment" keys)
+  only when the user has narrowed it; then "Suggest a program" and "Next
+  workout" are told to use only exercises done with it. The shape has no field for an email, a name,
   a device id, a server URL or a note, so none can be sent. `buildAiPrompt`
   (English, framed like the server's MCP prompts, the answer's JSON shape in
   the system message, the app's language for the text fields).

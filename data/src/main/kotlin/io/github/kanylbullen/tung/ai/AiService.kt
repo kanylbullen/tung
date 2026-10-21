@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.ai
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.ai.AI_HISTORY_DAYS
 import io.github.kanylbullen.tung.core.ai.AI_HISTORY_WORKOUTS
@@ -26,6 +27,7 @@ import io.github.kanylbullen.tung.core.ai.buildAiPrompt
 import io.github.kanylbullen.tung.core.ai.parseAiAnswer
 import io.github.kanylbullen.tung.core.ai.prettyAiBody
 import io.github.kanylbullen.tung.core.ai.resolveAiAnswer
+import io.github.kanylbullen.tung.core.catalog.EquipmentFilter
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds
@@ -101,6 +103,8 @@ class AiService(
     private val catalogueKeys: () -> Collection<String>,
     private val commands: CommandHandler,
     private val clock: Clock,
+    /** "My equipment"; the context carries it only when it is narrowed. */
+    private val equipment: suspend () -> Set<Equipment> = { EquipmentFilter.ALL },
 ) {
 
     /** The request for [request] with the current settings and data; null when no model is set up. */
@@ -227,6 +231,6 @@ class AiService(
             )
         }
 
-        buildAiContext(now, clock.zone, history, routineList, programList, keys)
+        buildAiContext(now, clock.zone, history, routineList, programList, keys, equipment())
     }
 }

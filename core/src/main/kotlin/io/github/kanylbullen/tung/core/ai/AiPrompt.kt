@@ -54,7 +54,7 @@ internal val AiContextJson = Json { encodeDefaults = true }
  */
 fun buildAiPrompt(request: AiRequest, context: AiContext, language: String = "en"): AiPrompt {
     val system = listOf(SYSTEM_INTRO, schemaFor(request), rules(language)).joinToString("\n\n")
-    val user = taskFor(request) + "\n\nMy training data (JSON):\n" + AiContextJson.encodeToString(AiContext.serializer(), context)
+    val user = taskFor(request) + equipmentRule(request, context) + "\n\nMy training data (JSON):\n" + AiContextJson.encodeToString(AiContext.serializer(), context)
     return AiPrompt(system = system, user = user)
 }
 
@@ -63,7 +63,8 @@ private const val SYSTEM_INTRO =
         "finished workouts newest first (each exercise by catalogue key and name, with its logged sets, weight_kg in kilograms " +
         "and reps), routines (workout templates with target_sets and target_reps), programs (fixed: each day on its ISO " +
         "weekdays, 1 Monday to 7 Sunday; rotating: the days in order, continuing after last_completed_day), today's date and " +
-        "weekday, and catalogue_keys, the exercises you may use. You answer one question.\n\n" +
+        "weekday, catalogue_keys, the exercises you may use, and, when the user has narrowed it, equipment, what they " +
+        "have to train with. You answer one question.\n\n" +
         "Answer with exactly one JSON object and nothing else: no Markdown, no code fence, no text before or after it. " +
         "The object has this shape:"
 
@@ -118,6 +119,18 @@ private fun schemaFor(request: AiRequest): String = when (request) {
         }
         since is the ISO date of the session from which there has been no progress. An empty list means no plateaus.
         """.trimIndent()
+}
+
+/**
+ * A program or a next workout stays within "My equipment" when the user has
+ * narrowed it ([AiContext.equipment]); the other questions are about what was
+ * done, so they do not get the rule.
+ */
+private fun equipmentRule(request: AiRequest, context: AiContext): String {
+    val equipment = context.equipment ?: return ""
+    if (request != AiRequest.Program && request != AiRequest.NextWorkout) return ""
+    return " I only have this equipment: " + equipment.joinToString(", ") + " (the \"equipment\" field of my data). " +
+        "Use only exercises done with it; leave out anything that needs other equipment, even lifts in my history."
 }
 
 private fun taskFor(request: AiRequest): String = when (request) {

@@ -128,10 +128,15 @@ fun muscleLabel(muscle: Muscle): String = stringResource(
 fun equipmentLabel(equipment: Equipment): String = stringResource(
     when (equipment) {
         Equipment.BARBELL -> R.string.equipment_barbell
+        Equipment.EZ_BAR -> R.string.equipment_ez_bar
         Equipment.DUMBBELL -> R.string.equipment_dumbbell
+        Equipment.KETTLEBELL -> R.string.equipment_kettlebell
         Equipment.MACHINE -> R.string.equipment_machine
         Equipment.CABLE -> R.string.equipment_cable
+        Equipment.BAND -> R.string.equipment_band
         Equipment.BODYWEIGHT -> R.string.equipment_bodyweight
+        Equipment.MEDICINE_BALL -> R.string.equipment_medicine_ball
+        Equipment.EXERCISE_BALL -> R.string.equipment_exercise_ball
         Equipment.OTHER -> R.string.equipment_other
     }
 )

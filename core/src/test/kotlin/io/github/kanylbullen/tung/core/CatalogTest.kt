@@ -72,6 +72,32 @@ class CatalogTest {
         }
     }
 
+    /** Every value the catalogue knows is used somewhere, so a filter chip never lists an empty kind (only `other` may be rare). */
+    @Test
+    fun everyEquipmentValueIsUsedByTheCatalogue() {
+        val used = (core.map { it.equipment } + extended.map { it.equipment }).toSet()
+        assertEquals(equipmentKeys, used)
+    }
+
+    /** The core entries that were `other` before the finer values: the ones with an exact value got it. */
+    @Test
+    fun coreEntriesUseTheFinerEquipment() {
+        val byKey = core.associateBy { it.key }
+        assertEquals("kettlebell", byKey.getValue("kettlebell_swing").equipment)
+        assertEquals("bodyweight", byKey.getValue("russian_twist").equipment)
+        assertEquals("other", byKey.getValue("ab_wheel_rollout").equipment)
+    }
+
+    /** The import maps free-exercise-db's kettlebells, bands, EZ bar and balls to their own values instead of `other`. */
+    @Test
+    fun extendedCarriesTheFinerEquipment() {
+        val counts = extended.groupingBy { it.equipment }.eachCount()
+        listOf("kettlebell", "band", "ez_bar", "medicine_ball", "exercise_ball").forEach {
+            assertTrue("no extended entry has $it", (counts[it] ?: 0) > 0)
+        }
+        assertTrue("other: ${counts["other"]}", (counts["other"] ?: 0) < 100)
+    }
+
     @Test
     fun everyCoreEntryHasOneToThreePrimaryAndAtMostFourSecondaryMuscles() {
         core.forEach { e ->
