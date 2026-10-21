@@ -13,7 +13,10 @@ messages and pull requests. The app's default locale is English
 Adding an app language:
 
 1. Copy `res/values/strings.xml` to `res/values-<lang>/strings.xml` and
-   translate it. Keep exactly the same string names.
+   translate it. Keep exactly the same string names. `ai_language_tag` is
+   the new language's tag, and `aiLanguageName` in
+   `core/.../core/ai/AiLanguage.kt` gets its English name, or the assistant
+   keeps writing English (see "In-app AI (BYOK)").
 2. Add `<locale android:name="<lang>" />` to `res/xml/locales_config.xml` and
    the tag to `resourceConfigurations` in `app/build.gradle.kts`.
 3. Only if the catalogue gets that language: add `name.<lang>` to the entries
@@ -1244,9 +1247,16 @@ Jefit is done; Strong and Hevy follow in the same frame.
   custom exercise of the user's. While it runs the list says "Asking the
   assistant…"; a failure is one line with the Assistant's failure texts and
   the review works as before. Each row then shows "Assistant suggests: Lat
-  pulldown · medium" with **Accept** (Choose that exercise), or "Assistant: no
+  pulldown" and its confidence tag, with **Accept** (Choose that exercise), or "Assistant: no
   good match", with the model's note; "Accept all high-confidence" decides the
-  undecided rows whose proposal is high. **Nothing is applied without a
+  undecided rows whose proposal is high. **The confidence is a tag**
+  (issue #75, `ui/common/ConfidenceTag.kt`) beside "Assistant suggests: Lat
+  pulldown": high an accent-filled chip ("High", `accent` fill, `onAccent`
+  text), medium an accent outline ("Medium", `accent` outline, `accentText`
+  label), low a muted outline ("Low"); "no good match" is muted text with no
+  tag. A screen reader hears "High confidence". **Accept** is the primary
+  button on a high proposal and the secondary one on medium and low, and
+  rests (disabled) once that exercise is the row's choice. **Nothing is applied without a
   tap**: a suggestion or a proposal never decides a row by itself.
 - **History, not news.** Imported workouts count for History, "Last",
   the pre-fill and the picker's learning; `buildWorkoutReport` never marks one
@@ -1269,7 +1279,10 @@ Jefit is done; Strong and Hevy follow in the same frame.
   `ImportColumnsTest`. Flows: `ImportFlowTest` (the picker answered through
   Robolectric's `receiveResult`, no app seam; a suggestion chip and "Skip all
   remaining"; the assistant against a MockWebServer, "What is sent", the
-  proposals and "Accept all high-confidence").
+  proposals and "Accept all high-confidence"; the confidence tags and
+  Accept's style in the light and the dark theme). `AssistantFlowTest`
+  checks that an `en-rSE` phone asks for English and an `sv` one for
+  Swedish; core's `AiLanguageTest` the mapping and every request type.
 
 ## In-app AI (BYOK)
 
@@ -1291,6 +1304,16 @@ tung-server never sees the key or the request.
   a device id, a server URL or a note, so none can be sent. `buildAiPrompt`
   (English, framed like the server's MCP prompts, the answer's JSON shape in
   the system message, the app's language for the text fields).
+  **The language is the one the app displays, by name** (issue #75): every
+  prompt (`rules`, `matchRules`) says "in English" or "in Swedish" through
+  `aiLanguageName(tag)` (`AiLanguage.kt`), which reads only the tag's
+  language subtag and knows only the languages the app ships, anything else
+  being English (the app's own fallback). The app passes the string resource
+  `ai_language_tag` (`en` in `values/`, `sv` in `values-sv/`), so it is by
+  construction the language of the resources on screen; never
+  `locales[0].toLanguageTag()`: a Pixel in `en-SE-u-fw-mon-…` shows English,
+  and a model handed that tag wrote Swedish. A new app language adds its
+  `ai_language_tag` and a name in `aiLanguageName`.
   `parseAiAnswer` + `resolveAiAnswer`: a program is routines in the shape
   `SaveRoutinePlan` takes (`ExerciseRef.ByKey` when the key is in the
   catalogue, else `ByName`), a next workout one `WorkoutPlan`, plateaus
