@@ -36,7 +36,7 @@ data class Exercise(
 
 @Entity(
     tableName = "workout",
-    indices = [Index("endedAt"), Index("startedAt"), Index("routineId"), Index("programDayId")],
+    indices = [Index("endedAt"), Index("startedAt"), Index("routineId"), Index("programDayId"), Index("importBatchId")],
 )
 data class Workout(
     @PrimaryKey val id: String,
@@ -81,6 +81,15 @@ data class Workout(
      * Synced like the vitals. Schema version 2.
      */
     val healthConnectId: String? = null,
+    /**
+     * The app this workout was imported from (`core.importing.ImportBundle.source`,
+     * `jefit`), null for one logged in Tung. An imported workout is history:
+     * it counts for "Last" and the pre-fill, but never shows as a new record.
+     * Set once by the import; synced as `import_source`. Schema version 3.
+     */
+    val importSource: String? = null,
+    /** The import run that wrote it, so "Undo import" removes exactly that run. Synced as `import_batch_id`. */
+    val importBatchId: String? = null,
 )
 
 @Entity(

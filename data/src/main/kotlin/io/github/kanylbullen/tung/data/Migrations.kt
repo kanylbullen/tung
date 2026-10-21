@@ -18,5 +18,14 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/** 2 → 3 (issue #5): where an imported workout came from and which import wrote it, both nullable, and an index for undo. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `workout` ADD COLUMN `importSource` TEXT")
+        db.execSQL("ALTER TABLE `workout` ADD COLUMN `importBatchId` TEXT")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_workout_importBatchId` ON `workout` (`importBatchId`)")
+    }
+}
+
 /** Every migration, oldest first; both database builders register all of them. */
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)

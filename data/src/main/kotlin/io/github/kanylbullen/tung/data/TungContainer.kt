@@ -19,6 +19,9 @@ import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.health.HealthConnectGateway
 import io.github.kanylbullen.tung.health.HealthConnectRecorder
 import io.github.kanylbullen.tung.health.HealthConnectSettings
+import io.github.kanylbullen.tung.core.importing.ImportAliases
+import io.github.kanylbullen.tung.importing.ImportService
+import io.github.kanylbullen.tung.importing.Importer
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
 import io.github.kanylbullen.tung.ongoing.ongoingWorkouts
 import io.github.kanylbullen.tung.push.AndroidPushEnvironment
@@ -97,6 +100,26 @@ class TungContainer(
     /** Names to exercises, for the command handler and the assistant's answers (core's `resolveRef`). */
     private val exerciseResolver: AppExerciseResolver by lazy {
         AppExerciseResolver(database.exerciseDao(), { catalogueNames }, extendedCatalog)
+    }
+
+    /**
+     * Import from other apps (CLAUDE.md, "Import"): the core adapters, the
+     * alias tables in the assets (`aliases/<source>.json`), this device's
+     * exercises for resolution, and the [Importer]'s one bulk write.
+     */
+    val imports: ImportService by lazy {
+        ImportService(
+            importer = Importer(database, workoutRepository, exerciseRepository, routineRepository, extendedCatalog),
+            resolver = exerciseResolver,
+            aliases = { source ->
+                kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    runCatching {
+                        this@TungContainer.context.assets.open("aliases/$source.json").use { ImportAliases.parse(it.reader().readText()) }
+                    }.getOrDefault(ImportAliases.EMPTY)
+                }
+            },
+            zone = { clock.zone },
+        )
     }
 
     /** What each catalogue exercise trains (`core.MuscleIndex`), for the picker's suggestions. */

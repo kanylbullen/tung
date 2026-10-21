@@ -24,7 +24,7 @@ private const val CATALOG_UPDATED_AT = 0L
         Tombstone::class,
     ],
     // Raised by one with a Migration (Migrations.kt) and data/schemas/<n>.json for every change.
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class TungDatabase : RoomDatabase() {

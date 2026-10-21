@@ -47,6 +47,30 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun version2To3KeepsWorkoutsAndAddsTheImportColumnsAsNull() {
+        helper.createDatabase(DB, 2).apply {
+            execSQL(
+                "INSERT INTO workout (id, startedAt, endedAt, note, routineId, updatedAt, programDayId, dirty, startedBy, " +
+                    "avgHeartRate, maxHeartRate, activeCalories, healthConnectId) " +
+                    "VALUES ('w2', 1000, 2000, 'Legs', NULL, 2000, NULL, 0, 'watch', 128, 171, 342, 'hc-1')",
+            )
+            close()
+        }
+
+        helper.runMigrationsAndValidate(DB, 3, true, MIGRATION_2_3).use { db ->
+            db.query("SELECT importSource, importBatchId, note, startedBy, avgHeartRate, healthConnectId FROM workout WHERE id = 'w2'").use { c ->
+                c.moveToFirst()
+                assertEquals(true, c.isNull(0))
+                assertEquals(true, c.isNull(1))
+                assertEquals("Legs", c.getString(2))
+                assertEquals("watch", c.getString(3))
+                assertEquals(128, c.getInt(4))
+                assertEquals("hc-1", c.getString(5))
+            }
+        }
+    }
+
     /** The builder the app uses opens a version-1 file with the registered migrations; Room reads the old row back. */
     @Test
     fun theAppsBuilderUpgradesAVersion1FileInPlace() = runBlocking {
@@ -66,6 +90,8 @@ class MigrationTest {
             assertNull(workout?.maxHeartRate)
             assertNull(workout?.activeCalories)
             assertNull(workout?.healthConnectId)
+            assertNull(workout?.importSource)
+            assertNull(workout?.importBatchId)
         } finally {
             db.close()
         }
