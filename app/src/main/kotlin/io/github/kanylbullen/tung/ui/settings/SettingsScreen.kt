@@ -120,6 +120,7 @@ fun SettingsScreen(onBack: () -> Unit, onImportFile: (android.net.Uri) -> Unit =
                     onGoogle = { vm.signInWithGoogle { clientId -> google.idToken(context, clientId) } },
                 )
             }
+            EquipmentSection()
             ImportSection(onImportFile)
             HealthConnectSection()
             AiSection()

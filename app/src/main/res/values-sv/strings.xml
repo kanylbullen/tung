@@ -201,6 +201,20 @@
     <string name="equipment_cable">Kabel</string>
     <string name="equipment_bodyweight">Kroppsvikt</string>
     <string name="equipment_other">Övrigt</string>
+    <string name="equipment_ez_bar">EZ-stång</string>
+    <string name="equipment_kettlebell">Kettlebell</string>
+    <string name="equipment_band">Gummiband</string>
+    <string name="equipment_medicine_ball">Medicinboll</string>
+    <string name="equipment_exercise_ball">Pilatesboll</string>
+    <!-- "Min utrustning": chippet under Övningar-flikens gruppchips och i väljaren, dess ark och raden i Inställningar -->
+    <string name="my_equipment_chip_all">Utrustning: Allt</string>
+    <string name="my_equipment_chip_count">Utrustning: %1$d</string>
+    <string name="my_equipment_title">Min utrustning</string>
+    <string name="my_equipment_intro">Övningar som kräver utrustning du inte har döljs i listorna och förslagen. Övningar som redan finns i ett pass eller en rutin visas alltid.</string>
+    <string name="my_equipment_everything">Allt</string>
+    <string name="my_equipment_bodyweight_only">Bara kroppsvikt</string>
+    <string name="my_equipment_done">Klar</string>
+    <string name="my_equipment_some">%1$d av %2$d</string>
 
     <!-- History -->
     <string name="history_title">Historik</string>

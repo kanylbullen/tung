@@ -108,4 +108,25 @@ class BrowseTest {
         assertNull(ExercisePageRef.parse(""))
         assertNull(ExercisePageRef.parse("ext:"))
     }
+
+    /** "My equipment" narrows the sections and the chips; it combines with the group and the search. */
+    @Test
+    fun theEquipmentFilterCombinesWithTheGroupAndTheSearch() {
+        val dumbbells = setOf(Equipment.DUMBBELL)
+        val sections = browse(items, group = null, query = "", nameOrder = order, available = dumbbells)
+        assertEquals(listOf("Around The Worlds"), sections.flatMap { s -> s.items.map { it.name } })
+        assertEquals(listOf(MuscleGroup.CHEST), browseGroups(items, dumbbells))
+        assertEquals(emptyList<BrowseSection>(), browse(items, MuscleGroup.LEGS, "", order, dumbbells))
+        assertEquals(emptyList<BrowseSection>(), browse(items, null, "bench", order, dumbbells))
+
+        val barbell = setOf(Equipment.BARBELL)
+        assertEquals(
+            listOf("Back squat", "Zercher Squats"),
+            browse(items, MuscleGroup.LEGS, "", order, barbell).single().items.map { it.name },
+        )
+        assertEquals(listOf("Zercher Squats"), browse(items, null, "zerch", order, barbell).single().items.map { it.name })
+        // Everything is the same as no filter.
+        assertEquals(browse(items, null, "", order), browse(items, null, "", order, EquipmentFilter.ALL))
+        assertEquals(browseGroups(items), browseGroups(items, EquipmentFilter.ALL))
+    }
 }

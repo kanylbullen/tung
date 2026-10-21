@@ -98,9 +98,13 @@ fun browseItems(library: List<LibraryExercise>, extended: List<ExtendedExercise>
     return own + more
 }
 
-/** The groups that have at least one item, in [MuscleGroup] order: the chips after "All". */
-fun browseGroups(items: List<BrowseItem>): List<MuscleGroup> {
-    val present = items.mapTo(HashSet()) { it.group }
+/**
+ * The groups that have at least one item done with [available] equipment, in
+ * [MuscleGroup] order: the chips after "All". A group the user's equipment
+ * empties gets no chip.
+ */
+fun browseGroups(items: List<BrowseItem>, available: Set<Equipment> = EquipmentFilter.ALL): List<MuscleGroup> {
+    val present = items.filter { passes(it.equipment, available) }.mapTo(HashSet()) { it.group }
     return MuscleGroup.entries.filter { it in present }
 }
 
@@ -111,9 +115,10 @@ fun browseNameOrder(locale: Locale): Comparator<String> {
 }
 
 /**
- * The tab's list: [items] in [group] (all groups when null) whose displayed
- * name matches [query] (core's [filterByDisplayName], so diacritics and case
- * do not matter), in sections by [MuscleGroup] order. Within a section the
+ * The tab's list: [items] in [group] (all groups when null), done with
+ * [available] equipment ("My equipment", [passes]), whose displayed name
+ * matches [query] (core's [filterByDisplayName], so diacritics and case do not
+ * matter), in sections by [MuscleGroup] order. Within a section the
  * rows are sorted by name in [nameOrder], then by ref, so two exercises with
  * the same name keep a stable order and the list keys do not jump.
  */
@@ -122,8 +127,9 @@ fun browse(
     group: MuscleGroup?,
     query: String,
     nameOrder: Comparator<String>,
+    available: Set<Equipment> = EquipmentFilter.ALL,
 ): List<BrowseSection> {
-    val inGroup = if (group == null) items else items.filter { it.group == group }
+    val inGroup = items.filter { (group == null || it.group == group) && passes(it.equipment, available) }
     val matching = filterByDisplayName(inGroup.map { it to it.name }, query).map { it.first }
     val order = compareBy(nameOrder) { item: BrowseItem -> item.name }.thenBy { it.ref.route }
     val byGroup = matching.groupBy { it.group }

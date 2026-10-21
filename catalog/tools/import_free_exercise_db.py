@@ -75,13 +75,17 @@ MUSCLES = {
 }  # anything else stops the import: a new source muscle needs a decision
 
 EQUIPMENT = {
+    "bands": "band",
     "barbell": "barbell",
-    "e-z curl bar": "barbell",
-    "dumbbell": "dumbbell",
-    "machine": "machine",
-    "cable": "cable",
     "body only": "bodyweight",
-}  # anything else, including null: other
+    "cable": "cable",
+    "dumbbell": "dumbbell",
+    "e-z curl bar": "ez_bar",
+    "exercise ball": "exercise_ball",
+    "kettlebells": "kettlebell",
+    "machine": "machine",
+    "medicine ball": "medicine_ball",
+}  # anything else, including "foam roll", "other" and null: other
 
 # free-exercise-db ids that are the same exercise as a core entry under another
 # name. Only obvious pairs: the plain version of the core exercise, not variants.

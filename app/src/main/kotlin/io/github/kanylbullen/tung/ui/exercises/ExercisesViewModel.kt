@@ -9,11 +9,14 @@ import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.MuscleIndex
 import io.github.kanylbullen.tung.core.catalog.BrowseItem
 import io.github.kanylbullen.tung.core.catalog.BrowseSection
+import io.github.kanylbullen.tung.core.catalog.EquipmentFilter
 import io.github.kanylbullen.tung.core.catalog.LibraryExercise
 import io.github.kanylbullen.tung.core.catalog.browse
 import io.github.kanylbullen.tung.core.catalog.browseGroups
 import io.github.kanylbullen.tung.core.catalog.browseItems
 import io.github.kanylbullen.tung.core.catalog.browseNameOrder
+import io.github.kanylbullen.tung.core.catalog.filterByEquipment
+import io.github.kanylbullen.tung.core.catalog.passes
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds
@@ -26,8 +29,10 @@ import io.github.kanylbullen.tung.core.picker.HistoricWorkout
 import io.github.kanylbullen.tung.core.picker.SuggestionReason
 import io.github.kanylbullen.tung.core.picker.suggest
 import io.github.kanylbullen.tung.data.CatalogueMuscles
+import io.github.kanylbullen.tung.data.EquipmentSettings
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.data.ExerciseRepository
+import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +41,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -89,6 +95,8 @@ data class ExercisesUiState(
     val chips: List<MuscleGroup> = emptyList(),
     /** Tab only: the chip that is on; null is "All". */
     val selectedGroup: MuscleGroup? = null,
+    /** "My equipment": what the lists and the suggestions keep to ([EquipmentFilter.ALL] when not narrowed). */
+    val equipment: Set<Equipment> = EquipmentFilter.ALL,
 ) {
     val isEmpty: Boolean get() = groups.isEmpty() && more.isEmpty() && browse.isEmpty()
 }
@@ -115,6 +123,13 @@ data class ExercisesUiState(
  * exercises, [ExercisesUiState.suggested] holds up to six suggestions from
  * `core.picker.suggest`: the user's own history ([workouts], read once when
  * the picker opens) and the catalogue's muscles ([catalogueMuscles]).
+ *
+ * "My equipment" ([equipmentSettings], core's `catalog.EquipmentFilter`)
+ * narrows the tab, the picker's list, "More exercises" and Suggested to the
+ * exercises done with what the user has; in the picker the exercises already
+ * in the workout or routine always show. Choosing for the import's review
+ * ([PickerTarget.Choose]) is not narrowed: it maps history, done with
+ * whatever equipment there was.
  */
 class ExercisesViewModel(
     exercises: ExerciseRepository,
@@ -124,6 +139,8 @@ class ExercisesViewModel(
     private val workouts: WorkoutRepository,
     private val catalogueMuscles: CatalogueMuscles,
     private val now: () -> Long,
+    private val equipmentSettings: EquipmentSettings,
+    private val routines: RoutineRepository,
     private val displayName: (Exercise) -> String,
 ) : ViewModel() {
 
@@ -137,6 +154,24 @@ class ExercisesViewModel(
     private val locale = MutableStateFlow(Locale.getDefault())
 
     val isPicker: Boolean get() = target != null
+
+    /** "My equipment"; everything for [PickerTarget.Choose], which is not narrowed. */
+    private val available: Flow<Set<Equipment>> =
+        if (target == PickerTarget.Choose) flowOf(EquipmentFilter.ALL) else equipmentSettings.available
+
+    /** The screen's chip and sheet read and change "My equipment" here. */
+    val equipment: StateFlow<Set<Equipment>> =
+        available.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EquipmentFilter.ALL)
+
+    /** Whether the screen shows the equipment chip: the tab and the pickers that add, not the import's chooser. */
+    val filtersEquipment: Boolean get() = target != PickerTarget.Choose
+
+    /** Picker only: the exercise ids already in the workout or routine, which the equipment filter never hides. */
+    private val inTarget: Flow<Set<String>> = when (val t = target) {
+        is PickerTarget.Workout -> workouts.observeExercises(t.workoutId).map { list -> list.map { it.workoutExercise.exerciseId }.toSet() }
+        is PickerTarget.Routine -> routines.observeRoutineExercises(t.routineId).map { list -> list.map { it.exercise.id }.toSet() }
+        PickerTarget.Choose, null -> flowOf(emptySet<String>())
+    }.distinctUntilChanged()
 
     /** Suggestions are about the workout in progress ("Not trained yet today"), so only that picker has them. */
     private val workoutId: String? = (target as? PickerTarget.Workout)?.workoutId
@@ -171,15 +206,18 @@ class ExercisesViewModel(
         if (workoutId == null) {
             flowOf(emptyList())
         } else {
-            combine(exercises.observeExercises(), workouts.observeExercises(workoutId), suggestionInputs, locale) { all, current, inputs, _ ->
+            combine(exercises.observeExercises(), workouts.observeExercises(workoutId), suggestionInputs, locale, available) { all, current, inputs, _, have ->
                 if (inputs == null || current.isEmpty()) return@combine emptyList()
                 val byId = all.associateBy { it.id }
                 val names = HashMap<String, String>()
                 fun nameOf(exercise: Exercise) = names.getOrPut(exercise.id) { displayName(exercise) }
+                val currentIds = current.mapTo(HashSet()) { it.workoutExercise.exerciseId }
+                // The workout's own exercises stay candidates (core reads their groups); suggest never proposes them.
+                val candidates = filterByEquipment(all, have, currentIds, { it.id }, { Equipment.fromKey(it.equipment) })
                 suggest(
                     currentWorkout = current.map { ExerciseRef.ById(it.workoutExercise.exerciseId) },
                     history = inputs.history,
-                    candidates = all.map { Candidate(it.id, nameOf(it), MuscleGroup.fromKey(it.muscleGroup)) },
+                    candidates = candidates.map { Candidate(it.id, nameOf(it), MuscleGroup.fromKey(it.muscleGroup)) },
                     muscles = inputs.muscles,
                     now = now(),
                 ).mapNotNull { suggestion ->
@@ -191,10 +229,13 @@ class ExercisesViewModel(
             }
         }
 
+    private val equipmentAndTarget: Flow<Pair<Set<Equipment>, Set<String>>> = combine(available, inTarget) { have, ids -> have to ids }
+
     private val lists: Flow<ExercisesUiState> =
-        combine(exercises.observeExercises(), _query, locale, extended) { all, q, loc, ext ->
+        combine(exercises.observeExercises(), _query, locale, extended, equipmentAndTarget) { all, q, loc, ext, (have, ids) ->
             val collator = Collator.getInstance(loc).apply { strength = Collator.SECONDARY }
-            val byGroup = filterByDisplayName(all.map { it to displayName(it) }, q)
+            val shown = filterByEquipment(all, have, ids, { it.id }, { Equipment.fromKey(it.equipment) })
+            val byGroup = filterByDisplayName(shown.map { it to displayName(it) }, q)
                 .map { (exercise, name) -> NamedExercise(exercise, name) }
                 .groupBy { MuscleGroup.fromKey(it.exercise.muscleGroup) }
             val existingIds = all.mapTo(HashSet()) { it.id }
@@ -203,7 +244,10 @@ class ExercisesViewModel(
                 groups = MuscleGroup.entries.mapNotNull { group ->
                     byGroup[group]?.let { list -> ExerciseGroup(group, list.sortedWith(compareBy(collator) { it.displayName })) }
                 },
-                more = ExtendedCatalog.search(ext, existingIds, q).sortedWith(compareBy(collator) { it.displayName }),
+                more = ExtendedCatalog.search(ext, existingIds, q)
+                    .filter { passes(it.equipment, have) }
+                    .sortedWith(compareBy(collator) { it.displayName }),
+                equipment = have,
             )
         }
 
@@ -223,12 +267,13 @@ class ExercisesViewModel(
         }
 
     private val browseState: Flow<ExercisesUiState> =
-        combine(browseRows, _query, group, locale) { items, q, g, loc ->
+        combine(browseRows, _query, group, locale, available) { items, q, g, loc, have ->
             ExercisesUiState(
                 loading = false,
-                browse = browse(items, g, q, browseNameOrder(loc)),
-                chips = browseGroups(items),
+                browse = browse(items, g, q, browseNameOrder(loc), have),
+                chips = browseGroups(items, have),
                 selectedGroup = g,
+                equipment = have,
             )
         }
 
@@ -245,6 +290,12 @@ class ExercisesViewModel(
     /** Tab only: turns a group chip on; [value] null, or the chip that is already on, is "All". */
     fun setGroup(value: MuscleGroup?) {
         group.value = if (value == group.value) null else value
+    }
+
+    /** Saves "My equipment" straight away; the lists follow the DataStore. Never empty: the sheet keeps one ticked. */
+    fun setEquipment(value: Set<Equipment>) {
+        if (value.isEmpty()) return
+        viewModelScope.launch { equipmentSettings.set(value) }
     }
 
     fun setQuery(value: String) {
