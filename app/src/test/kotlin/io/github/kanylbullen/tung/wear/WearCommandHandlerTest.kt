@@ -89,18 +89,15 @@ class WearCommandHandlerTest {
         workouts.observeExercises(workoutId).first().single().sortedSets
 
     @Test
-    fun logSetTicksTheSetAddsTheNextAndStartsTheRest() = runBlocking {
+    fun logSetOnlyTicksTheSetAndStartsTheRest() = runBlocking {
         val (workoutId, first) = benchWorkout()
 
         assertTrue(handler.handle(json { id, at -> WatchCommand.LogSet(first.id, id, at) }))
 
+        // Issue #64: no set is added after the exercise's last.
         val after = sets(workoutId)
-        assertEquals(2, after.size)
+        assertEquals(1, after.size)
         assertTrue(after[0].completed)
-        assertEquals(first.id, after[0].id)
-        assertFalse(after[1].completed)
-        assertEquals(80.0, after[1].weightKg, 0.0)
-        assertEquals(8, after[1].reps)
 
         val rest = restTimer.stored(workoutId)
         assertNotNull(rest)
@@ -108,16 +105,34 @@ class WearCommandHandlerTest {
 
         val state = publisher.snapshot()
         assertEquals(workoutId, state.workoutId)
-        assertEquals(after[1].id, state.currentSetId)
+        assertNull(state.currentSetId)
+        assertEquals("the watch's button offers Add set for it", first.workoutExerciseId, state.addSetWorkoutExerciseId)
         assertNotNull(state.rest)
-        assertEquals(listOf(true, false), state.exercises.single().sets.map { it.completed })
+        assertEquals(listOf(true), state.exercises.single().sets.map { it.completed })
         assertEquals("Bench press", state.exercises.single().name)
+    }
+
+    @Test
+    fun addSetCopiesTheLastSetAndMakesItCurrent() = runBlocking {
+        val (workoutId, first) = benchWorkout()
+        handler.handle(json { id, at -> WatchCommand.LogSet(first.id, id, at) })
+
+        assertTrue(handler.handle(json { id, at -> WatchCommand.AddSet(first.workoutExerciseId, id, at) }))
+        val after = sets(workoutId)
+        assertEquals(listOf(true, false), after.map { it.completed })
+        assertEquals(80.0 to 8, after[1].weightKg to after[1].reps)
+        val state = publisher.snapshot()
+        assertEquals(after[1].id, state.currentSetId)
+        assertNull(state.addSetWorkoutExerciseId)
+
+        assertFalse("an exercise not in the workout", handler.handle(json { id, at -> WatchCommand.AddSet("nope", id, at) }))
+        assertEquals(2, sets(workoutId).size)
     }
 
     @Test
     fun aRepeatedCommandIdIsAppliedOnce() = runBlocking {
         val (workoutId, first) = benchWorkout()
-        val text = json { id, at -> WatchCommand.LogSet(first.id, id, at) }
+        val text = json { id, at -> WatchCommand.AddSet(first.workoutExerciseId, id, at) }
         assertTrue(handler.handle(text))
         assertFalse(handler.handle(text))
         assertEquals(2, sets(workoutId).size)

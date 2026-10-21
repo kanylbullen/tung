@@ -44,7 +44,43 @@ class OptimisticTest {
     fun loggingTheLastSetLeavesTheNextToThePhone() {
         val after = state.applying(WatchCommand.LogSet("s1", "c", 0L), 0L)
         assertNull(after.currentSetId)
+        assertNull("bench still has open sets: no Add set", after.addSetWorkoutExerciseId)
         assertNull(after.exercises[1].focusSet(after.currentSetId))
+    }
+
+    @Test
+    fun loggingTheWorkoutsLastOpenSetOffersAddSetAtOnce() {
+        val oneLeft = state.copy(
+            exercises = state.exercises.map { e -> e.copy(sets = e.sets.map { if (it.setId == "s1") it else it.copy(completed = true) }) },
+            currentSetId = "s1",
+        )
+        val after = oneLeft.applying(WatchCommand.LogSet("s1", "c", 0L), 0L)
+        assertNull(after.currentSetId)
+        assertEquals("squat", after.addSetWorkoutExerciseId)
+        assertEquals(WatchLogButton.AddSet("squat"), after.logButton(after.exercises[1]))
+        assertNull("Add set is offered on the logged exercise's page only", after.logButton(after.exercises[0]))
+        assertEquals(1, after.focusExerciseIndex())
+        // The new set's id is the phone's: Add set waits for its state.
+        assertSame(after, after.applying(WatchCommand.AddSet("squat", "c2", 0L), 0L))
+    }
+
+    @Test
+    fun logButtonStates() {
+        assertEquals(WatchLogButton.LogSet("b1", needsReps = false), state.logButton(state.exercises[0]))
+        assertEquals(WatchLogButton.LogSet("s1", needsReps = false), state.logButton(state.exercises[1]))
+        val noReps = state.copy(exercises = state.exercises.map { e -> e.copy(sets = e.sets.map { it.copy(reps = 0) }) })
+        assertEquals(WatchLogButton.LogSet("b1", needsReps = true), noReps.logButton(noReps.exercises[0]))
+        // An exercise with nothing open while another has a set: no button, as before.
+        val benchDone = state.copy(
+            exercises = state.exercises.map { e -> if (e.workoutExerciseId == "bench") e.copy(sets = e.sets.map { it.copy(completed = true) }) else e },
+            currentSetId = "s1",
+            addSetWorkoutExerciseId = null,
+        )
+        assertNull(benchDone.logButton(benchDone.exercises[0]))
+        // An older phone never offers Add set: all logged, no button.
+        val allDone = benchDone.copy(exercises = benchDone.exercises.map { e -> e.copy(sets = e.sets.map { it.copy(completed = true) }) }, currentSetId = null)
+        assertNull(allDone.logButton(allDone.exercises[1]))
+        assertEquals(WatchLogButton.AddSet("bench"), allDone.copy(addSetWorkoutExerciseId = "bench").logButton(allDone.exercises[0]))
     }
 
     @Test

@@ -111,4 +111,51 @@ class LogSetTest {
     fun aRoutineExerciseWithASetDeletedIsFilledBackUpToItsTarget() {
         assertTrue(addsNextSet(wasLast = true, setCount = 2, targetSets = 3))
     }
+
+    // --- stickyAction (issue #64) ---
+
+    @Test
+    fun stickyActionIsLogSetWhileACurrentSetExists() {
+        val sets = listOf(listOf(true, false), listOf(false))
+        assertEquals(StickyAction.LogSet(SetIndex(1, 0)), stickyAction(sets, lastTouchedExercise = 1))
+        assertEquals(StickyAction.LogSet(SetIndex(0, 1)), stickyAction(sets, selected = SetIndex(0, 1), lastTouchedExercise = 1))
+    }
+
+    @Test
+    fun withEverySetTickedItAddsACopyOfTheTouchedExercisesLastSet() {
+        val sets = listOf(listOf(true, true, true), listOf(true, true))
+        assertEquals(StickyAction.AddSet(exercise = 0, copyOf = 2), stickyAction(sets, lastTouchedExercise = 0))
+    }
+
+    @Test
+    fun withNothingTouchedItAddsToTheLastExercise() {
+        val sets = listOf(listOf(true), listOf(true, true))
+        assertEquals(StickyAction.AddSet(exercise = 1, copyOf = 1), stickyAction(sets))
+        // A touched index out of range counts as nothing touched.
+        assertEquals(StickyAction.AddSet(exercise = 1, copyOf = 1), stickyAction(sets, lastTouchedExercise = 5))
+    }
+
+    @Test
+    fun anExerciseWithNoSetsHasNothingToCopy() {
+        assertEquals(StickyAction.AddSet(exercise = 0, copyOf = null), stickyAction(listOf(emptyList())))
+        assertEquals(StickyAction.AddSet(exercise = 1, copyOf = null), stickyAction(listOf(listOf(true), emptyList())))
+    }
+
+    @Test
+    fun anEmptyWorkoutHasNoStickyAction() {
+        assertNull(stickyAction(emptyList()))
+    }
+
+    @Test
+    fun loggingTheLastSetTurnsLogSetIntoAddSetForThatExercise() {
+        // Bench press (0) and squat (1); the squat's last set was just logged, so it is the touched exercise.
+        val before = listOf(listOf(true, true), listOf(true, false))
+        assertEquals(StickyAction.LogSet(SetIndex(1, 1)), stickyAction(before, lastTouchedExercise = 1))
+        val after = listOf(listOf(true, true), listOf(true, true))
+        assertNull(nextCurrentAfterLogging(after, SetIndex(1, 1)))
+        assertEquals(StickyAction.AddSet(exercise = 1, copyOf = 1), stickyAction(after, lastTouchedExercise = 1))
+        // The added set is the exercise's only open one, so it is current and the button is Log set again.
+        val added = listOf(listOf(true, true), listOf(true, true, false))
+        assertEquals(StickyAction.LogSet(SetIndex(1, 2)), stickyAction(added, lastTouchedExercise = 1))
+    }
 }

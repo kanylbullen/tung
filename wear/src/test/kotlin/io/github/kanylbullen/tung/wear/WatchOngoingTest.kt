@@ -60,6 +60,18 @@ class WatchOngoingTest {
     }
 
     @Test
+    fun `with every set ticked it names the exercise Add set is offered on`() {
+        val all = state(currentSetId = null).let { s ->
+            s.copy(exercises = s.exercises.map { e -> e.copy(sets = e.sets.map { it.copy(completed = true) }) })
+        }
+        assertEquals(OngoingStatus.AllLogged("Squat"), watchOngoing(all.copy(addSetWorkoutExerciseId = "we1"))?.status)
+        // Without the field (an older phone) the last exercise.
+        assertEquals(OngoingStatus.AllLogged("Bench press"), watchOngoing(all)?.status)
+        val context = ApplicationProvider.getApplicationContext<Application>()
+        assertEquals("Squat · all sets logged", OngoingStatus.AllLogged("Squat").text(context))
+    }
+
+    @Test
     fun `who started it is carried`() {
         assertEquals(StartedBy.AGENT, watchOngoing(state(currentSetId = null, startedBy = StartedBy.AGENT))?.startedBy)
     }

@@ -53,6 +53,15 @@ class WatchProtocolTest {
     }
 
     @Test
+    fun addSetTargetIsAdditive() {
+        // An older phone leaves it out; an older watch ignores it (ignoreUnknownKeys).
+        assertNull(WatchProtocol.decodeState("""{"workoutId":"w","updatedAt":3}""").addSetWorkoutExerciseId)
+        val offered = WatchWorkoutState(workoutId = "w", updatedAt = 3L, addSetWorkoutExerciseId = "we1")
+        assertEquals(offered, WatchProtocol.decodeState(WatchProtocol.encodeState(offered)))
+        assertTrue(WatchProtocol.encodeCommand(WatchCommand.AddSet("we1", "c", 1L)).contains("\"type\":\"add_set\""))
+    }
+
+    @Test
     fun everyCommandRoundTrips() {
         val commands: List<WatchCommand> = listOf(
             WatchCommand.LogSet("s1", "c1", 10L),
@@ -64,9 +73,10 @@ class WatchProtocolTest {
             WatchCommand.FinishWorkout("c7", 16L),
             WatchCommand.SkipRest("c8", 17L),
             WatchCommand.AddRest30("c9", 18L),
+            WatchCommand.AddSet("we1", "c10", 19L),
         )
         // One of each subtype, so a new command cannot be added without a round trip here.
-        assertEquals(9, commands.map { it::class }.toSet().size)
+        assertEquals(10, commands.map { it::class }.toSet().size)
         commands.forEach { command ->
             assertEquals(command, WatchProtocol.decodeCommand(WatchProtocol.encodeCommand(command)))
         }

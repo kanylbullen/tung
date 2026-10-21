@@ -25,14 +25,28 @@ class OngoingStatusTest {
 
     @Test
     fun `a ticked set with no reps is not logged`() {
-        val status = ongoingStatus(listOf(OngoingExercise("Plank", listOf(OngoingSet(true, 0), OngoingSet(true, 5)))))
+        val status = ongoingStatus(listOf(OngoingExercise("Plank", listOf(OngoingSet(true, 0), OngoingSet(true, 5), OngoingSet(false, 5)))))
         assertEquals(OngoingStatus.Logged(1), status)
     }
 
     @Test
-    fun `everything ticked counts logged sets even with a target`() {
+    fun `everything ticked says all sets logged for the exercise Add set goes to`() {
+        // Issue #64: logging adds no set, so with nothing left the notification offers Add set.
         val status = ongoingStatus(listOf(OngoingExercise("Deadlift", sets(true, true, true), targetSets = 3)))
-        assertEquals(OngoingStatus.Logged(3), status)
+        assertEquals(OngoingStatus.AllLogged("Deadlift"), status)
+    }
+
+    @Test
+    fun `all sets logged names the last touched exercise, else the last one`() {
+        val exercises = listOf(
+            OngoingExercise("Squat", sets(true, true)),
+            OngoingExercise("Bench press", sets(true)),
+        )
+        assertEquals(OngoingStatus.AllLogged("Squat"), ongoingStatus(exercises, lastTouchedExercise = 0))
+        assertEquals(OngoingStatus.AllLogged("Bench press"), ongoingStatus(exercises))
+        // With a set open the touched exercise changes nothing: that set is the notification's.
+        val open = exercises + OngoingExercise("Row", sets(false))
+        assertEquals(OngoingStatus.Logged(3), ongoingStatus(open, lastTouchedExercise = 0))
     }
 
     @Test

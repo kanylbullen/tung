@@ -134,6 +134,8 @@ class ValidationTest {
         valid(StartWorkout(routineId = "r", programDayId = "d"))
         invalid(StartWorkout(programDayId = "d"))
         valid(LogSet("w"))
+        valid(LogSet("w", setId = "s", addNext = true))
+        invalid(LogSet("w", setId = "", addNext = true))
         invalid(LogSet("w", setId = ""))
         invalid(SelectCurrent())
         valid(SelectCurrent(workoutExerciseId = "we"))

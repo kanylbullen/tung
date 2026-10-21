@@ -24,6 +24,7 @@ class LogSetFlowTest : FlowTest() {
     private val alarms: ShadowAlarmManager get() = shadowOf(app.getSystemService(AlarmManager::class.java))
 
     private fun logSet(weight: String, reps: String) = str(R.string.workout_log_set, benchPress, weight, reps)
+    private fun addSet(weight: String, reps: String) = str(R.string.workout_sticky_add_set, benchPress, weight, reps)
 
     /** Seconds the countdown in the top bar says are left, read from its state description ("1:28 left"). */
     private fun restSecondsLeft(): Int {
@@ -51,13 +52,15 @@ class LogSetFlowTest : FlowTest() {
     )
 
     /**
-     * Someone who benched 80 × 8 last time adds Bench press and taps
-     * "Log set · 80 × 8" at the bottom: set 1 is ticked, set 2 appears at
-     * 80 × 8, the button now aims at set 2, and a 1:30 rest counts down in the
-     * top bar with an alarm set for when it ends.
+     * Someone who benched 80 × 8 last time adds Bench press (one set, as last
+     * session) and taps "Log set · 80 × 8" at the bottom: set 1 is ticked, no
+     * set is added (issue #64), a 1:30 rest counts down in the top bar with an
+     * alarm set for when it ends, and the button now reads "Add set · Bench
+     * press · 80 × 8". Tapping it adds set 2 at 80 × 8 as the current set, and
+     * the button is "Log set" again.
      */
     @Test
-    fun logSetTicksTheCurrentSetAddsTheNextAndStartsTheRest() {
+    fun logSetTicksTheCurrentSetAndTheButtonOffersAddSet() {
         seedFinishedWorkout(System.currentTimeMillis() - 2 * DAY, bench(), weightKg = 80.0, reps = 8)
         startWorkoutFromHome()
         addExercise("bench", benchPress)
@@ -67,17 +70,32 @@ class LogSetFlowTest : FlowTest() {
 
         clickText(logSet("80", "8"))
         waitForDescription(str(R.string.workout_mark_undone, 1))
-        waitForDescription(str(R.string.workout_mark_done, 2))
         waitFor(countdown)
         assertTrue(restSecondsLeft() in 85..90)
-        assertShown(hasContentDescription(str(R.string.workout_mark_done, 2)))
-        waitForText(logSet("80", "8"))
-        screenshot("2-logged-resting")
+        waitForText(addSet("80", "8"))
+        compose.onNode(hasText(logSet("80", "8"))).assertDoesNotExist()
+        compose.onNode(hasContentDescription(str(R.string.workout_mark_done, 2))).assertDoesNotExist()
+        screenshot("2-logged-add-set")
 
         assertEquals(1, activeSets("s.completed = 1 AND s.weightKg = 80.0 AND s.reps = 8 AND s.position = 0"))
+        assertEquals(1, activeSets("1"))
+        assertTrue(alarmInMillis() in 85_000L..90_000L)
+
+        clickText(addSet("80", "8"))
+        waitForDescription(str(R.string.workout_mark_done, 2))
+        waitForText(logSet("80", "8"))
+        assertShown(hasContentDescription(str(R.string.workout_mark_done, 2)))
+        compose.onNode(hasText(addSet("80", "8"))).assertDoesNotExist()
+        screenshot("3-added-set-is-current")
         assertEquals(1, activeSets("s.completed = 0 AND s.weightKg = 80.0 AND s.reps = 8 AND s.position = 1"))
         assertEquals(2, activeSets("1"))
-        assertTrue(alarmInMillis() in 85_000L..90_000L)
+
+        // The next tap logs the added set, and the button offers Add set again.
+        clickText(logSet("80", "8"))
+        waitForDescription(str(R.string.workout_mark_undone, 2))
+        waitForText(addSet("80", "8"))
+        assertEquals(2, activeSets("s.completed = 1"))
+        assertEquals(2, activeSets("1"))
     }
 
     /**
@@ -114,8 +132,8 @@ class LogSetFlowTest : FlowTest() {
 
     /**
      * A routine asks for three sets of bench press. Logging three times ticks
-     * the three sets and adds no fourth: a routine's target sets are not padded.
-     * With every set ticked there is nothing left to log, so the button goes.
+     * the three sets and adds no fourth. With every set ticked the button
+     * offers Add set rather than Finish (which stays in the top bar).
      */
     @Test
     fun aRoutineExerciseIsNotPaddedPastItsTargetSets() {
@@ -132,8 +150,10 @@ class LogSetFlowTest : FlowTest() {
             clickText(logSet("80", "8"))
             waitForDescription(str(R.string.workout_mark_undone, n))
         }
-        waitGone(hasText(logSet("80", "8")))
+        waitForText(addSet("80", "8"))
+        compose.onNode(hasText(logSet("80", "8"))).assertDoesNotExist()
         compose.onNode(hasContentDescription(str(R.string.workout_mark_done, 4))).assertDoesNotExist()
+        assertShown(hasText(str(R.string.workout_finish)))
         screenshot("2-three-logged")
 
         assertEquals(3, activeSets("s.completed = 1"))
