@@ -121,6 +121,10 @@ dependencies {
     // and the process lifecycle for "sync when the app comes to the foreground".
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    // Sign in with Google (issue #51): Credential Manager with Play services' provider and the Google ID option.
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")

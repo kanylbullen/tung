@@ -151,8 +151,8 @@ class FakeSyncServer : Dispatcher() {
                 """{"token":"$token","user":{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked}}""",
             )
         }
+        // Not in authPaths: Settings asks for it whenever the form shows a server.
         "/api/v1/auth/methods" -> {
-            authPaths += request.path
             val google = googleClientId?.let { """{"client_id":"$it"}""" } ?: "null"
             json(200, """{"password":true,"google":$google}""")
         }
