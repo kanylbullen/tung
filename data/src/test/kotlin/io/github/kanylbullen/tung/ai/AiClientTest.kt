@@ -19,7 +19,13 @@ import java.util.concurrent.TimeUnit
 class AiClientTest {
 
     private val server = MockWebServer()
-    private val client = AiClient(aiHttpClient(timeoutMillis = 1_000))
+    /**
+     * Generous on purpose (issue #59): the first call in the class also pays
+     * for loading Ktor, OkHttp and the JSON classes, which under a loaded
+     * build took longer than the 1 s this used to be. Only the timeout test
+     * needs a short one, and builds its own.
+     */
+    private val client = AiClient(aiHttpClient(timeoutMillis = 30_000))
     private val prompt = AiPrompt(system = "Answer in JSON.", user = "Suggest a program.")
 
     @Before
@@ -102,7 +108,8 @@ class AiClientTest {
     @Test
     fun aSlowProviderTimesOutAndAGoneOneIsANetworkFailure() {
         server.enqueue(json(200, "{}").setHeadersDelay(3, TimeUnit.SECONDS))
-        assertEquals(AiHttpResult.Failed(AiFailure.TIMEOUT), send(openAi()))
+        val short = AiClient(aiHttpClient(timeoutMillis = 1_000))
+        assertEquals(AiHttpResult.Failed(AiFailure.TIMEOUT), runBlocking { short.send(openAi()) })
 
         val gone = openAi()
         server.shutdown()
