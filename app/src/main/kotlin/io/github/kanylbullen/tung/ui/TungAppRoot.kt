@@ -44,6 +44,8 @@ import io.github.kanylbullen.tung.ui.exercises.PickerTarget
 import io.github.kanylbullen.tung.ui.history.HistoryScreen
 import io.github.kanylbullen.tung.ui.history.WorkoutDetailScreen
 import io.github.kanylbullen.tung.ui.home.HomeScreen
+import io.github.kanylbullen.tung.ui.progress.ExerciseProgressScreen
+import io.github.kanylbullen.tung.ui.progress.ProgressScreen
 import io.github.kanylbullen.tung.ui.routines.ProgramDetailScreen
 import io.github.kanylbullen.tung.ui.routines.ProgramsScreen
 import io.github.kanylbullen.tung.ui.routines.RoutineDetailScreen
@@ -74,6 +76,9 @@ private object Routes {
     const val ASSISTANT = "assistant?$ARG_ASK={$ARG_ASK}"
     const val ARG_REF = "ref"
     const val EXERCISE = "exercise/{$ARG_REF}"
+    const val PROGRESS = "progress"
+    const val ARG_EXERCISE = "exerciseId"
+    const val EXERCISE_PROGRESS = "progress/{$ARG_EXERCISE}"
 
     fun workout(id: String) = "workout/$id"
     fun picker(id: String) = "picker/$id"
@@ -82,6 +87,7 @@ private object Routes {
     fun routine(id: String) = "routine/$id"
     fun routinePicker(id: String) = "routine/$id/add"
     fun program(id: String) = "program/$id"
+    fun exerciseProgress(exerciseId: String) = "progress/$exerciseId"
 
     /** An exercise page; [ref] is `ExercisePageRef.route` (a Room id or `ext:<id>`), encoded since extended ids are free text. */
     fun exercise(ref: String) = "exercise/${Uri.encode(ref)}"
@@ -97,6 +103,7 @@ private val tabs = listOf(
     Tab(Routes.ROUTINES, R.string.nav_routines),
     Tab(Routes.EXERCISES, R.string.nav_exercises),
     Tab(Routes.HISTORY, R.string.nav_history),
+    Tab(Routes.PROGRESS, R.string.nav_progress),
 )
 
 private val idArgument = listOf(navArgument(Routes.ARG_ID) { type = NavType.StringType })
@@ -247,7 +254,18 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                     ref = ref,
                     onBack = { nav.popBackStack() },
                     onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) { popUpTo(Routes.HOME) } },
+                    onOpenProgress = { id -> nav.navigate(Routes.exerciseProgress(id)) },
                 )
+            }
+            composable(Routes.PROGRESS) {
+                ProgressScreen(onOpenExercise = { id -> nav.navigate(Routes.exerciseProgress(id)) })
+            }
+            composable(
+                Routes.EXERCISE_PROGRESS,
+                arguments = listOf(navArgument(Routes.ARG_EXERCISE) { type = NavType.StringType }),
+            ) { entry ->
+                val id = entry.arguments?.getString(Routes.ARG_EXERCISE) ?: return@composable
+                ExerciseProgressScreen(exerciseId = id, onBack = { nav.popBackStack() })
             }
             composable(Routes.WORKOUT, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
@@ -300,5 +318,6 @@ private fun tabIcon(route: String): Painter = when (route) {
     Routes.HISTORY -> painterResource(R.drawable.ic_history)
     Routes.EXERCISES -> painterResource(R.drawable.ic_dumbbell)
     Routes.ROUTINES -> rememberVectorPainter(Icons.AutoMirrored.Filled.List)
+    Routes.PROGRESS -> painterResource(R.drawable.ic_trending_up)
     else -> rememberVectorPainter(Icons.Filled.Home)
 }

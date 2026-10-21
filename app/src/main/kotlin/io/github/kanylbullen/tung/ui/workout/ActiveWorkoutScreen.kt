@@ -96,6 +96,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.ui.progress.ProgressSheet
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.painterResource
 import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.core.REPS_RULER
 import io.github.kanylbullen.tung.core.RestTimer
@@ -269,6 +273,8 @@ fun ActiveWorkoutScreen(
 
     var restControlsOpen by remember { mutableStateOf(false) }
     var restSheetFor by remember { mutableStateOf<ActiveExerciseUi?>(null) }
+    // The exercise (its workout exercise id) whose progress sheet is open; survives rotation.
+    var progressFor by rememberSaveable { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
 
     // The clock, not a counter: what is left of the rest is always computed from it.
@@ -422,6 +428,7 @@ fun ActiveWorkoutScreen(
                 onAddSet = vm::addSet,
                 onRemoveExercise = vm::removeExercise,
                 onRestTimer = { restSheetFor = it },
+                onProgress = { progressFor = it.workoutExerciseId },
                 onAddExercise = onAddExercise,
             )
         }
@@ -474,6 +481,23 @@ fun ActiveWorkoutScreen(
                     },
                 )
             }
+        }
+    }
+
+    progressFor?.let { weId ->
+        val exercise = state.exercises.firstOrNull { it.workoutExerciseId == weId }
+        if (exercise == null) {
+            LaunchedEffect(weId) { progressFor = null }
+        } else {
+            // The set "Log set" would log if it is this exercise's, else the exercise's first open set.
+            val set = current?.takeIf { it.exercise.workoutExerciseId == weId }?.set
+                ?: exercise.sets.firstOrNull { !it.completed }
+            ProgressSheet(
+                exerciseId = exercise.exerciseId,
+                exerciseName = exerciseDisplayName(exercise.nameKey, exercise.name),
+                proposed = set?.let { LoggedSet(it.weightKg, it.reps) },
+                onDismiss = { progressFor = null },
+            )
         }
     }
 
@@ -666,6 +690,7 @@ private fun WorkoutList(
     onAddSet: (String) -> Unit,
     onRemoveExercise: (String) -> Unit,
     onRestTimer: (ActiveExerciseUi) -> Unit,
+    onProgress: (ActiveExerciseUi) -> Unit,
     onAddExercise: () -> Unit,
 ) {
     LazyColumn(
@@ -694,6 +719,7 @@ private fun WorkoutList(
                         null
                     },
                     onRestTimer = { onRestTimer(exercise) },
+                    onProgress = { onProgress(exercise) },
                     onRemove = { onRemoveExercise(exercise.workoutExerciseId) },
                 )
             }
@@ -743,7 +769,13 @@ private fun WorkoutList(
 }
 
 @Composable
-private fun ExerciseHeader(name: String, onSelect: (() -> Unit)?, onRestTimer: () -> Unit, onRemove: () -> Unit) {
+private fun ExerciseHeader(
+    name: String,
+    onSelect: (() -> Unit)?,
+    onRestTimer: () -> Unit,
+    onProgress: () -> Unit,
+    onRemove: () -> Unit,
+) {
     var menuOpen by remember { mutableStateOf(false) }
     val selectDescription = stringResource(R.string.workout_select_exercise, name)
     Row(
@@ -768,6 +800,13 @@ private fun ExerciseHeader(name: String, onSelect: (() -> Unit)?, onRestTimer: (
             contentAlignment = Alignment.CenterStart,
         ) {
             Text(name, style = MaterialTheme.typography.titleLarge, color = Tung.colors.text)
+        }
+        IconButton(onClick = onProgress) {
+            Icon(
+                painterResource(R.drawable.ic_trending_up),
+                contentDescription = stringResource(R.string.workout_progress_for, name),
+                tint = Tung.colors.muted,
+            )
         }
         Box {
             IconButton(onClick = { menuOpen = true }) {
