@@ -96,6 +96,14 @@ data class SyncWorkout(
     @SerialName("max_heart_rate") val maxHeartRate: Int? = null,
     @SerialName("active_calories") val activeCalories: Int? = null,
     @SerialName("health_connect_id") val healthConnectId: String? = null,
+    /**
+     * Where an imported workout came from (`jefit`) and which import run
+     * wrote it (a UUID), so "new record" leaves it out and an import can be
+     * undone (issue #5). Additive and nullable like [startedBy], set once by
+     * the import, and a null from a peer never erases a stored value.
+     */
+    @SerialName("import_source") val importSource: String? = null,
+    @SerialName("import_batch_id") val importBatchId: String? = null,
 )
 
 @Serializable

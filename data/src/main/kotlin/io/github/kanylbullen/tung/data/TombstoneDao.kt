@@ -26,6 +26,10 @@ interface TombstoneDao {
     @Query("DELETE FROM tombstones WHERE tableName = :tableName AND id = :id")
     suspend fun delete(tableName: String, id: String)
 
+    /** Rows written again here (a re-import after an undo): they are no longer deleted. */
+    @Query("DELETE FROM tombstones WHERE tableName = :tableName AND id IN (:ids)")
+    suspend fun deleteAll(tableName: String, ids: List<String>)
+
     @Query("UPDATE tombstones SET dirty = 1")
     suspend fun markAllDirty()
 }

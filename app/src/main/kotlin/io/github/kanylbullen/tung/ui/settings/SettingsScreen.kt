@@ -62,10 +62,10 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 import java.net.URI
 
-/** Settings, reached from Home's gear: for now only the server and the account for sync. */
+/** Settings, reached from Home's gear: sync and the account, import from other apps, Health Connect, the assistant. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onImportFile: (android.net.Uri) -> Unit = {}) {
     val container = appContainer()
     val vm: SettingsViewModel = viewModel(factory = factoryOf { SettingsViewModel(container.syncAccount, container.push) })
     val state by vm.state.collectAsStateWithLifecycle()
@@ -120,6 +120,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     onGoogle = { vm.signInWithGoogle { clientId -> google.idToken(context, clientId) } },
                 )
             }
+            ImportSection(onImportFile)
             HealthConnectSection()
             AiSection()
         }

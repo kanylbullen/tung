@@ -63,6 +63,9 @@ object Workouts : Table("workouts") {
     val maxHeartRate = integer("max_heart_rate").nullable()
     val activeCalories = integer("active_calories").nullable()
     val healthConnectId = text("health_connect_id").nullable()
+    /** V11: the app an imported workout came from (issue #5) and the import run that wrote it; set once, a null keeps them. */
+    val importSource = text("import_source").nullable()
+    val importBatchId = text("import_batch_id").nullable()
     override val primaryKey = PrimaryKey(userId, id)
 }
 

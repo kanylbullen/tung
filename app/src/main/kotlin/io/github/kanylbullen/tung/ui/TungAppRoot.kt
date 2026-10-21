@@ -22,6 +22,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -37,6 +40,12 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.catalog.ExercisePageRef
+import io.github.kanylbullen.tung.core.command.ExerciseRef
+import io.github.kanylbullen.tung.ui.common.appContainer
+import io.github.kanylbullen.tung.ui.common.factoryOf
+import io.github.kanylbullen.tung.ui.importing.ImportScreen
+import io.github.kanylbullen.tung.ui.importing.ImportViewModel
+import io.github.kanylbullen.tung.ui.importing.readImportFile
 import io.github.kanylbullen.tung.ui.ai.AssistantScreen
 import io.github.kanylbullen.tung.ui.exercises.ExerciseDetailScreen
 import io.github.kanylbullen.tung.ui.exercises.ExercisesScreen
@@ -76,6 +85,13 @@ private object Routes {
     const val ASSISTANT = "assistant?$ARG_ASK={$ARG_ASK}"
     const val ARG_REF = "ref"
     const val EXERCISE = "exercise/{$ARG_REF}"
+    const val ARG_URI = "uri"
+    const val IMPORT = "import?$ARG_URI={$ARG_URI}"
+    const val IMPORT_PICK = "import/pick"
+
+    /** Where the import's picker leaves its answer, in the import entry's saved state: an `ExercisePageRef.route`. */
+    const val IMPORT_PICKED = "import_picked"
+
     const val PROGRESS = "progress"
     const val ARG_EXERCISE = "exerciseId"
     const val EXERCISE_PROGRESS = "progress/{$ARG_EXERCISE}"
@@ -88,6 +104,9 @@ private object Routes {
     fun routinePicker(id: String) = "routine/$id/add"
     fun program(id: String) = "program/$id"
     fun exerciseProgress(exerciseId: String) = "progress/$exerciseId"
+
+    /** The import's preview of the file at [uri] (a document the system picker granted). */
+    fun import(uri: android.net.Uri) = "import?$ARG_URI=${Uri.encode(uri.toString())}"
 
     /** An exercise page; [ref] is `ExercisePageRef.route` (a Room id or `ext:<id>`), encoded since extended ids are free text. */
     fun exercise(ref: String) = "exercise/${Uri.encode(ref)}"
@@ -190,7 +209,46 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 )
             }
             composable(Routes.SETTINGS) {
-                SettingsScreen(onBack = { nav.popBackStack() })
+                SettingsScreen(onBack = { nav.popBackStack() }, onImportFile = { uri -> nav.navigate(Routes.import(uri)) })
+            }
+            composable(
+                Routes.IMPORT,
+                arguments = listOf(navArgument(Routes.ARG_URI) { type = NavType.StringType; nullable = true; defaultValue = null }),
+            ) { entry ->
+                val uri = entry.arguments?.getString(Routes.ARG_URI)?.let(Uri::parse) ?: return@composable
+                val container = appContainer()
+                val appContext = LocalContext.current.applicationContext
+                val vm: ImportViewModel = viewModel(
+                    factory = factoryOf { ImportViewModel(container.imports) { readImportFile(appContext, uri) } },
+                )
+                val picked by entry.savedStateHandle.getStateFlow<String?>(Routes.IMPORT_PICKED, null).collectAsStateWithLifecycle()
+                LaunchedEffect(picked) {
+                    val route = picked ?: return@LaunchedEffect
+                    ExercisePageRef.parse(route)?.let { vm.onPicked(it.toExerciseRef()) }
+                    entry.savedStateHandle[Routes.IMPORT_PICKED] = null
+                }
+                ImportScreen(
+                    vm = vm,
+                    onBack = { nav.popBackStack() },
+                    onPick = { nav.navigate(Routes.IMPORT_PICK) },
+                    onDone = { nav.popBackStack() },
+                )
+            }
+            composable(Routes.IMPORT_PICK) {
+                ExercisesScreen(
+                    target = PickerTarget.Choose,
+                    onBack = { nav.popBackStack() },
+                    onPicked = {},
+                    onChosen = { ref ->
+                        val route = when (ref) {
+                            is ExerciseRef.ById -> ExercisePageRef.Library(ref.id).route
+                            is ExerciseRef.Extended -> ExercisePageRef.Extended(ref.fedId).route
+                            else -> null
+                        }
+                        nav.previousBackStackEntry?.savedStateHandle?.set(Routes.IMPORT_PICKED, route)
+                        nav.popBackStack()
+                    },
+                )
             }
             composable(Routes.ROUTINES) {
                 RoutinesScreen(

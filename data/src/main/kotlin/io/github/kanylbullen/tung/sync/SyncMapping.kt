@@ -27,6 +27,8 @@ fun Workout.toSync() = SyncWorkout(
     maxHeartRate = maxHeartRate,
     activeCalories = activeCalories,
     healthConnectId = healthConnectId,
+    importSource = importSource,
+    importBatchId = importBatchId,
 )
 fun WorkoutExercise.toSync() = SyncWorkoutExercise(id, workoutId, exerciseId, position, updatedAt)
 fun SetEntry.toSync() = SyncSet(id, workoutExerciseId, position, weightKg, reps, completed, updatedAt)
@@ -73,6 +75,9 @@ fun SyncWorkout.toEntity(local: Workout?): Workout? {
         maxHeartRate = maxHeartRate ?: local?.maxHeartRate,
         activeCalories = activeCalories ?: local?.activeCalories,
         healthConnectId = healthConnectId ?: local?.healthConnectId,
+        // Set once by an import (issue #5); a peer that does not know the fields sends null.
+        importSource = importSource ?: local?.importSource,
+        importBatchId = importBatchId ?: local?.importBatchId,
     )
 }
 

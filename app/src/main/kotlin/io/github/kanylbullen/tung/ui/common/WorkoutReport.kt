@@ -32,7 +32,8 @@ data class WorkoutReport(
 
 /**
  * Builds a report from what Room returned. Records need one query per exercise,
- * so they are only computed when [withRecords] is set.
+ * so they are only computed when [withRecords] is set, and never for an
+ * imported workout (`Workout.importSource`): old sets are history, not news.
  */
 suspend fun buildWorkoutReport(
     workout: Workout,
@@ -49,7 +50,7 @@ suspend fun buildWorkoutReport(
             nameKey = e.exercise.nameKey,
             sets = sets,
             best = bestSet(sets),
-            isRecord = withRecords &&
+            isRecord = withRecords && workout.importSource == null &&
                 isNewRecord(sets, repo.previousMaxWeight(e.exercise.id, before = workout.startedAt)),
         )
     },

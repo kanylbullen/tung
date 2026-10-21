@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.data
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
@@ -13,6 +14,26 @@ interface WorkoutDao {
 
     @Insert
     suspend fun insertWorkout(workout: Workout)
+
+    // --- an import's rows: deterministic ids, so a second import of the same rows is ignored ---
+
+    /** -1 when a workout with this id exists (an earlier import of the same session). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertWorkoutIfAbsent(workout: Workout): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertWorkoutExercisesIfAbsent(workoutExercises: List<WorkoutExercise>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSetsIfAbsent(sets: List<SetEntry>)
+
+    /** The workouts one import wrote ([Workout.importBatchId]). */
+    @Query("SELECT id FROM workout WHERE importBatchId = :batchId")
+    suspend fun importBatchWorkoutIds(batchId: String): List<String>
+
+    /** Which of [ids] are workouts here already. */
+    @Query("SELECT id FROM workout WHERE id IN (:ids)")
+    suspend fun existingWorkoutIds(ids: List<String>): List<String>
 
     @Query("SELECT * FROM workout WHERE endedAt IS NULL ORDER BY startedAt DESC LIMIT 1")
     fun observeActiveWorkout(): Flow<Workout?>

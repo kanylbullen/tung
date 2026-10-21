@@ -1550,7 +1550,7 @@ components:
 
     Workout:
       type: object
-      required: [id, started_at, ended_at, note, routine_id, program_day_id, updated_at, exercises, started_by, avg_heart_rate, max_heart_rate, active_calories, health_connect_id]
+      required: [id, started_at, ended_at, note, routine_id, program_day_id, updated_at, exercises, started_by, avg_heart_rate, max_heart_rate, active_calories, health_connect_id, import_source, import_batch_id]
       properties:
         id: { $ref: "#/components/schemas/Uuid" }
         started_at: { $ref: "#/components/schemas/Millis" }
@@ -1585,6 +1585,13 @@ components:
         health_connect_id:
           type: [string, "null"]
           description: The id of the exercise session the phone wrote to Health Connect for this workout; null when none was. While set, no device writes it again.
+        import_source:
+          type: [string, "null"]
+          pattern: "^[a-z0-9_]{1,40}$"
+          description: The app the workout was imported from (`jefit`); null for a workout logged in Tung. An imported workout is history and never a new record. Arrives by sync only.
+        import_batch_id:
+          oneOf: [{ $ref: "#/components/schemas/Uuid" }, { type: "null" }]
+          description: The import run that wrote the workout, so one import can be undone on the phone. Arrives by sync only.
 
     WorkoutPage:
       type: object
@@ -1964,6 +1971,13 @@ components:
           type: [string, "null"]
           maxLength: 200
           description: The Health Connect session written for the workout, so no device writes it twice. A row with null keeps the stored value.
+        import_source:
+          type: [string, "null"]
+          pattern: "^[a-z0-9_]{1,40}$"
+          description: The app the workout was imported from (`jefit`), set once by the importing phone. A row with null keeps the stored value.
+        import_batch_id:
+          oneOf: [{ $ref: "#/components/schemas/Uuid" }, { type: "null" }]
+          description: The import run that wrote the workout, set once with `import_source`. A row with null keeps the stored value.
 
     SyncWorkoutExercise:
       type: object

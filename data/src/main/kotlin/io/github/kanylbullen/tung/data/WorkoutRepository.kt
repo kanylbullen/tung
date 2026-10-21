@@ -289,6 +289,19 @@ class WorkoutRepository(
     /** Deletes the workout with its exercises and sets, with a tombstone for each. */
     suspend fun deleteWorkout(workoutId: String) = db.withTransaction { deleteWorkoutAt(workoutId, clock()) }
 
+    /**
+     * Deletes every workout one import wrote ([Workout.importBatchId]) through
+     * the ordinary delete, tombstones included, in one transaction. Workouts
+     * logged in Tung, and other imports, are untouched.
+     * @return how many workouts were deleted.
+     */
+    suspend fun deleteImportBatch(batchId: String): Int = db.withTransaction {
+        val now = clock()
+        val ids = dao.importBatchWorkoutIds(batchId)
+        ids.forEach { deleteWorkoutAt(it, now) }
+        ids.size
+    }
+
     private suspend fun deleteWorkoutAt(workoutId: String, now: Long) {
         dao.getWorkout(workoutId) ?: return
         db.recordDeletes(SyncTable.SETS, dao.setIdsOfWorkout(workoutId), now)

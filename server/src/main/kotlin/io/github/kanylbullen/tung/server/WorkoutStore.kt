@@ -82,6 +82,8 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
                 onUpdateExclude = listOfNotNull(
                     Workouts.startedBy.takeIf { input.startedBy == null },
                     Workouts.avgHeartRate, Workouts.maxHeartRate, Workouts.activeCalories, Workouts.healthConnectId,
+                    // The import columns (V11) are set once by the importing phone and arrive by sync.
+                    Workouts.importSource, Workouts.importBatchId,
                 ),
                 where = { Workouts.updatedAt less workoutUpdatedAt },
             ) {
@@ -386,6 +388,8 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
                 maxHeartRate = it[Workouts.maxHeartRate],
                 activeCalories = it[Workouts.activeCalories],
                 healthConnectId = it[Workouts.healthConnectId],
+                importSource = it[Workouts.importSource],
+                importBatchId = it[Workouts.importBatchId],
             )
         }
     }

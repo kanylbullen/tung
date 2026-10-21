@@ -29,13 +29,23 @@ fun localWeight(kg: Double): String =
 /** Whole kilos with locale grouping: 12 450. */
 fun localVolume(kg: Double): String = NumberFormat.getIntegerInstance().format(kg.roundToLong())
 
-/** "Monday 19 October" ("Måndag 19 oktober" in Swedish) — first letter capitalised, the rest as the locale writes it. */
+/**
+ * "Monday 19 October" ("Måndag 19 oktober" in Swedish) — first letter
+ * capitalised, the rest as the locale writes it — with the year added when it
+ * is not this year ("Monday 6 March 2023"), which imported history often is.
+ */
 fun localDate(epochMillis: Long): String {
     val locale = Locale.getDefault()
-    val text = DateTimeFormatter.ofPattern("EEEE d MMMM", locale)
-        .format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
+    val zone = ZoneId.systemDefault()
+    val date = Instant.ofEpochMilli(epochMillis).atZone(zone)
+    val pattern = if (date.year == java.time.ZonedDateTime.now(zone).year) "EEEE d MMMM" else "EEEE d MMMM yyyy"
+    val text = DateTimeFormatter.ofPattern(pattern, locale).format(date)
     return text.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
 }
+
+/** "6 March 2023": a date with its year, for ranges such as an import's. */
+fun localDateWithYear(epochMillis: Long): String =
+    DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.getDefault()).format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
 
 @Composable
 fun durationText(millis: Long): String {

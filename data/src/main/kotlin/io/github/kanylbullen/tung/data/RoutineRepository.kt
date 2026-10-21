@@ -70,18 +70,27 @@ class RoutineRepository(
      * [exercises] in order, each an exercise id with its target sets (kept
      * within the allowed range) and target reps. The exercise rows must exist.
      *
+     * [routineId] and [routineExerciseIds] (one per exercise) are new ids
+     * unless the caller has its own: an import passes its deterministic ids.
+     *
      * @return the new routine's id.
      */
-    suspend fun createFromPlan(name: String, exercises: List<Triple<String, Int, Int?>>): String = db.withTransaction {
+    suspend fun createFromPlan(
+        name: String,
+        exercises: List<Triple<String, Int, Int?>>,
+        routineId: String = newId(),
+        routineExerciseIds: List<String> = List(exercises.size) { newId() },
+    ): String = db.withTransaction {
         val trimmed = name.trim()
         require(trimmed.isNotEmpty()) { "a routine needs a name" }
+        require(routineExerciseIds.size == exercises.size) { "one id per routine exercise" }
         val now = clock()
-        val routine = Routine(id = newId(), name = trimmed, updatedAt = now, lastUsedAt = null)
+        val routine = Routine(id = routineId, name = trimmed, updatedAt = now, lastUsedAt = null)
         dao.insertRoutine(routine)
         exercises.forEachIndexed { position, (exerciseId, targetSets, targetReps) ->
             dao.insertRoutineExercise(
                 RoutineExercise(
-                    id = newId(),
+                    id = routineExerciseIds[position],
                     routineId = routine.id,
                     exerciseId = exerciseId,
                     position = position,

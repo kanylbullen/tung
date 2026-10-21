@@ -60,6 +60,7 @@ class McpReads(
                         workout.avgHeartRate?.let { put("avg_heart_rate", it) }
                         workout.maxHeartRate?.let { put("max_heart_rate", it) }
                         workout.activeCalories?.let { put("active_calories", it) }
+                        workout.importSource?.let { put("import_source", it) }
                         workout.note?.let { put("note", it) }
                         putJsonArray("exercises") {
                             workout.exercises.forEach { exercise ->

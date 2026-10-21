@@ -22,6 +22,8 @@ private const val MAX_WEEKDAY_MASK = 0b111_1111
 /** A Health Connect record id is a UUID; this leaves room for any other provider's ids. */
 private const val MAX_HEALTH_CONNECT_ID = 200
 private const val MAX_LISTED_PROBLEMS = 50
+/** An import adapter's key (core's `ImportBundle.source`): `jefit`, later `strong`, `hevy`. */
+private val IMPORT_SOURCE = Regex("[a-z0-9_]{1,40}")
 
 /**
  * Checks every pushed row before anything is written, with the same rules as
@@ -83,6 +85,8 @@ fun validateSync(cursor: Long, changes: SyncChanges, catalogueIds: Set<String>) 
         row.maxHeartRate?.let { if (it !in MIN_HEART_RATE..MAX_HEART_RATE) fail("max_heart_rate must be $MIN_HEART_RATE-$MAX_HEART_RATE or null") }
         row.activeCalories?.let { if (it !in 0..MAX_ACTIVE_CALORIES) fail("active_calories must be 0-$MAX_ACTIVE_CALORIES or null") }
         row.healthConnectId?.let { if (it.isBlank() || it.length > MAX_HEALTH_CONNECT_ID) fail("health_connect_id must be 1-$MAX_HEALTH_CONNECT_ID characters or null") }
+        row.importSource?.let { if (!IMPORT_SOURCE.matches(it)) fail("import_source must be 1-40 lower-case letters, digits or _ or null") }
+        uuidOrNull(row.importBatchId, "import_batch_id")
     }
 
     table("workout_exercises", changes.workoutExercises, { it.id }, { it.updatedAt }, { it.deletedAt }) { row ->
