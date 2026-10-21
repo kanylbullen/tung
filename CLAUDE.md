@@ -101,7 +101,7 @@ databases. The packages are the ones the files had in `app/`:
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
-| `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set). See "Ongoing workout and push". |
+| `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set and Add set). See "Ongoing workout and push". |
 | `push/` | Push: `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`. See "Ongoing workout and push". |
 | `importing/` | Import from other apps: `Importer` (the one bulk write), `ImportService` (`container.imports`), `ImportHistory`. See "Import". |
 | `ui/common/` | `ExerciseNames` and `Exercise.displayName(context)`; the composable `exerciseDisplayName` stays in `app/`. |
@@ -123,7 +123,8 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 - **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`,
   `RoutineEditingCommandsTest` (`create_routine` and the routine-editing
   commands through `AppCommandHandler`), `AddExerciseCommandsTest`
-  (`add_exercise` set counts and pre-fill, `add_set` with a count), `ProgressSetsTest` (the progress reads), `ImporterTest` and `SyncMappingImportTest` (see "Import"), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
+  (`add_exercise` set counts and pre-fill, `add_set` with a count), `LogSetCommandsTest`
+  (`log_set` only ticks; `add_next` and routine targets), `ProgressSetsTest` (the progress reads), `ImporterTest` and `SyncMappingImportTest` (see "Import"), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
   application). `FakeSyncServer` and `MemoryTokenStore` are Kotlin test
   fixtures (`data/src/testFixtures`, `testImplementation(testFixtures(project(":data")))`
   in the apps), which needs `android.experimental.enableTestFixturesKotlinSupport`
@@ -244,7 +245,8 @@ as its number's state description). The rule, in order: an explicit selection
 while that set still exists and is un-ticked; else the first un-ticked set of
 the exercise the user last touched (ticked, edited, added a set to, or just
 added); else the first un-ticked set of the first exercise that has one; no
-current set, no button. The selection is made by hand: a tap on an exercise's
+current set, the button turns into **Add set · Bench press · 80 × 8** (below);
+an empty workout has no button. The selection is made by hand: a tap on an exercise's
 **header** selects its first un-ticked set ("Log sets of Bench press next"),
 a tap on the **number** of any other un-ticked set selects that set ("Make set
 2 the current set"); that is how the user switches exercises and runs
@@ -261,10 +263,9 @@ the UI state and the screen carries it out with the `LazyListState`, finding
 the index among the list's keys (`listKeys`), then calls `onScrollHandled`.
 `IntoView` scrolls only when the item is not wholly between the top bar and
 the button: just enough when it is partly visible, else to it with the row
-above in view. Requests: the new set after + Set, the new current set after
-Log set (the set it added, or the next exercise's), the new current set when a
-tick moves it to another exercise, and the new exercise's header to the top
-after Add exercise.
+above in view. Requests: the new set after + Set or Add set, the new current set after
+Log set, the new current set when a tick moves it to another exercise, and the
+new exercise's header to the top after Add exercise.
 
 **Adding an exercise** (issue #55) gives it as many sets as it had last
 session, pre-filled position by position (`add_exercise` without `sets`, see
@@ -285,14 +286,23 @@ sheet was confirmed). The sheet is keyed on its `EditTarget`, so the second
 sheet starts fresh. + Set is unchanged. A plan (`ApplyPlan`) that adds
 several exercises at once never opens it.
 Tapping the button executes `Command.LogSet(workoutId, setId)` with the set
-the screen shows as current, which calls `WorkoutRepository.logSet`, one transaction:
-tick the set and, **only if it was the last set of its exercise**, add the next
-set pre-filled by the usual rule (a copy of the set just logged). A workout
-started from a routine is not padded past the routine's `targetSets` for that
-exercise (`core.addsNextSet`, `WorkoutDao.routineTargetSets` reads the
-routine live), so its third Log set of three adds nothing and the current set
-moves on. With reps 0 it opens the reps sheet instead, like the tick. The tick
-on the row is the secondary way: it ticks only, and also starts the timer.
+the screen shows as current, which calls `WorkoutRepository.logSet`: **it ticks
+the set and nothing more** (issue #64; before, logging an exercise's last set
+silently added another). With reps 0 it opens the reps sheet instead, like the
+tick. The tick on the row is the secondary way: it ticks only, and also starts
+the timer. **Add set:** when no un-ticked set is left in the workout, the
+button is `core.stickyAction`'s `AddSet` and reads "Add set · Bench press ·
+80 × 8" for the exercise last touched (after a Log set, the one just logged;
+with nothing touched, the last exercise), showing its last set's numbers. A
+tap runs `AddSet` (a copy of that set, as + Set does), clears the selection
+and touches the exercise, so the new set is current and scrolled into view
+and the next tap is Log set again (`ActiveWorkoutViewModel.addSetFromButton`;
+the UI state's `sticky` is `StickyButton.LogSet` or `AddSet`). A routine
+workout is the same: after its last target set the button offers Add set,
+and Finish stays in the top bar. The old behaviour is still on the wire as
+`log_set.add_next` (`core.addsNextSet`, never past a routine's `targetSets`,
+`WorkoutDao.routineTargetSets` reads the routine live); no client in the
+repository uses it.
 
 **The timer state** is `core.RestTimer` (`endsAtMillis`, `durationMillis`,
 wall clock); what is left is always `remainingAt(now)`, never a counter. The
@@ -655,7 +665,15 @@ its signal to commands, never a new path into the database
   server), at least one; each pre-filled at its own position by
   `core.addedExerciseSets` (the rule of `routineStartSets`: last session's set
   at that position, past its end the set before, 0 × 0 with no history).
-  Nothing ticked. **`AddSet(workoutExerciseId, count)`**, wire `add_set` with
+  Nothing ticked. **`LogSet(workoutId, setId, addNext)`**, wire `log_set`
+  with an optional `set_id` (default: the current set by the default rule)
+  and an optional `add_next` (default false): it ticks the set and nothing
+  more. With `add_next = true` it also adds the next set after the
+  exercise's last (a copy of it, never past a routine's target sets,
+  `core.addsNextSet`) and returns it as `addedSetId`: the behaviour before
+  issue #64, kept for clients that want it. Every client in the repository
+  (button, tick, notification, watch, voice) sends the default; the sticky
+  button's Add set is a separate `AddSet`. **`AddSet(workoutExerciseId, count)`**, wire `add_set` with
   an optional `count` (1–20, default 1): that many sets, each a copy of the
   one before, in one transaction; `setId` is the first added set. Both
   handlers (`WorkoutRepository.addExercise`/`addSet`, `ServerCommandHandler`)
@@ -833,6 +851,19 @@ change (`wear/.../Optimistic.kt`) until the phone's next state replaces it.
 Standalone mode applies no optimistic change: the command runs locally and
 the next state shows what it did.
 
+**Log set and Add set on the watch** (issue #64, both modes): Log set only
+ticks (`log_set` without `add_next`). With every set ticked the state carries
+`WatchWorkoutState.addSetWorkoutExerciseId` (`WatchStateSource`: the watch's
+touched exercise, which after a Log set is the one logged, else the exercise
+whose sets changed last, by `core.stickyAction`), and that exercise's page
+shows "Add set" under "All sets logged" (`logButton`, `WatchLogButton`; the
+pager turns to it). A tap sends `WatchCommand.AddSet(workoutExerciseId)`:
+`AddSet` on the phone (`WearCommandHandler`) or the watch (`LocalWatchCommands`),
+and the new set becomes the selection. Both are additive: an older watch
+ignores the field, an older phone leaves it out (no button, as before) and
+drops the unknown `add_set` message as one that does not parse. Optimistic:
+logging the last open set offers Add set at once; Add set waits for the state.
+
 **Phone side** (`app/.../wear/`): `WearSyncService` (a `WearableListenerService`,
 started by the system on a message) hands the JSON to `WearCommandHandler`,
 which applies it through `WorkoutRepository`/`RoutineRepository` and
@@ -872,7 +903,9 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   3 of 5" for the current set by the default rule of `core.currentSet`
   (no selection: the notification cannot see the screen's), counted against
   the routine's target sets (or the sets there are, if more), else "4 sets
-  logged"; elapsed time by `setUsesChronometer` + `setWhen(startedAt)`. The
+  logged", and with every set ticked "Bench press · all sets logged"
+  (`OngoingStatus.AllLogged`, for the exercise Add set goes to: the one whose
+  sets changed last, `lastTouchedByTime`, else the last); elapsed time by `setUsesChronometer` + `setWhen(startedAt)`. The
   phone's source is `ongoingWorkouts(...)` over the repositories, built as
   `container.ongoingWorkout` and started in `TungApp.onCreate`, so it shows
   whoever started the workout: this phone, a companion watch, or a sync that
@@ -883,9 +916,14 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   set** is a broadcast to `OngoingWorkoutReceiver` (in data's manifest) with
   the set the notification showed; it runs `Command.LogSet` through
   `container.commands`, no UI, and does nothing if that set is no longer
-  open, so a stale notification cannot tick the wrong set. A current set with
+  open, so a stale notification cannot tick the wrong set. Like every
+  `log_set` it adds no set. A current set with
   0 reps makes Log set open the workout instead (like the tick opening the
-  reps sheet); it starts no rest timer. **Finish** opens
+  reps sheet); it starts no rest timer. **Add set** replaces Log set when
+  every set is ticked (`OngoingWorkout.addSetWorkoutExerciseId`): a broadcast
+  (`ACTION_ADD_SET`, the workout exercise) that runs `Command.AddSet` and is
+  ignored when stale (the workout is over, the exercise is gone, or a set is
+  open again). **Finish** opens
   `TungHost.finishWorkoutIntent`: on the phone `MainActivity` with
   `EXTRA_FINISH_WORKOUT`, and `TungAppRoot` hands the workout screen a
   one-shot request that opens its finish dialog; it never finishes silently.
@@ -902,7 +940,8 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   the watch's own database standalone through the shared `LocalWatchBackend`,
   the phone's DataItem in companion mode while the process lives) and
   attaches an androidx.wear `OngoingActivity` in `decorate`. No actions there.
-  `WatchExercise.targetSets` and `WatchWorkoutState.startedBy` carry what it needs.
+  `WatchExercise.targetSets`, `WatchWorkoutState.startedBy` and
+  `addSetWorkoutExerciseId` (for "all sets logged") carry what it needs.
 - **Push transports** (`data/.../push/`). The server only ever sends an empty
   "sync now"; receiving one on either transport calls
   `SyncAccount.requestSync()`. `core.selectPushTransport` (pure) picks: FCM
@@ -1215,8 +1254,10 @@ fallback, and only on a tap.
   what an intent does on the current set from the UI state; the screen runs it
   through the ViewModel's own functions, so every write is the usual command:
   values are `SetWeight`/`SetReps` (an adjustment added and clamped to
-  0–999), `Done` is exactly the Log set button (`LogSet`, rest timer, or the
-  reps sheet when the set has none), `SameAgain` copies the set before it in
+  0–999), `Done` is exactly the Log set button (`LogSet`, which adds no set,
+  rest timer, or the reps sheet when the set has none; with no set left to log
+  it adds nothing either and echoes "There is no set to log", while the
+  button offers Add set), `SameAgain` copies the set before it in
   the same exercise and logs (with none before it, nothing: last session is
   not guessed), `Next` selects the set a tick would move to without logging,
   `AddSet` is `AddSet`, `Rest` starts the rest timer, `Finish` opens the finish
@@ -1376,8 +1417,8 @@ fallback, and only on a tap.
   with `lockUser`, names resolved by core over `ServerExerciseResolver`
   (catalogue rows shadowed by the user's own, `core.json`'s names in every
   language, the extended catalogue from `/catalog/extended.json`), and the
-  app's rules (one workout in progress, log set adds a set only after the
-  last and not past a routine's target, finish/delete via `WorkoutStore`'s
+  app's rules (one workout in progress, log set only ticks, and with
+  `add_next` adds a set only after the last and not past a routine's target, finish/delete via `WorkoutStore`'s
   `finishIn`/`deleteIn`, pre-fill from `lastSessionIn`, i.e. `/last`'s query).
   Its own changes stamp `GREATEST(now, updated_at + 1)`; deletes are
   tombstones. Unlike the app it answers `Rejected` for ids that do not exist,
