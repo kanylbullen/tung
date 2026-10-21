@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.flows
 
 import io.github.kanylbullen.tung.TungApp
+import io.github.kanylbullen.tung.auth.GoogleSignIn
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.health.FakeHealthConnect
@@ -17,7 +18,7 @@ import java.time.ZoneId
  * lives in memory, seeded with the same catalogue, that Home's "today"
  * comes from [today], and that the sync token is kept in [tokens] instead of
  * EncryptedSharedPreferences (the assistant's API key likewise, in [aiKeys]), that its push transports are [push], that
- * Health Connect is [healthConnect], and that the microphone hears [speech]. Robolectric creates a new application per test, so every
+ * Health Connect is [healthConnect], that the microphone hears [speech], and that Google sign-in is [google]. Robolectric creates a new application per test, so every
  * test starts with an empty history.
  */
 class FlowTestApp : TungApp() {
@@ -43,6 +44,11 @@ class FlowTestApp : TungApp() {
     val speech = FakeSpeechInput()
 
     override fun createSpeechInput(): SpeechInput = speech
+
+    /** What "Sign in with Google" gets from Google: a token the fake server accepts, unless a test says otherwise. */
+    val google = FakeGoogleSignIn()
+
+    override fun createGoogleSignIn(): GoogleSignIn = google
 
     /** Health Connect: available, nothing granted, nothing to read, until a test says otherwise. */
     val healthConnect = FakeHealthConnect()
