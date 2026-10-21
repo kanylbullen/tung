@@ -592,6 +592,15 @@
     <string name="import_chosen_create">New exercise “%1$s”</string>
     <string name="import_chosen_skip">Skipped</string>
     <string name="import_suggestion">%1$s?</string>
+    <string name="import_decided_count">%1$d of %2$d decided</string>
+    <string name="import_decided_use">✓ %1$s</string>
+    <string name="import_decided_create">✓ Create “%1$s”</string>
+    <string name="import_decided_skip">✓ Skipped</string>
+    <string name="import_decided_use_description">%1$s: imported as %2$s</string>
+    <string name="import_decided_create_description">%1$s: imported as a new exercise</string>
+    <string name="import_decided_skip_description">%1$s: skipped</string>
+    <string name="import_change">Change</string>
+    <string name="import_change_description">Change %1$s</string>
     <plurals name="import_used_in_workouts">
         <item quantity="one">In %d workout</item>
         <item quantity="other">In %d workouts</item>

@@ -18,6 +18,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -26,12 +27,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.ai.AiConfidence
@@ -59,8 +63,9 @@ import io.github.kanylbullen.tung.ui.theme.Tung
  * source's name, or skip. Each name says how much of the export uses it, and
  * offers up to two offline suggestions as chips; with a provider set up,
  * "Suggest with the assistant" asks once and puts a proposal on each row.
- * Every suggestion waits for a tap. Import is enabled once each name is
- * decided; the summary offers "Undo import".
+ * Every suggestion waits for a tap. A decided row collapses to its decision
+ * and "Change" (issue #77), and "8 of 11 decided" counts them. Import is
+ * enabled once each name is decided; the summary offers "Undo import".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,10 +119,18 @@ fun ImportScreen(vm: ImportViewModel, onBack: () -> Unit, onPick: () -> Unit, on
                                 onSkipAll = { vm.decideRemaining(ImportChoice.Skip) },
                             )
                         }
+                        item(key = "review-count") {
+                            Muted(stringResource(R.string.import_decided_count, state.decidedCount, preview.unmatched.size))
+                        }
                         items(preview.unmatched, key = { "review-$it" }) { name ->
+                            val choice = state.choices[name]
+                            if (choice != null && state.collapsed(name)) {
+                                DecidedRow(name = name, choice = choice, usage = preview.usage[name], onChange = { vm.reopen(name) })
+                                return@items
+                            }
                             ReviewRow(
                                 name = name,
-                                choice = state.choices[name],
+                                choice = choice,
                                 usage = preview.usage[name],
                                 suggestions = preview.suggestions[name].orEmpty().take(2),
                                 proposal = state.assist.matches[name],
@@ -227,6 +240,60 @@ private fun counts(workouts: Int, sets: Int, routines: Int): String = listOf(
     pluralStringResource(R.plurals.import_routines, routines, routines),
 ).joinToString(stringResource(R.string.row_separator))
 
+/** "In 12 workouts" or "Only in routines" under a review name. */
+@Composable
+private fun UsageLine(usage: NameUsage?) {
+    usage?.let {
+        Muted(
+            if (it.workouts > 0) {
+                pluralStringResource(R.plurals.import_used_in_workouts, it.workouts, it.workouts)
+            } else {
+                stringResource(R.string.import_only_in_routines)
+            },
+        )
+    }
+}
+
+/**
+ * A decided row (issue #77): the name, its usage and the decision in accent
+ * text with a check, read as one node ("Machine Seated Row: imported as
+ * Leverage Iso Row"), and a quiet "Change" that opens the row's options
+ * again. No filled button here: nothing on a decided row asks for a tap.
+ */
+@Composable
+private fun DecidedRow(name: String, choice: ImportChoice, usage: NameUsage?, onChange: () -> Unit) {
+    val (line, description) = when (choice) {
+        is ImportChoice.Use -> {
+            val exercise = exerciseDisplayName(choice.exercise.nameKey, choice.exercise.displayName)
+            stringResource(R.string.import_decided_use, exercise) to stringResource(R.string.import_decided_use_description, name, exercise)
+        }
+        ImportChoice.CreateCustom ->
+            stringResource(R.string.import_decided_create, name) to stringResource(R.string.import_decided_create_description, name)
+        ImportChoice.Skip ->
+            stringResource(R.string.import_decided_skip) to stringResource(R.string.import_decided_skip_description, name)
+    }
+    val changeDescription = stringResource(R.string.import_change_description, name)
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = Tung.colors.text)
+        UsageLine(usage)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                line,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Tung.colors.accentText,
+                modifier = Modifier.weight(1f).clearAndSetSemantics { contentDescription = description },
+            )
+            TextButton(
+                onClick = onChange,
+                // The description names the row: a list of "Change" buttons is no help to a screen reader.
+                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = changeDescription },
+            ) {
+                Text(stringResource(R.string.import_change), color = Tung.colors.text)
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ReviewRow(
@@ -242,15 +309,7 @@ private fun ReviewRow(
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = Tung.colors.text)
-        usage?.let {
-            Muted(
-                if (it.workouts > 0) {
-                    pluralStringResource(R.plurals.import_used_in_workouts, it.workouts, it.workouts)
-                } else {
-                    stringResource(R.string.import_only_in_routines)
-                },
-            )
-        }
+        UsageLine(usage)
         Muted(
             when (choice) {
                 null -> stringResource(R.string.import_chosen_none)
