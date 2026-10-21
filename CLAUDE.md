@@ -70,7 +70,10 @@ current set (`RestTimer.kt`, `LogSet.kt`), and the catalogue models
 with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
 `ExtendedCatalog`/`ExtendedExercise` for `extended.json`, including the
 extended-catalogue search), the command surface (`core/command/`, see
-"Commands"), the picker's suggestions (`core/picker/`, see "Smart picker"), and the sync protocol with its pure rules (`core/sync/`, see
+"Commands"), the picker's suggestions (`core/picker/`, see "Smart picker"),
+the Exercises tab's browse list and the catalogue by id (`core/catalog/`),
+the muscle map's shapes (`core/muscles/BodyMap.kt`) and an exercise's history
+(`ExerciseHistory.kt`; see "Exercises tab and exercise page"), and the sync protocol with its pure rules (`core/sync/`, see
 "Sync"). Core gets the catalogue as a `String` or an
 `InputStream`; where the bytes come from (APK assets, a file) is the caller's
 business. Room entities live in `data/` and map to core's shapes
@@ -92,7 +95,7 @@ databases. The packages are the ones the files had in `app/`:
 
 | Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
@@ -126,7 +129,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -356,17 +359,20 @@ the app gets it from `container.catalogueMuscles.index()`, the server would
 build it from its classpath copies. free-exercise-db has one `shoulders`, so
 the import maps every one to `side_delts` (`catalog/README.md`); front and
 rear delts come only from `core.json`. Table and rules: `catalog/README.md`,
-"Muscles".
+"Muscles". The exercise page draws them on a body (the muscle map, see
+"Exercises tab and exercise page"); every muscle has a region there, so a
+new `Muscle` needs one in `core/muscles/BodyMap.kt` too (`BodyMapTest`).
 
 ### The extended catalogue
 
 `catalog/extended.json` (~600 exercises, English only, from free-exercise-db
 under the Unlicense, built by `catalog/tools/import_free_exercise_db.py`) is
 **not** in Room. `ExtendedCatalog` (in `core`, fed from assets by
-`ExtendedCatalog.fromAssets`) reads it once, lazily on IO,
-and only the exercise picker searches it: from two characters the matches are
-shown under the heading "More exercises", with the same `filterByDisplayName`.
-The Exercises tab never shows it. When such an exercise is picked,
+`ExtendedCatalog.fromAssets`) reads it once, lazily on IO. The exercise
+picker searches it from two characters and shows the matches under the
+heading "More exercises", with the same `filterByDisplayName`; the Exercises
+tab lists all of it among the user's exercises, by muscle group (see
+"Exercises tab and exercise page"). When such an exercise is picked,
 `ExerciseRepository.getOrCreateExtended` does a get-or-create (insert with
 `OnConflictStrategy.IGNORE`) with the deterministic id
 `extendedExerciseId(fedId)` = `catalogExerciseId("ext:" + fedId)`,
@@ -374,6 +380,14 @@ The Exercises tab never shows it. When such an exercise is picked,
 exercise thus gets the same row on every device, and after that it is an
 ordinary exercise (it shows in the tab and among the core matches, and
 disappears from "More exercises").
+
+**Instructions.** Extended entries carry free-exercise-db's `instructions`.
+The core entries that have a twin there (64 of 70; the import drops the twin
+from `extended.json`) get the twin's steps in `core.json` as
+`"instructions": {"en": [...]}`, written by the same import script;
+`CoreExercise.instructionsIn(language)` falls back to English, since Swedish
+steps do not exist yet. Like the muscles they are catalogue data only: no
+Room column, nothing synced, and `gen_android.py` ignores them.
 
 A set counts (`core.isLogged`) when it is ticked **and** has reps > 0.
 "Finish workout" deletes everything else, then exercises without sets, and a
@@ -409,6 +423,62 @@ is the largest contribution; order is score, then name. **The learning is
 derived from history every time the picker opens and is never stored or
 synced**: no table, no column, nothing new in Private mode or on the server.
 The server has no `suggest_exercises` MCP tool yet.
+
+### Exercises tab and exercise page
+
+**The tab** (`ExercisesScreen` without a picker target) lists the whole
+catalogue: the user's exercises from Room (the core seed, custom ones and
+extended entries already picked) and every extended entry that has no row
+yet, by its English name. A row of chips under the search filters by
+`MuscleGroup` ("All", then each group that has exercises; tapping the chip
+that is on goes back to "All"); the search filters both, on the displayed
+name, as in the picker. The list is in sections by `MuscleGroup` order,
+sorted by name with the locale's collator, then by ref, so equal names keep
+their place. The merging, grouping, sorting and filtering are pure and live in
+core (`core/catalog/Browse.kt`: `browseItems`, `browseGroups`, `browse`); the
+ViewModel only feeds them, recomputing the rows when Room, the catalogue or
+the language changes and the sections per keystroke. About 680 rows: always a
+`LazyColumn` with stable keys (`b-<ref>`). A row opens the exercise page; the
+picker keeps its behaviour (Suggested, "More exercises", add on tap).
+
+**The exercise page** (`ui/exercises/ExerciseDetail*`, route
+`exercise/{ref}`). The ref is `core.catalog.ExercisePageRef`: a Room id, or
+`ext:<free-exercise-db id>` for an extended entry with no row (URL-encoded in
+the route). An extended entry picked since is found by its row
+(`extendedExerciseId`), whichever ref opened it. The page shows the name,
+equipment and group, the muscle map, two actions, the history when the
+exercise has a Room row, and the instructions (numbered, muted). What the
+catalogue says comes from core's `CatalogueIndex` (both files by exercise id)
+through `container.catalogueDetails`; nothing of it is in Room.
+
+- **Add to routine** opens a sheet of the user's routines, most recently used
+  first (none: a hint to save a workout as a routine), and a tap runs
+  `Command.AddRoutineExercise(routineId, ref)` with the defaults (3 sets, no
+  target reps), then a snackbar "Added to Push day".
+- **Add to workout** shows only while a workout is in progress and runs
+  `Command.AddExercise(workoutId, ref)`, then opens the workout.
+- An extended entry is named `ExerciseRef.Extended(id)` until it has a row,
+  so the handler's get-or-create makes it; after that the page shows its
+  (empty) history.
+- **History**: `WorkoutDao.observeExerciseHistory` reads every counted set in
+  finished workouts and core's `exerciseHistory` sums them: how many workouts,
+  the best set (`bestSet`, weight × reps) and last session's sets (the first
+  time the exercise appears in the latest workout, as `previousSessionSets`
+  picks it).
+
+**The muscle map** (`MuscleMap(primary, secondary)` in `ui/exercises/`)
+draws a front and a back body with Compose `Path`s: primary muscles in
+`Tung.colors.accent`, secondary in the accent at 40 %, the rest a muted
+surface tone, and one legend line "Primary / Secondary"; a screen reader gets
+one node that names the muscles. The shapes are data in core
+(`core/muscles/BodyMap.kt`): two outlines and, per `Muscle` and side,
+normalised polygons hand-authored on a 100 × 200 grid (bilateral ones on the
+left half and mirrored), simple and recognisable rather than anatomical. Some
+muscles are on one side only (chest and abs on the front, glutes and lats on
+the back). `BodyMapTest` checks that each of the 21 muscles has a region,
+that every point is in 0..1 and inside its outline, and that the map is
+symmetric. It is drawn at 160 dp high. No photos: free-exercise-db's images
+have no documented origin.
 
 ## Commands
 

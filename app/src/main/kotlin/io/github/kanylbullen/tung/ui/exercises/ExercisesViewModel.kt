@@ -7,6 +7,13 @@ import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.MuscleIndex
+import io.github.kanylbullen.tung.core.catalog.BrowseItem
+import io.github.kanylbullen.tung.core.catalog.BrowseSection
+import io.github.kanylbullen.tung.core.catalog.LibraryExercise
+import io.github.kanylbullen.tung.core.catalog.browse
+import io.github.kanylbullen.tung.core.catalog.browseGroups
+import io.github.kanylbullen.tung.core.catalog.browseItems
+import io.github.kanylbullen.tung.core.catalog.browseNameOrder
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds
@@ -43,7 +50,7 @@ import java.util.Locale
 /**
  * What the picker adds to: the workout in progress ([Workout], `add_exercise`)
  * or a saved routine ([Routine], `add_routine_exercise`). Null is the
- * Exercises tab, which only lists.
+ * Exercises tab, which lists the catalogue and opens the exercise page.
  */
 sealed interface PickerTarget {
     data class Workout(val workoutId: String) : PickerTarget
@@ -73,13 +80,19 @@ data class ExercisesUiState(
     val more: List<ExtendedExercise> = emptyList(),
     /** Picker only, with an empty search and a workout that has exercises: the "Suggested" section. */
     val suggested: List<SuggestedExercise> = emptyList(),
+    /** Tab only: the whole catalogue (core `browse`), in muscle-group sections, filtered by [selectedGroup] and the search. */
+    val browse: List<BrowseSection> = emptyList(),
+    /** Tab only: the group chips after "All", the groups that have exercises. */
+    val chips: List<MuscleGroup> = emptyList(),
+    /** Tab only: the chip that is on; null is "All". */
+    val selectedGroup: MuscleGroup? = null,
 ) {
-    val isEmpty: Boolean get() = groups.isEmpty() && more.isEmpty()
+    val isEmpty: Boolean get() = groups.isEmpty() && more.isEmpty() && browse.isEmpty()
 }
 
 /**
  * Backs both the Exercises tab and the picker. With a [target] a tap adds the
- * exercise to that workout or routine; without one the list is just a catalogue.
+ * exercise to that workout or routine; without one a tap opens its page.
  *
  * [displayName] gives the name shown on screen (see `ui/common/ExerciseNames.kt`);
  * search and sort both work on it, so "bench" finds Bench press on an English
@@ -87,7 +100,13 @@ data class ExercisesUiState(
  *
  * In the picker, a query of [ExtendedCatalog.MIN_QUERY_LENGTH] characters or
  * more also searches the extended catalogue ([ExercisesUiState.more], English
- * names). The tab never shows it.
+ * names).
+ *
+ * The tab lists the whole catalogue instead ([ExercisesUiState.browse]): the
+ * user's exercises and every extended entry not picked yet, read when the tab
+ * opens, in muscle-group sections with a chip per group. The grouping,
+ * sorting and filtering are core's (`core.catalog.browse`); a row opens the
+ * exercise page rather than adding anything.
  *
  * In the picker for a workout, while the search is empty and the workout already has
  * exercises, [ExercisesUiState.suggested] holds up to six suggestions from
@@ -107,6 +126,9 @@ class ExercisesViewModel(
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
+
+    /** Tab only: the group chip that is on; null is "All". */
+    private val group = MutableStateFlow<MuscleGroup?>(null)
 
     /** The view model outlives a language change; the screen reports the current locale so names are redone. */
     private val locale = MutableStateFlow(Locale.getDefault())
@@ -182,11 +204,45 @@ class ExercisesViewModel(
             )
         }
 
+    /** Tab only: the whole extended catalogue, read when the tab opens; empty until then and if it cannot be read. */
+    private val tabCatalogue: Flow<List<ExtendedExercise>> =
+        flow { emit(extendedCatalog.all()) }
+            .catch { emit(emptyList()) }
+            .onStart { emit(emptyList()) }
+
+    /** Tab only: every row, named in the current language; recomputed when Room, the catalogue or the language changes, not per keystroke. */
+    private val browseRows: Flow<List<BrowseItem>> =
+        combine(exercises.observeExercises(), tabCatalogue, locale) { all, ext, _ ->
+            browseItems(
+                all.map { LibraryExercise(it.id, displayName(it), it.muscleGroup, it.equipment, it.isCustom) },
+                ext,
+            )
+        }
+
+    private val browseState: Flow<ExercisesUiState> =
+        combine(browseRows, _query, group, locale) { items, q, g, loc ->
+            ExercisesUiState(
+                loading = false,
+                browse = browse(items, g, q, browseNameOrder(loc)),
+                chips = browseGroups(items),
+                selectedGroup = g,
+            )
+        }
+
     val state: StateFlow<ExercisesUiState> =
-        combine(lists, suggestions, _query) { lists, suggested, q ->
-            // Typing hides the section: search filters everything, as without suggestions.
-            if (q.isBlank()) lists.copy(suggested = suggested) else lists
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExercisesUiState())
+        if (target == null) {
+            browseState.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExercisesUiState())
+        } else {
+            combine(lists, suggestions, _query) { lists, suggested, q ->
+                // Typing hides the section: search filters everything, as without suggestions.
+                if (q.isBlank()) lists.copy(suggested = suggested) else lists
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExercisesUiState())
+        }
+
+    /** Tab only: turns a group chip on; [value] null, or the chip that is already on, is "All". */
+    fun setGroup(value: MuscleGroup?) {
+        group.value = if (value == group.value) null else value
+    }
 
     fun setQuery(value: String) {
         _query.value = value

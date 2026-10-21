@@ -4,7 +4,10 @@
 Source: https://github.com/yuhonas/free-exercise-db (Unlicense). Only the
 strength-type categories are kept, mapped to Tung's muscle groups, muscles and
 equipment. Exercises that duplicate the core catalogue (catalog/core.json)
-are dropped. Images are not imported: their origin is undocumented.
+are dropped from extended.json, and their instructions are written into
+core.json as `instructions.en` of the core entry they duplicate (one line per
+entry, sorted by key, as the file is kept). Images are not imported: their
+origin is undocumented.
 
   python3 -I catalog/tools/import_free_exercise_db.py               # download and write
   python3 -I catalog/tools/import_free_exercise_db.py --input x.json  # use a local copy
@@ -146,6 +149,37 @@ def normalize(name):
     return " ".join(name.lower().replace("-", " ").split())
 
 
+def core_instructions(dropped, strength):
+    """Core key -> the English instructions of its free-exercise-db twin.
+
+    A core key with more than one twin takes the one found by name before an
+    alias, then the first by id, so the result does not depend on the source's
+    order. A twin without instructions gives none.
+    """
+    by_id = {x["id"]: x for x in strength}
+    chosen = {}
+    for fed_id, key, by_name in sorted(dropped, key=lambda d: (d[1], not d[2], d[0])):
+        if key in chosen:
+            continue
+        steps = [s.strip() for s in (by_id[fed_id].get("instructions") or []) if s.strip()]
+        if steps:
+            chosen[key] = steps
+    return chosen
+
+
+def write_core(core, instructions):
+    """core.json with `instructions.en` from [instructions]; other fields as they were, the key order kept."""
+    out = []
+    for e in sorted(core, key=lambda e: e["key"]):
+        e = {k: v for k, v in e.items() if k != "instructions"}
+        steps = instructions.get(e["key"])
+        if steps:
+            e["instructions"] = {"en": steps}
+        out.append(e)
+    text = "[\n" + ",\n".join("  " + json.dumps(e, ensure_ascii=False) for e in out) + "\n]\n"
+    CORE.write_bytes(text.encode("utf-8"))
+
+
 def load_source(path):
     if path:
         return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -173,9 +207,10 @@ def main():
     for x in strength:
         fed_id = x["id"]
         name = " ".join(x["name"].split())
-        duplicate_of = core_names.get(normalize(name)) or ALIASES.get(fed_id)
+        by_name = core_names.get(normalize(name))
+        duplicate_of = by_name or ALIASES.get(fed_id)
         if duplicate_of:
-            dropped.append((fed_id, duplicate_of))
+            dropped.append((fed_id, duplicate_of, by_name is not None))
             continue
         primary = x.get("primaryMuscles") or []
         primary_muscles = map_muscles(primary, fed_id)
@@ -200,12 +235,18 @@ def main():
         print(f"warning: alias {fed_id} is not in the source's strength categories", file=sys.stderr)
 
     OUTPUT.write_bytes((json.dumps(entries, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+    instructions = core_instructions(dropped, strength)
+    write_core(core, instructions)
 
     print(f"source: {len(source)} exercises, {len(strength)} in {sorted(CATEGORIES)}")
     print(f"dropped as duplicates of core: {len(dropped)}")
-    for fed_id, key in sorted(dropped):
+    for fed_id, key, _ in sorted(dropped):
         print(f"  {fed_id} -> {key}")
     print(f"wrote {OUTPUT.relative_to(ROOT)}: {len(entries)} exercises")
+    without = sorted(core_keys - set(instructions))
+    print(f"wrote {CORE.relative_to(ROOT)}: instructions for {len(instructions)} of {len(core_keys)} core exercises")
+    if without:
+        print("  without a twin: " + ", ".join(without))
     for field in ("muscleGroup", "equipment"):
         counts = collections.Counter(e[field] for e in entries)
         print(f"by {field}: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))))
