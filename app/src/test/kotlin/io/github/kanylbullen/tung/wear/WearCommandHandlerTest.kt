@@ -78,7 +78,7 @@ class WearCommandHandlerTest {
     /** A workout with bench press, its first set at 80 × 8. */
     private suspend fun benchWorkout(): Pair<String, SetEntry> {
         val workoutId = workouts.startOrResumeWorkout()
-        workouts.addExercise(workoutId, catalogExerciseId("bench_press"))
+        workouts.addExercise(workoutId, catalogExerciseId("bench_press"), sets = 1)
         val set = sets(workoutId).single()
         workouts.updateWeight(set.id, 80.0)
         workouts.updateReps(set.id, 8)

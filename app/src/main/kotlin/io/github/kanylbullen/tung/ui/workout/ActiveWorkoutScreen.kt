@@ -57,6 +57,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -120,7 +122,12 @@ import kotlinx.coroutines.flow.map
 
 private enum class Field { WEIGHT, REPS }
 
-private data class EditTarget(val setId: String, val field: Field)
+/**
+ * The sheet open for a set's weight or reps. [firstTime]: the exercise was just
+ * added with no history, so the weight sheet's Done opens the reps sheet, and
+ * that one asks how many sets as well.
+ */
+private data class EditTarget(val setId: String, val field: Field, val firstTime: Boolean = false)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -292,6 +299,15 @@ fun ActiveWorkoutScreen(
         vm.onScrollHandled(scrollRequest)
     }
 
+    // An exercise was just added with no history: its weight sheet opens at once, once its set is on screen.
+    val firstTime = state.firstTimeRequest
+    val firstTimeReady = firstTime != null && state.findSet(firstTime.setId) != null
+    LaunchedEffect(firstTime, firstTimeReady) {
+        if (firstTime == null || !firstTimeReady) return@LaunchedEffect
+        editing = EditTarget(firstTime.setId, Field.WEIGHT, firstTime = true)
+        vm.onFirstTimeHandled(firstTime)
+    }
+
     Scaffold(
         containerColor = Tung.colors.background,
         topBar = {
@@ -417,27 +433,47 @@ fun ActiveWorkoutScreen(
         if (exercise == null || set == null) {
             LaunchedEffect(target) { editing = null }
         } else {
-            NumberInputSheet(
-                spec = when (target.field) {
-                    Field.WEIGHT -> weightSpec(localWeight(set.weightKg))
-                    Field.REPS -> repsSpec(set.reps.toString())
-                },
-                // Only offered when another un-ticked set would take the value.
-                showApplyToAll = exercise.sets.any { it.id != set.id && !it.completed },
-                onDismiss = { editing = null },
-                onConfirm = { text, applyToAll ->
-                    val weId = exercise.workoutExerciseId
-                    when (target.field) {
-                        Field.WEIGHT -> parseWeight(text)?.let {
-                            if (applyToAll) vm.setWeightForOpenSets(weId, set.id, it) else vm.setWeight(weId, set.id, it)
+            // Keyed on the target: the first-time flow goes straight from the weight sheet to the reps sheet.
+            key(target) {
+                var setCount by remember { mutableIntStateOf(FIRST_TIME_DEFAULT_SETS) }
+                NumberInputSheet(
+                    spec = when (target.field) {
+                        Field.WEIGHT -> weightSpec(localWeight(set.weightKg))
+                        Field.REPS -> repsSpec(set.reps.toString())
+                    },
+                    // Only offered when another un-ticked set would take the value.
+                    showApplyToAll = exercise.sets.any { it.id != set.id && !it.completed },
+                    onDismiss = { editing = null },
+                    onConfirm = { text, applyToAll ->
+                        val weId = exercise.workoutExerciseId
+                        editing = null
+                        when (target.field) {
+                            Field.WEIGHT -> parseWeight(text)?.let {
+                                when {
+                                    target.firstTime -> {
+                                        vm.setFirstTimeWeight(weId, set.id, it)
+                                        editing = EditTarget(set.id, Field.REPS, firstTime = true)
+                                    }
+                                    applyToAll -> vm.setWeightForOpenSets(weId, set.id, it)
+                                    else -> vm.setWeight(weId, set.id, it)
+                                }
+                            }
+                            Field.REPS -> parseReps(text)?.let {
+                                when {
+                                    target.firstTime -> vm.finishFirstTime(weId, set.id, it, setCount)
+                                    applyToAll -> vm.setRepsForOpenSets(weId, set.id, it)
+                                    else -> vm.setReps(weId, set.id, it)
+                                }
+                            }
                         }
-                        Field.REPS -> parseReps(text)?.let {
-                            if (applyToAll) vm.setRepsForOpenSets(weId, set.id, it) else vm.setReps(weId, set.id, it)
-                        }
-                    }
-                    editing = null
-                },
-            )
+                    },
+                    aboveDone = if (target.firstTime && target.field == Field.REPS) {
+                        { SetCountChips(selected = setCount, onSelect = { setCount = it }) }
+                    } else {
+                        null
+                    },
+                )
+            }
         }
     }
 

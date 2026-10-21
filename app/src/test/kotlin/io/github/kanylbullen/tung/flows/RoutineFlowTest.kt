@@ -179,7 +179,7 @@ class RoutineFlowTest : FlowTest() {
         var now = startedAt
         val repo = WorkoutRepository(db, clock = { now })
         val workoutId = repo.startOrResumeWorkout()
-        val workoutExerciseId = repo.addExercise(workoutId, exerciseId)
+        val workoutExerciseId = repo.addExercise(workoutId, exerciseId, sets = 1)
         repeat(sets.size - 1) { repo.addSet(workoutExerciseId) }
         setIds(workoutId).zip(sets).forEach { (id, set) ->
             repo.updateWeight(id, set.first)

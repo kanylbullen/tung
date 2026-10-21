@@ -48,7 +48,7 @@ class SuggestionsFlowTest : FlowTest() {
         val repo = WorkoutRepository(db, clock = { now })
         val workoutId = repo.startOrResumeWorkout()
         keys.forEach { key ->
-            val workoutExerciseId = repo.addExercise(workoutId, catalogExerciseId(key))
+            val workoutExerciseId = repo.addExercise(workoutId, catalogExerciseId(key), sets = 1)
             val setId = db.openHelper.readableDatabase
                 .query("SELECT id FROM set_entry WHERE workoutExerciseId = ?", arrayOf(workoutExerciseId))
                 .use { c -> c.moveToFirst(); c.getString(0) }

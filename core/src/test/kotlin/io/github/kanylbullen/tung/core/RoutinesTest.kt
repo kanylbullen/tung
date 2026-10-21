@@ -85,4 +85,18 @@ class RoutinesTest {
         assertEquals(3, daysAgo(at(16, 12), at(19, 9), zone))
         assertEquals(0, daysAgo(at(20, 9), at(19, 9), zone))
     }
+
+    @Test
+    fun anAddedExerciseGetsLastSessionsSetCountOrWhatIsAskedFor() {
+        val last = listOf(LoggedSet(80.0, 8), LoggedSet(85.0, 6), LoggedSet(85.0, 5))
+        assertEquals("as many as last session, each at its position", last, addedExerciseSets(requested = null, previousSession = last))
+        assertEquals(last.take(2), addedExerciseSets(requested = 2, previousSession = last))
+        assertEquals(
+            "past the end a set repeats the one before",
+            last + LoggedSet(85.0, 5),
+            addedExerciseSets(requested = 4, previousSession = last),
+        )
+        assertEquals("no history: one set of 0 × 0", listOf(LoggedSet(0.0, 0)), addedExerciseSets(requested = null, previousSession = emptyList()))
+        assertEquals(List(4) { LoggedSet(0.0, 0) }, addedExerciseSets(requested = 4, previousSession = emptyList()))
+    }
 }

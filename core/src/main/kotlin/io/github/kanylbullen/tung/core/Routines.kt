@@ -57,6 +57,17 @@ fun routineStartSets(targetSets: Int, targetReps: Int?, previousSession: List<Lo
 }
 
 /**
+ * The sets an exercise starts with when it is added to a workout
+ * (`add_exercise`): [requested] sets, or as many as [previousSession] had, at
+ * least one. Each is pre-filled like a routine's start sets
+ * ([routineStartSets], with no target reps): last session's set at the same
+ * position, past its end a copy of the set before, and 0 kg × 0 with no
+ * history at all.
+ */
+fun addedExerciseSets(requested: Int?, previousSession: List<LoggedSet>): List<LoggedSet> =
+    routineStartSets(requested ?: previousSession.size.coerceAtLeast(1), targetReps = null, previousSession = previousSession)
+
+/**
  * Whole calendar days from [thenMillis] to [nowMillis] in [zone]: 0 for earlier
  * today, 1 for yesterday, regardless of the hour. Never negative.
  */

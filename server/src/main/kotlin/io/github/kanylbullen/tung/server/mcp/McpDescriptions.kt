@@ -24,12 +24,14 @@ object McpDescriptions {
             "last session's weights (kg) and reps. Returns ids.workoutId. If a workout is already in progress, that one is returned and " +
             "nothing is created. program_day_id records which program day this is (from the programs tool).",
         "add_exercise" to
-            "Adds an exercise at the end of a workout, with one set pre-filled from last time. Returns ids.workoutExerciseId and " +
-            "ids.exerciseId. $REF",
+            "Adds an exercise at the end of a workout. With sets (1 to 20) it gets that many sets; without, as many as the exercise had " +
+            "last session (1 when it has no history). Each set is pre-filled from last session's set at the same position (past its end, " +
+            "a copy of the set before; 0 kg x 0 reps with no history). Returns ids.workoutExerciseId and ids.exerciseId. $REF",
         "remove_exercise" to "Removes an exercise and its sets from a workout. workout_exercise_id comes from current_workout.",
         "add_set" to
             "Adds a set to an exercise in a workout, pre-filled with the exercise's last set (else last session's set at that position). " +
-            "Returns ids.setId. workout_exercise_id comes from current_workout.",
+            "With count (1 to 20) it adds that many, each a copy of the one before. Returns ids.setId (the first added set). " +
+            "workout_exercise_id comes from current_workout.",
         "remove_set" to "Removes one set from a workout. set_id comes from current_workout.",
         "set_weight" to
             "Sets a set's weight in kilograms (0 to 999; 2.5 kg steps are common). With apply_to_open_sets, every un-ticked set of the " +
