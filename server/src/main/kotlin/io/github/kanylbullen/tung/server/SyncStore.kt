@@ -184,17 +184,22 @@ class SyncStore(private val db: Db, catalogue: List<CoreExercise>) {
                 "started_at" to Types.BIGINT, "ended_at" to Types.BIGINT, "note" to Types.VARCHAR,
                 "routine_id" to Types.VARCHAR, "program_day_id" to Types.VARCHAR, "started_by" to Types.VARCHAR,
                 "avg_heart_rate" to Types.INTEGER, "max_heart_rate" to Types.INTEGER, "active_calories" to Types.INTEGER,
-                "health_connect_id" to Types.VARCHAR,
+                "health_connect_id" to Types.VARCHAR, "import_source" to Types.VARCHAR, "import_batch_id" to Types.VARCHAR,
             ),
             // started_by is set when the workout is made and never changed; the Health Connect values (V9)
             // come from one phone. A row from a client that does not know them, or has none, keeps them.
-            keepWhenNull = setOf("started_by", "avg_heart_rate", "max_heart_rate", "active_calories", "health_connect_id"),
+            // The import's source and batch (V11) are set once by the importing phone, like started_by.
+            keepWhenNull = setOf(
+                "started_by", "avg_heart_rate", "max_heart_rate", "active_calories", "health_connect_id",
+                "import_source", "import_batch_id",
+            ),
             rows = { it.workouts },
             id = { it.id }, updatedAt = { it.updatedAt }, deletedAt = { it.deletedAt },
             values = {
                 listOf(
                     it.startedAt, it.endedAt, it.note, it.routineId, it.programDayId, it.startedBy,
                     it.avgHeartRate, it.maxHeartRate, it.activeCalories, it.healthConnectId,
+                    it.importSource, it.importBatchId,
                 )
             },
             map = { r ->
@@ -212,6 +217,8 @@ class SyncStore(private val db: Db, catalogue: List<CoreExercise>) {
                     maxHeartRate = r.intOrNull("max_heart_rate"),
                     activeCalories = r.intOrNull("active_calories"),
                     healthConnectId = r.getString("health_connect_id"),
+                    importSource = r.getString("import_source"),
+                    importBatchId = r.getString("import_batch_id"),
                 )
             },
         )

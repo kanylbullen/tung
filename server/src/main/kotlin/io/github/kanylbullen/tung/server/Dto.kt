@@ -119,6 +119,9 @@ data class WorkoutDto(
     val activeCalories: Int? = null,
     /** The Health Connect session written for it; null when none was. */
     val healthConnectId: String? = null,
+    /** The app it was imported from (V11, `jefit`) and the import run; null for a workout logged in Tung. Arrive by sync only. */
+    val importSource: String? = null,
+    val importBatchId: String? = null,
 )
 
 @Serializable
