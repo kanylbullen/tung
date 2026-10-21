@@ -43,6 +43,14 @@ data class ScrollRequest(
     val seq: Long,
 )
 
+/**
+ * A one-shot request to open the first-time sheets for an exercise just added
+ * with no history: the weight sheet for its only set ([setId]), then the reps
+ * sheet with the set-count chips. Consumed by the screen once opened; [seq]
+ * tells two requests apart.
+ */
+data class FirstTimeRequest(val workoutExerciseId: String, val setId: String, val seq: Long)
+
 enum class ScrollMode {
     /** Only if the item is not wholly visible, and then just enough to show it. */
     IntoView,
@@ -63,6 +71,8 @@ data class ActiveWorkoutUiState(
     /** The set the user made current (header or set-number tap); wins while it exists and is un-ticked. */
     val selectedSetId: String? = null,
     val scrollRequest: ScrollRequest? = null,
+    /** An exercise was just added with no history: open its weight sheet, then reps and the set count. */
+    val firstTimeRequest: FirstTimeRequest? = null,
 ) {
     val loggedSetCount: Int
         get() = exercises.sumOf { e -> e.sets.count { isLogged(it.completed, it.reps) } }

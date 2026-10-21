@@ -62,6 +62,11 @@ class ActiveWorkoutViewModel(
     private val selected = MutableStateFlow(savedState.get<String>(KEY_SELECTED))
     private val scroll = MutableStateFlow<ScrollRequest?>(null)
     private var scrollSeq = 0L
+    private val firstTime = MutableStateFlow<FirstTimeRequest?>(null)
+    private var firstTimeSeq = 0L
+
+    /** The weight the first-time weight sheet wrote; the reps sheet's Done waits for it before copying the set. */
+    private var firstTimeWeight: Job? = null
     private val defaultRest = restTimer.defaultSeconds
         .stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_REST_SECONDS)
 
@@ -117,9 +122,15 @@ class ActiveWorkoutViewModel(
         rest,
         lastTouched,
         selected,
-        scroll,
-    ) { s, timer, touched, selection, scrollRequest ->
-        s.copy(rest = timer, lastTouchedExerciseId = touched, selectedSetId = selection, scrollRequest = scrollRequest)
+        combine(scroll, firstTime, ::Pair),
+    ) { s, timer, touched, selection, (scrollRequest, firstTimeRequest) ->
+        s.copy(
+            rest = timer,
+            lastTouchedExerciseId = touched,
+            selectedSetId = selection,
+            scrollRequest = scrollRequest,
+            firstTimeRequest = firstTimeRequest,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActiveWorkoutUiState())
 
     private val eventChannel = Channel<ActiveWorkoutEvent>(Channel.BUFFERED)
@@ -168,6 +179,34 @@ class ActiveWorkoutViewModel(
     /** The screen has carried out [request]. */
     fun onScrollHandled(request: ScrollRequest) {
         scroll.compareAndSet(request, null)
+    }
+
+    /** The screen has opened the weight sheet for [request]. */
+    fun onFirstTimeHandled(request: FirstTimeRequest) {
+        firstTime.compareAndSet(request, null)
+    }
+
+    /** The first-time weight sheet's Done: the weight goes to the exercise's only set, and the reps sheet opens next. */
+    fun setFirstTimeWeight(workoutExerciseId: String, setId: String, weightKg: Double) {
+        touch(workoutExerciseId)
+        firstTimeWeight = viewModelScope.launch { commands.execute(Command.SetWeight(setId, weightKg)) }
+    }
+
+    /**
+     * The first-time reps sheet's Done: [reps] to set 1, then sets added so
+     * the exercise has [sets] in all, each a copy of set 1 (one `AddSet` with
+     * a count). Set 1 stays the current set: the exercise is the touched one
+     * and nothing in it is ticked.
+     */
+    fun finishFirstTime(workoutExerciseId: String, setId: String, reps: Int, sets: Int) {
+        touch(workoutExerciseId)
+        val weight = firstTimeWeight
+        firstTimeWeight = null
+        viewModelScope.launch {
+            weight?.join()
+            commands.execute(Command.SetReps(setId, reps))
+            if (sets > 1) commands.execute(Command.AddSet(workoutExerciseId, count = sets - 1))
+        }
     }
 
     fun setWeight(workoutExerciseId: String, setId: String, weightKg: Double) {
@@ -336,10 +375,19 @@ class ActiveWorkoutViewModel(
         val known = knownExercises
         knownExercises = ids.toSet()
         if (known != null) {
-            ids.lastOrNull { it !in known }?.let { added ->
+            val appeared = ids.filter { it !in known }
+            appeared.lastOrNull()?.let { added ->
                 // Just added, so it is what the user means to do next: it becomes current, over a manual choice.
                 select(added, null)
                 requestScroll(ScrollRequest(workoutExerciseId = added, mode = ScrollMode.ToTop, seq = 0))
+            }
+            // One exercise added with no history (a single set of 0 × 0): ask for its numbers at once.
+            appeared.singleOrNull()?.let { added ->
+                val sets = list.first { it.workoutExercise.id == added }.sortedSets
+                val only = sets.singleOrNull()
+                if (only != null && !only.completed && only.weightKg == 0.0 && only.reps == 0) {
+                    firstTime.value = FirstTimeRequest(added, only.id, ++firstTimeSeq)
+                }
             }
         }
     }

@@ -63,6 +63,12 @@
     <string name="workout_select_set">Make set %1$d the current set</string>
     <string name="workout_current_set">Current set</string>
     <string name="workout_rest_timer">Rest timer…</string>
+    <!-- The first time an exercise is added (no history): the reps sheet asks how many sets, as chips. -->
+    <string name="workout_first_sets_label">Sets</string>
+    <plurals name="workout_first_sets_choice">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d sets</item>
+    </plurals>
 
     <!-- Rest timer -->
     <string name="rest_title">Rest timer</string>

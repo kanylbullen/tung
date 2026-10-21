@@ -96,7 +96,8 @@ data class NumberInputSpec(
  * it to type.
  *
  * [showApplyToAll] adds the "Apply to all sets" switch; it starts off every
- * time the sheet opens, and its state is handed to [onConfirm].
+ * time the sheet opens, and its state is handed to [onConfirm]. [aboveDone]
+ * is a row of the caller's above Done (the first-time flow's set count).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,6 +106,7 @@ fun NumberInputSheet(
     onDismiss: () -> Unit,
     onConfirm: (text: String, applyToAll: Boolean) -> Unit,
     showApplyToAll: Boolean = false,
+    aboveDone: (@Composable () -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var field by remember {
@@ -204,6 +206,10 @@ fun NumberInputSheet(
                 ApplyToAllRow(checked = applyToAll, onCheckedChange = { applyToAll = it })
                 Spacer(Modifier.height(8.dp))
             } else {
+                Spacer(Modifier.height(16.dp))
+            }
+            if (aboveDone != null) {
+                aboveDone()
                 Spacer(Modifier.height(16.dp))
             }
             PrimaryButton(text = spec.doneText, onClick = confirm, enabled = valid)
