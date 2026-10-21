@@ -146,6 +146,16 @@ fun RoutineDetailScreen(routineId: String, onBack: () -> Unit, onAddExercise: ()
                     )
                 }
             }
+            if (!state.loading && !state.missing && !deleting && state.exercises.isEmpty()) {
+                item(key = "empty") {
+                    Text(
+                        stringResource(R.string.routine_empty_hint),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Tung.colors.muted,
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp),
+                    )
+                }
+            }
             if (!state.loading && !state.missing && !deleting) {
                 item(key = "add") {
                     SecondaryButton(

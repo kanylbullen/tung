@@ -9,18 +9,18 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -32,11 +32,14 @@ import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.theme.Tung
 
-/** Every routine; tap one to edit it, or start it. Programs are one step further, from the row on top. */
+/**
+ * The Routines tab: every routine, most recently used first; tap one to edit
+ * it, or start it. "+ New routine" in the top bar asks for a name and opens the
+ * empty routine. Programs are one step further, from the row on top.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutinesScreen(
-    onBack: () -> Unit,
     onOpenRoutine: (String) -> Unit,
     onOpenWorkout: (String) -> Unit,
     onShowPrograms: () -> Unit,
@@ -49,6 +52,7 @@ fun RoutinesScreen(
     )
     val state by vm.state.collectAsStateWithLifecycle()
     val now = rememberNow(intervalMillis = 60_000L)
+    var creating by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -58,12 +62,12 @@ fun RoutinesScreen(
                     containerColor = Tung.colors.background,
                     scrolledContainerColor = Tung.colors.background,
                 ),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                title = { Text(stringResource(R.string.routines_title)) },
+                actions = {
+                    TextButton(onClick = { creating = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.routine_new), color = Tung.colors.text)
                     }
                 },
-                title = { Text(stringResource(R.string.routines_title)) },
             )
         },
     ) { padding ->
@@ -91,6 +95,19 @@ fun RoutinesScreen(
                 )
             }
         }
+    }
+
+    if (creating) {
+        RoutineNameDialog(
+            title = stringResource(R.string.routine_new_title),
+            initialName = "",
+            confirmLabel = stringResource(R.string.routine_create),
+            onDismiss = { creating = false },
+            onConfirm = { name ->
+                creating = false
+                vm.create(name, onOpenRoutine)
+            },
+        )
     }
 }
 
