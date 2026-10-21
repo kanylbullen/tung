@@ -171,6 +171,37 @@ class ProgressTest {
         assertEquals(90.0, change.to, 1e-9)
     }
 
+    /** Sessions 2, 8 and 13 months back: 3 months holds one (no trend), 12 months two (a change), 13 months is out. */
+    @Test
+    fun rowTrendOverThreeAndTwelveMonths() {
+        val today = LocalDate.parse("2026-10-21")
+        val bench = exerciseProgress(
+            listOf(
+                set("old", at("2025-09-21"), 50.0, 1),
+                set("eight", at("2026-02-21"), 90.0, 1),
+                set("two", at("2026-08-21"), 89.0, 1),
+            ),
+            utc,
+        ).single()
+        assertEquals(listOf(ProgressRange.THREE_MONTHS, ProgressRange.ONE_YEAR), ROW_RANGES)
+
+        val three = bench.trend(ProgressRange.THREE_MONTHS, today)
+        assertEquals(listOf(89.0), three.estimates)
+        assertNull(three.change)
+
+        val twelve = bench.trend(ProgressRange.ONE_YEAR, today)
+        assertEquals(listOf(90.0, 89.0), twelve.estimates)
+        assertEquals(-1.0, twelve.change!!.delta, 1e-9)
+
+        // The first day of the 12 months counts; the day before does not.
+        val edge = exerciseProgress(
+            listOf(set("edge", at("2025-10-21"), 80.0, 1), set("before", at("2025-10-20"), 70.0, 1), set("now", at("2026-10-20"), 85.0, 1)),
+            utc,
+        ).single().trend(ProgressRange.ONE_YEAR, today)
+        assertEquals(listOf(80.0, 85.0), edge.estimates)
+        assertEquals(5.0, edge.change!!.delta, 1e-9)
+    }
+
     @Test
     fun exercisesMostRecentlyTrainedFirst() {
         val sets = listOf(
