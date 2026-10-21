@@ -29,8 +29,17 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.ai.AiConfidence
+import io.github.kanylbullen.tung.core.ai.ProposedMatch
+import io.github.kanylbullen.tung.core.command.ExerciseCandidate
+import io.github.kanylbullen.tung.core.importing.NameUsage
+import io.github.kanylbullen.tung.ui.ai.PayloadSheet
+import io.github.kanylbullen.tung.ui.ai.aiFailureText
 import io.github.kanylbullen.tung.core.importing.ImportBundle
 import io.github.kanylbullen.tung.core.importing.ImportChoice
 import io.github.kanylbullen.tung.core.importing.SkipReason
@@ -46,13 +55,17 @@ import io.github.kanylbullen.tung.ui.theme.Tung
  * preview shows what the file holds (dates, workouts, sets, routines), how
  * set types and skipped rows are handled, and the names that need a decision:
  * choose an exercise ([onPick] opens the picker), create a custom one with the
- * source's name, or skip. Import is enabled once each name is decided; the
- * summary offers "Undo import".
+ * source's name, or skip. Each name says how much of the export uses it, and
+ * offers up to two offline suggestions as chips; with a provider set up,
+ * "Suggest with the assistant" asks once and puts a proposal on each row.
+ * Every suggestion waits for a tap. Import is enabled once each name is
+ * decided; the summary offers "Undo import".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportScreen(vm: ImportViewModel, onBack: () -> Unit, onPick: () -> Unit, onDone: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val language = LocalConfiguration.current.locales[0].toLanguageTag()
     Scaffold(
         containerColor = Tung.colors.background,
         topBar = {
@@ -90,10 +103,23 @@ fun ImportScreen(vm: ImportViewModel, onBack: () -> Unit, onPick: () -> Unit, on
                                 Muted(stringResource(R.string.import_review_hint))
                             }
                         }
+                        item(key = "review-actions") {
+                            ReviewActions(
+                                state = state,
+                                onSuggest = { vm.suggestWithAssistant(language) },
+                                onAcceptAll = vm::acceptAllHighConfidence,
+                                onCreateAll = { vm.decideRemaining(ImportChoice.CreateCustom) },
+                                onSkipAll = { vm.decideRemaining(ImportChoice.Skip) },
+                            )
+                        }
                         items(preview.unmatched, key = { "review-$it" }) { name ->
                             ReviewRow(
                                 name = name,
                                 choice = state.choices[name],
+                                usage = preview.usage[name],
+                                suggestions = preview.suggestions[name].orEmpty().take(2),
+                                proposal = state.assist.matches[name],
+                                onUse = { vm.use(name, it) },
                                 onPick = {
                                     vm.startPicking(name)
                                     onPick()
@@ -136,6 +162,45 @@ fun ImportScreen(vm: ImportViewModel, onBack: () -> Unit, onPick: () -> Unit, on
             }
         }
     }
+
+    state.assist.review?.let { prepared ->
+        PayloadSheet(prepared, onSend = vm::sendReviewed, onCancel = vm::cancelReview)
+    }
+}
+
+/**
+ * Above the review's rows: the assistant (when set up) with its progress,
+ * failure and "Accept all high-confidence", then the bulk decisions for the
+ * names still undecided.
+ */
+@Composable
+private fun ReviewActions(
+    state: ImportUiState,
+    onSuggest: () -> Unit,
+    onAcceptAll: () -> Unit,
+    onCreateAll: () -> Unit,
+    onSkipAll: () -> Unit,
+) {
+    val idle = state.phase == ImportPhase.Preview
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (state.assistantConfigured) {
+            SecondaryButton(text = stringResource(R.string.import_assist_action), onClick = onSuggest, enabled = idle && !state.assist.busy)
+            if (state.assist.sending) Muted(stringResource(R.string.import_assist_asking))
+            state.assist.failure?.let { failure ->
+                Text(stringResource(aiFailureText(failure.failure)), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
+                failure.message?.let { Muted(stringResource(R.string.ai_error_provider_says, it)) }
+            }
+            if (state.highConfidence.isNotEmpty()) {
+                SecondaryButton(text = stringResource(R.string.import_assist_accept_all), onClick = onAcceptAll, enabled = idle)
+            }
+        }
+        if (state.undecided.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Choice(stringResource(R.string.import_create_remaining), selected = false, onClick = onCreateAll)
+                Choice(stringResource(R.string.import_skip_remaining), selected = false, onClick = onSkipAll)
+            }
+        }
+    }
 }
 
 @Composable
@@ -160,10 +225,30 @@ private fun counts(workouts: Int, sets: Int, routines: Int): String = listOf(
     pluralStringResource(R.plurals.import_routines, routines, routines),
 ).joinToString(stringResource(R.string.row_separator))
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReviewRow(name: String, choice: ImportChoice?, onPick: () -> Unit, onCreate: () -> Unit, onSkip: () -> Unit) {
+private fun ReviewRow(
+    name: String,
+    choice: ImportChoice?,
+    usage: NameUsage?,
+    suggestions: List<ExerciseCandidate>,
+    proposal: ProposedMatch?,
+    onUse: (ExerciseCandidate) -> Unit,
+    onPick: () -> Unit,
+    onCreate: () -> Unit,
+    onSkip: () -> Unit,
+) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = Tung.colors.text)
+        usage?.let {
+            Muted(
+                if (it.workouts > 0) {
+                    pluralStringResource(R.plurals.import_used_in_workouts, it.workouts, it.workouts)
+                } else {
+                    stringResource(R.string.import_only_in_routines)
+                },
+            )
+        }
         Muted(
             when (choice) {
                 null -> stringResource(R.string.import_chosen_none)
@@ -175,6 +260,34 @@ private fun ReviewRow(name: String, choice: ImportChoice?, onPick: () -> Unit, o
                 ImportChoice.Skip -> stringResource(R.string.import_chosen_skip)
             },
         )
+        val chosenId = (choice as? ImportChoice.Use)?.exercise?.id
+        if (suggestions.isNotEmpty()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                suggestions.forEach { s ->
+                    Choice(
+                        stringResource(R.string.import_suggestion, exerciseDisplayName(s.nameKey, s.displayName)),
+                        selected = chosenId == s.id,
+                        onClick = { onUse(s) },
+                    )
+                }
+            }
+        }
+        proposal?.let { p ->
+            val exercise = p.exercise
+            if (exercise == null) {
+                Muted(stringResource(R.string.import_assist_no_match))
+            } else {
+                Text(
+                    stringResource(R.string.import_assist_suggests, exerciseDisplayName(exercise.nameKey, exercise.displayName), confidenceText(p.confidence)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Tung.colors.text,
+                )
+            }
+            if (p.note.isNotBlank()) Muted(p.note)
+            if (exercise != null) {
+                Choice(stringResource(R.string.import_assist_accept), selected = chosenId == exercise.id, onClick = { onUse(exercise) })
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Choice(stringResource(R.string.import_choice_pick), selected = choice is ImportChoice.Use, onClick = onPick)
             Choice(stringResource(R.string.import_choice_create), selected = choice == ImportChoice.CreateCustom, onClick = onCreate)
@@ -182,6 +295,15 @@ private fun ReviewRow(name: String, choice: ImportChoice?, onPick: () -> Unit, o
         }
     }
 }
+
+@Composable
+private fun confidenceText(confidence: AiConfidence): String = stringResource(
+    when (confidence) {
+        AiConfidence.HIGH -> R.string.import_confidence_high
+        AiConfidence.MEDIUM -> R.string.import_confidence_medium
+        AiConfidence.LOW -> R.string.import_confidence_low
+    },
+)
 
 @Composable
 private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {

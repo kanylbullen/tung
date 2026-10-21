@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.core.ai
 
+import io.github.kanylbullen.tung.core.command.ExerciseCandidate
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
@@ -38,6 +39,23 @@ sealed interface AiRequest {
     data class FreeText(val text: String) : AiRequest {
         override val key = "free_text"
     }
+
+    /**
+     * The import review's names that matched nothing exactly ([names], in the
+     * review's order), each with its offline suggestions ([candidates], best
+     * first, from `importSuggestions`), and the core catalogue
+     * ([catalogue]: key, English name, equipment). Answered with one match
+     * per name or none; shown on the review's rows, never applied by itself.
+     * It carries everything it sends: no training data goes with it
+     * ([buildAiMatchContext]).
+     */
+    data class MatchExercises(
+        val names: List<String>,
+        val candidates: Map<String, List<ExerciseCandidate>>,
+        val catalogue: List<AiCatalogueEntry>,
+    ) : AiRequest {
+        override val key = "match_exercises"
+    }
 }
 
 /** What is sent as text: a [system] message (the rules and the answer's shape) and a [user] message (the question and the data). */
@@ -53,6 +71,8 @@ internal val AiContextJson = Json { encodeDefaults = true }
  * object in the shape [parseAiAnswer] reads and nothing else.
  */
 fun buildAiPrompt(request: AiRequest, context: AiContext, language: String = "en"): AiPrompt {
+    // Matching sends only what the request carries: never the training data in [context].
+    if (request is AiRequest.MatchExercises) return buildAiMatchPrompt(request, language)
     val system = listOf(SYSTEM_INTRO, schemaFor(request), rules(language)).joinToString("\n\n")
     val user = taskFor(request) + equipmentRule(request, context) + "\n\nMy training data (JSON):\n" + AiContextJson.encodeToString(AiContext.serializer(), context)
     return AiPrompt(system = system, user = user)
@@ -119,6 +139,7 @@ private fun schemaFor(request: AiRequest): String = when (request) {
         }
         since is the ISO date of the session from which there has been no progress. An empty list means no plateaus.
         """.trimIndent()
+    is AiRequest.MatchExercises -> error("built by buildAiMatchPrompt")
 }
 
 /**
@@ -155,4 +176,5 @@ private fun taskFor(request: AiRequest): String = when (request) {
             "(the heaviest weight for the reps, or an estimated one-rep max) over time. Name the exercises with no progress " +
             "for four weeks or more, since when, the numbers that show it, and one concrete change for each (a deload, " +
             "another rep range, a variation, more or less volume) and why."
+    is AiRequest.MatchExercises -> error("built by buildAiMatchPrompt")
 }

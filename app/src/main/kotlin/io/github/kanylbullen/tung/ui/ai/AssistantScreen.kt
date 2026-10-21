@@ -183,6 +183,8 @@ fun AssistantScreen(
                     PlateausAnswer(proposal)
                     Dropped(proposal.dropped)
                 }
+                // Asked by the import review, which shows it on its own rows.
+                is AiProposal.Matches -> Unit
             }
             if (state.saveFailed) {
                 Text(stringResource(R.string.ai_save_failed), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
@@ -274,10 +276,11 @@ private fun ExerciseLine(name: String, numbers: String) {
 /**
  * "What is sent": the request exactly as it goes out, the body indented, with
  * the address it goes to. The key travels in a header and is not shown.
+ * The import review uses it too, for "Suggest with the assistant".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PayloadSheet(prepared: AiPrepared, onSend: () -> Unit, onCancel: () -> Unit) {
+internal fun PayloadSheet(prepared: AiPrepared, onSend: () -> Unit, onCancel: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val host = runCatching { URI(prepared.http.url).host }.getOrNull() ?: prepared.http.url
     ModalBottomSheet(

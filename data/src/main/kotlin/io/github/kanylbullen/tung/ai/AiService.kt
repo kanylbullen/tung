@@ -6,6 +6,7 @@ import io.github.kanylbullen.tung.core.ai.AI_HISTORY_DAYS
 import io.github.kanylbullen.tung.core.ai.AI_HISTORY_WORKOUTS
 import io.github.kanylbullen.tung.core.ai.AI_SECRET_HEADERS
 import io.github.kanylbullen.tung.core.ai.AiCall
+import io.github.kanylbullen.tung.core.ai.AiCatalogueEntry
 import io.github.kanylbullen.tung.core.ai.AiContext
 import io.github.kanylbullen.tung.core.ai.AiHistoryExercise
 import io.github.kanylbullen.tung.core.ai.AiHistorySet
@@ -23,6 +24,7 @@ import io.github.kanylbullen.tung.core.ai.AiRoutineExercise
 import io.github.kanylbullen.tung.core.ai.aiHttpRequest
 import io.github.kanylbullen.tung.core.ai.aiResponseText
 import io.github.kanylbullen.tung.core.ai.buildAiContext
+import io.github.kanylbullen.tung.core.ai.buildAiMatchPrompt
 import io.github.kanylbullen.tung.core.ai.buildAiPrompt
 import io.github.kanylbullen.tung.core.ai.parseAiAnswer
 import io.github.kanylbullen.tung.core.ai.prettyAiBody
@@ -32,6 +34,7 @@ import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds
 import io.github.kanylbullen.tung.core.command.CommandResult
+import io.github.kanylbullen.tung.core.command.ExerciseCandidate
 import io.github.kanylbullen.tung.core.command.ExerciseResolver
 import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.maskToWeekdays
@@ -105,6 +108,8 @@ class AiService(
     private val clock: Clock,
     /** "My equipment"; the context carries it only when it is narrowed. */
     private val equipment: suspend () -> Set<Equipment> = { EquipmentFilter.ALL },
+    /** The core catalogue as matching sends it (key, English name, equipment), for [prepareMatch]. */
+    private val catalogue: () -> List<AiCatalogueEntry> = { emptyList() },
 ) {
 
     /** The request for [request] with the current settings and data; null when no model is set up. */
@@ -113,8 +118,20 @@ class AiService(
         if (!config.configured) return null
         val keys = withContext(Dispatchers.IO) { catalogueKeys().toSet() }
         val call = AiCall(config.provider, config.effectiveBaseUrl, config.model, jsonMode = config.jsonMode)
-        val prompt = buildAiPrompt(request, context(keys), language)
+        // Matching carries everything it sends; the training data is not even read for it.
+        val prompt = if (request is AiRequest.MatchExercises) buildAiMatchPrompt(request, language) else buildAiPrompt(request, context(keys), language)
         return AiPrepared(request, call, prompt, aiHttpRequest(call, prompt, apiKey = null), keys)
+    }
+
+    /**
+     * "Suggest with the assistant" in the import review: [names] with their
+     * offline [candidates] and the core catalogue, nothing else. The same
+     * [prepare] and [send] as the other questions, so "What is sent" and
+     * "Show what is sent" apply; the answer is an [AiProposal.Matches].
+     */
+    suspend fun prepareMatch(names: List<String>, candidates: Map<String, List<ExerciseCandidate>>, language: String): AiPrepared? {
+        val entries = withContext(Dispatchers.IO) { catalogue() }
+        return prepare(AiRequest.MatchExercises(names, candidates, entries), language)
     }
 
     /** Sends [prepared] exactly as built, with the key in its header, and turns the answer into a proposal. */

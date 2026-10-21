@@ -587,6 +587,23 @@
     <string name="import_chosen_use">As %1$s</string>
     <string name="import_chosen_create">New exercise “%1$s”</string>
     <string name="import_chosen_skip">Skipped</string>
+    <string name="import_suggestion">%1$s?</string>
+    <plurals name="import_used_in_workouts">
+        <item quantity="one">In %d workout</item>
+        <item quantity="other">In %d workouts</item>
+    </plurals>
+    <string name="import_only_in_routines">Only in routines</string>
+    <string name="import_create_remaining">Create all remaining</string>
+    <string name="import_skip_remaining">Skip all remaining</string>
+    <string name="import_assist_action">Suggest with the assistant</string>
+    <string name="import_assist_asking">Asking the assistant…</string>
+    <string name="import_assist_suggests">Assistant suggests: %1$s · %2$s</string>
+    <string name="import_assist_no_match">Assistant: no good match</string>
+    <string name="import_assist_accept">Accept</string>
+    <string name="import_assist_accept_all">Accept all high-confidence</string>
+    <string name="import_confidence_high">high</string>
+    <string name="import_confidence_medium">medium</string>
+    <string name="import_confidence_low">low</string>
     <plurals name="import_note_warm_up">
         <item quantity="one">%d warm-up set imported as a normal set</item>
         <item quantity="other">%d warm-up sets imported as normal sets</item>

@@ -1183,6 +1183,18 @@ Jefit is done; Strong and Hevy follow in the same frame.
   rest is the person's choice. `ImportResolutionTest` checks that every
   alias target exists. The tables ship as assets of `data/` like the
   catalogue.
+- **Offline suggestions** (issue #71, `ImportSuggestions.kt`). An unmatched
+  name carries up to five suggestions from `importSuggestions`: the load is
+  read off the name (`inferEquipment`: dumbbell/db, barbell/bb, ez bar,
+  kettlebell/kb, machine/smith/lever, cable, band, bodyweight/body weight;
+  two different loads named, or none, is null), the other words are scored
+  the way `matchExerciseName` scores them (`rankByName`), and among equal
+  scores a candidate with the same equipment comes first
+  (`ExerciseCandidate.equipment`, which the resolvers fill in). So "Dumbbell
+  Deadlift" leads with Stiff-Legged Dumbbell Deadlift, not barbell
+  `deadlift`; the words still beat the load (a dumbbell push press, which the
+  catalogue lacks, leads with the barbell one). `nameUsage` counts per name
+  the workouts it was logged in, its sets and the routines that list it.
 - **Room** (version 3, `MIGRATION_2_3`): `Workout.importSource` (`jefit`)
   and `Workout.importBatchId` (one per import run, indexed), both nullable,
   synced as `import_source` and `import_batch_id` with the null-keeps rule
@@ -1215,8 +1227,27 @@ Jefit is done; Strong and Hevy follow in the same frame.
   unmatched name has **Choose** (the picker with `PickerTarget.Choose`,
   which hands the exercise back through the import entry's saved state and
   adds nothing), **Create** (a custom exercise with the source's name) and
-  **Skip**. Import is enabled once every name is decided; the summary says
+  **Skip**. Under each name: "In 12 workouts" or "Only in routines"
+  (`ImportPreview.usage`), so the person sees which names carry history, and
+  the best two offline suggestions as chips ("Lat pulldown?"); a chip is the
+  same as Choose with that exercise. Above the rows, "Create all remaining"
+  and "Skip all remaining" decide only the rows still "Not decided".
+  Import is enabled once every name is decided; the summary says
   what was added and offers "Undo import".
+- **"Suggest with the assistant"** (issue #71), above the rows when a BYOK
+  provider is set up (`AiConfig.configured`): one `AiRequest.MatchExercises`
+  on the tap, through `AiService.prepareMatch` and `send`, so "What is sent"
+  comes first the first time and whenever "Show what is sent" is on (the
+  Assistant's `PayloadSheet`). It sends the undecided names (all of them when
+  every one is decided) with their offline top five, and the core catalogue;
+  never history, routines, the account, the device or the server, and no
+  custom exercise of the user's. While it runs the list says "Asking the
+  assistant…"; a failure is one line with the Assistant's failure texts and
+  the review works as before. Each row then shows "Assistant suggests: Lat
+  pulldown · medium" with **Accept** (Choose that exercise), or "Assistant: no
+  good match", with the model's note; "Accept all high-confidence" decides the
+  undecided rows whose proposal is high. **Nothing is applied without a
+  tap**: a suggestion or a proposal never decides a row by itself.
 - **History, not news.** Imported workouts count for History, "Last",
   the pre-fill and the picker's learning; `buildWorkoutReport` never marks one
   as a new record. Dates outside the current year show the year
@@ -1229,10 +1260,16 @@ Jefit is done; Strong and Hevy follow in the same frame.
   is personal data and never goes in the repository**; `JefitRealExportTest`
   runs only with `TUNG_JEFIT_EXPORT=/path/to/export.csv` (`./gradlew :core:test
   --tests '*JefitRealExportTest' --rerun --no-daemon`) and prints the counts.
+  `ImportSuggestionsTest` (the equipment words, the order, `nameUsage`, and
+  the eleven names a real export left unmatched, printed with their top
+  suggestions) and `AiMatchTest` (see "In-app AI (BYOK)").
   Data: `ImporterTest` (stamped and dirty, idempotent, undo with tombstones
   leaves other workouts, re-import after undo), `SyncMappingImportTest`,
-  `MigrationTest`. Server: `ImportColumnsTest`. Flows: `ImportFlowTest` (the
-  picker answered through Robolectric's `receiveResult`, no app seam).
+  `MigrationTest`, and `AiServiceTest`'s matching case. Server:
+  `ImportColumnsTest`. Flows: `ImportFlowTest` (the picker answered through
+  Robolectric's `receiveResult`, no app seam; a suggestion chip and "Skip all
+  remaining"; the assistant against a MockWebServer, "What is sent", the
+  proposals and "Accept all high-confidence").
 
 ## In-app AI (BYOK)
 
@@ -1244,7 +1281,8 @@ free budget**: the call goes from the phone straight to the provider, and
 tung-server never sees the key or the request.
 
 - **core, `core/.../core/ai/`** (pure, tested): `AiRequest` (`Program`,
-  `NextWorkout`, `Plateaus`); `AiContext`, built by `buildAiContext` from plain
+  `NextWorkout`, `Plateaus`, `FreeText` from voice, and `MatchExercises` from
+  the import review, below); `AiContext`, built by `buildAiContext` from plain
   shapes: finished workouts of the last 90 days (at most 30, logged sets only,
   exercise key and name), routines, programs, today's date and weekday, the
   core catalogue's keys, unit kg, and `equipment` (the "My equipment" keys)
@@ -1264,13 +1302,34 @@ tung-server never sees the key or the request.
   formats as pure request builders and response readers, and
   `checkAiBaseUrl` (the sync rule: https, or http only to localhost and
   private IP literals, for Ollama on the home network).
+- **The fourth request, `MatchExercises(names, candidates, catalogue)`**
+  (`AiMatch.kt`, issue #71): the import review's unmatched names, each with
+  its offline candidates (`importSuggestions`), and the core catalogue as
+  `AiCatalogueEntry` (key, English name, equipment). Its context is
+  `AiMatchContext` (`buildAiMatchContext`: the names, at most
+  `AI_MATCH_CANDIDATES` = 5 candidates each by `key` or `extended_id` with
+  name and equipment, the catalogue) and nothing else: no field for history,
+  an account, a device or a server, a custom exercise is never a candidate,
+  and `buildAiPrompt` hands this request to `buildAiMatchPrompt` whatever
+  training context it is given (`prepare` does not even read it). The prompt
+  (English, strict JSON `{matches: [{name, ref: {key}|{extended_id}|null,
+  confidence: high|medium|low, note}]}`) carries the alias table's load rule:
+  never map across load types, prefer the same equipment, else a low
+  confidence or null. Validation (`parseMatches`, `resolveAiAnswer`): a name
+  not asked about, a second entry for a name, a key outside the catalogue and
+  an extended id that does not exist are dropped (counted); null is "no good
+  match" and kept; an unknown confidence reads as low. The answer is
+  `AiProposal.Matches` (`ProposedMatch` per name), shown on the review's rows
+  and never applied by itself. `AiMatchTest` has recorded responses of both
+  providers (`src/test/resources/ai/*-match.json`).
 - **data, `data/.../ai/`**: `AiSettings` (provider, base URL, model, JSON
   mode, "first request shown" and "always show" flags in the `settings`
   DataStore; the key in EncryptedSharedPreferences `ai_key` through
   `TokenStore`, excluded from backups like `sync_token`); `AiClient` (its own
   Ktor client: 60 s, no retries, no redirects, statuses mapped to
   `AiFailure`); `AiService` (`prepare` builds the context and the request
-  without the key, `send` sends exactly that body with the key added to the
+  without the key, `prepareMatch` the import review's matching request,
+  `send` sends exactly that body with the key added to the
   header, `confirm` runs the commands, `test` sends a one-token request with
   no training data). `TungContainer(createAiKeyStore = …)` is the seam;
   `FlowTestApp.aiKeys` keeps the key in memory.
@@ -1285,8 +1344,9 @@ tung-server never sees the key or the request.
 background (no WorkManager, no retry). The first request ever is shown in
 full ("What is sent", the pretty-printed body and the URL; the key is in a
 header and never shown) before it is sent, and the menu's "Show what is sent"
-reviews every request while it is on. What is sent is training data and
-settings only. A suggested exercise that is not in the catalogue is dropped,
+reviews every request while it is on; the import review's matching request
+follows the same two rules. What is sent is training data and settings only,
+and for matching only the names and the catalogue. A suggested exercise that is not in the catalogue is dropped,
 not shown. Nothing is written until the user confirms, and then only through
 `container.commands`. The key is never in DataStore, a log or a sync.
 

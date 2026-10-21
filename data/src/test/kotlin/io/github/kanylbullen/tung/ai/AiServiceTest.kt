@@ -7,7 +7,10 @@ import io.github.kanylbullen.tung.core.CoreCatalog
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.ai.AiProposal
 import io.github.kanylbullen.tung.core.ai.AiProviderKind
+import io.github.kanylbullen.tung.core.ai.AiConfidence
 import io.github.kanylbullen.tung.core.ai.AiRequest
+import io.github.kanylbullen.tung.core.ai.aiCatalogue
+import io.github.kanylbullen.tung.core.importing.importSuggestions
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.data.AppCommandHandler
 import io.github.kanylbullen.tung.data.AppExerciseResolver
@@ -87,6 +90,7 @@ class AiServiceTest {
         AiService(
             settings, AiClient(aiHttpClient(timeoutMillis = 5_000)), workouts, routines, programs, resolver,
             { catalogue.map { it.key } }, commands, Clock.fixed(now, ZoneId.of("Europe/Stockholm")),
+            catalogue = { aiCatalogue(catalogue) },
         )
     }
 
@@ -227,5 +231,49 @@ class AiServiceTest {
         assertFalse(test.contains("history"))
         // No key stored: no Authorization header at all.
         assertNull(testRequest.getHeader("Authorization"))
+    }
+
+    /**
+     * "Suggest with the assistant" in the import review: the request holds the
+     * names, their candidates and the catalogue, and nothing of the history,
+     * the routines, the account or the user's own exercises, even with all of
+     * them in the database; the answer comes back as matches.
+     */
+    @Test
+    fun matchingSendsOnlyTheNamesAndTheCatalogue() = runBlocking {
+        seedHistory()
+        routines.createFromPlan("Push day secret", emptyList())
+        val ownId = ExerciseRepository(db.exerciseDao(), clock = { clockMillis })
+            .createExercise("Lat pulldown at my gym", io.github.kanylbullen.tung.core.MuscleGroup.BACK, io.github.kanylbullen.tung.core.Equipment.MACHINE)
+        SyncSettings(store).signedIn("https://tung.example.org", "lifter@example.org")
+        settings.save(AiProviderKind.ANTHROPIC, server.url("/").toString().trimEnd('/'), "claude-test-model", jsonMode = true)
+        settings.setKey("sk-ant-test")
+
+        val names = listOf("Machine Lat Pulldown", "Heel Walking")
+        val candidates = names.associateWith { importSuggestions(it, resolver.searchByName(it)) }
+        val prepared = checkNotNull(service.prepareMatch(names, candidates, "en"))
+        assertTrue(prepared.request is AiRequest.MatchExercises)
+        server.enqueue(
+            answer(
+                AiProviderKind.ANTHROPIC,
+                """{"matches": [{"name": "Machine Lat Pulldown", "ref": {"key": "lat_pulldown"}, "confidence": "high", "note": "Same pull."},
+                    {"name": "Heel Walking", "ref": null, "confidence": "low", "note": ""}]}""",
+            ),
+        )
+        val proposal = (service.send(prepared) as AiOutcome.Proposed).proposal as AiProposal.Matches
+
+        val sent = server.takeRequest().body.readUtf8()
+        assertEquals(prepared.http.body, sent)
+        assertFalse("an @ was sent", sent.contains('@'))
+        listOf("Coach", "tung.example.org", "weight_kg", "Push day secret", ownId, "at my gym", "history", "routines").forEach {
+            assertFalse("$it was sent", sent.contains(it))
+        }
+        assertTrue(sent.contains("Machine Lat Pulldown") && sent.contains("lat_pulldown") && sent.contains("catalogue"))
+
+        assertEquals(catalogExerciseId("lat_pulldown"), proposal.matches[0].exercise?.id)
+        assertEquals(AiConfidence.HIGH, proposal.matches[0].confidence)
+        assertNull(proposal.matches[1].exercise)
+        // Nothing was written by the answer.
+        assertEquals(0, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL"))
     }
 }

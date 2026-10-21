@@ -14,8 +14,20 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.ai.AiProviderKind
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.core.importing.JefitImport
+import io.github.kanylbullen.tung.core.importing.nameUsage
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import io.github.kanylbullen.tung.ui.common.localDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -56,10 +68,19 @@ class ImportFlowTest : FlowTest() {
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(text))
     }
 
-    private fun answerFilePicker() {
+    /**
+     * The synthetic export with two more names nothing matches exactly, both
+     * logged: the bent-over row is a machine seated row and the curl a
+     * dumbbell hammer curl to press. With Heel Walking, three to decide.
+     */
+    private val threeNames: String by lazy {
+        fixture.readText().replace("Barbell Bent Over Row", "Machine Seated Row").replace("Barbell Curl", "Dumbbell Hammer Curl to Press")
+    }
+
+    private fun answerFilePicker(text: String? = null) {
         val request = shadowOf(compose.activity).nextStartedActivityForResult
         assertEquals(Intent.ACTION_OPEN_DOCUMENT, request.intent.action)
-        val copy = File(app.cacheDir, "jefit-export.csv").apply { writeBytes(fixture.readBytes()) }
+        val copy = File(app.cacheDir, "jefit-export.csv").apply { if (text != null) writeText(text) else writeBytes(fixture.readBytes()) }
         shadowOf(compose.activity).receiveResult(request.intent, Activity.RESULT_OK, Intent().setData(Uri.fromFile(copy)))
     }
 
@@ -148,5 +169,126 @@ class ImportFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("plank")}'"))
         // Monday's routine has it too.
         assertEquals(1, count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '${catalogExerciseId("plank")}'"))
+    }
+
+    private fun openImport(text: String) {
+        openSettingsGroup(R.string.settings_group_data)
+        scrollToInSettings(str(R.string.import_jefit))
+        compose.onNode(hasText(str(R.string.import_jefit))).performClick()
+        answerFilePicker(text)
+        waitForText(str(R.string.import_review_title))
+    }
+
+    private fun importNow() {
+        scrollToInList(str(R.string.import_action))
+        waitGone(hasText(str(R.string.import_decide_first)))
+        compose.onNode(hasText(str(R.string.import_action)) and hasClickAction()).assertIsEnabled().performClick()
+        waitForText(str(R.string.import_done_title))
+    }
+
+    /**
+     * The offline suggestions and the bulk decisions (issue #71): each row
+     * says how much of the export uses the name, a suggestion chip chooses
+     * that exercise, and "Skip all remaining" decides only the rows still
+     * undecided, so Import is enabled.
+     */
+    @Test
+    fun aSuggestionChipChoosesAndSkipAllRemainingDecidesTheRest() {
+        openImport(threeNames)
+        val usage = JefitImport.parse(threeNames, ZoneId.systemDefault()).nameUsage()
+        val hammer = usage.getValue("Dumbbell Hammer Curl to Press").workouts
+        scrollToInList("Dumbbell Hammer Curl to Press")
+        waitFor(hasText(plural(R.plurals.import_used_in_workouts, hammer, hammer)))
+        // No assistant set up: no button for it.
+        assertTrue(compose.onAllNodes(hasText(str(R.string.import_assist_action))).fetchSemanticsNodes().isEmpty())
+
+        val chip = str(R.string.import_suggestion, str(R.string.ex_hammer_curl))
+        scrollToInList(chip)
+        clickText(chip)
+        assertShown(hasText(str(R.string.import_chosen_use, str(R.string.ex_hammer_curl))))
+        assertEquals(0, count("SELECT COUNT(*) FROM workout"))
+        screenshot("1-chip-chosen")
+
+        scrollToInList(str(R.string.import_skip_remaining))
+        clickText(str(R.string.import_skip_remaining))
+        waitUntil { compose.onAllNodes(hasText(str(R.string.import_chosen_skip))).fetchSemanticsNodes().size == 2 }
+        // The chosen row keeps its choice.
+        assertShown(hasText(str(R.string.import_chosen_use, str(R.string.ex_hammer_curl))))
+        screenshot("2-skipped-the-rest")
+        importNow()
+        assertTrue(count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("hammer_curl")}'") >= 1)
+        assertEquals(0, count("SELECT COUNT(*) FROM exercise WHERE isCustom = 1"))
+    }
+
+    /**
+     * "Suggest with the assistant" with a provider set up (a MockWebServer as
+     * an OpenAI-compatible API): the first request is shown before it goes,
+     * the rows show the proposals, "Accept all high-confidence" decides those
+     * rows and leaves the low one undecided, and nothing is written until
+     * Import.
+     */
+    @Test
+    fun theAssistantProposesAndAcceptAllHighConfidenceDecidesThoseRows() {
+        val server = MockWebServer().apply { start() }
+        try {
+            runBlocking {
+                app.container.aiSettings.save(AiProviderKind.OPENAI_COMPATIBLE, server.url("/v1").toString().trimEnd('/'), "test-model", jsonMode = true)
+                app.container.aiSettings.setKey("sk-flow-test")
+            }
+            val text = """{"matches": [
+                {"name": "Machine Seated Row", "ref": {"key": "seated_cable_row"}, "confidence": "high", "note": ""},
+                {"name": "Dumbbell Hammer Curl to Press", "ref": {"key": "hammer_curl"}, "confidence": "high", "note": ""},
+                {"name": "Heel Walking", "ref": {"key": "plank"}, "confidence": "low", "note": "Not the same exercise."}]}"""
+            val body = buildJsonObject {
+                put("choices", buildJsonArray { add(buildJsonObject { put("message", buildJsonObject { put("role", "assistant"); put("content", text) }) }) })
+            }
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(Json.encodeToString(JsonObject.serializer(), body)))
+
+            openImport(threeNames)
+            scrollToInList(str(R.string.import_assist_action))
+            clickText(str(R.string.import_assist_action))
+            waitForText(str(R.string.ai_payload_title))
+            screenshot("1-what-is-sent")
+            assertEquals(0, server.requestCount)
+            clickText(str(R.string.ai_payload_send))
+
+            // The answer comes back on another thread: wait for the button it brings.
+            waitUntil { runCatching { scrollToInList(str(R.string.import_assist_accept_all)) }.isSuccess }
+            val seated = str(R.string.import_assist_suggests, str(R.string.ex_seated_cable_row), str(R.string.import_confidence_high))
+            scrollToInList(seated)
+            assertShown(hasText(seated))
+            val plank = str(R.string.import_assist_suggests, str(R.string.ex_plank), str(R.string.import_confidence_low))
+            scrollToInList(plank)
+            assertShown(hasText(plank))
+            screenshot("2-proposals")
+            val sent = server.takeRequest().body.readUtf8()
+            assertFalse("an @ was sent", sent.contains('@'))
+            assertTrue(sent.contains("Machine Seated Row"))
+            assertFalse(sent.contains("weight_kg"))
+            // A proposal applies nothing by itself: no row says "As …", Import still waits.
+            assertTrue(compose.onAllNodes(hasText(str(R.string.import_chosen_use, str(R.string.ex_seated_cable_row)))).fetchSemanticsNodes().isEmpty())
+            scrollToInList(str(R.string.import_decide_first))
+            compose.onNode(hasText(str(R.string.import_action)) and hasClickAction()).assertIsNotEnabled()
+
+            scrollToInList(str(R.string.import_assist_accept_all))
+            clickText(str(R.string.import_assist_accept_all))
+            scrollToInList(str(R.string.ex_seated_cable_row).let { str(R.string.import_chosen_use, it) })
+            scrollToInList(str(R.string.import_chosen_use, str(R.string.ex_hammer_curl)))
+            scrollToInList("Heel Walking")
+            assertShown(hasText(str(R.string.import_chosen_none)))
+            scrollToInList(str(R.string.import_decide_first))
+            compose.onNode(hasText(str(R.string.import_action)) and hasClickAction()).assertIsNotEnabled()
+            screenshot("3-accepted")
+
+            scrollToInList(str(R.string.import_skip_remaining))
+            clickText(str(R.string.import_skip_remaining))
+            importNow()
+            assertTrue(count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("seated_cable_row")}'") >= 1)
+            assertTrue(count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("hammer_curl")}'") >= 1)
+            assertEquals(0, count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("plank")}'"))
+            assertEquals(1, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
     }
 }

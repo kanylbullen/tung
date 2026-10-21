@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.core.importing
 
 import io.github.kanylbullen.tung.core.CoreCatalog
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.core.command.CandidateResolver
@@ -23,8 +24,8 @@ internal object ImportTestFiles {
 
     /** Every catalogue exercise as the app's resolver offers them: core rows with all their names, then extended entries. */
     val catalogueCandidates: List<ExerciseCandidate> by lazy {
-        core.map { ExerciseCandidate(catalogExerciseId(it.key), it.name.values.toList(), nameKey = it.key) } +
-            extended.map { ExerciseCandidate(extendedExerciseId(it.id), listOf(it.displayName), extendedId = it.id) }
+        core.map { ExerciseCandidate(catalogExerciseId(it.key), it.name.values.toList(), nameKey = it.key, equipment = Equipment.fromKey(it.equipment)) } +
+            extended.map { ExerciseCandidate(extendedExerciseId(it.id), listOf(it.displayName), extendedId = it.id, equipment = Equipment.fromKey(it.equipment)) }
     }
 
     fun resolver(extra: List<ExerciseCandidate> = emptyList()) = CandidateResolver(catalogueCandidates + extra)

@@ -52,6 +52,9 @@ sealed interface AiDraft {
     data class NextWorkout(val rationale: String, val plan: WorkoutPlan, override val dropped: Int) : AiDraft
 
     data class Plateaus(val plateaus: List<AiPlateauDraft>, override val dropped: Int) : AiDraft
+
+    /** The import review's matches ([AiRequest.MatchExercises]), one per name at most. */
+    data class Matches(val matches: List<AiMatchDraft>, override val dropped: Int) : AiDraft
 }
 
 /** One plateau as the model wrote it; [since] is null when it gave no valid ISO date. */
@@ -83,6 +86,7 @@ fun parseAiAnswer(request: AiRequest, text: String, catalogueKeys: Set<String>):
         AiRequest.Program -> parseProgram(root, catalogueKeys)
         AiRequest.NextWorkout, is AiRequest.FreeText -> parseNextWorkout(root, catalogueKeys)
         AiRequest.Plateaus -> parsePlateaus(root, catalogueKeys)
+        is AiRequest.MatchExercises -> parseMatches(root, request, catalogueKeys)
     }
 }
 
@@ -150,11 +154,11 @@ private fun refOf(o: JsonObject, keys: Set<String>): ExerciseRef? {
     }
 }
 
-private fun JsonObject.array(name: String): JsonArray? = this[name] as? JsonArray
+internal fun JsonObject.array(name: String): JsonArray? = this[name] as? JsonArray
 
-private fun JsonObject.primitive(name: String): JsonPrimitive? = (this[name] as? JsonPrimitive)?.takeIf { it !is JsonNull }
+internal fun JsonObject.primitive(name: String): JsonPrimitive? = (this[name] as? JsonPrimitive)?.takeIf { it !is JsonNull }
 
-private fun JsonObject.string(name: String): String? = primitive(name)?.content
+internal fun JsonObject.string(name: String): String? = primitive(name)?.content
 
 private fun JsonObject.double(name: String): Double? = primitive(name)?.content?.trim()?.toDoubleOrNull()
 
@@ -186,6 +190,9 @@ sealed interface AiProposal {
     }
 
     data class Plateaus(val plateaus: List<ProposedPlateau>, override val dropped: Int) : AiProposal
+
+    /** Matches for the import review, in the order the model gave them; shown on the rows, applied only by a tap. */
+    data class Matches(val matches: List<ProposedMatch>, override val dropped: Int) : AiProposal
 }
 
 data class ProposedRoutine(val name: String, val exercises: List<ProposedRoutineExercise>) {
@@ -215,7 +222,9 @@ sealed interface AiResolution {
  * A routine left without exercises is dropped; a program left without
  * routines, or a workout without exercises, is [AiResolution.Empty]. Each
  * plan that remains passes core's [validate] for the command it becomes.
- * Plateaus may be an empty list: that is an answer ("no plateaus").
+ * Plateaus may be an empty list: that is an answer ("no plateaus"), and so
+ * may matches; a match whose ref resolves to nothing is dropped, a null ref
+ * ("no good match") is kept.
  */
 suspend fun resolveAiAnswer(draft: AiDraft, resolver: ExerciseResolver): AiResolution {
     var dropped = draft.dropped
@@ -251,6 +260,17 @@ suspend fun resolveAiAnswer(draft: AiDraft, resolver: ExerciseResolver): AiResol
         is AiDraft.Plateaus -> {
             val plateaus = draft.plateaus.mapNotNull { p -> resolve(p.exercise)?.let { ProposedPlateau(it, p.since, p.observation, p.suggestion) } }
             AiResolution.Proposed(AiProposal.Plateaus(plateaus, dropped))
+        }
+        is AiDraft.Matches -> {
+            // A ref that names nothing in the catalogue or the extended catalogue drops the entry; null is an answer.
+            val matches = draft.matches.mapNotNull { m ->
+                if (m.ref == null) {
+                    ProposedMatch(m.name, null, m.confidence, m.note)
+                } else {
+                    resolve(m.ref)?.let { ProposedMatch(m.name, it, m.confidence, m.note) }
+                }
+            }
+            AiResolution.Proposed(AiProposal.Matches(matches, dropped))
         }
     }
 }

@@ -219,7 +219,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 val container = appContainer()
                 val appContext = LocalContext.current.applicationContext
                 val vm: ImportViewModel = viewModel(
-                    factory = factoryOf { ImportViewModel(container.imports) { readImportFile(appContext, uri) } },
+                    factory = factoryOf { ImportViewModel(container.imports, container.ai, container.aiSettings) { readImportFile(appContext, uri) } },
                 )
                 val picked by entry.savedStateHandle.getStateFlow<String?>(Routes.IMPORT_PICKED, null).collectAsStateWithLifecycle()
                 LaunchedEffect(picked) {

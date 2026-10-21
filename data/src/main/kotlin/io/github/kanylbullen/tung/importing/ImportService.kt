@@ -10,7 +10,9 @@ import io.github.kanylbullen.tung.core.importing.ImportBundle
 import io.github.kanylbullen.tung.core.importing.ImportChoice
 import io.github.kanylbullen.tung.core.importing.ImportMatch
 import io.github.kanylbullen.tung.core.importing.adapterFor
+import io.github.kanylbullen.tung.core.importing.NameUsage
 import io.github.kanylbullen.tung.core.importing.importExerciseNames
+import io.github.kanylbullen.tung.core.importing.nameUsage
 import io.github.kanylbullen.tung.core.importing.resolveImportNames
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +24,13 @@ import java.time.ZoneId
 data class ImportPreview(val bundle: ImportBundle, val matches: Map<String, ImportMatch>) {
     /** The names the person has to decide on, in the order the export uses them. */
     val unmatched: List<String> get() = matches.filterValues { it is ImportMatch.Unmatched }.keys.toList()
+
+    /** The offline suggestions for each unmatched name, best first (core's `importSuggestions`). */
+    val suggestions: Map<String, List<ExerciseCandidate>> get() =
+        matches.mapNotNull { (name, match) -> (match as? ImportMatch.Unmatched)?.let { name to it.suggestions } }.toMap()
+
+    /** How much of the export uses each name: workouts, sets, routines; so the review shows which names carry history. */
+    val usage: Map<String, NameUsage> by lazy { bundle.nameUsage() }
 
     /** What resolution found, as the choices the import starts from. */
     val matchedChoices: Map<String, ImportChoice> get() =
