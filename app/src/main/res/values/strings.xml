@@ -319,6 +319,41 @@
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- Settings and sync -->
     <string name="settings_title">Settings</string>
+    <!-- Settings' groups (issue #67) -->
+    <string name="settings_group_account">Account</string>
+    <string name="settings_group_devices">Devices</string>
+    <string name="settings_group_training">Training</string>
+    <string name="settings_group_assistant">Assistant</string>
+    <string name="settings_group_health">Health Connect</string>
+    <string name="settings_group_data">Data</string>
+    <string name="settings_group_about">About</string>
+    <string name="settings_summary_signed_out">Not signed in</string>
+    <string name="settings_summary_devices_signed_out">Link a watch once signed in</string>
+    <string name="settings_summary_devices">Link a watch, push</string>
+    <string name="settings_summary_training">Default rest %1$s · kg</string>
+    <string name="settings_summary_not_set_up">Not set up</string>
+    <string name="settings_summary_health_unavailable">Not available on this phone</string>
+    <string name="settings_summary_health_both">Writing workouts, reading heart rate</string>
+    <string name="settings_summary_health_write">Writing workouts</string>
+    <string name="settings_summary_health_read">Reading heart rate and calories</string>
+    <string name="settings_summary_health_off">Off</string>
+    <string name="settings_summary_last_import">Last import %1$s</string>
+    <string name="settings_summary_data">Import from other apps</string>
+    <string name="settings_summary_about">Version %1$s · %2$s</string>
+    <string name="sync_use_another_server">Use another server</string>
+    <string name="settings_devices_signed_out">Linking a watch and push need an account. Sign in under Account first.</string>
+    <string name="settings_devices_open_account">Go to Account</string>
+    <string name="push_title">Push</string>
+    <string name="settings_rest_default">Default rest</string>
+    <string name="settings_rest_default_hint">The rest timer between sets, for exercises without their own. An exercise\'s own is set from its menu in a workout.</string>
+    <string name="settings_units">Units</string>
+    <string name="settings_units_kg">Kilograms (kg)</string>
+    <string name="about_version">Version</string>
+    <string name="about_licence">Licence</string>
+    <string name="about_licence_text">Free software under the GNU AGPL-3.0.</string>
+    <string name="about_source">Source code: %1$s</string>
+    <string name="about_catalogue">Exercise catalogue</string>
+    <string name="about_catalogue_text">Open data: Tung\'s own catalogue is CC0 1.0, and the extended catalogue comes from free-exercise-db (the Unlicense).</string>
     <string name="sync_title">Sync</string>
     <string name="sync_intro">Optional. Sign in to a Tung server to keep your training there and on your other devices. Without one, everything stays on this phone.</string>
     <string name="sync_server_url">Server address</string>

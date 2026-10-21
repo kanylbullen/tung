@@ -318,6 +318,41 @@
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- Inställningar och synk -->
     <string name="settings_title">Inställningar</string>
+    <!-- Settings' groups (issue #67) -->
+    <string name="settings_group_account">Konto</string>
+    <string name="settings_group_devices">Enheter</string>
+    <string name="settings_group_training">Träning</string>
+    <string name="settings_group_assistant">Assistent</string>
+    <string name="settings_group_health">Health Connect</string>
+    <string name="settings_group_data">Data</string>
+    <string name="settings_group_about">Om Tung</string>
+    <string name="settings_summary_signed_out">Inte inloggad</string>
+    <string name="settings_summary_devices_signed_out">Länka en klocka när du har loggat in</string>
+    <string name="settings_summary_devices">Länka en klocka, push</string>
+    <string name="settings_summary_training">Standardvila %1$s · kg</string>
+    <string name="settings_summary_not_set_up">Inte inställd</string>
+    <string name="settings_summary_health_unavailable">Inte tillgängligt på den här telefonen</string>
+    <string name="settings_summary_health_both">Skriver pass, läser puls</string>
+    <string name="settings_summary_health_write">Skriver pass</string>
+    <string name="settings_summary_health_read">Läser puls och kalorier</string>
+    <string name="settings_summary_health_off">Av</string>
+    <string name="settings_summary_last_import">Senaste import %1$s</string>
+    <string name="settings_summary_data">Importera från andra appar</string>
+    <string name="settings_summary_about">Version %1$s · %2$s</string>
+    <string name="sync_use_another_server">Använd en annan server</string>
+    <string name="settings_devices_signed_out">Att länka en klocka och push kräver ett konto. Logga in under Konto först.</string>
+    <string name="settings_devices_open_account">Gå till Konto</string>
+    <string name="push_title">Push</string>
+    <string name="settings_rest_default">Standardvila</string>
+    <string name="settings_rest_default_hint">Vilotimern mellan set, för övningar utan egen. En övnings egen ställer du in i dess meny under ett pass.</string>
+    <string name="settings_units">Måttenhet</string>
+    <string name="settings_units_kg">Kilogram (kg)</string>
+    <string name="about_version">Version</string>
+    <string name="about_licence">Licens</string>
+    <string name="about_licence_text">Fri programvara under GNU AGPL-3.0.</string>
+    <string name="about_source">Källkod: %1$s</string>
+    <string name="about_catalogue">Övningskatalog</string>
+    <string name="about_catalogue_text">Öppna data: Tungs egen katalog är CC0 1.0, och den utökade katalogen kommer från free-exercise-db (the Unlicense).</string>
     <string name="sync_title">Synk</string>
     <string name="sync_intro">Valfritt. Logga in på en Tung-server för att ha din träning där och på dina andra enheter. Utan server stannar allt på den här telefonen.</string>
     <string name="sync_server_url">Serveradress</string>

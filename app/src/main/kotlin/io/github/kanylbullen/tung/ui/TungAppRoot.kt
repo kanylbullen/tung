@@ -59,7 +59,9 @@ import io.github.kanylbullen.tung.ui.routines.ProgramDetailScreen
 import io.github.kanylbullen.tung.ui.routines.ProgramsScreen
 import io.github.kanylbullen.tung.ui.routines.RoutineDetailScreen
 import io.github.kanylbullen.tung.ui.routines.RoutinesScreen
-import io.github.kanylbullen.tung.ui.settings.SettingsScreen
+import io.github.kanylbullen.tung.ui.settings.SETTINGS_ROUTE
+import io.github.kanylbullen.tung.ui.settings.SettingsGroup
+import io.github.kanylbullen.tung.ui.settings.settingsGraph
 import io.github.kanylbullen.tung.ui.summary.SummaryScreen
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.workout.ActiveWorkoutScreen
@@ -80,7 +82,7 @@ private object Routes {
     const val PROGRAMS = "programs"
     const val ARG_PROGRAM = "programId"
     const val PROGRAM = "program/{$ARG_PROGRAM}"
-    const val SETTINGS = "settings"
+    const val SETTINGS = SETTINGS_ROUTE
     const val ARG_ASK = "ask"
     const val ASSISTANT = "assistant?$ARG_ASK={$ARG_ASK}"
     const val ARG_REF = "ref"
@@ -203,14 +205,12 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 AssistantScreen(
                     ask = entry.arguments?.getString(Routes.ARG_ASK),
                     onBack = { nav.popBackStack() },
-                    onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                    onOpenSettings = { nav.navigate(SettingsGroup.ASSISTANT.route) },
                     onProgramSaved = { nav.navigateToTab(Routes.ROUTINES) },
                     onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) { popUpTo(Routes.HOME) } },
                 )
             }
-            composable(Routes.SETTINGS) {
-                SettingsScreen(onBack = { nav.popBackStack() }, onImportFile = { uri -> nav.navigate(Routes.import(uri)) })
-            }
+            settingsGraph(nav, onImportFile = { uri -> nav.navigate(Routes.import(uri)) })
             composable(
                 Routes.IMPORT,
                 arguments = listOf(navArgument(Routes.ARG_URI) { type = NavType.StringType; nullable = true; defaultValue = null }),

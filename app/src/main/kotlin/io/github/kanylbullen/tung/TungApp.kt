@@ -100,4 +100,13 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
      * only ever sees the ID token.
      */
     open fun createGoogleSignIn(): GoogleSignIn = AndroidGoogleSignIn()
+
+    /**
+     * The server Settings' Account starts with when none is stored
+     * (`BuildConfig.DEFAULT_SERVER_URL`, the public tung-server; issue #67).
+     * Overridden by the flow tests' application, so no test ever asks the
+     * real server: like [createGoogleSignIn], not a container seam, since
+     * only the Account screen reads it.
+     */
+    open val defaultServerUrl: String get() = BuildConfig.DEFAULT_SERVER_URL
 }

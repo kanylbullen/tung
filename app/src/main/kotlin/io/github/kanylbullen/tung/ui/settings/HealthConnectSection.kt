@@ -36,7 +36,8 @@ import io.github.kanylbullen.tung.ui.theme.Tung
  * Settings' "Health Connect" section (CLAUDE.md, "Health Connect"): two
  * opt-ins, each asking for its permissions through Health Connect's own
  * sheet. Where Health Connect is not available the switches are hidden and a
- * hint says why. One call site, at the bottom of [SettingsScreen].
+ * hint says why. One call site, [HealthConnectSettingsScreen] (whose top bar
+ * names it); the list of groups reads [HealthConnectViewModel] for its summary.
  */
 @Composable
 fun HealthConnectSection() {
@@ -49,7 +50,6 @@ fun HealthConnectSection() {
         onPauseOrDispose { }
     }
 
-    Text(stringResource(R.string.health_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
     if (gateway == null || state.availability != HealthAvailability.AVAILABLE) {
         Text(
             stringResource(if (state.availability == HealthAvailability.NEEDS_UPDATE) R.string.health_needs_update else R.string.health_unavailable),
