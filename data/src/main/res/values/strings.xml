@@ -23,6 +23,9 @@
     </plurals>
     <string name="ongoing_started_by_agent">Started by your assistant</string>
     <string name="ongoing_log_set">Log set</string>
+    <string name="ongoing_add_set">Add set</string>
+    <!-- Every set ticked; the exercise "Add set" adds to: "Bench press · all sets logged" -->
+    <string name="ongoing_all_logged">%1$s · all sets logged</string>
     <string name="ongoing_finish">Finish</string>
 
     <!-- The title of a session written to Health Connect when the workout has no routine (health/HealthConnectRecorder.kt) -->

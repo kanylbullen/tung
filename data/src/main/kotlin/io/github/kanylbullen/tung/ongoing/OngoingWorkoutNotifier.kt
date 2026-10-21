@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
  *
  * Tapping it opens the workout ([TungHost.openWorkoutIntent]). With
  * [actions], **Log set** sends [OngoingWorkoutReceiver] the current set (or
- * opens the workout when that set has no reps yet) and **Finish** opens the
+ * opens the workout when that set has no reps yet), or, with every set
+ * ticked, **Add set** sends it the exercise to add a set to; **Finish** opens the
  * workout with the finish dialog ([TungHost.finishWorkoutIntent]); it never
  * finishes silently. [decorate] runs on the builder before it is posted: the
  * watch attaches its Ongoing Activity there.
@@ -100,6 +101,16 @@ class OngoingWorkoutNotifier(
                 }
                 builder.addAction(0, context.getString(R.string.ongoing_log_set), logSet)
             }
+            val addSetExerciseId = workout.addSetWorkoutExerciseId
+            if (logSetId == null && addSetExerciseId != null) {
+                val addSet = PendingIntent.getBroadcast(
+                    context,
+                    REQUEST_ADD_SET,
+                    OngoingWorkoutReceiver.addSetIntent(context, workout.workoutId, addSetExerciseId),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+                builder.addAction(0, context.getString(R.string.ongoing_add_set), addSet)
+            }
             builder.addAction(0, context.getString(R.string.ongoing_finish), activity(REQUEST_FINISH, host.finishWorkoutIntent(workout.workoutId)))
         }
         decorate(builder, workout, open)
@@ -126,6 +137,7 @@ class OngoingWorkoutNotifier(
         private const val REQUEST_OPEN = 20
         private const val REQUEST_LOG_SET = 21
         private const val REQUEST_FINISH = 22
+        private const val REQUEST_ADD_SET = 23
 
         fun cancel(context: Context) = NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
 

@@ -222,7 +222,7 @@ class AppCommandHandler(
         val setId = command.setId
             ?: currentSetId(command.workoutId)
             ?: return Rejected(listOf("no un-ticked set left in workout ${command.workoutId}"))
-        val added = workouts.logSet(setId)
+        val added = workouts.logSet(setId, addNext = command.addNext)
         return Done(listOfNotNull(SET_ID to setId, added?.let { ADDED_SET_ID to it }).toMap())
     }
 

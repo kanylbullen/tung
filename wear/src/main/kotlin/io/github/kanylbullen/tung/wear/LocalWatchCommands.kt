@@ -4,7 +4,9 @@ import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.SetIndex
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.core.command.CommandIds
 import io.github.kanylbullen.tung.core.command.CommandResult
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
 import io.github.kanylbullen.tung.core.wear.WatchCommand
@@ -44,6 +46,7 @@ class LocalWatchCommands(
     suspend fun apply(command: WatchCommand): Boolean = lock.withLock {
         when (command) {
             is WatchCommand.LogSet -> logSet(command.setId)
+            is WatchCommand.AddSet -> addSet(command.workoutExerciseId)
             is WatchCommand.SetWeight -> edit(command.setId) { Command.SetWeight(command.setId, command.kg) }
             is WatchCommand.SetReps -> edit(command.setId) { Command.SetReps(command.setId, command.reps) }
             is WatchCommand.SelectSet -> selectSet(command.setId)
@@ -66,8 +69,7 @@ class LocalWatchCommands(
 
     /**
      * Log set, as the phone's button does it: `Command.LogSet` ticks the set
-     * and adds the next one if this was the last (within a routine's target
-     * sets), then the current set moves ([nextCurrentAfterLogging]) and the
+     * and adds none (issue #64), then the current set moves ([nextCurrentAfterLogging]) and the
      * exercise's rest starts. A set with 0 reps is not logged; the watch asks
      * for reps first.
      */
@@ -96,6 +98,19 @@ class LocalWatchCommands(
 
         val seconds = restSecondsFor(exercise.exercise.restSeconds, restTimer.defaultSeconds.first())
         restTimer.set(workout.id, RestTimer.start(clock(), seconds))
+        return true
+    }
+
+    /**
+     * Add set, the log button's other face once every set is ticked:
+     * `Command.AddSet` (a copy of the exercise's last set), and the new set
+     * becomes current. Ignored for an exercise not in the workout in progress.
+     */
+    private suspend fun addSet(workoutExerciseId: String): Boolean {
+        val workout = active() ?: return false
+        if (exercisesOf(workout).none { it.workoutExercise.id == workoutExerciseId }) return false
+        val result = commands.execute(Command.AddSet(workoutExerciseId)) as? CommandResult.Done ?: return false
+        selection.set(WearSelection(workout.id, result.id(CommandIds.SET_ID), workoutExerciseId))
         return true
     }
 

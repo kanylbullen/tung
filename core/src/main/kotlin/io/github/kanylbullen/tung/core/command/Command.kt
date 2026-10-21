@@ -67,13 +67,15 @@ sealed interface Command {
     data class TickSet(val setId: String, val done: Boolean) : Command
 
     /**
-     * "Log set": ticks the current set and, if it was the last of its
-     * exercise, adds the next one (not past a routine's target sets). The app
-     * passes the [setId] it shows as current (selection and the touched
+     * "Log set": ticks the current set, nothing more. With [addNext] it also
+     * adds the next set when the logged one was the last of its exercise (not
+     * past a routine's target sets, [io.github.kanylbullen.tung.core.addsNextSet]),
+     * the behaviour before issue #64; no client of this repository asks for it.
+     * The app passes the [setId] it shows as current (selection and the touched
      * exercise live in its ViewModel); without one the handler takes the first
      * un-ticked set of the first exercise that has one ([io.github.kanylbullen.tung.core.currentSet]).
      */
-    data class LogSet(val workoutId: String, val setId: String? = null) : Command
+    data class LogSet(val workoutId: String, val setId: String? = null, val addNext: Boolean = false) : Command
 
     /**
      * Makes a set the current one: [setId] itself, or the first un-ticked set
