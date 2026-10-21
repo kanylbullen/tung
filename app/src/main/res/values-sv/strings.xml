@@ -128,6 +128,32 @@
     <string name="picker_reason_pairs_with">Passar med %1$s</string>
     <string name="picker_reason_not_yet_today">Inte tränat än i dag</string>
     <string name="picker_reason_often_together">Ofta tillsammans</string>
+    <!-- The Exercises tab's group chips and the exercise page (ui/exercises/ExerciseDetailScreen.kt) -->
+    <string name="exercises_all">Alla</string>
+    <string name="exercise_add_to_routine">Lägg till i rutin</string>
+    <string name="exercise_add_to_workout">Lägg till i passet</string>
+    <string name="exercise_choose_routine">Till vilken rutin?</string>
+    <string name="exercise_no_routines">Inga rutiner än. Spara ett avslutat pass som rutin först.</string>
+    <!-- Confirmation after "Add to routine"; %1$s is the routine's name. -->
+    <string name="exercise_added_to_routine">Tillagd i %1$s</string>
+    <string name="exercise_history">Historik</string>
+    <string name="exercise_not_logged">Inte loggad än.</string>
+    <!-- Above last session's sets; %1$s is the date. -->
+    <string name="exercise_last_time">Senast, %1$s</string>
+    <!-- The best set as a big number: "85 × 6", with the label "Best set, kg". -->
+    <string name="exercise_set_value">%1$s × %2$d</string>
+    <string name="exercise_best_set">Bästa set, kg</string>
+    <plurals name="exercise_sessions">
+        <item quantity="one">Pass</item>
+        <item quantity="other">Pass</item>
+    </plurals>
+    <string name="exercise_instructions">Så gör du</string>
+    <string name="exercise_map_primary">Primär</string>
+    <string name="exercise_map_secondary">Sekundär</string>
+    <!-- The muscle map for a screen reader; %1$s and %2$s are lists of muscles. -->
+    <string name="exercise_map_description">Muskler som arbetar. Primär: %1$s. Sekundär: %2$s.</string>
+    <string name="exercise_map_description_primary">Muskler som arbetar. Primär: %1$s.</string>
+    <string name="exercise_not_found">Övningen finns inte längre.</string>
     <string name="create_title">Skapa övning</string>
     <string name="create_name">Namn</string>
     <string name="create_muscle">Muskelgrupp</string>

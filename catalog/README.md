@@ -5,17 +5,17 @@ and other clients can read the same files.
 
 | File | Contents |
 |---|---|
-| `core.json` | The core: the exercises the app seeds and shows in the Exercises tab, with names in English and Swedish. The source of truth for `SeedExercises.kt` and the `ex_*` strings in the app. |
-| `extended.json` | The extended catalogue: just over 600 strength exercises in English, imported from [free-exercise-db](https://github.com/yuhonas/free-exercise-db). Reached only through search in the exercise picker. |
+| `core.json` | The core: the exercises the app seeds, with names in English and Swedish, and for most of them instructions in English. The source of truth for `SeedExercises.kt` and the `ex_*` strings in the app. |
+| `extended.json` | The extended catalogue: just over 600 strength exercises in English, imported from [free-exercise-db](https://github.com/yuhonas/free-exercise-db). Not seeded: the Exercises tab lists it and the exercise picker searches it; an entry gets a database row when it is first added. |
 | `tools/gen_android.py` | Generates the Android sources from `core.json`. |
-| `tools/import_free_exercise_db.py` | Builds `extended.json` from free-exercise-db. |
+| `tools/import_free_exercise_db.py` | Builds `extended.json` from free-exercise-db, and writes the core entries' `instructions` into `core.json`. |
 
 ## Format
 
 `core.json` is a list sorted by `key`, one entry per line:
 
 ```json
-{"key": "bench_press", "name": {"sv": "Bänkpress", "en": "Bench press"}, "muscleGroup": "chest", "equipment": "barbell", "primaryMuscles": ["chest"], "secondaryMuscles": ["triceps", "front_delts"]}
+{"key": "bench_press", "name": {"sv": "Bänkpress", "en": "Bench press"}, "muscleGroup": "chest", "equipment": "barbell", "primaryMuscles": ["chest"], "secondaryMuscles": ["triceps", "front_delts"], "instructions": {"en": ["Lie back on a flat bench. …", "…"]}}
 ```
 
 - `key`: stable key, lowercase letters and underscores. Never changes once it
@@ -31,6 +31,14 @@ and other clients can read the same files.
 - `primaryMuscles`: 1–3 muscles the exercise is for, most important first;
   `secondaryMuscles`: 0–4 that work along. No muscle in both lists. Values
   from the fixed list below.
+- `instructions` (optional): the steps, in order, per language tag. Only
+  `en` exists today; the app falls back to English for any other language.
+  Written by `tools/import_free_exercise_db.py` from the entry's
+  free-exercise-db twin (see "The extended catalogue"), so do not edit them
+  by hand: the next import overwrites them. An entry without a twin has none
+  (today `bulgarian_split_squat`, `burpee`, `glute_bridge`,
+  `kettlebell_swing`, `side_plank` and `thruster`; `side_plank`'s twin has
+  no steps). `gen_android.py` ignores the field.
 
 ### Muscles
 
@@ -104,6 +112,11 @@ fetches `dist/exercises.json` from free-exercise-db (branch `main`) and:
 - drops exercises that are already in the core: the same normalised English
   name (lowercase, hyphens to spaces, spaces collapsed) or a pair in the
   script's hand-written alias list (`Barbell Squat` ↔ `back_squat` and so on);
+- copies each dropped twin's `instructions` into its core entry in
+  `core.json` as `instructions.en` (a twin found by name wins over an alias,
+  then the first by id), rewriting the file sorted by `key`, one entry per
+  line, every other field as it was. Run `gen_android.py --check` after it:
+  nothing it generates depends on the steps;
 - leaves out the images, since their origin is not documented.
 
 An entry:

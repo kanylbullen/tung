@@ -102,6 +102,9 @@ class TungContainer(
     /** What each catalogue exercise trains (`core.MuscleIndex`), for the picker's suggestions. */
     val catalogueMuscles: CatalogueMuscles by lazy { CatalogueMuscles({ coreCatalog }, extendedCatalog) }
 
+    /** What each catalogue exercise is (`core.catalog.CatalogueIndex`: muscles, instructions), for the exercise page. */
+    val catalogueDetails: CatalogueDetails by lazy { CatalogueDetails({ coreCatalog }, extendedCatalog) }
+
     /**
      * Every change to training data goes through here: the screens' ViewModels
      * (and the watch) call [CommandHandler.execute] and never a repository for

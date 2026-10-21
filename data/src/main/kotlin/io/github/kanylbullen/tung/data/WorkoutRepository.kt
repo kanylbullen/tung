@@ -1,8 +1,11 @@
 package io.github.kanylbullen.tung.data
 
 import androidx.room.withTransaction
+import io.github.kanylbullen.tung.core.ExerciseHistory
+import io.github.kanylbullen.tung.core.HistorySet
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.addedExerciseSets
+import io.github.kanylbullen.tung.core.exerciseHistory
 import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.command.PlannedSet
 import io.github.kanylbullen.tung.core.command.plannedSetValues
@@ -12,6 +15,7 @@ import io.github.kanylbullen.tung.core.picker.SUGGESTION_HISTORY_LIMIT
 import io.github.kanylbullen.tung.core.prefillSet
 import io.github.kanylbullen.tung.core.sync.SyncTable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /** All workout reads and writes. Room runs suspend DAO calls off the main thread. */
 class WorkoutRepository(
@@ -218,6 +222,16 @@ class WorkoutRepository(
         }
         workoutId
     }
+
+    /** The user's history of [exerciseId] (sessions, last session, best set), live; core's [exerciseHistory] does the sums. */
+    fun observeExerciseHistory(exerciseId: String): Flow<ExerciseHistory> =
+        dao.observeExerciseHistory(exerciseId).map { rows ->
+            exerciseHistory(
+                rows.map {
+                    HistorySet(it.workoutId, it.workoutExerciseId, it.startedAt, it.exercisePosition, it.setPosition, LoggedSet(it.weightKg, it.reps))
+                },
+            )
+        }
 
     suspend fun previousSessionSets(exerciseId: String, excludeWorkoutId: String): List<LoggedSet> =
         dao.previousSessionSets(exerciseId, excludeWorkoutId).map { it.toLogged() }

@@ -36,7 +36,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.catalog.ExercisePageRef
 import io.github.kanylbullen.tung.ui.ai.AssistantScreen
+import io.github.kanylbullen.tung.ui.exercises.ExerciseDetailScreen
 import io.github.kanylbullen.tung.ui.exercises.ExercisesScreen
 import io.github.kanylbullen.tung.ui.exercises.PickerTarget
 import io.github.kanylbullen.tung.ui.history.HistoryScreen
@@ -70,6 +72,8 @@ private object Routes {
     const val SETTINGS = "settings"
     const val ARG_ASK = "ask"
     const val ASSISTANT = "assistant?$ARG_ASK={$ARG_ASK}"
+    const val ARG_REF = "ref"
+    const val EXERCISE = "exercise/{$ARG_REF}"
 
     fun workout(id: String) = "workout/$id"
     fun picker(id: String) = "picker/$id"
@@ -78,6 +82,9 @@ private object Routes {
     fun routine(id: String) = "routine/$id"
     fun routinePicker(id: String) = "routine/$id/add"
     fun program(id: String) = "program/$id"
+
+    /** An exercise page; [ref] is `ExercisePageRef.route` (a Room id or `ext:<id>`), encoded since extended ids are free text. */
+    fun exercise(ref: String) = "exercise/${Uri.encode(ref)}"
 
     /** The Assistant screen; with [ask], words the voice grammar did not understand, asked as free text at once. */
     fun assistant(ask: String? = null) = if (ask == null) "assistant" else "assistant?$ARG_ASK=${Uri.encode(ask)}"
@@ -224,7 +231,23 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 HistoryScreen(onOpenDetail = { id -> nav.navigate(Routes.detail(id)) })
             }
             composable(Routes.EXERCISES) {
-                ExercisesScreen(target = null, onBack = null, onPicked = {})
+                ExercisesScreen(
+                    target = null,
+                    onBack = null,
+                    onPicked = {},
+                    onOpenExercise = { ref -> nav.navigate(Routes.exercise(ref)) },
+                )
+            }
+            composable(
+                Routes.EXERCISE,
+                arguments = listOf(navArgument(Routes.ARG_REF) { type = NavType.StringType }),
+            ) { entry ->
+                val ref = entry.arguments?.getString(Routes.ARG_REF)?.let(ExercisePageRef::parse) ?: return@composable
+                ExerciseDetailScreen(
+                    ref = ref,
+                    onBack = { nav.popBackStack() },
+                    onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) { popUpTo(Routes.HOME) } },
+                )
             }
             composable(Routes.WORKOUT, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
