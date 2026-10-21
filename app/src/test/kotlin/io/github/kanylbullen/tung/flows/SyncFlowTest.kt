@@ -18,8 +18,8 @@ import org.junit.Test
 import java.util.UUID
 
 /**
- * Settings and sync as a person meets them: the gear on Home, a server
- * address, sign in against [FakeSyncServer], "Sync now", then a finished
+ * Settings and sync as a person meets them: the gear on Home, Account, "Use
+ * another server" and its address, sign in against [FakeSyncServer], "Sync now", then a finished
  * workout that asks WorkManager for a sync (WorkManager's test instance: the
  * work is enqueued but, with its network constraint never met, not run).
  */
@@ -49,12 +49,12 @@ class SyncFlowTest : FlowTest() {
 
     @Test
     fun signInSyncNowAndAFinishedWorkoutEnqueuesASync() {
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_account)
         waitForText(str(R.string.sync_intro))
         screenshot("1-settings-signed-out")
 
         // http is fine for the fake: it listens on localhost.
-        fill(str(R.string.sync_server_url), fake.baseUrl)
+        useServer(fake.baseUrl)
         fill(str(R.string.sync_email), "lifter@example.org")
         fill(str(R.string.sync_password), "correct horse battery")
         clickText(str(R.string.sync_sign_in))
@@ -75,7 +75,7 @@ class SyncFlowTest : FlowTest() {
         assertEquals(0L, fake.syncRequests.single().cursor)
 
         val before = nowWork()
-        clickDescription(str(R.string.action_back))
+        leaveSettings()
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
         enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(R.string.input_field_reps), "8", str(R.string.workout_edit_reps, "8"))

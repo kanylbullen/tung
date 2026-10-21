@@ -44,7 +44,7 @@ class ImportFlowTest : FlowTest() {
         plural(R.plurals.import_routines, routines, routines),
     ).joinToString(str(R.string.row_separator))
 
-    /** Settings is a scrolling column. */
+    /** Settings' Data group is a scrolling column. */
     private fun scrollToInSettings(text: String) {
         waitForText(text)
         compose.onNode(hasText(text)).performScrollTo()
@@ -72,7 +72,7 @@ class ImportFlowTest : FlowTest() {
      */
     @Test
     fun importReviewHistoryAndUndo() {
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_data)
         scrollToInSettings(str(R.string.import_jefit))
         screenshot("1-settings")
         compose.onNode(hasText(str(R.string.import_jefit))).performClick()
@@ -102,20 +102,20 @@ class ImportFlowTest : FlowTest() {
 
         clickText(str(R.string.import_done))
         scrollToInSettings(str(R.string.import_undo_last))
-        clickDescription(str(R.string.action_back))
+        leaveSettings()
         clickText(str(R.string.nav_history))
         waitGone(hasText(str(R.string.home_recent)))
         dates.forEach { waitForText(it) }
         screenshot("4-history")
 
         clickText(str(R.string.nav_home))
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_data)
         scrollToInSettings(str(R.string.import_undo_last))
         compose.onNode(hasText(str(R.string.import_undo_last))).performClick()
         waitUntil { count("SELECT COUNT(*) FROM workout") == 0 }
         waitGone(hasText(str(R.string.import_undo_last)))
         assertEquals(0, count("SELECT COUNT(*) FROM routine"))
-        clickDescription(str(R.string.action_back))
+        leaveSettings()
         clickText(str(R.string.nav_history))
         dates.forEach { waitGone(hasText(it)) }
         screenshot("5-history-after-undo")
@@ -128,7 +128,7 @@ class ImportFlowTest : FlowTest() {
      */
     @Test
     fun chooseAnExerciseForAnUnmatchedName() {
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_data)
         scrollToInSettings(str(R.string.import_jefit))
         compose.onNode(hasText(str(R.string.import_jefit))).performClick()
         answerFilePicker()

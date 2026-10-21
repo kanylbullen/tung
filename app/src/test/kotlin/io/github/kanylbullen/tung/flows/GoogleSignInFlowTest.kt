@@ -49,9 +49,9 @@ class GoogleSignInFlowTest : FlowTest() {
     @Test
     fun signInWithGoogleWhenTheServerOffersIt() {
         fake.googleClientId = "1234-web.apps.googleusercontent.com"
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_account)
         waitForText(str(R.string.sync_intro))
-        fill(str(R.string.sync_server_url), fake.baseUrl)
+        useServer(fake.baseUrl)
 
         waitForText(str(R.string.sync_google_sign_in))
         screenshot("1-google-offered")
@@ -73,8 +73,8 @@ class GoogleSignInFlowTest : FlowTest() {
     fun closingGooglesSheetLeavesTheFormAsItWas() {
         fake.googleClientId = "1234-web.apps.googleusercontent.com"
         app.google.result = GoogleSignInResult.Cancelled
-        clickDescription(str(R.string.settings_title))
-        fill(str(R.string.sync_server_url), fake.baseUrl)
+        openSettingsGroup(R.string.settings_group_account)
+        useServer(fake.baseUrl)
         clickText(str(R.string.sync_google_sign_in))
         waitUntil { app.google.requestedClientIds.isNotEmpty() }
         waitForText(str(R.string.sync_sign_in))
@@ -88,9 +88,9 @@ class GoogleSignInFlowTest : FlowTest() {
 
     @Test
     fun noGoogleButtonWhenTheServerDoesNotOfferIt() {
-        clickDescription(str(R.string.settings_title))
+        openSettingsGroup(R.string.settings_group_account)
         waitForText(str(R.string.sync_intro))
-        fill(str(R.string.sync_server_url), fake.baseUrl)
+        useServer(fake.baseUrl)
 
         // The server has been asked and has answered; give the answer time to reach the screen.
         waitUntil(5_000) { fake.paths.any { it == "GET /api/v1/auth/methods" } }
