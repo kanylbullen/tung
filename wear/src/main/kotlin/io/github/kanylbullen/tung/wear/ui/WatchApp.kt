@@ -55,6 +55,7 @@ fun WatchApp(viewModel: WatchViewModel, accountViewModel: AccountViewModel) {
                     state = state,
                     phoneUnreachable = ui.phoneUnreachable,
                     onLogSet = viewModel::logSet,
+                    onAddSet = viewModel::addSet,
                     onSelectSet = viewModel::selectSet,
                     onAdjust = { field, setId -> navController.navigate(adjustRoute(field, setId)) },
                     onFinish = viewModel::finishWorkout,

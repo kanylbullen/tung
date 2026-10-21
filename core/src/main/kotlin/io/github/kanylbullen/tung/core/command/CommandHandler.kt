@@ -39,7 +39,7 @@ fun CommandResult.id(key: String): String? = (this as? CommandResult.Done)?.ids?
  *   discarded for having nothing logged.
  * - [WORKOUT_EXERCISE_ID]: AddExercise; SelectCurrent.
  * - [SET_ID]: AddSet (the new set, the first of them with a count); LogSet (the set logged); SelectCurrent.
- * - [ADDED_SET_ID]: LogSet, when it added the next set.
+ * - [ADDED_SET_ID]: LogSet with `addNext`, when it added the next set.
  * - [EXERCISE_ID]: CreateExercise; AddExercise (the exercise it resolved to).
  * - [ROUTINE_ID]: SaveRoutine, SaveRoutinePlan, CreateRoutine.
  * - [ROUTINE_EXERCISE_ID]: AddRoutineExercise (the new row); [EXERCISE_ID] with it (the exercise it resolved to).

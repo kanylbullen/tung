@@ -232,7 +232,8 @@ The answer has the same shape: `{"cursor": …, "changes": {…}}`.
 (`core/command/`) under its stable wire name, with the command's fields as a
 snake_case JSON body. It goes through the server's command handler, the same
 one every MCP tool uses: core's validation, the app's rules (one workout in
-progress, log set adds the next set but not past a routine's target, finish
+progress, log set only ticks unless `add_next` asks for the next set (never
+past a routine's target), finish
 drops unlogged sets, …), one transaction, and the change reaches the phone on
 its next sync. A `write` token is needed.
 

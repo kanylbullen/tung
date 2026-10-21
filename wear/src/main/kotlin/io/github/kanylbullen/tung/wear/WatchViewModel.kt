@@ -95,6 +95,7 @@ class WatchViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logSet(setId: String) = send { id, at -> WatchCommand.LogSet(setId, id, at) }
+    fun addSet(workoutExerciseId: String) = send { id, at -> WatchCommand.AddSet(workoutExerciseId, id, at) }
     fun setWeight(setId: String, kg: Double) = send { id, at -> WatchCommand.SetWeight(setId, kg, id, at) }
     fun setReps(setId: String, reps: Int) = send { id, at -> WatchCommand.SetReps(setId, reps, id, at) }
     fun selectSet(setId: String) = send { id, at -> WatchCommand.SelectSet(setId, id, at) }

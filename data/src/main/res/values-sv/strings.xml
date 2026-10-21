@@ -17,6 +17,8 @@
     </plurals>
     <string name="ongoing_started_by_agent">Startat av din assistent</string>
     <string name="ongoing_log_set">Logga set</string>
+    <string name="ongoing_add_set">Lägg till set</string>
+    <string name="ongoing_all_logged">%1$s · alla set loggade</string>
     <string name="ongoing_finish">Avsluta</string>
 
     <!-- The title of a session written to Health Connect when the workout has no routine (health/HealthConnectRecorder.kt) -->

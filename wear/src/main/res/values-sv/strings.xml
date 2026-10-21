@@ -14,6 +14,7 @@
 
     <!-- Active workout -->
     <string name="log_set">Logga set</string>
+    <string name="add_set">Lägg till set</string>
     <string name="previous">Förra: %1$s × %2$d</string>
     <string name="times">" × "</string>
     <string name="reps_empty">–</string>

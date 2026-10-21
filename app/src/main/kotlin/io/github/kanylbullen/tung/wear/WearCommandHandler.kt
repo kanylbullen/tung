@@ -66,6 +66,7 @@ class WearCommandHandler(
         seen[command.commandId] = Unit
         when (command) {
             is WatchCommand.LogSet -> logSet(command.setId)
+            is WatchCommand.AddSet -> addSet(command.workoutExerciseId)
             is WatchCommand.SetWeight -> setWeight(command.setId, command.kg)
             is WatchCommand.SetReps -> setReps(command.setId, command.reps)
             is WatchCommand.SelectSet -> selectSet(command.setId)
@@ -95,8 +96,8 @@ class WearCommandHandler(
     }
 
     /**
-     * Log set, as the phone's button does it: tick, add the next set if this
-     * was the last ([WorkoutRepository.logSet]), move the current set
+     * Log set, as the phone's button does it: tick, nothing more (issue #64:
+     * `log_set` adds no set by default, [WorkoutRepository.logSet]), move the current set
      * ([nextCurrentAfterLogging]) and start the exercise's rest. A set with 0
      * reps is not logged; the watch asks for reps first.
      */
@@ -125,6 +126,20 @@ class WearCommandHandler(
 
         val seconds = restSecondsFor(exercise.exercise.restSeconds, restTimer.defaultSeconds.first())
         restTimer.set(workout.id, RestTimer.start(clock(), seconds))
+        return true
+    }
+
+    /**
+     * Add set, the log button's other face once every set is ticked: one set
+     * on [workoutExerciseId], a copy of its last ([WorkoutRepository.addSet]),
+     * which becomes the current set. Ignored for an exercise that is not in
+     * the workout in progress.
+     */
+    private suspend fun addSet(workoutExerciseId: String): Boolean {
+        val workout = active() ?: return false
+        if (exercisesOf(workout).none { it.workoutExercise.id == workoutExerciseId }) return false
+        val added = workouts.addSet(workoutExerciseId) ?: return false
+        selection.set(WearSelection(workout.id, added, workoutExerciseId))
         return true
     }
 

@@ -87,11 +87,25 @@ class LocalWatchCommandsTest {
         assertNotNull("the rest runs on the watch", afterFirst.rest)
         runBlocking { assertNotNull(container.restTimer.stored(checkNotNull(started.workoutId))) }
 
-        // The routine's target: the second of two adds no third set.
+        // Log set only ticks: the second of two adds no third set.
         send { id, at -> WatchCommand.LogSet(second.setId, id, at) }
         val logged = state().exercises.single().sets
         assertEquals(2, logged.size)
         assertTrue(logged.all { it.completed })
+
+        // Every set ticked: the button offers Add set for the exercise just logged (issue #64).
+        val allLogged = state()
+        assertNull(allLogged.currentSetId)
+        assertEquals(bench.workoutExerciseId, allLogged.addSetWorkoutExerciseId)
+        assertEquals(WatchLogButton.AddSet(bench.workoutExerciseId), allLogged.logButton(allLogged.exercises.single()))
+        send { id, at -> WatchCommand.AddSet(bench.workoutExerciseId, id, at) }
+        val added = state()
+        val third = added.exercises.single().sets.last()
+        assertEquals(3, added.exercises.single().sets.size)
+        assertEquals(80.0 to 8, third.weightKg to third.reps)
+        assertEquals("the added set is current: Log set again", third.setId, added.currentSetId)
+        assertNull(added.addSetWorkoutExerciseId)
+        assertEquals(WatchLogButton.LogSet(third.setId, needsReps = false), added.logButton(added.exercises.single()))
 
         send { id, at -> WatchCommand.FinishWorkout(id, at) }
         assertFalse(state().isActive)

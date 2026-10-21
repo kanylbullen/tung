@@ -4,7 +4,9 @@ import android.content.Context
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.SetIndex
+import io.github.kanylbullen.tung.core.StickyAction
 import io.github.kanylbullen.tung.core.currentSet
+import io.github.kanylbullen.tung.core.stickyAction
 import io.github.kanylbullen.tung.core.wear.WatchExercise
 import io.github.kanylbullen.tung.core.wear.WatchRoutine
 import io.github.kanylbullen.tung.core.wear.WatchSet
@@ -117,11 +119,18 @@ class WatchStateSource(
                 targetSets = parts.targets[e.exercise.id],
             )
         }
+        val mine = sel.takeIf { it.workoutId == workoutId }
+        val current = currentSetId(exercises, mine)
         return WatchWorkoutState(
             workoutId = workoutId,
             startedAt = parts.workout.startedAt,
             exercises = exercises,
-            currentSetId = currentSetId(exercises, sel.takeIf { it.workoutId == workoutId }),
+            currentSetId = current,
+            addSetWorkoutExerciseId = if (current == null) {
+                addSetWorkoutExerciseId(exercises, mine, lastTouchedByTime(parts.exercises))
+            } else {
+                null
+            },
             rest = parts.rest?.takeIf { it.isRunningAt(now) }?.toWatch(),
             routines = watchRoutines,
             updatedAt = now,
@@ -160,5 +169,31 @@ class WatchStateSource(
             val index = currentSet(completed, selected, touched) ?: return null
             return exercises[index.exercise].sets[index.set].setId
         }
+
+        /**
+         * With every set ticked, the exercise the log button's "Add set" adds
+         * to ([stickyAction]): the watch's touched exercise, else [fallback]
+         * (an index into [exercises]), else the last one. Null while a set is
+         * open or with no exercises.
+         */
+        fun addSetWorkoutExerciseId(exercises: List<WatchExercise>, sel: WearSelection?, fallback: Int? = null): String? {
+            val touched = sel?.touchedWorkoutExerciseId?.let { id ->
+                exercises.indexOfFirst { it.workoutExerciseId == id }.takeIf { it >= 0 }
+            } ?: fallback
+            val action = stickyAction(exercises.map { e -> e.sets.map { it.completed } }, lastTouchedExercise = touched)
+            return (action as? StickyAction.AddSet)?.let { exercises[it.exercise].workoutExerciseId }
+        }
     }
 }
+
+/**
+ * The exercise whose sets changed last (the newest `updatedAt` of its sets),
+ * as an index into [exercises]: the best guess at "the exercise just logged"
+ * for a reader that cannot see a screen's touched exercise (the ongoing
+ * notification, a watch whose own selection is empty). Null with no sets.
+ */
+internal fun lastTouchedByTime(exercises: List<WorkoutExerciseWithSets>): Int? =
+    exercises.withIndex()
+        .mapNotNull { (i, e) -> e.sets.maxOfOrNull { it.updatedAt }?.let { i to it } }
+        .maxByOrNull { it.second }
+        ?.first

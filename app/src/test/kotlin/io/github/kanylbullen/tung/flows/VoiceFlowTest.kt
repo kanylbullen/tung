@@ -80,10 +80,17 @@ class VoiceFlowTest : FlowTest() {
         waitForText(str(R.string.voice_echo_logged, "80", "8"))
         screenshot("3-logged")
         assertEquals(1, loggedSets())
-        // As the button: the next set is there, pre-filled, and the rest runs.
-        waitForDescription(str(R.string.workout_mark_done, 2))
+        // As the button: no set is added (issue #64), the button offers one, and the rest runs.
+        waitForText(str(R.string.workout_sticky_add_set, benchPress, "80", "8"))
         waitFor(hasContentDescription(str(R.string.rest_title)))
         assertEquals(2, app.speech.listens)
+        assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))
+
+        // "Klar" with nothing left to log adds nothing either: it says so.
+        tapMic()
+        app.speech.say("klar")
+        waitForText(str(R.string.voice_echo_no_set))
+        assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))
     }
 
     /** A long press keeps listening: two utterances, one set logged, and the chip turns it off. */

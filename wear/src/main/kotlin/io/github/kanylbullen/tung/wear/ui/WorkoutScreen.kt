@@ -60,8 +60,10 @@ import io.github.kanylbullen.tung.core.wear.WatchSet
 import io.github.kanylbullen.tung.core.wear.WatchWorkoutState
 import io.github.kanylbullen.tung.wear.AdjustField
 import io.github.kanylbullen.tung.wear.R
-import io.github.kanylbullen.tung.wear.currentExerciseIndex
+import io.github.kanylbullen.tung.wear.WatchLogButton
+import io.github.kanylbullen.tung.wear.focusExerciseIndex
 import io.github.kanylbullen.tung.wear.focusSet
+import io.github.kanylbullen.tung.wear.logButton
 import io.github.kanylbullen.tung.wear.lastTimeFor
 import kotlinx.coroutines.delay
 
@@ -80,6 +82,7 @@ fun WorkoutScreen(
     state: WatchWorkoutState,
     phoneUnreachable: Boolean,
     onLogSet: (String) -> Unit,
+    onAddSet: (String) -> Unit,
     onSelectSet: (String) -> Unit,
     onAdjust: (AdjustField, String) -> Unit,
     onFinish: () -> Unit,
@@ -111,9 +114,9 @@ fun WorkoutScreen(
     }
 
     val pageCount = state.exercises.size.coerceAtLeast(1) + 1
-    val pagerState = rememberPagerState(initialPage = state.currentExerciseIndex() ?: 0) { pageCount }
-    LaunchedEffect(state.currentSetId) {
-        val index = state.currentExerciseIndex() ?: return@LaunchedEffect
+    val pagerState = rememberPagerState(initialPage = state.focusExerciseIndex() ?: 0) { pageCount }
+    LaunchedEffect(state.currentSetId, state.addSetWorkoutExerciseId) {
+        val index = state.focusExerciseIndex() ?: return@LaunchedEffect
         if (index != pagerState.currentPage) pagerState.animateScrollToPage(index)
     }
 
@@ -126,8 +129,10 @@ fun WorkoutScreen(
                         exercise != null -> ExercisePage(
                             exercise = exercise,
                             currentSetId = state.currentSetId,
+                            button = state.logButton(exercise),
                             phoneUnreachable = phoneUnreachable,
                             onLogSet = onLogSet,
+                            onAddSet = onAddSet,
                             onSelectSet = onSelectSet,
                             onAdjust = onAdjust,
                         )
@@ -156,8 +161,10 @@ private fun PagerState.asIndicatorState() = object : PageIndicatorState {
 private fun ExercisePage(
     exercise: WatchExercise,
     currentSetId: String?,
+    button: WatchLogButton?,
     phoneUnreachable: Boolean,
     onLogSet: (String) -> Unit,
+    onAddSet: (String) -> Unit,
     onSelectSet: (String) -> Unit,
     onAdjust: (AdjustField, String) -> Unit,
 ) {
@@ -183,6 +190,17 @@ private fun ExercisePage(
         }
         if (focus == null) {
             item { Text(stringResource(R.string.all_logged), color = TungColors.muted, textAlign = TextAlign.Center) }
+            // Every set of the workout is ticked: logging added none, so the button offers another (issue #64).
+            if (button is WatchLogButton.AddSet) {
+                item {
+                    Chip(
+                        label = { Text(stringResource(R.string.add_set), maxLines = 1) },
+                        onClick = { onAddSet(button.workoutExerciseId) },
+                        colors = accentChipColors(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         } else {
             item { BigSet(focus, onAdjust) }
             exercise.lastTimeFor(focus)?.let { last ->

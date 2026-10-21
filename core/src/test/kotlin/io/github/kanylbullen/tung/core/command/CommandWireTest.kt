@@ -96,6 +96,18 @@ class CommandWireTest {
     }
 
     @Test
+    fun logSetTakesAnOptionalAddNextThatDefaultsToFalse() {
+        assertEquals(Command.LogSet(id, null, addNext = false), decoded("log_set", samples.getValue("log_set")))
+        assertEquals(Command.LogSet(id, id, addNext = true), decoded("log_set", """{"workout_id": "$id", "set_id": "$id", "add_next": true}"""))
+        assertEquals(Command.LogSet(id, null, addNext = false), decoded("log_set", """{"workout_id": "$id", "add_next": false}"""))
+        val reasons = (CommandWire.decode("log_set", obj("""{"workout_id": "$id", "add_next": "maybe"}""")) as WireDecoding.Invalid).reasons
+        assertTrue(reasons.toString(), reasons.contains("add_next must be true or false"))
+        val schema = CommandWire.schema("log_set")!!
+        assertEquals("boolean", schema["properties"]!!.jsonObject["add_next"]!!.jsonObject["type"]!!.jsonPrimitive.content)
+        assertTrue("add_next is optional", schema["required"]!!.jsonArray.none { it.jsonPrimitive.content == "add_next" })
+    }
+
+    @Test
     fun addExerciseTakesASetCountAndAddSetACount() {
         val bench = ExerciseRef.ByKey("bench_press")
         assertEquals(Command.AddExercise(id, bench, null), decoded("add_exercise", samples.getValue("add_exercise")))

@@ -154,17 +154,19 @@ class WorkoutRepository(
     suspend fun setCompleted(setId: String, completed: Boolean) = dao.setCompleted(setId, completed, clock())
 
     /**
-     * "Log set": ticks [setId] and, if it was the last set of its exercise,
-     * adds the next one pre-filled by the usual rule (a copy of the set just
-     * logged). An exercise from a routine is not padded past the routine's
-     * target sets ([addsNextSet]). One transaction, so the screen sees the tick
-     * and the new set together.
+     * "Log set": ticks [setId]. Only with [addNext] (the wire's `log_set.add_next`,
+     * the behaviour before issue #64) does it also add the next set when this
+     * was the last set of its exercise, pre-filled by the usual rule (a copy of
+     * the set just logged), and an exercise from a routine is not padded past
+     * the routine's target sets ([addsNextSet]). One transaction, so the screen
+     * sees the tick and the new set together.
      *
      * @return the id of the added set, or null if none was added.
      */
-    suspend fun logSet(setId: String): String? = db.withTransaction {
+    suspend fun logSet(setId: String, addNext: Boolean = false): String? = db.withTransaction {
         val set = dao.getSet(setId) ?: return@withTransaction null
         dao.setCompleted(setId, true, clock())
+        if (!addNext) return@withTransaction null
         val we = dao.getWorkoutExercise(set.workoutExerciseId) ?: return@withTransaction null
         val sets = dao.getSets(we.id)
         val wasLast = sets.maxOf { it.position } == set.position

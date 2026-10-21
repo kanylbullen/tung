@@ -17,11 +17,18 @@ fun WatchWorkoutState.applying(command: WatchCommand, nowMillis: Long): WatchWor
     is WatchCommand.LogSet -> {
         val exercise = exerciseOf(command.setId)
         val ticked = updateSet(command.setId) { it.copy(completed = true) }
-        // The next set of the same exercise if it already exists; otherwise wait for the phone, which may add one.
+        // The next set of the same exercise; otherwise wait for the phone, which moves the current set on.
         val next = exercise?.let { e -> ticked.exercises.first { it.workoutExerciseId == e.workoutExerciseId } }
             ?.sets?.firstOrNull { !it.completed }
-        ticked.copy(currentSetId = next?.setId)
+        // With every set now ticked the phone adds none (issue #64), so the button can offer Add set at once.
+        val allTicked = ticked.exercises.all { e -> e.sets.all { it.completed } }
+        ticked.copy(
+            currentSetId = next?.setId,
+            addSetWorkoutExerciseId = if (allTicked) exercise?.workoutExerciseId else null,
+        )
     }
+    // The new set's id is the phone's; wait for its state, which makes that set current.
+    is WatchCommand.AddSet -> this
     is WatchCommand.SetWeight -> updateSet(command.setId) { it.copy(weightKg = command.kg) }
     is WatchCommand.SetReps -> updateSet(command.setId) { it.copy(reps = command.reps) }
     is WatchCommand.SelectSet -> if (set(command.setId)?.completed == false) copy(currentSetId = command.setId) else this
@@ -51,3 +58,33 @@ fun WatchExercise.lastTimeFor(set: WatchSet) = lastTime.getOrNull(sets.indexOfFi
 /** Index of the exercise holding the current set, or null. */
 fun WatchWorkoutState.currentExerciseIndex(): Int? =
     currentSetId?.let { id -> exercises.indexOfFirst { e -> e.sets.any { it.setId == id } }.takeIf { it >= 0 } }
+
+/** What an exercise page's log button does: [LogSet] on its focus set, or [AddSet] once every set of the workout is ticked. */
+sealed interface WatchLogButton {
+    /** "Log set" on [setId]; with [needsReps] (0 reps) it opens the reps first, as the phone does. */
+    data class LogSet(val setId: String, val needsReps: Boolean) : WatchLogButton
+
+    /** "Add set": a copy of the exercise's last set, which becomes current ([WatchCommand.AddSet]). */
+    data class AddSet(val workoutExerciseId: String) : WatchLogButton
+}
+
+/**
+ * The log button on [exercise]'s page: Log set on its [focusSet]; with no
+ * set open anywhere, Add set on the page of the exercise the state offers it
+ * for ([WatchWorkoutState.addSetWorkoutExerciseId], `core.stickyAction`);
+ * else none ("All sets logged"). An older phone never offers Add set.
+ */
+fun WatchWorkoutState.logButton(exercise: WatchExercise): WatchLogButton? {
+    exercise.focusSet(currentSetId)?.let { return WatchLogButton.LogSet(it.setId, needsReps = it.reps <= 0) }
+    if (currentSetId == null && addSetWorkoutExerciseId == exercise.workoutExerciseId) {
+        return WatchLogButton.AddSet(exercise.workoutExerciseId)
+    }
+    return null
+}
+
+/** Index of the exercise the state offers Add set on, or null. */
+fun WatchWorkoutState.addSetExerciseIndex(): Int? =
+    addSetWorkoutExerciseId?.let { id -> exercises.indexOfFirst { it.workoutExerciseId == id }.takeIf { it >= 0 } }
+
+/** The page the pager follows: the current set's exercise, else the one Add set is offered on. */
+fun WatchWorkoutState.focusExerciseIndex(): Int? = currentExerciseIndex() ?: addSetExerciseIndex()

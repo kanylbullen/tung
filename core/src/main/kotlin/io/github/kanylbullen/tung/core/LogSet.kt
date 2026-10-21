@@ -55,11 +55,51 @@ fun nextCurrentAfterLogging(completed: List<List<Boolean>>, logged: SetIndex): S
 }
 
 /**
- * Whether logging a set adds the next one. Only when the logged set was the
- * last of its exercise, so the user always has one set waiting, and never past
+ * Whether logging a set with `log_set.add_next` adds the next one (a plain
+ * Log set never does, issue #64; the button offers [StickyAction.AddSet]
+ * instead). Only when the logged set was the last of its exercise, and never past
  * a routine's target: an exercise started from a routine with [targetSets]
  * sets is not padded beyond them. [setCount] is the exercise's sets including
  * the one just logged; [targetSets] is null outside a routine.
  */
 fun addsNextSet(wasLast: Boolean, setCount: Int, targetSets: Int?): Boolean =
     wasLast && (targetSets == null || setCount < targetSets)
+
+/**
+ * What the sticky button under the thumb does (issue #64): "Log set" while
+ * there is a current set, else "Add set" for one exercise, else nothing.
+ * Logging never adds a set by itself, so when the last un-ticked set of the
+ * workout is logged the button turns into Add set rather than disappearing.
+ */
+sealed interface StickyAction {
+    /** "Log set · Bench press · 80 × 8": tick the set at [at]. */
+    data class LogSet(val at: SetIndex) : StickyAction
+
+    /**
+     * "Add set · Bench press · 80 × 8": add a set to exercise [exercise], a
+     * copy of its set [copyOf] (its last), as + Set does; [copyOf] is null when
+     * the exercise has no sets, and the new set is then pre-filled from last
+     * session as + Set would.
+     */
+    data class AddSet(val exercise: Int, val copyOf: Int?) : StickyAction
+}
+
+/**
+ * The sticky action for a workout. A current set ([currentSet] with the same
+ * [selected] and [lastTouchedExercise]) is [StickyAction.LogSet]. With every
+ * set ticked it is [StickyAction.AddSet] for the exercise last touched (which
+ * after a Log set is the one just logged), else for the last exercise in the
+ * list. Null only for a workout with no exercises.
+ *
+ * @param completed per exercise in screen order, each set's ticked state in set order.
+ */
+fun stickyAction(
+    completed: List<List<Boolean>>,
+    selected: SetIndex? = null,
+    lastTouchedExercise: Int? = null,
+): StickyAction? {
+    currentSet(completed, selected, lastTouchedExercise)?.let { return StickyAction.LogSet(it) }
+    if (completed.isEmpty()) return null
+    val exercise = lastTouchedExercise?.takeIf { it in completed.indices } ?: completed.lastIndex
+    return StickyAction.AddSet(exercise, completed[exercise].lastIndex.takeIf { it >= 0 })
+}

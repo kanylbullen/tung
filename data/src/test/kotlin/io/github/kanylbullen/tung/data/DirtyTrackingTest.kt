@@ -65,7 +65,7 @@ class DirtyTrackingTest {
         now = 2_000
         workouts.updateWeight(setId, 60.0)
         workouts.updateReps(setId, 5)
-        workouts.logSet(setId)
+        workouts.logSet(setId, addNext = true) // the tick and the added set
         assertEquals(2, count("SELECT COUNT(*) FROM set_entry WHERE dirty = 1"))
         assertEquals(1, count("SELECT COUNT(*) FROM set_entry WHERE dirty = 1 AND updatedAt = 2000 AND id = '$setId'"))
 
@@ -109,7 +109,7 @@ class DirtyTrackingTest {
         val keptExercise = workouts.addExercise(kept, bench, sets = 1)
         val logged = workouts.getSets(keptExercise).single().id
         workouts.updateReps(logged, 5)
-        workouts.logSet(logged) // adds an unticked set, dropped on finish
+        workouts.logSet(logged, addNext = true) // adds an unticked set, dropped on finish
         workouts.addExercise(kept, catalogExerciseId("back_squat"), sets = 1)
         now = 7_000
         workouts.finishWorkout(kept)
