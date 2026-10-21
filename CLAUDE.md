@@ -113,8 +113,8 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
   is how `SyncWorker` finds the container and `RestAlerts` knows what to show,
   without the library knowing either app.
 - **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`,
-  `RoutineEditingCommandsTest` (the routine-editing commands through
-  `AppCommandHandler`), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
+  `RoutineEditingCommandsTest` (`create_routine` and the routine-editing
+  commands through `AppCommandHandler`), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
   application). `FakeSyncServer` and `MemoryTokenStore` are Kotlin test
   fixtures (`data/src/testFixtures`, `testImplementation(testFixtures(project(":data")))`
   in the apps), which needs `android.experimental.enableTestFixturesKotlinSupport`
@@ -124,7 +124,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (list + one routine, the row and the name dialog that Home, summary and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`. |
@@ -149,12 +149,25 @@ sets each, filled by `core.routineStartSets`: the existing pre-fill rule at
 each set's own position, so set 1 gets last session's set 1, set 2 last
 session's set 2; past the end of last session a set repeats the one before
 it, and with no history at all the sets start at 0 kg × `targetReps`. Start
-also sets `lastUsedAt`, which orders Home's Routines section. There is at most
-one workout in progress, so `start` returns that one instead of creating a
-second, and the Start buttons are disabled while it exists.
+also sets `lastUsedAt`, which orders Home's Routines section and the Routines
+tab. There is at most one workout in progress, so `start` returns that one
+instead of creating a second, and the Start buttons are disabled while it
+exists; `RoutineRow`'s Start is also disabled for a routine with no exercises.
 `Workout.routineId` is indexed but deliberately **not** a foreign key:
 deleting a routine (which cascades to its `RoutineExercise` rows) never
 touches history.
+
+**The Routines tab** (`Routes.ROUTINES`, `ui/routines/RoutinesScreen.kt`) is
+the second of the bottom bar's tabs, Home · Routines · Exercises · History,
+switched with `navigateToTab` (`saveState`/`restoreState`, like the others):
+the Programs row on top, then every routine by last use, each with Start and
+its detail behind a tap; routine and program details are pushed on top of the
+tab, so back returns to it. Home keeps its Routines section and "Today"; its
+"All" switches to the tab, and so does the Assistant's "Save program".
+**"+ New routine"** in the tab's top bar opens `RoutineNameDialog` and runs
+`CreateRoutine(name)` (`RoutineRepository.create`: an empty routine, stamped
+and dirty), then opens the routine's detail, which says "Add exercises with
++ Exercise" until it has one.
 
 **Editing a saved routine** (routine detail, `ui/routines/RoutineDetail*`),
 each a command:
@@ -206,7 +219,7 @@ both ids. `programDayId` is indexed and, like `routineId`, **not** a foreign
 key: removing a day or deleting a program never touches history. "Today" is
 `LocalDate.now(container.clock)`: the system clock in the app, a settable
 one (`FlowTestApp.today`) in the flow tests. Programs are reached from a row
-at the top of the Routines screen (`ui/routines/Program*`).
+at the top of the Routines tab (`ui/routines/Program*`).
 
 ### Log set and rest timer
 
@@ -445,6 +458,10 @@ its signal to commands, never a new path into the database
   nothing ticked. A number the plan leaves out comes from the pre-fill rule
   (`plannedSetValues`). `SaveRoutinePlan(RoutinePlan)` does the same for a
   routine.
+- **`CreateRoutine(name)`** makes an empty routine (only a non-blank name;
+  returns `routineId`), to be filled with `AddRoutineExercise`;
+  `SaveRoutinePlan` refuses an empty plan, so this is how a routine starts
+  from scratch. Wire name `create_routine`.
 - **Routine and program editing**: `RenameRoutine`, `DeleteRoutine`,
   `MoveRoutineExercise`, `AdjustTargetSets`, `AddRoutineExercise` (resolved
   like `AddExercise`: an unknown name is `NeedsAnswers`; returns
