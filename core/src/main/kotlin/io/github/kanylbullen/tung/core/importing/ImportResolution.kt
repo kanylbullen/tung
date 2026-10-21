@@ -56,8 +56,8 @@ sealed interface ImportMatch {
 /**
  * Resolves each of [names]: the alias table first (a target that does not
  * resolve falls through), then core's exact-name rule ([resolveRef] with
- * [ExerciseRef.ByName], i.e. `matchExerciseName`), else [ImportMatch.Unmatched].
- * Never a guess.
+ * [ExerciseRef.ByName], i.e. `matchExerciseName`), else [ImportMatch.Unmatched]
+ * with [importSuggestions] (the same load first). Never a guess.
  */
 suspend fun resolveImportNames(
     names: Collection<String>,
@@ -70,7 +70,8 @@ suspend fun resolveImportNames(
     } else {
         when (val byName = resolveRef(ExerciseRef.ByName(name), resolver)) {
             is RefResolution.Resolved -> ImportMatch.Matched(byName.exercise, viaAlias = false)
-            is RefResolution.Unresolved -> ImportMatch.Unmatched(byName.question.suggestions)
+            // The import's own order: the same load first.
+            is RefResolution.Unresolved -> ImportMatch.Unmatched(importSuggestions(name, resolver.searchByName(name)))
         }
     }
 }

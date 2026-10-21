@@ -1,0 +1,24 @@
+{
+  "id": "chatcmpl-BX7m2qLp9RsTuVwXyZaB",
+  "object": "chat.completion",
+  "created": 1761040000,
+  "model": "gpt-4o-mini-2024-07-18",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"matches\":[{\"name\":\"Machine Lat Pulldown\",\"ref\":{\"key\":\"lat_pulldown\"},\"confidence\":\"medium\",\"note\":\"The catalogue's lat pulldown is on a cable.\"},{\"name\":\"Dumbbell Deadlift\",\"ref\":{\"extended_id\":\"Stiff-Legged_Dumbbell_Deadlift\"},\"confidence\":\"high\",\"note\":\"Same lift with dumbbells.\"},{\"name\":\"Heel Walking\",\"ref\":null,\"confidence\":\"high\",\"note\":\"Not in the catalogue; create it.\"},{\"name\":\"Machine Seated Row\",\"ref\":{\"key\":\"machine_seated_row\"},\"confidence\":\"high\",\"note\":\"Made-up key.\"},{\"name\":\"Cable Upper Row\",\"ref\":{\"extended_id\":\"No_Such_Exercise\"},\"confidence\":\"low\",\"note\":\"Made-up id.\"},{\"name\":\"Machine Lat Pulldown\",\"ref\":{\"key\":\"pull_up\"},\"confidence\":\"low\",\"note\":\"A second answer for the same name.\"},{\"name\":\"Squat Jumps\",\"ref\":{\"key\":\"back_squat\"},\"confidence\":\"high\",\"note\":\"Not asked about.\"}]}",
+        "refusal": null
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 3120,
+    "completion_tokens": 240,
+    "total_tokens": 3360
+  },
+  "system_fingerprint": "fp_0aa8d3e20b"
+}

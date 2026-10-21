@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.core.command
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.normalizeForSearch
 import io.github.kanylbullen.tung.core.prefillSet
@@ -11,13 +12,16 @@ import io.github.kanylbullen.tung.core.prefillSet
  * if it has one, and [extendedId] when it is an extended-catalogue entry that
  * may not have a database row yet (its [id] is then
  * [io.github.kanylbullen.tung.core.extendedExerciseId], and the handler
- * creates the row before using it).
+ * creates the row before using it). [equipment] is what it is done with, when
+ * the resolver knows it: suggestions may prefer the same load
+ * (`importSuggestions`); an exact match never depends on it.
  */
 data class ExerciseCandidate(
     val id: String,
     val names: List<String>,
     val nameKey: String? = null,
     val extendedId: String? = null,
+    val equipment: Equipment? = null,
 ) {
     val displayName: String get() = names.firstOrNull().orEmpty()
 }
@@ -106,24 +110,35 @@ fun matchExerciseName(text: String, candidates: List<ExerciseCandidate>): NameMa
         exact.isNotEmpty() -> return NameMatch.Unsure(exact.sortedWith(suggestionOrder(forms)).take(MAX_SUGGESTIONS))
     }
 
-    val words = query.split(' ')
-    val scored = unique.mapNotNull { c ->
+    return NameMatch.Unsure(rankByName(query, unique, forms).map { it.first }.take(MAX_SUGGESTIONS))
+}
+
+/**
+ * Every candidate that shares something with [text] (already normalised),
+ * with its score, best first: names that contain the text score the number of
+ * its words + 1, else the number of its words that start a word of the name;
+ * ties go rows before extended entries, then shorter names. No limit.
+ */
+internal fun rankByName(
+    text: String,
+    candidates: List<ExerciseCandidate>,
+    forms: Map<ExerciseCandidate, List<String>> = candidates.associateWith { c -> c.names.map(::normalizeExerciseName) },
+): List<Pair<ExerciseCandidate, Int>> {
+    if (text.isEmpty()) return emptyList()
+    val words = text.split(' ')
+    val scored = candidates.mapNotNull { c ->
         val names = forms.getValue(c)
-        val score = names.maxOf { name ->
-            if (name.contains(query)) {
+        val score = names.maxOfOrNull { name ->
+            if (name.contains(text)) {
                 words.size + 1
             } else {
                 val nameWords = name.split(' ')
                 words.count { w -> nameWords.any { it.startsWith(w) } }
             }
-        }
+        } ?: 0
         if (score > 0) c to score else null
     }
-    val suggestions = scored
-        .sortedWith(compareByDescending<Pair<ExerciseCandidate, Int>> { it.second }.thenComparator { a, b -> suggestionOrder(forms).compare(a.first, b.first) })
-        .map { it.first }
-        .take(MAX_SUGGESTIONS)
-    return NameMatch.Unsure(suggestions)
+    return scored.sortedWith(compareByDescending<Pair<ExerciseCandidate, Int>> { it.second }.thenComparator { a, b -> suggestionOrder(forms).compare(a.first, b.first) })
 }
 
 private fun suggestionOrder(forms: Map<ExerciseCandidate, List<String>>): Comparator<ExerciseCandidate> =
