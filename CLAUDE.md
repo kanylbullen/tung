@@ -73,8 +73,8 @@ extended-catalogue search), the command surface (`core/command/`, see
 "Commands"), the picker's suggestions (`core/picker/`, see "Smart picker"),
 the Exercises tab's browse list and the catalogue by id (`core/catalog/`),
 the muscle map's shapes (`core/muscles/BodyMap.kt`) and an exercise's history
-(`ExerciseHistory.kt`; see "Exercises tab and exercise page"), and the sync protocol with its pure rules (`core/sync/`, see
-"Sync"). Core gets the catalogue as a `String` or an
+(`ExerciseHistory.kt`; see "Exercises tab and exercise page"), the sync protocol with its pure rules (`core/sync/`, see
+"Sync"), and the import adapters (`core/importing/`, see "Import"). Core gets the catalogue as a `String` or an
 `InputStream`; where the bytes come from (APK assets, a file) is the caller's
 business. Room entities live in `data/` and map to core's shapes
 (`SetEntry.toLogged()`); core never depends on Room.
@@ -101,6 +101,7 @@ databases. The packages are the ones the files had in `app/`:
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
 | `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set). See "Ongoing workout and push". |
 | `push/` | Push: `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`. See "Ongoing workout and push". |
+| `importing/` | Import from other apps: `Importer` (the one bulk write), `ImportService` (`container.imports`), `ImportHistory`. See "Import". |
 | `ui/common/` | `ExerciseNames` and `Exercise.displayName(context)`; the composable `exerciseDisplayName` stays in `app/`. |
 
 `../catalog` (`core.json`, `extended.json`) is an asset directory of the
@@ -120,7 +121,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 - **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`,
   `RoutineEditingCommandsTest` (`create_routine` and the routine-editing
   commands through `AppCommandHandler`), `AddExerciseCommandsTest`
-  (`add_exercise` set counts and pre-fill, `add_set` with a count), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
+  (`add_exercise` set counts and pre-fill, `add_set` with a count), `ImporterTest` and `SyncMappingImportTest` (see "Import"), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
   application). `FakeSyncServer` and `MemoryTokenStore` are Kotlin test
   fixtures (`data/src/testFixtures`, `testImplementation(testFixtures(project(":data")))`
   in the apps), which needs `android.experimental.enableTestFixturesKotlinSupport`
@@ -130,7 +131,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `settings` (server and account, from Home's gear, and "Link a watch"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -681,7 +682,9 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   validates against the new schema and reads the old rows back.
   `everyVersionHasASchemaAndAMigration` fails when a version has no JSON or no
   migration. Version 1 is the schema as it was on 2026-10-20; version 2
-  (issue #45) added the Health Connect columns on `workout`.
+  (issue #45) added the Health Connect columns on `workout`; version 3
+  (issue #5) added `importSource` and `importBatchId` on `workout` (see
+  "Import").
 
 ## Wear
 
@@ -920,6 +923,106 @@ to Health Connect, it stores what the phone syncs.
   opt-in, a revoked permission, unavailable), `SyncMappingHealthTest`,
   `HealthConnectSegmentTypesTest`. Server: `HealthColumnsTest`, and MCP
   history in `McpTest`. Flows: `HealthConnectFlowTest`.
+
+## Import
+
+Issue #5; the design is `docs/architecture.md`, "Import from other apps".
+Jefit is done; Strong and Hevy follow in the same frame.
+
+- **core, `core/.../core/importing/`** (pure, tested). `splitSections` cuts a
+  multi-section CSV export (`### NAME ####` … `######`) into tables **found by
+  their header row**, never by line position (Jefit's ROUTINES holds three
+  kinds of sub-table, each with its own header before every row); the same
+  header right under data rows is a stray row and is dropped and counted.
+  An `ImportAdapter` (`IMPORT_ADAPTERS`, `adapterFor(text)`) recognises its
+  format and parses it into a plain `ImportBundle`: workouts (oldest first,
+  finished, kg, sets logged only), routines, custom-exercise names,
+  `skipped: Map<SkipReason, Int>`, `setTypes` (warm-up, drop, failure) and a
+  `SetRowAccount`. Nothing in it is resolved yet.
+- **`JefitImport`** (recognised by the WORKOUT SESSIONS and EXERCISE LOGS
+  markers; the layout is documented in its KDoc). Set rows (EXERCISE SET
+  LOGS) are **always lbs** and are converted and rounded to 0.5 kg; a log
+  without set rows parses its `logs` text (`"15.0x8,25.0x8"`) **in the
+  account's unit** (SETTING `mass`). A session with `starttime` 0 (Jefit has
+  them) takes its logs' times; logs with `belongsession` 0 become one
+  workout per `mydate` at noon, adopting a log-less session of that day if
+  there is one. Each Jefit routine day with exercises becomes a Tung routine
+  ("<package> · <day>", just the day when the package has one), exercises in
+  `mysort` order, `setcount` → target sets, the most common `targetrep` →
+  target reps; identical days once; programs are not imported.
+- **Decisions** (taken for #5): warm-up, drop and failure sets are imported
+  as ordinary logged sets (Tung has no set types) and the preview says how
+  many; cardio (CARDIO LOGS, and exercise logs that CARDIO EXERCISE LOGS
+  points at) is skipped and counted; 0-rep sets are skipped (they would not
+  count as logged); PROFILE, EXERCISE RECORDS, FAVORITE EXERCISES and NOTES
+  are not read.
+- **Ids are deterministic:** `importId(source, kind, parts…)` =
+  `UUID.nameUUIDFromBytes("tung:import:<source>:<kind>:<parts>")`, with the
+  Jefit user id and the rows' own ids as parts (workout: session id, or
+  `date:<mydate>`; workout exercise: log id; set: log id and set index;
+  routine: day id; routine exercise: day and row id). A custom exercise the
+  review creates gets `importedCustomExerciseId(source, name)`. So a second
+  import of the same, or a newer, export adds nothing.
+- **Names.** `resolveImportNames`: the alias table
+  `catalog/aliases/<source>.json` first (`{"source", "aliases": {name: key or
+  "ext:<extended id>"}}`, compared with `normalizeExerciseName`, sorted by
+  name), then core's exact-name rule (`ExerciseRef.ByName`), else
+  `ImportMatch.Unmatched` for the review. **Only exact equivalents with the
+  same kind of load go in the table** (a dumbbell or machine variant is not
+  the barbell lift: its weights would poison "Last" and the pre-fill); the
+  rest is the person's choice. `ImportResolutionTest` checks that every
+  alias target exists. The tables ship as assets of `data/` like the
+  catalogue.
+- **Room** (version 3, `MIGRATION_2_3`): `Workout.importSource` (`jefit`)
+  and `Workout.importBatchId` (one per import run, indexed), both nullable,
+  synced as `import_source` and `import_batch_id` with the null-keeps rule
+  (app `SyncMapping`, server `keepWhenNull`; server `V11__import_source.sql`,
+  validated as a lower-case key and a UUID, shown by `WorkoutDto`, the export
+  and MCP history, not taken by `PUT /workouts/{id}`).
+- **data, `importing/`.** `Importer.apply(bundle, choices)` is **one Room
+  transaction** with `IGNORE` on the deterministic ids: the chosen exercises
+  (an extended entry gets its row, "Create" a custom one), every workout not
+  here yet with its exercises and sets (ticked, stamped `updatedAt` now and
+  dirty like every write), then the routines through
+  `RoutineRepository.createFromPlan`, the `save_routine_plan` path, with the
+  import's ids. A workout already here is left alone, so changed choices
+  never half-update one. Tombstones of rows written again (a re-import after
+  an undo) are removed, so sync brings them back. `undo` deletes the batch's
+  workouts (`WorkoutRepository.deleteImportBatch`, the ordinary delete with
+  tombstones) and the routines it created; custom exercises stay (there is no
+  delete path for exercises). **This is the one bulk write outside
+  `container.commands`**: no command expresses a whole history; a server
+  import route (later) will call the same core adapter.
+  `ImportService` (`container.imports`) reads (adapter, alias table from the
+  assets, resolution, all on `Dispatchers.Default`), applies, undoes, and
+  remembers the last import in the `settings` DataStore (`ImportHistory`).
+- **app.** Settings' "Import" section (`ui/settings/ImportSection.kt`):
+  "Import from Jefit" opens the system file picker (`ACTION_OPEN_DOCUMENT`,
+  `text/*` and `*/*`), and "Undo last import" while one is remembered. The
+  file goes to `import?uri=…` (`ui/importing/`): read on IO (at most 64 MB),
+  then the preview — date range, workouts · sets · routines, the set types
+  imported as normal sets, what was skipped and why — and the review: each
+  unmatched name has **Choose** (the picker with `PickerTarget.Choose`,
+  which hands the exercise back through the import entry's saved state and
+  adds nothing), **Create** (a custom exercise with the source's name) and
+  **Skip**. Import is enabled once every name is decided; the summary says
+  what was added and offers "Undo import".
+- **History, not news.** Imported workouts count for History, "Last",
+  the pre-fill and the picker's learning; `buildWorkoutReport` never marks one
+  as a new record. Dates outside the current year show the year
+  (`localDate`).
+- **Tests.** Core: `ExportSectionsTest`, `JefitImportTest` and
+  `ImportResolutionTest` against `core/src/test/resources/import/jefit/export-synthetic.csv`,
+  a hand-written export in the real layout with made-up values (every quirk:
+  sub-tables, lbs rows vs logs text, a log without rows, the 1970 session,
+  loose logs, a stray header, warm-up and drop sets, cardio). **A real export
+  is personal data and never goes in the repository**; `JefitRealExportTest`
+  runs only with `TUNG_JEFIT_EXPORT=/path/to/export.csv` (`./gradlew :core:test
+  --tests '*JefitRealExportTest' --rerun --no-daemon`) and prints the counts.
+  Data: `ImporterTest` (stamped and dirty, idempotent, undo with tombstones
+  leaves other workouts, re-import after undo), `SyncMappingImportTest`,
+  `MigrationTest`. Server: `ImportColumnsTest`. Flows: `ImportFlowTest` (the
+  picker answered through Robolectric's `receiveResult`, no app seam).
 
 ## In-app AI (BYOK)
 

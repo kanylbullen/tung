@@ -132,6 +132,22 @@ device. Do not edit `extended.json` by hand; run the script again
 for a local copy). The output is deterministic for the same input, but follows
 `main` upstream.
 
+## Import aliases
+
+`aliases/<source>.json` maps another app's exercise names to the catalogue,
+for import from that app (CLAUDE.md, "Import"):
+
+```json
+{ "source": "jefit", "aliases": { "Barbell Squat": "back_squat", "Dumbbell Squat": "ext:Dumbbell_Squat" } }
+```
+
+A target is a core `key`, or an extended-catalogue `id` written `ext:<id>`.
+Names are compared like the command surface compares names (case,
+diacritics and punctuation do not matter) and kept sorted. Add a name only
+for an exact equivalent with the same kind of load; anything else goes to
+the import's review, where the person decides. `ImportResolutionTest` (in
+`core`) fails on a target that does not exist.
+
 ## Licence
 
 The catalogue (the files in this directory) is dedicated to the public domain

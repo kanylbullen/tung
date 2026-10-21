@@ -104,6 +104,9 @@ have documented CSV formats and follow in the same frame.
 The Jefit column layout is not documented anywhere public; the parser is
 written against a real export, not a guess.
 
+Jefit is implemented (issue #5): the adapter, the alias table, the schema
+and the app flow are described in `CLAUDE.md`, "Import".
+
 ## Health Connect
 
 Health Connect is an on-device store on the phone with no cloud API, so the
