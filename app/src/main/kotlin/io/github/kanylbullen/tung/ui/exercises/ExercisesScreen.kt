@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,6 +50,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -57,6 +61,7 @@ import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.catalog.BrowseItem
 import io.github.kanylbullen.tung.core.picker.SuggestionReason
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.appContainer
@@ -71,7 +76,10 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 /**
  * The exercise catalogue. With a [target] it is the picker: tapping an
- * exercise adds it to that workout or routine and calls [onPicked].
+ * exercise adds it to that workout or routine and calls [onPicked]. Without
+ * one it is the Exercises tab: the whole catalogue by muscle group, with a
+ * chip per group, and a row opens the exercise page ([onOpenExercise], with
+ * the page's ref, `core.catalog.ExercisePageRef.route`).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +87,7 @@ fun ExercisesScreen(
     target: PickerTarget?,
     onBack: (() -> Unit)?,
     onPicked: () -> Unit,
+    onOpenExercise: (String) -> Unit = {},
 ) {
     val container = appContainer()
     val appContext = LocalContext.current.applicationContext
@@ -127,7 +136,7 @@ fun ExercisesScreen(
             )
         },
     ) { padding ->
-        LazyColumn(contentPadding = padding, modifier = Modifier.fillMaxSize()) {
+        LazyColumn(contentPadding = padding, modifier = Modifier.fillMaxSize().testTag(EXERCISES_LIST_TAG)) {
             item(key = "search") {
                 SearchField(query, vm::setQuery)
             }
@@ -148,6 +157,19 @@ fun ExercisesScreen(
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     )
+                }
+            }
+            if (!vm.isPicker && state.chips.isNotEmpty()) {
+                item(key = "chips") {
+                    GroupChips(state.chips, state.selectedGroup, vm::setGroup)
+                }
+            }
+            state.browse.forEach { section ->
+                item(key = "group-${section.group.key}") {
+                    SectionHeader(muscleGroupLabel(section.group))
+                }
+                items(section.items, key = { "b-${it.ref.route}" }) { item ->
+                    BrowseRow(item, onClick = { onOpenExercise(item.ref.route) })
                 }
             }
             state.groups.forEach { group ->
@@ -219,7 +241,7 @@ private fun SectionHeader(text: String) {
         text,
         style = MaterialTheme.typography.titleMedium,
         color = Tung.colors.muted,
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 4.dp),
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 4.dp).semantics { heading() },
     )
 }
 
@@ -230,6 +252,43 @@ private fun ExerciseRow(exercise: NamedExercise, onClick: (() -> Unit)?) {
         if (exercise.exercise.isCustom) add(stringResource(R.string.exercises_custom))
     }.joinToString(stringResource(R.string.row_separator))
     NameRow(exercise.displayName, detail, onClick)
+}
+
+/** The tab's chips: "All", then a chip per group that has exercises. Tapping the chip that is on goes back to "All". */
+@Composable
+private fun GroupChips(groups: List<MuscleGroup>, selected: MuscleGroup?, onSelect: (MuscleGroup?) -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    ) {
+        item(key = "all") {
+            Choice(stringResource(R.string.exercises_all), selected = selected == null, Modifier.testTag(groupChipTag(null))) {
+                onSelect(null)
+            }
+        }
+        items(groups, key = { it.key }) { group ->
+            Choice(muscleGroupLabel(group), selected = group == selected, Modifier.testTag(groupChipTag(group))) {
+                onSelect(group)
+            }
+        }
+    }
+}
+
+/** The semantics tag of the tab's and the picker's list, which the flow tests scroll; the chips are a second scrollable. */
+const val EXERCISES_LIST_TAG = "exercises-list"
+
+/** The semantics tag of a group chip in the tab ("All" for null); the flow tests find the chips by it, since the group's name is also a heading. */
+fun groupChipTag(group: MuscleGroup?): String = "exercises-chip-${group?.key ?: "all"}"
+
+/** A row of the tab: the name and the equipment, and "Custom" for the user's own. Extended entries keep their English name until picked. */
+@Composable
+private fun BrowseRow(item: BrowseItem, onClick: () -> Unit) {
+    val detail = buildList {
+        add(equipmentLabel(item.equipment))
+        if (item.isCustom) add(stringResource(R.string.exercises_custom))
+    }.joinToString(stringResource(R.string.row_separator))
+    NameRow(item.name, detail, onClick)
 }
 
 /** A suggestion: the name, and under it why, muted. Tapping it is tapping the exercise's row in the list. */
@@ -355,11 +414,12 @@ private fun CreateExerciseDialog(
 }
 
 @Composable
-private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun Choice(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     FilterChip(
         selected = selected,
         onClick = onClick,
         label = { Text(label) },
+        modifier = modifier,
         shape = TungCorner,
         colors = FilterChipDefaults.filterChipColors(
             containerColor = Tung.colors.raised,

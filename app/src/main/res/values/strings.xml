@@ -123,6 +123,32 @@
     <string name="picker_reason_pairs_with">Pairs with %1$s</string>
     <string name="picker_reason_not_yet_today">Not trained yet today</string>
     <string name="picker_reason_often_together">Often together</string>
+    <!-- The Exercises tab's group chips and the exercise page (ui/exercises/ExerciseDetailScreen.kt) -->
+    <string name="exercises_all">All</string>
+    <string name="exercise_add_to_routine">Add to routine</string>
+    <string name="exercise_add_to_workout">Add to workout</string>
+    <string name="exercise_choose_routine">Add to which routine?</string>
+    <string name="exercise_no_routines">No routines yet. Save a finished workout as a routine first.</string>
+    <!-- Confirmation after "Add to routine"; %1$s is the routine's name. -->
+    <string name="exercise_added_to_routine">Added to %1$s</string>
+    <string name="exercise_history">History</string>
+    <string name="exercise_not_logged">Not logged yet.</string>
+    <!-- Above last session's sets; %1$s is the date. -->
+    <string name="exercise_last_time">Last time, %1$s</string>
+    <!-- The best set as a big number: "85 × 6", with the label "Best set, kg". -->
+    <string name="exercise_set_value">%1$s × %2$d</string>
+    <string name="exercise_best_set">Best set, kg</string>
+    <plurals name="exercise_sessions">
+        <item quantity="one">Workout</item>
+        <item quantity="other">Workouts</item>
+    </plurals>
+    <string name="exercise_instructions">How to do it</string>
+    <string name="exercise_map_primary">Primary</string>
+    <string name="exercise_map_secondary">Secondary</string>
+    <!-- The muscle map for a screen reader; %1$s and %2$s are lists of muscles. -->
+    <string name="exercise_map_description">Muscles worked. Primary: %1$s. Secondary: %2$s.</string>
+    <string name="exercise_map_description_primary">Muscles worked. Primary: %1$s.</string>
+    <string name="exercise_not_found">This exercise no longer exists.</string>
     <string name="create_title">Create exercise</string>
     <string name="create_name">Name</string>
     <string name="create_muscle">Muscle group</string>
