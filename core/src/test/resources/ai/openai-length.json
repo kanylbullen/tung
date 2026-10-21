@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-BR7k2nP4qLmX8sTvWy0zA1",
+  "object": "chat.completion",
+  "created": 1760990000,
+  "model": "o4-mini-2025-04-16",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "",
+        "refusal": null
+      },
+      "logprobs": null,
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1834,
+    "completion_tokens": 4096,
+    "total_tokens": 5930,
+    "completion_tokens_details": { "reasoning_tokens": 4096 }
+  },
+  "system_fingerprint": "fp_6b2c1e9a04"
+}

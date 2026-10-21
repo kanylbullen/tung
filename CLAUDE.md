@@ -1301,7 +1301,22 @@ tung-server never sees the key or the request.
   Anthropic (`POST {base}/v1/messages`, `x-api-key`, `anthropic-version`)
   formats as pure request builders and response readers, and
   `checkAiBaseUrl` (the sync rule: https, or http only to localhost and
-  private IP literals, for Ollama on the home network).
+  private IP literals, for Ollama on the home network). Both ask for
+  `max_tokens` = `AI_MAX_TOKENS` = 16000 (the Test in Settings asks for 1):
+  Claude 5.x thinks before it answers (adaptive thinking is on when
+  `thinking` is omitted, its blocks come back with empty text), and at 4096
+  the thinking could use the whole limit and leave no text (issue #73). To an
+  Anthropic model id matching `ANTHROPIC_EFFORT_MODELS`
+  (`^claude-(haiku|sonnet|opus|fable|mythos)-5`) the request also carries
+  `output_config: {effort: "low"}` (top level); older models (Haiku 4.5,
+  Sonnet 4.5) reject the field, so they never get it. **Never send
+  `thinking: {type: "disabled"}`**: a 400 on Opus 5.5 and Sonnet 5.5. A
+  response is read with `aiReply` → `AiReply`: `Text` (thinking blocks
+  skipped), `OutOfRoom` (no text with `stop_reason: max_tokens` /
+  `finish_reason: length`), `Declined` (`stop_reason: refusal`, OpenAI's
+  `refusal` or `content_filter`), else `Empty`; `AiWireTest` has recorded
+  responses for each (`anthropic-thinking-*.json`, `anthropic-refusal.json`,
+  `openai-length.json`).
 - **The fourth request, `MatchExercises(names, candidates, catalogue)`**
   (`AiMatch.kt`, issue #71): the import review's unmatched names, each with
   its offline candidates (`importSuggestions`), and the core catalogue as
@@ -1326,11 +1341,15 @@ tung-server never sees the key or the request.
   mode, "first request shown" and "always show" flags in the `settings`
   DataStore; the key in EncryptedSharedPreferences `ai_key` through
   `TokenStore`, excluded from backups like `sync_token`); `AiClient` (its own
-  Ktor client: 60 s, no retries, no redirects, statuses mapped to
-  `AiFailure`); `AiService` (`prepare` builds the context and the request
+  Ktor client: 120 s, as answers are not streamed and a model may think
+  first; no retries, no redirects, statuses mapped to `AiFailure`);
+  `AiService` (`prepare` builds the context and the request
   without the key, `prepareMatch` the import review's matching request,
   `send` sends exactly that body with the key added to the
-  header, `confirm` runs the commands, `test` sends a one-token request with
+  header and maps `AiReply.OutOfRoom` to `AiFailure.OUT_OF_ROOM` ("The model
+  ran out of room before answering"), `Declined` to `DECLINED` ("The model
+  declined this request") and `Empty` to `NO_ANSWER`, shown like every other
+  failure through `aiFailureText`, `confirm` runs the commands, `test` sends a one-token request with
   no training data). `TungContainer(createAiKeyStore = …)` is the seam;
   `FlowTestApp.aiKeys` keeps the key in memory.
 - **app**: the Assistant screen (`ui/ai/`), reached from the **last row on

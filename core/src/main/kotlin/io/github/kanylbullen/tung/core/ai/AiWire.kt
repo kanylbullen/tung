@@ -41,8 +41,22 @@ data class AiCall(
     val maxTokens: Int = AI_MAX_TOKENS,
 )
 
-/** The longest answer asked for, in tokens: a program of a few routines fits with room to spare. */
-const val AI_MAX_TOKENS = 4096
+/**
+ * The longest answer asked for, in tokens. A program of a few routines needs
+ * far less, but Claude 5.x thinks first (adaptive thinking is on when
+ * `thinking` is omitted) and the thinking counts against this limit: at 4096
+ * a thinking block could use all of it and leave no text (issue #73).
+ */
+const val AI_MAX_TOKENS = 16000
+
+/**
+ * Anthropic model ids that take `output_config.effort` (every Claude 5.x);
+ * older models such as Haiku 4.5 reject the field, so it is sent only to these.
+ */
+val ANTHROPIC_EFFORT_MODELS = Regex("^claude-(haiku|sonnet|opus|fable|mythos)-5")
+
+/** The effort asked of a Claude 5.x model: the answers are short structured JSON, so little thinking is needed. */
+const val ANTHROPIC_EFFORT = "low"
 
 /** The Messages API version Tung is written against. */
 const val ANTHROPIC_VERSION = "2023-06-01"
@@ -64,11 +78,30 @@ fun aiHttpRequest(call: AiCall, prompt: AiPrompt, apiKey: String?): AiHttpReques
     AiProviderKind.ANTHROPIC -> Anthropic.request(call, prompt, apiKey)
 }
 
-/** The model's text in a successful response [body], or null when there is none. */
-fun aiResponseText(provider: AiProviderKind, body: String): String? = when (provider) {
-    AiProviderKind.OPENAI_COMPATIBLE -> OpenAiCompatible.text(body)
-    AiProviderKind.ANTHROPIC -> Anthropic.text(body)
+/** What a successful (2xx) response holds: the model's text, or why there is none. */
+sealed interface AiReply {
+    /** The model's text. */
+    data class Text(val text: String) : AiReply
+
+    /** No text, and the provider says the token limit was reached (`stop_reason: max_tokens`, `finish_reason: length`): thinking used it all. */
+    data object OutOfRoom : AiReply
+
+    /** The model declined (`stop_reason: refusal`; OpenAI's `refusal` or `finish_reason: content_filter`). */
+    data object Declined : AiReply
+
+    /** No text, and no reason given. */
+    data object Empty : AiReply
 }
+
+/** Reads a successful response [body]: the text, or why there is none ([AiReply]). */
+fun aiReply(provider: AiProviderKind, body: String): AiReply = when (provider) {
+    AiProviderKind.OPENAI_COMPATIBLE -> OpenAiCompatible.reply(body)
+    AiProviderKind.ANTHROPIC -> Anthropic.reply(body)
+}
+
+/** The model's text in a successful response [body], or null when there is none. */
+fun aiResponseText(provider: AiProviderKind, body: String): String? =
+    (aiReply(provider, body) as? AiReply.Text)?.text
 
 /** The provider's own error message in an error response [body] (both use `{"error": {"message": …}}`), or null. */
 fun aiErrorMessage(body: String): String? {
@@ -103,11 +136,19 @@ object OpenAiCompatible {
         return AiHttpRequest("${call.baseUrl.trimEnd('/')}/chat/completions", headers, WireJson.encodeToString(JsonObject.serializer(), body))
     }
 
-    /** `choices[0].message.content`. */
-    fun text(body: String): String? {
-        val choice = (parseObject(body)?.get("choices") as? JsonArray)?.firstOrNull() as? JsonObject ?: return null
-        val content = (choice["message"] as? JsonObject)?.get("content") as? JsonPrimitive ?: return null
-        return content.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
+    /** `choices[0].message.content`; with none, `finish_reason` (`length`, `content_filter`) or `message.refusal` says why. */
+    fun reply(body: String): AiReply {
+        val choice = (parseObject(body)?.get("choices") as? JsonArray)?.firstOrNull() as? JsonObject ?: return AiReply.Empty
+        val message = choice["message"] as? JsonObject
+        val refusal = (message?.get("refusal") as? JsonPrimitive)?.takeIf { it.isString }?.content
+        if (!refusal.isNullOrBlank()) return AiReply.Declined
+        val text = (message?.get("content") as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
+        if (text != null) return AiReply.Text(text)
+        return when ((choice["finish_reason"] as? JsonPrimitive)?.content) {
+            "length" -> AiReply.OutOfRoom
+            "content_filter" -> AiReply.Declined
+            else -> AiReply.Empty
+        }
     }
 }
 
@@ -117,6 +158,10 @@ object Anthropic {
         val body = buildJsonObject {
             put("model", call.model)
             put("max_tokens", call.maxTokens)
+            // Never `thinking: disabled` (a 400 on several 5.x models); a low effort keeps the thinking short.
+            if (ANTHROPIC_EFFORT_MODELS.containsMatchIn(call.model)) {
+                put("output_config", buildJsonObject { put("effort", ANTHROPIC_EFFORT) })
+            }
             put("system", prompt.system)
             put("messages", buildJsonArray { add(message("user", prompt.user)) })
         }
@@ -128,14 +173,25 @@ object Anthropic {
         return AiHttpRequest("${call.baseUrl.trimEnd('/')}/v1/messages", headers, WireJson.encodeToString(JsonObject.serializer(), body))
     }
 
-    /** Every `text` block of `content`, joined. */
-    fun text(body: String): String? {
-        val content = parseObject(body)?.get("content") as? JsonArray ?: return null
-        return content
+    /**
+     * Every `text` block of `content`, joined; `thinking` blocks (empty text
+     * on Claude 5.x) are skipped. `stop_reason: refusal` is [AiReply.Declined]
+     * even with text; no text with `max_tokens` is [AiReply.OutOfRoom].
+     */
+    fun reply(body: String): AiReply {
+        val root = parseObject(body) ?: return AiReply.Empty
+        val stopReason = (root["stop_reason"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+        if (stopReason == "refusal") return AiReply.Declined
+        val text = (root["content"] as? JsonArray).orEmpty()
             .mapNotNull { block -> (block as? JsonObject)?.takeIf { (it["type"] as? JsonPrimitive)?.content == "text" } }
             .mapNotNull { (it["text"] as? JsonPrimitive)?.content }
             .joinToString("")
             .takeIf { it.isNotBlank() }
+        return when {
+            text != null -> AiReply.Text(text)
+            stopReason == "max_tokens" -> AiReply.OutOfRoom
+            else -> AiReply.Empty
+        }
     }
 }
 

@@ -16,6 +16,8 @@ fun aiFailureText(failure: AiFailure): Int = when (failure) {
     AiFailure.REJECTED -> R.string.ai_error_rejected
     AiFailure.SERVER -> R.string.ai_error_server
     AiFailure.NO_ANSWER -> R.string.ai_error_no_answer
+    AiFailure.OUT_OF_ROOM -> R.string.ai_error_out_of_room
+    AiFailure.DECLINED -> R.string.ai_error_declined
     AiFailure.UNREADABLE -> R.string.ai_error_unreadable
     AiFailure.NOTHING_USABLE -> R.string.ai_error_nothing_usable
 }

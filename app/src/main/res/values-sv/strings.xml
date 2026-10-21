@@ -485,13 +485,15 @@
     <string name="ai_plateaus_none">Inga platåer: det du tränar regelbundet går fortfarande framåt.</string>
     <string name="ai_plateau_since">Sedan %1$s</string>
     <string name="ai_error_network">Kunde inte nå leverantören. Kontrollera adressen och din anslutning.</string>
-    <string name="ai_error_timeout">Leverantören svarade inte inom en minut. Försök igen om en stund.</string>
+    <string name="ai_error_timeout">Leverantören svarade inte inom två minuter. Försök igen om en stund.</string>
     <string name="ai_error_unauthorized">Leverantören godtog inte nyckeln. Kontrollera den under Inställningar.</string>
     <string name="ai_error_not_found">Inget svarar på den adressen, eller så finns inte modellen. Kontrollera båda under Inställningar.</string>
     <string name="ai_error_rate_limited">Leverantörens gräns är nådd. Vänta en stund, eller kontrollera din kvot.</string>
     <string name="ai_error_rejected">Leverantören avvisade förfrågan.</string>
     <string name="ai_error_server">Leverantören fick problem. Försök igen om en stund.</string>
     <string name="ai_error_no_answer">Leverantören svarade utan innehåll. Försök igen.</string>
+    <string name="ai_error_out_of_room">Modellen fick slut på utrymme innan den hann svara. Försök igen, eller använd en modell som tänker mindre.</string>
+    <string name="ai_error_declined">Modellen avböjde den här förfrågan.</string>
     <string name="ai_error_unreadable">Svaret var inte i den form Tung bad om. Försök igen, eller använd en starkare modell.</string>
     <string name="ai_error_nothing_usable">Svaret nämnde ingen övning som Tung känner till, så det finns inget att visa. Försök igen.</string>
     <string name="ai_error_provider_says">Leverantören säger: %1$s</string>

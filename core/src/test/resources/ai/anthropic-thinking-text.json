@@ -1,0 +1,20 @@
+{
+  "id": "msg_01HaikuThinkingText4Mp8",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-5-5",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "",
+      "signature": "EuYBCkQYAiJAm2Wq7Rt0YbN5cK1xL8dP3hF6sZ9vJ4uA2gE0oT7iB1nC5rM8wQ3jG6kD0fS4yU7aH2lV9pX1eO5tI"
+    },
+    {
+      "type": "text",
+      "text": "{\"rationale\":\"Squat day is due: your last workout was the push day.\",\"exercises\":[{\"key\":\"back_squat\",\"sets\":[{\"weight_kg\":102.5,\"reps\":5},{\"weight_kg\":102.5,\"reps\":5}]}]}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": { "input_tokens": 3120, "output_tokens": 412 }
+}

@@ -56,6 +56,55 @@ class AiWireTest {
         val messages = body.getValue("messages").jsonArray.map { it.jsonObject }
         assertEquals(listOf("user"), messages.map { it.getValue("role").jsonPrimitive.content })
         assertFalse("response_format" in body)
+        assertEquals(AI_MAX_TOKENS, body.getValue("max_tokens").jsonPrimitive.int)
+        // Not a Claude 5.x id: no effort, and never a `thinking` field.
+        assertFalse("output_config" in body)
+        assertFalse("thinking" in body)
+    }
+
+    @Test
+    fun claude5ModelsAreAskedForLowEffortAndOlderOnesAreNot() {
+        fun anthropicBody(model: String) = body(aiHttpRequest(AiCall(AiProviderKind.ANTHROPIC, AiProviderKind.ANTHROPIC.defaultBaseUrl, model), prompt, "k"))
+
+        for (model in listOf("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1", "claude-mythos-5")) {
+            val body = anthropicBody(model)
+            assertEquals(model, "low", body.getValue("output_config").jsonObject.getValue("effort").jsonPrimitive.content)
+            assertEquals(model, 16000, body.getValue("max_tokens").jsonPrimitive.int)
+            assertFalse(model, "thinking" in body)
+        }
+        for (model in listOf("claude-haiku-4-5", "claude-sonnet-4-5", "claude-3-5-haiku-latest", "my-claude-haiku-5-5")) {
+            assertFalse(model, "output_config" in anthropicBody(model))
+        }
+        // The OpenAI-compatible format never carries it, even for a Claude id behind a proxy.
+        assertFalse("output_config" in body(aiHttpRequest(AiCall(AiProviderKind.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "claude-haiku-5-5"), prompt, "k")))
+    }
+
+    @Test
+    fun aThinkingOnlyAnswerCutAtMaxTokensIsOutOfRoom() {
+        assertEquals(AiReply.OutOfRoom, aiReply(AiProviderKind.ANTHROPIC, fixture("anthropic-thinking-max-tokens.json")))
+        assertNull(aiResponseText(AiProviderKind.ANTHROPIC, fixture("anthropic-thinking-max-tokens.json")))
+    }
+
+    @Test
+    fun thinkingBeforeTheTextIsSkippedAndTheTextRead() {
+        val reply = aiReply(AiProviderKind.ANTHROPIC, fixture("anthropic-thinking-text.json"))
+        val text = (reply as AiReply.Text).text
+        assertTrue(text.startsWith("{\"rationale\":\"Squat day"))
+        val workout = parseAiAnswer(AiRequest.NextWorkout, text, setOf("back_squat"))
+        assertEquals(1, ((workout as AiParse.Parsed).draft as AiDraft.NextWorkout).plan.exercises.size)
+    }
+
+    @Test
+    fun aRefusalIsDeclined() {
+        assertEquals(AiReply.Declined, aiReply(AiProviderKind.ANTHROPIC, fixture("anthropic-refusal.json")))
+    }
+
+    @Test
+    fun anOpenAiAnswerCutAtTheLengthWithNoContentIsOutOfRoom() {
+        assertEquals(AiReply.OutOfRoom, aiReply(AiProviderKind.OPENAI_COMPATIBLE, fixture("openai-length.json")))
+        // No text and no reason is still plain nothing.
+        assertEquals(AiReply.Empty, aiReply(AiProviderKind.OPENAI_COMPATIBLE, "{\"choices\": []}"))
+        assertEquals(AiReply.Empty, aiReply(AiProviderKind.ANTHROPIC, "{\"content\": [], \"stop_reason\": \"end_turn\"}"))
     }
 
     @Test

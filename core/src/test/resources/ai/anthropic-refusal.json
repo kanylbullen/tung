@@ -1,0 +1,11 @@
+{
+  "id": "msg_01SonnetRefusal9Kd3",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5-5",
+  "content": [],
+  "stop_reason": "refusal",
+  "stop_details": { "category": "cyber" },
+  "stop_sequence": null,
+  "usage": { "input_tokens": 2051, "output_tokens": 3 }
+}
