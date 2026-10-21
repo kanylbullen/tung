@@ -39,6 +39,7 @@ class CommandWireTest {
         "create_exercise" to """{"name": "Zercher squat", "muscle_group": "legs", "equipment": "barbell"}""",
         "save_routine" to """{"workout_id": "$id", "name": "Push"}""",
         "save_routine_plan" to """{"name": "Push", "exercises": [{"exercise": $ex, "target_sets": 3, "target_reps": 8}]}""",
+        "create_routine" to """{"name": "Legs"}""",
         "rename_routine" to """{"routine_id": "$id", "name": "Pull"}""",
         "delete_routine" to """{"routine_id": "$id"}""",
         "move_routine_exercise" to """{"routine_exercise_id": "$id", "delta": -1}""",
@@ -125,6 +126,18 @@ class CommandWireTest {
         assertTrue(reasons("set_target_reps", """{"routine_exercise_id": "$id", "target_reps": "many"}""").contains("target_reps must be a whole number or null"))
         assertTrue(reasons("set_program_mode", """{"program_id": "$id", "mode": "weekly"}""").contains("mode must be one of fixed, rotating"))
         assertTrue(reasons("set_program_mode", """{"program_id": "$id"}""").contains("mode is required"))
+    }
+
+    @Test
+    fun anEmptyRoutineTakesOnlyAName() {
+        assertEquals(Command.CreateRoutine("Legs"), decoded("create_routine", samples.getValue("create_routine")))
+        val schema = CommandWire.schema("create_routine")!!
+        assertEquals(setOf("name"), schema["properties"]!!.jsonObject.keys)
+        assertEquals(listOf("name"), schema["required"]!!.jsonArray.map { it.jsonPrimitive.content })
+        fun reasons(body: String) = (CommandWire.decode("create_routine", obj(body)) as WireDecoding.Invalid).reasons
+        assertTrue(reasons("{}").contains("name is required"))
+        assertTrue(reasons("""{"name": 3}""").contains("name must be a string"))
+        assertTrue(reasons("""{"name": "Legs", "exercises": []}""").any { "unknown field 'exercises'" in it })
     }
 
     @Test

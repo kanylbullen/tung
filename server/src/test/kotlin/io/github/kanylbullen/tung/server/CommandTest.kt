@@ -237,6 +237,28 @@ class CommandTest {
     }
 
     @Test
+    fun aRoutineFromScratchStartsEmptyAndIsFilledByCommands() = tungTest {
+        val token = client.register()
+        suspend fun export() = ApiJson.decodeFromString(ExportDocument.serializer(), client.authedGet("/api/v1/export", token).bodyAsText())
+        val routineId = client.done(token, "create_routine", """{"name": "  Legs "}""")["routineId"]!!.str
+        val empty = export().routines.single()
+        assertEquals(routineId to "Legs", empty.id to empty.name, "the name is trimmed")
+        assertTrue(empty.exercises.isEmpty(), "a new routine has no exercises")
+        assertNull(empty.lastUsedAt)
+        assertEquals(routineId, client.synced(token).changes.routines.single().id, "sync carries the new routine")
+
+        client.done(token, "add_routine_exercise", """{"routine_id": "$routineId", "exercise": {"key": "back_squat"}}""")
+        val filled = export().routines.single().exercises.single()
+        assertEquals(SQUAT to 0, filled.exerciseId to filled.position, "the first exercise goes first")
+
+        val blank = client.command(token, "create_routine", """{"name": "  "}""")
+        assertEquals(HttpStatusCode.UnprocessableEntity, blank.status)
+        assertTrue(blank.bodyAsText().contains("name must not be blank"), blank.bodyAsText())
+        assertEquals(HttpStatusCode.BadRequest, client.command(token, "create_routine", "{}").status)
+        assertEquals(1, export().routines.size, "a refused command writes nothing")
+    }
+
+    @Test
     fun aProgramsModeCanBeSwitchedAndKeepsItsDays() = tungTest {
         val token = client.register()
         suspend fun program() = ApiJson.decodeFromString(ExportDocument.serializer(), client.authedGet("/api/v1/export", token).bodyAsText()).programs.single()

@@ -25,7 +25,7 @@ import org.robolectric.RobolectricTestRunner
 import java.io.File
 
 /**
- * The four routine-editing commands (issue #41) through the app's
+ * The routine-editing commands (issues #41 and #53) through the app's
  * [AppCommandHandler], over a real Room database: what they write, the
  * positions they leave, and the tombstone and dirty flags sync relies on.
  */
@@ -107,6 +107,25 @@ class RoutineEditingCommandsTest {
         val withTargets = done(Command.AddRoutineExercise(routineId, ExerciseRef.ByKey("deadlift"), targetSets = 5, targetReps = 5))
             .id(CommandIds.ROUTINE_EXERCISE_ID)
         assertEquals(1, count("SELECT COUNT(*) FROM routine_exercise WHERE id = '$withTargets' AND position = 3 AND targetSets = 5 AND targetReps = 5"))
+    }
+
+    @Test
+    fun aRoutineFromScratchStartsEmptyAndFillsUp() {
+        now = 1_500L
+        val routineId = checkNotNull(done(Command.CreateRoutine("  Legs  ")).id(CommandIds.ROUTINE_ID))
+        assertEquals(
+            "trimmed, never used, stamped and dirty",
+            1,
+            count("SELECT COUNT(*) FROM routine WHERE id = '$routineId' AND name = 'Legs' AND lastUsedAt IS NULL AND updatedAt = 1500 AND dirty = 1"),
+        )
+        assertEquals("no exercises yet", 0, count("SELECT COUNT(*) FROM routine_exercise WHERE routineId = '$routineId'"))
+
+        val added = checkNotNull(done(Command.AddRoutineExercise(routineId, ExerciseRef.ByKey("back_squat"))).id(CommandIds.ROUTINE_EXERCISE_ID))
+        assertEquals("the first exercise goes first", listOf("0"), positions(routineId))
+        assertEquals(1, count("SELECT COUNT(*) FROM routine_exercise WHERE id = '$added' AND routineId = '$routineId'"))
+
+        assertTrue(run(Command.CreateRoutine(" ")) is CommandResult.Rejected)
+        assertEquals("a blank name creates nothing", 1, count("SELECT COUNT(*) FROM routine"))
     }
 
     @Test
