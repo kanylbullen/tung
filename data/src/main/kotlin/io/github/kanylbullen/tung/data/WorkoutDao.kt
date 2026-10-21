@@ -207,6 +207,26 @@ interface WorkoutDao {
     )
     suspend fun previousSessionSets(exerciseId: String, excludeWorkoutId: String): List<SetEntry>
 
+    /**
+     * Every counted set (ticked, reps > 0) of [exerciseId] in finished
+     * workouts, for the exercise page's history; core's `exerciseHistory`
+     * summarises them.
+     */
+    @Query(
+        """
+        SELECT w.id AS workoutId, we.id AS workoutExerciseId, w.startedAt AS startedAt,
+            we.position AS exercisePosition, s.position AS setPosition, s.weightKg AS weightKg, s.reps AS reps
+        FROM set_entry s
+        JOIN workout_exercise we ON s.workoutExerciseId = we.id
+        JOIN workout w ON we.workoutId = w.id
+        WHERE we.exerciseId = :exerciseId
+          AND w.endedAt IS NOT NULL
+          AND s.completed = 1 AND s.reps > 0
+        ORDER BY w.startedAt DESC, we.position, s.position
+        """
+    )
+    fun observeExerciseHistory(exerciseId: String): Flow<List<ExerciseHistoryRow>>
+
     /** Heaviest completed set for an exercise in finished workouts started before [before]. */
     @Query(
         """

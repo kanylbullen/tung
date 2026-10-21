@@ -287,6 +287,17 @@ data class WorkoutExerciseOrderRow(
     val exerciseId: String,
 )
 
+/** One counted set of an exercise in a finished workout, for its exercise page (`WorkoutDao.observeExerciseHistory`). */
+data class ExerciseHistoryRow(
+    val workoutId: String,
+    val workoutExerciseId: String,
+    val startedAt: Long,
+    val exercisePosition: Int,
+    val setPosition: Int,
+    val weightKg: Double,
+    val reps: Int,
+)
+
 /** A routine's exercise with its catalogue row. */
 data class RoutineExerciseWithExercise(
     @Embedded val routineExercise: RoutineExercise,
