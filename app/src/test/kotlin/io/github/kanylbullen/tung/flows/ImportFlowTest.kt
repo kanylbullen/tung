@@ -4,6 +4,9 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.assertIsEnabled
+import org.robolectric.annotation.Config
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToNodeAction
@@ -254,14 +257,18 @@ class ImportFlowTest : FlowTest() {
 
             // The answer comes back on another thread: wait for the button it brings.
             waitUntil { runCatching { scrollToInList(str(R.string.import_assist_accept_all)) }.isSuccess }
-            val seated = str(R.string.import_assist_suggests, str(R.string.ex_seated_cable_row), str(R.string.import_confidence_high))
+            // Intended change (issue #75): the confidence is a tag of its own beside the proposal, not part of its sentence.
+            val seated = str(R.string.import_assist_suggests, str(R.string.ex_seated_cable_row))
             scrollToInList(seated)
             assertShown(hasText(seated))
-            val plank = str(R.string.import_assist_suggests, str(R.string.ex_plank), str(R.string.import_confidence_low))
+            val plank = str(R.string.import_assist_suggests, str(R.string.ex_plank))
             scrollToInList(plank)
             assertShown(hasText(plank))
+            assertShown(hasContentDescription(str(R.string.confidence_tag_description, str(R.string.import_confidence_low))))
             screenshot("2-proposals")
             val sent = server.takeRequest().body.readUtf8()
+            // The app shows English, so the note is asked for in English, by name.
+            assertTrue(sent.contains("in English."))
             assertFalse("an @ was sent", sent.contains('@'))
             assertTrue(sent.contains("Machine Seated Row"))
             assertFalse(sent.contains("weight_kg"))
@@ -287,6 +294,71 @@ class ImportFlowTest : FlowTest() {
             assertTrue(count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("hammer_curl")}'") >= 1)
             assertEquals(0, count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("plank")}'"))
             assertEquals(1, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    /**
+     * How a proposal looks by confidence (issue #75), in the light theme: high
+     * (accent-filled tag, primary Accept), medium (accent outline, secondary
+     * Accept), no good match (muted text, no tag, no Accept); low is in
+     * [theAssistantProposesAndAcceptAllHighConfidenceDecidesThoseRows]. The screenshots
+     * are the check that the tags read in this theme; the dark test is the
+     * same flow.
+     */
+    @Test
+    fun proposalsAreTaggedByConfidence() = proposalsTaggedByConfidence()
+
+    @Test
+    @Config(qualifiers = "en-w411dp-h891dp-night-xhdpi")
+    fun proposalsAreTaggedByConfidenceInTheDarkTheme() = proposalsTaggedByConfidence()
+
+    private fun proposalsTaggedByConfidence() {
+        val server = MockWebServer().apply { start() }
+        try {
+            runBlocking {
+                app.container.aiSettings.save(AiProviderKind.OPENAI_COMPATIBLE, server.url("/v1").toString().trimEnd('/'), "test-model", jsonMode = true)
+                app.container.aiSettings.setKey("sk-flow-test")
+                app.container.aiSettings.markPayloadShown()
+            }
+            val text = """{"matches": [
+                {"name": "Machine Seated Row", "ref": {"key": "seated_cable_row"}, "confidence": "high", "note": ""},
+                {"name": "Dumbbell Hammer Curl to Press", "ref": {"key": "hammer_curl"}, "confidence": "medium", "note": "No press in the catalogue's."},
+                {"name": "Heel Walking", "ref": null, "confidence": "high", "note": "No such exercise; create it."}]}"""
+            val body = buildJsonObject {
+                put("choices", buildJsonArray { add(buildJsonObject { put("message", buildJsonObject { put("role", "assistant"); put("content", text) }) }) })
+            }
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(Json.encodeToString(JsonObject.serializer(), body)))
+
+            openImport(threeNames)
+            scrollToInList(str(R.string.import_assist_action))
+            clickText(str(R.string.import_assist_action))
+            waitUntil { runCatching { scrollToInList(str(R.string.import_assist_accept_all)) }.isSuccess }
+
+            fun tag(level: Int) = hasContentDescription(str(R.string.confidence_tag_description, str(level)))
+            scrollToInList(str(R.string.import_assist_suggests, str(R.string.ex_seated_cable_row)))
+            assertShown(tag(R.string.import_confidence_high))
+            screenshot("1-high")
+            scrollToInList(str(R.string.import_assist_suggests, str(R.string.ex_hammer_curl)))
+            assertShown(tag(R.string.import_confidence_medium))
+            scrollToInList(str(R.string.import_assist_no_match))
+            screenshot("2-medium-and-no-match")
+            // "No good match" has no tag at all, and nothing here is low.
+            assertTrue(compose.onAllNodes(tag(R.string.import_confidence_low)).fetchSemanticsNodes().isEmpty())
+
+            // "Accept all high-confidence" takes the row; its Accept rests, the medium one is still there to tap.
+            scrollToInList(str(R.string.import_assist_accept_all))
+            clickText(str(R.string.import_assist_accept_all))
+            scrollToInList(str(R.string.import_chosen_use, str(R.string.ex_seated_cable_row)))
+            val enabledAccept = hasText(str(R.string.import_assist_accept)) and hasClickAction() and isEnabled()
+            scrollToInList(str(R.string.import_assist_suggests, str(R.string.ex_hammer_curl)))
+            waitFor(enabledAccept)
+            assertEquals(1, compose.onAllNodes(enabledAccept).fetchSemanticsNodes().size)
+            compose.onNode(enabledAccept).performClick()
+            scrollToInList(str(R.string.import_chosen_use, str(R.string.ex_hammer_curl)))
+            waitGone(enabledAccept)
+            screenshot("3-medium-accepted")
         } finally {
             server.shutdown()
         }
