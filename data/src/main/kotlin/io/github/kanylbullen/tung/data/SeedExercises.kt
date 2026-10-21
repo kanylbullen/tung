@@ -7,6 +7,7 @@ import io.github.kanylbullen.tung.core.Equipment.BARBELL
 import io.github.kanylbullen.tung.core.Equipment.BODYWEIGHT
 import io.github.kanylbullen.tung.core.Equipment.CABLE
 import io.github.kanylbullen.tung.core.Equipment.DUMBBELL
+import io.github.kanylbullen.tung.core.Equipment.KETTLEBELL
 import io.github.kanylbullen.tung.core.Equipment.MACHINE
 import io.github.kanylbullen.tung.core.Equipment.OTHER
 import io.github.kanylbullen.tung.core.MuscleGroup
@@ -105,13 +106,13 @@ internal object SeedExercises {
         SeedExercise("hanging_leg_raise", "Hanging leg raise", CORE, BODYWEIGHT),
         SeedExercise("pallof_press", "Pallof press", CORE, CABLE),
         SeedExercise("plank", "Plank", CORE, BODYWEIGHT),
-        SeedExercise("russian_twist", "Russian twist", CORE, OTHER),
+        SeedExercise("russian_twist", "Russian twist", CORE, BODYWEIGHT),
         SeedExercise("side_plank", "Side plank", CORE, BODYWEIGHT),
         SeedExercise("sit_up", "Sit-up", CORE, BODYWEIGHT),
 
         SeedExercise("burpee", "Burpee", FULLBODY, BODYWEIGHT),
         SeedExercise("farmers_walk", "Farmer's walk", FULLBODY, DUMBBELL),
-        SeedExercise("kettlebell_swing", "Kettlebell swing", FULLBODY, OTHER),
+        SeedExercise("kettlebell_swing", "Kettlebell swing", FULLBODY, KETTLEBELL),
         SeedExercise("power_clean", "Power clean", FULLBODY, BARBELL),
         SeedExercise("snatch", "Snatch", FULLBODY, BARBELL),
         SeedExercise("thruster", "Thruster", FULLBODY, BARBELL),

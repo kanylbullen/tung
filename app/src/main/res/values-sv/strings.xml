@@ -199,6 +199,11 @@
     <string name="equipment_cable">Kabel</string>
     <string name="equipment_bodyweight">Kroppsvikt</string>
     <string name="equipment_other">Övrigt</string>
+    <string name="equipment_ez_bar">EZ-stång</string>
+    <string name="equipment_kettlebell">Kettlebell</string>
+    <string name="equipment_band">Gummiband</string>
+    <string name="equipment_medicine_ball">Medicinboll</string>
+    <string name="equipment_exercise_ball">Pilatesboll</string>
 
     <!-- History -->
     <string name="history_title">Historik</string>

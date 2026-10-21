@@ -26,8 +26,11 @@ and other clients can read the same files.
   English (Lat pulldown, Skull crusher), not literal translations.
 - `muscleGroup`: `chest`, `back`, `shoulders`, `biceps`, `triceps`, `legs`,
   `glutes`, `core` or `fullbody`.
-- `equipment`: `barbell`, `dumbbell`, `machine`, `cable`, `bodyweight` or
-  `other`.
+- `equipment`: `barbell`, `ez_bar`, `dumbbell`, `kettlebell`, `machine`,
+  `cable`, `band`, `bodyweight`, `medicine_ball`, `exercise_ball` or `other`
+  (core's `Equipment`; `other` only when none of the rest fits, e.g. the ab
+  wheel). A key never changes once it exists; a reader that does not know a
+  key treats it as `other`.
 - `primaryMuscles`: 1–3 muscles the exercise is for, most important first;
   `secondaryMuscles`: 0–4 that work along. No muscle in both lists. Values
   from the fixed list below.
@@ -101,7 +104,22 @@ fetches `dist/exercises.json` from free-exercise-db (branch `main`) and:
   and `strongman`;
 - maps `primaryMuscles[0]` and `equipment` to our values (the tables are at the
   top of the script; anything unknown becomes `fullbody` and `other`
-  respectively);
+  respectively). Equipment:
+
+  | free-exercise-db | Tung |
+  |---|---|
+  | `barbell` | `barbell` |
+  | `e-z curl bar` | `ez_bar` |
+  | `dumbbell` | `dumbbell` |
+  | `kettlebells` | `kettlebell` |
+  | `machine` | `machine` |
+  | `cable` | `cable` |
+  | `bands` | `band` |
+  | `body only` | `bodyweight` |
+  | `medicine ball` | `medicine_ball` |
+  | `exercise ball` | `exercise_ball` |
+  | `foam roll`, `other`, none | `other` |
+
 - keeps the source's `primaryMuscles` and `secondaryMuscles`, mapped onto the
   fixed list (`abdominals` → `abs`, `lower back` → `lower_back`, `middle back`
   → `upper_back`, `quadriceps` → `quads`, the rest by the same name), with a

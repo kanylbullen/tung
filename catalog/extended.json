@@ -52,7 +52,7 @@
       "hamstrings",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean and press a kettlebell overhead with one arm.",
       "Keeping the kettlebell locked out at all times, push your butt out in the direction of the locked out kettlebell. Keep the non-working arm behind your back and turn your feet out at a forty-five degree angle from the arm with the kettlebell.",
@@ -202,7 +202,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Lie on the floor with two kettlebells next to your shoulders.",
       "Position one in place on your chest and then the other, gripping the kettlebells on the handle with the palms facing forward.",
@@ -228,7 +228,7 @@
       "lower_back",
       "traps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place two kettlebells between your feet. To get in the starting position, push your butt back and look straight ahead.",
       "Clean one kettlebell to your shoulder and hold on to the other kettlebell in a hanging position. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulders. Rotate your wrist as you do so.",
@@ -248,7 +248,7 @@
     "secondaryMuscles": [
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean two kettlebells to your shoulders. Clean the kettlebells to your shoulders by extending through the legs and hips as you pull the kettlebells towards your shoulders. Rotate your wrists as you do so.",
       "Press one directly overhead by extending through the elbow, turning it so the palm faces forward while holding the other kettlebell stationary .",
@@ -269,7 +269,7 @@
       "biceps",
       "lats"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place two kettlebells in front of your feet. Bend your knees slightly and push your butt out as much as possible. As you bend over to get into the starting position grab both kettlebells by the handles.",
       "Pull one kettlebell off of the floor while holding on to the other kettlebell. Retract the shoulder blade of the working side, as you flex the elbow, drawing the kettlebell towards your stomach or rib cage.",
@@ -293,7 +293,7 @@
       "lats",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place two kettlebells on the floor about shoulder width apart. Position yourself on your toes and your hands as though you were doing a pushup, with the body straight and extended. Use the handles of the kettlebells to support your upper body. You may need to position your feet wide for support.",
       "Push one kettlebell into the floor and row the other kettlebell, retracting the shoulder blade of the working side as you flex the elbow, pulling it to your side.",
@@ -438,7 +438,7 @@
       "upper_back",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Run a band around a stationary post like that of a squat rack.",
       "Grab the band by the handles and stand back so that the tension in the band rises.",
@@ -506,7 +506,7 @@
       "calves",
       "glutes"
     ],
-    "equipment": "other",
+    "equipment": "exercise_ball",
     "instructions": [
       "Begin on the floor laying on your back with your feet on top of the ball.",
       "Position the ball so that when your legs are extended your ankles are on top of the ball. This will be your starting position.",
@@ -552,7 +552,7 @@
       "glutes",
       "lower_back"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Using a 41 inch band, stand on one end, spreading your feet a small amount. Bend at the hips to loop the end of the band behind your neck. This will be your starting position.",
       "Keeping your legs straight, extend through the hips to come to a near vertical position.",
@@ -573,7 +573,7 @@
       "glutes",
       "lower_back"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Loop the band around a post. Standing a little ways away, loop the opposite end around the neck. Your hands can help hold the band in position.",
       "Begin by bending at the hips, getting your butt back as far as possible. Keep your back flat and bend forward to about 90 degrees. Your knees should be only slightly bent.",
@@ -591,7 +591,7 @@
       "adductors"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Anchor a band around a solid post or other object.",
       "Stand with your left side to the post, and put your right foot through the band, getting it around the ankle.",
@@ -615,7 +615,7 @@
       "upper_back",
       "traps"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Begin with your arms extended straight out in front of you, holding the band with both hands.",
       "Initiate the movement by performing a reverse fly motion, moving your hands out laterally to your sides.",
@@ -634,7 +634,7 @@
       "triceps"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Secure a band to the base of a rack or the bench. Lay on the bench so that the band is lined up with your head.",
       "Take hold of the band, raising your elbows so that the upper arm is perpendicular to the floor. With the elbow flexed, the band should be above your head. This will be your starting position.",
@@ -1172,7 +1172,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Using a flat bench secure a band under the leg of the bench that is nearest to your head.",
       "Once the band is secure, grab it by both handles and lie down on the bench.",
@@ -1432,7 +1432,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean a kettlebell to your shoulder. Clean the kettlebell to your shoulders by extending through the legs and hips as you raise the kettlebell towards your shoulder. The wrist should rotate as you do so. This will be your starting position.",
       "Begin my leaning to the side opposite the kettlebell, continuing until you are able to touch the ground with your free hand, keeping your eyes on the kettlebell. As you do so, press the weight vertically be extending through the elbow, keeping your arm perpendicular to the ground.",
@@ -1520,7 +1520,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "barbell",
+    "equipment": "ez_bar",
     "instructions": [
       "Position two equally loaded EZ bars on the ground next to each other. Ensure they are able to roll.",
       "Assume a push-up position over the bars, supporting your weight on your toes and hands with your arms extended and body straight.",
@@ -1633,7 +1633,7 @@
       "biceps",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Initiate the exercise by standing upright with a kettlebell in one hand.",
       "Swing the kettlebell back forcefully and then reverse the motion forcefully. Crush the kettlebell handle as hard as possible and raise the kettlebell to your shoulder."
@@ -2396,7 +2396,7 @@
       "calves"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Grab an exercise band and stand on it with your toes making sure that the length of the band between the foot and the arms is the same for both sides.",
       "While holding the handles of the band, raise the arms to the side of your head as if you were getting ready to perform a shoulder press. The palms should be facing forward with the elbows bent and to the sides. This movement will create tension on the band. This will be your starting position.",
@@ -2786,7 +2786,7 @@
     "secondaryMuscles": [
       "forearms"
     ],
-    "equipment": "barbell",
+    "equipment": "ez_bar",
     "instructions": [
       "Attach a band to each end of the bar. Take the bar, placing a foot on the middle of the band. Stand upright with a narrow, supinated grip on the EZ bar. The elbows should be close to the torso. This will be your starting position.",
       "While keeping the upper arms in place, flex the elbows to execute the curl. Exhale as the weight is lifted.",
@@ -2809,7 +2809,7 @@
       "chest",
       "side_delts"
     ],
-    "equipment": "barbell",
+    "equipment": "ez_bar",
     "instructions": [
       "Lie on a flat bench with an EZ bar loaded to an appropriate weight.",
       "Using a narrow grip lift the bar and hold it straight over your torso with your elbows in. The arms should be perpendicular to the floor. This will be your starting position.",
@@ -3008,7 +3008,7 @@
       "biceps",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Secure an exercise band around a stationary post.",
       "While facing away from the post, grab the handles on both ends of the band and step forward enough to create tension on the band.",
@@ -3544,7 +3544,7 @@
       "quads",
       "traps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place two kettlebells between your feet. To get in the starting position, push your butt back and look straight ahead.",
       "Clean one kettlebell to your shoulder and hold on to the other kettlebell.",
@@ -3566,7 +3566,7 @@
       "quads",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Hold a kettlebell by the handle in each hand.",
       "Clean the kettlebells to your shoulders by extending through the legs and hips as you pull the kettlebells towards your shoulders. Rotate your wrists as you do so, so that the palms face forward. This will be your starting position.",
@@ -3592,7 +3592,7 @@
       "quads",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean two kettlebells to your shoulders.",
       "Squat down a few inches and reverse the motion rapidly. Use the momentum from the legs to drive the kettlebells overhead.",
@@ -3614,7 +3614,7 @@
       "hamstrings",
       "quads"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place two kettlebells behind your feet. Bend your knees and sit back to pick up the kettlebells.",
       "Swing the kettlebells between your legs forcefully and reverse the direction.",
@@ -3637,7 +3637,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place a kettlebell in front of your front foot and clean and press a kettlebell overhead with your opposite arm. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulders. Rotate your wrist as you do so, so that the palm faces forward.",
       "Keeping the kettlebell locked out at all times, push your butt out in the direction of the locked out kettlebell. Turn your feet out at a forty-five degree angle from the arm with the locked out kettlebell.",
@@ -3659,7 +3659,7 @@
       "abs",
       "hamstrings"
     ],
-    "equipment": "other",
+    "equipment": "exercise_ball",
     "instructions": [
       "Lie facedown on top of an exercise ball.",
       "While resting on your stomach on the ball, walk your hands forward along the floor and lift your legs, extending your elbows and knees."
@@ -4181,7 +4181,7 @@
       "biceps"
     ],
     "secondaryMuscles": [],
-    "equipment": "barbell",
+    "equipment": "ez_bar",
     "instructions": [
       "Stand up straight while holding an EZ curl bar at the wide outer handle. The palms of your hands should be facing forward and slightly tilted inward due to the shape of the bar. Keep your elbows close to your torso. This will be your starting position.",
       "Now, while keeping your upper arms stationary, exhale and curl the weights forward while contracting the biceps. Focus on only moving your forearms.",
@@ -4266,7 +4266,7 @@
       "abs"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "exercise_ball",
     "instructions": [
       "Lie on an exercise ball with your lower back curvature pressed against the spherical surface of the ball. Your feet should be bent at the knee and pressed firmly against the floor. The upper torso should be hanging off the top of the ball. The arms should either be kept alongside the body or crossed on top of your chest as these positions avoid neck strains (as opposed to the hands behind the back of the head position).",
       "Lower your torso into a stretch position keeping the neck stationary at all times. This will be your starting position.",
@@ -4286,7 +4286,7 @@
       "abs"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "exercise_ball",
     "instructions": [
       "Place an exercise ball nearby and lay on the floor in front of it with your hands on the floor shoulder width apart in a push-up position.",
       "Now place your lower shins on top of an exercise ball. Tip: At this point your legs should be fully extended with the shins on top of the ball and the upper body should be in a push-up type of position being supported by your two extended arms in front of you. This will be your starting position.",
@@ -4309,7 +4309,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Lie on the floor and position a kettlebell for one arm to press. The kettlebell should be held by the handle. The leg on the same side that you are pressing should be bent, with the knee crossing over the midline of the body.",
       "Press the kettlebell by extending the elbow and adducting the arm, pressing it above your body. Return to the starting position."
@@ -4347,7 +4347,7 @@
       "side_delts"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Choke the band around a post. The band should be at the same height as your elbow. Stand with your left side to the band a couple of feet away.",
       "Grasp the end of the band with your right hand, and keep your elbow pressed firmly to your side. We recommend you hold a pad or foam roll in place with your elbow to keep it firmly in position.",
@@ -4781,7 +4781,7 @@
       "calves",
       "glutes"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean two kettlebells to your shoulders. Clean the kettlebells to your shoulders by extending through the legs and hips as you pull the kettlebells towards your shoulders. Rotate your wrists as you do so.",
       "Looking straight ahead at all times, squat as low as you can and pause at the bottom. As you squat down, push your knees out. You should squat between your legs, keeping an upright torso, with your head and chest up.",
@@ -5216,7 +5216,7 @@
     "secondaryMuscles": [
       "hamstrings"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Secure one end of the band to the lower portion of a post and attach the other to one ankle.",
       "Facing the attachment point of the band, hold on to the column to stabilize yourself.",
@@ -5235,7 +5235,7 @@
       "quads"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Secure one end of the band to the lower portion of a post and attach the other to one ankle.",
       "Face away from the attachment point of the band.",
@@ -5257,7 +5257,7 @@
       "calves",
       "hamstrings"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "After choosing a suitable band, lay down in the middle of the rack, after securing the band on either side of you. If your rack doesn't have pegs, the band can be secured using heavy dumbbells or similar objects, just ensure they won't move.",
       "Adjust your position so that the band is directly over your hips. Bend your knees and place your feet flat on the floor. Your hands can be on the floor or holding the band in position.",
@@ -5635,7 +5635,7 @@
       "side_delts"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Choke the band around a post. The band should be at the same height as your elbow. Stand with your right side to the band a couple of feet away.",
       "Grasp the end of the band with your right hand, and keep your elbow pressed firmly to your side. We recommend you hold a pad or foam roll in place with your elbow to keep it firmly in position.",
@@ -5947,7 +5947,7 @@
     "secondaryMuscles": [
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean a kettlebell to your shoulder. Clean the kettlebell to your shoulder by extending through the legs and hips as you raise the kettlebell towards your shoulder. The palm should be facing inward.",
       "Looking straight ahead, press the kettlebell out and overhead, rotating your wrist so that your palm faces forward at the top of the motion.",
@@ -5971,7 +5971,7 @@
       "quads",
       "traps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place kettlebell between your feet. To get in the starting position, push your butt back and look straight ahead.",
       "Clean the kettlebell to your shoulder. Clean the kettlebell to your shoulders by extending through the legs and hips as you raise the kettlebell towards your shoulder. The wrist should rotate as you do so.",
@@ -5992,7 +5992,7 @@
       "hamstrings",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place one kettlebell between your legs and take a wider than shoulder width stance. Bend over by pushing your butt out and keeping your back flat.",
       "Pick up a kettlebell and pass it to your other hand between your legs. The receiving hand should reach from behind the legs. Go back and forth for several repetitions."
@@ -6014,7 +6014,7 @@
       "abs",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Stand tall with your feet hip-width apart. Hold a kettlebell upside down by the horns, with the bell above your hands and close to your chest. Brace your abdominals and squeeze your glutes so your ribcage stays down. This is your starting position.",
       "Keeping your elbows close to your head, move the kettlebell up past one ear and around behind your head.",
@@ -6039,7 +6039,7 @@
       "upper_back",
       "abs"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Stand tall with your feet hip-width apart. Hold a kettlebell upside down by the horns, with the bell above your hands and close to your chest. Brace your abdominals and squeeze your glutes so your ribcage stays down. This is your starting position.",
       "Keeping your elbows close to your head, move the kettlebell up past one ear and around until it sits behind your head. Pause here.",
@@ -6066,7 +6066,7 @@
       "side_delts",
       "traps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place kettlebell between your feet. To get in the starting position, push your butt back and look straight ahead.",
       "Clean kettlebell to your shoulder. Clean the kettlebell to your shoulders by extending through the legs and hips as you raise the kettlebell towards your shoulder. The wrist should rotate as you do so.",
@@ -6087,7 +6087,7 @@
       "glutes",
       "lower_back"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Hold a kettlebell by the handle in one hand. Stand on one leg, on the same side that you hold the kettlebell.",
       "Keeping that knee slightly bent, perform a stiff legged deadlift by bending at the hip, extending your free leg behind you for balance.",
@@ -6108,7 +6108,7 @@
       "side_delts",
       "abs"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Stand with your feet hip-width apart, holding a kettlebell by the horns with both hands. Press it overhead until your arms are extended, with the bell hanging behind your hands.",
       "Brace your abdominals and keep your upper arms vertical and close to your head. This is your starting position.",
@@ -6132,7 +6132,7 @@
       "hamstrings",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place one kettlebell between your legs and take a comfortable stance. Bend over by pushing your butt out and keeping your back flat.",
       "Pick up a kettlebell and pass it to your other hand between your legs, in the fashion of a \"W\". Go back and forth for several repetitions."
@@ -6151,7 +6151,7 @@
     "secondaryMuscles": [
       "abs"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "With a wide stance, hold a kettlebell with both hands. Allow it to hang at waist level with your arms extended. This will be your starting position.",
       "Initiate the movement by turning to one side, swinging the kettlebell to head height. Briefly pause at the top of the motion.",
@@ -6175,7 +6175,7 @@
       "hamstrings",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Pick up a kettlebell with two hands and hold it by the horns. Hold one leg off of the floor and squat down on the other.",
       "Squat down by flexing the knee and sitting back with the hips, holding the kettlebell up in front of you.",
@@ -6196,7 +6196,7 @@
     "secondaryMuscles": [
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Sit on the floor and spread your legs out comfortably.",
       "Clean one kettlebell to your shoulder.",
@@ -6216,7 +6216,7 @@
     "secondaryMuscles": [
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean two kettlebells two your shoulders.",
       "Press one kettlebell.",
@@ -6240,7 +6240,7 @@
       "quads",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place a kettlebell on the ground between your feet. Position your feet in a wide stance, and grasp the kettlebell with two hands. Set your hips back as far as possible, with your knees bent. Keep your chest and head up. This will be your starting position.",
       "Begin by extending the hips and knees, simultaneously pulling the kettlebell to your shoulders, raising your elbows as you do so. Reverse the motion to return to the starting position."
@@ -6260,7 +6260,7 @@
       "quads",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean two kettlebells to your shoulders. Clean the kettlebells to your shoulders by extending through the legs and hips as you pull the kettlebells towards your shoulders. Rotate your wrists as you do so. This will be your starting position.",
       "Begin to squat by flexing your hips and knees, lowering your hips between your legs. Maintain an upright, straight back as you descend as low as you can.",
@@ -6284,7 +6284,7 @@
       "quads",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Lie on your back on the floor and press a kettlebell to the top position by extending the elbow. Bend the knee on the same side as the kettlebell.",
       "Keeping the kettlebell locked out at all times, pivot to the opposite side and use your non- working arm to assist you in driving forward to the lunge position. Using your free hand, push yourself to a seated position, then progressing to one knee.",
@@ -6308,7 +6308,7 @@
       "quads",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Lie on your back on the floor and press a kettlebell to the top position by extending the elbow. Bend the knee on the same side as the kettlebell.",
       "Keeping the kettlebell locked out at all times, pivot to the opposite side and use your non- working arm to assist you in driving forward to the lunge position.",
@@ -6331,7 +6331,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place a kettlebell in front of your lead foot and clean and press it overhead with your opposite arm. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulders. Rotate your wrist as you do so, so that the palm faces forward. Press it overhead by extending the elbow.",
       "Keeping the kettlebell locked out at all times, push your butt out in the direction of the locked out kettlebell. Turn your feet out at a forty-five degree angle from the arm with the locked out kettlebell. Bending at the hip to one side, sticking your butt out, slowly lean until you can touch the floor with your free hand. Keep your eyes on the kettlebell that you hold over your head at all times.",
@@ -6582,7 +6582,7 @@
       "side_delts"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "To begin, stand on an exercise band so that tension begins at arm's length. Grasp the handles using a pronated (palms facing your thighs) grip that is slightly less than shoulder width. The handles should be resting on the sides of your thighs. Your arms should be extended with a slight bend at the elbows and your back should be straight. This will be your starting position.",
       "Use your side shoulders to lift the handles to the sides as you exhale. Continue to lift the handles until they are slightly above parallel. Tip: As you lift the handles, slightly tilt the hand as if you were pouring water and keep your arms extended. Also, keep your torso stationary and pause for a second at the top of the movement.",
@@ -6604,7 +6604,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Lie on the floor with one kettlebell in place on your chest, holding it by the handle. Extend leg on working side over leg on non-working side.Your free arm can be extended out to your side for support.",
       "Press the kettlebll into a locked out position.",
@@ -6930,7 +6930,7 @@
       "glutes",
       "quads"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Stand with your torso upright holding a kettlebell in your right hand. This will be your starting position.",
       "Step forward with your left foot and lower your upper body down by flexing the hip and the knee, keeping the torso upright. Lower your back knee until it nearly touches the ground.",
@@ -7059,7 +7059,7 @@
       "triceps"
     ],
     "secondaryMuscles": [],
-    "equipment": "barbell",
+    "equipment": "ez_bar",
     "instructions": [
       "While holding a barbell or EZ Curl bar with a pronated grip (palms facing forward), lie on your back on a flat bench with your head off the end of the bench. Tip: If you are holding a barbell grab it using a shoulder-width grip and if you are using an E-Z Bar grab it on the inner handles.",
       "Extend your arms in front of you as you hold the barbell over your chest. The arms should be perpendicular to your torso (90-degree angle). This will be your starting position.",
@@ -7267,7 +7267,7 @@
       "triceps"
     ],
     "secondaryMuscles": [],
-    "equipment": "barbell",
+    "equipment": "ez_bar",
     "instructions": [
       "Lie on a flat bench with either an e-z bar (my preference) or a straight bar placed on the floor behind your head and your feet on the floor.",
       "Grab the bar behind you, using a medium overhand (pronated) grip, and raise the bar in front of you at arms length. Tip: The arms should be perpendicular to the torso and the floor. The elbows should be tucked in. This is the starting position.",
@@ -7412,7 +7412,7 @@
       "abductors"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "Place a band around both ankles and another around both knees. There should be enough tension that they are tight when your feet are shoulder width apart.",
       "To begin, take short steps forward alternating your left and right foot.",
@@ -7737,7 +7737,7 @@
       "side_delts",
       "traps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place a kettlebell between your feet. As you bend down to grab the kettlebell, push your butt back and keep your eyes looking forward.",
       "Clean the kettlebell to your shoulders by extending through the legs and hips as you raise the kettlebell towards your shoulder. The wrist should rotate as you do so.",
@@ -7755,7 +7755,7 @@
       "side_delts"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Hold a kettlebell by the handle.",
       "Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder. Rotate your wrist as you do so, so that the palm faces forward.",
@@ -7778,7 +7778,7 @@
     "secondaryMuscles": [
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Lie on the floor holding a kettlebell with one hand, with your upper arm supported by the floor. The palm should be facing in.",
       "Press the kettlebell straight up toward the ceiling, rotating your wrist.",
@@ -7800,7 +7800,7 @@
       "quads",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Hold a kettlebell by the handle. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder. Rotate your wrist as you do so, so that the palm faces forward. This will be your starting position.",
       "Dip your body by bending the knees, keeping your torso upright.",
@@ -7821,7 +7821,7 @@
     "secondaryMuscles": [
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean a kettlebell to your shoulder. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder. Rotate your wrist as you do so, so that the palm faces inward. This will be your starting position.",
       "Look at the kettlebell and press it up and out until it is locked out overhead.",
@@ -7841,7 +7841,7 @@
     "secondaryMuscles": [
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean a kettlebell to your shoulder. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder. Rotate your wrist as you do so, so that the palm faces forward. This will be your starting position.",
       "Hold the kettlebell with the elbow out to the side, and press it up and out until it is locked out overhead.",
@@ -7863,7 +7863,7 @@
       "quads",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Hold a kettlebell by the handle. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder. Rotate your wrist as you do so, so that the palm faces forward. This will be your starting position.",
       "Dip your body by bending the knees, keeping your torso upright.",
@@ -7884,7 +7884,7 @@
       "biceps",
       "lats"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place a kettlebell in front of your feet. Bend your knees slightly and then push your butt out as much as possible as you bend over to get in the starting position. Grab the kettlebell and pull it to your stomach, retracting your shoulder blade and flexing the elbow. Keep your back straight. Lower and repeat."
     ],
@@ -7907,7 +7907,7 @@
       "traps",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place a kettlebell between your feet. Bend your knees and push your butt back to get in the proper starting position.",
       "Look straight ahead and swing the kettlebell back between your legs.",
@@ -7930,7 +7930,7 @@
       "quads",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Hold a kettlebell by the handle. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder. Rotate your wrist as you do so, so that the palm faces forward. This will be your starting position.",
       "Dip your body by bending the knees, keeping your torso upright.",
@@ -7953,7 +7953,7 @@
       "hamstrings",
       "quads"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Hold a kettlebell in one hand by the handle.",
       "Squat towards the floor, and then reverse the motion, extending the hips, knees, and finally the ankles, to raise the kettlebell overhead.",
@@ -7977,7 +7977,7 @@
       "lower_back",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [],
     "source": "free-exercise-db"
   },
@@ -8017,7 +8017,7 @@
       "lats",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "medicine_ball",
     "instructions": [
       "Start in a standing position with a staggered, athletic stance. Hold a medicine ball in one hand, on the same side as your back leg. This will be your starting position.",
       "Begin by winding the arm, raising the medicine ball above your head. As you do so, extend through the hips, knees, and ankles to load up for the slam.",
@@ -8042,7 +8042,7 @@
       "quads",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place one kettlebell between your feet.",
       "Grab the handle with one hand and raise the kettlebell rapidly, let it flip so that the ball of the kettlebell lands in the palm of your hand.",
@@ -8066,7 +8066,7 @@
       "hamstrings",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean and press a kettlebell with one arm. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulder. Rotate your wrist as you do so. Press the weight overhead by extending through the elbow.This will be your starting position.",
       "Looking straight ahead and keeping a kettlebell locked out above you, flex the knees and hips and lower your torso between your legs, keeping your head and chest up.",
@@ -8325,7 +8325,7 @@
       "quads",
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place one kettlebell between your feet. Clean the kettlebell by extending through the legs and hips as you raise the kettlebell towards your shoulders.",
       "Release the kettlebell as it comes up, and let it flip so that the ball of the kettlebell lands in the palms of your hands.",
@@ -8556,7 +8556,7 @@
     "secondaryMuscles": [
       "hamstrings"
     ],
-    "equipment": "other",
+    "equipment": "exercise_ball",
     "instructions": [
       "Lay on a ball so that your upper back is on the ball with your hips unsupported. Both feet should be flat on the floor, hip width apart or wider. This will be your starting position.",
       "Begin by extending the hips using your glutes and hamstrings, raising your hips upward as you bridge.",
@@ -8690,7 +8690,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place a kettlebell on the floor. Place yourself in a pushup position, on your toes with one hand on the ground and one hand holding the kettlebell, with your elbows extended. This will be your starting position.",
       "Begin by lowering yourself as low as you can, keeping your back straight.",
@@ -9014,7 +9014,7 @@
       "side_delts",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "exercise_ball",
     "instructions": [
       "Lie on the floor face down and place your hands about 36 inches apart from each other holding your torso up at arms length.",
       "Place your toes on top of an exercise ball. This will allow your body to be elevated.",
@@ -9343,7 +9343,7 @@
     "secondaryMuscles": [
       "forearms"
     ],
-    "equipment": "barbell",
+    "equipment": "ez_bar",
     "instructions": [
       "Grab an EZ-bar using a shoulder width and palms down (pronated) grip.",
       "Now place the upper part of both arms on top of the preacher bench and have your arms extended. This will be your starting position.",
@@ -10426,7 +10426,7 @@
     "secondaryMuscles": [
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "To begin, stand on an exercise band so that tension begins at arm's length. Grasp the handles and lift them so that the hands are at shoulder height at each side.",
       "Rotate the wrists so that the palms of your hands are facing forward. Your elbows should be bent, with the upper arms and forearms in line to the torso. This is your starting position.",
@@ -11342,7 +11342,7 @@
       "triceps"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "For this exercise anchor a band to the ground. We used an incline bench and anchored the band to the base, standing over the bench. Alternatively, this could be performed standing on the band.",
       "To begin, pull the band behind your head, holding it with a pronated grip and your elbows up. This will be your starting position.",
@@ -11455,7 +11455,7 @@
       "biceps"
     ],
     "secondaryMuscles": [],
-    "equipment": "barbell",
+    "equipment": "ez_bar",
     "instructions": [
       "Start out by setting the bar on the part of the preacher bench that you would normally sit on. Make sure to align the barbell properly so that it is balanced and will not fall off.",
       "Move to the front side of the preacher bench (the part where the arms usually lay) and position yourself to lay at a 45 degree slant with your torso and stomach pressed against the front side of the preacher bench.",
@@ -11690,7 +11690,7 @@
       "hamstrings",
       "lower_back"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "To start out, make sure that the exercise band is at an even split between both the left and right side of the body. To do this, use your hands to grab both sides of the band and place both feet in the middle of the band. Your feet should be shoulder width apart from each other.",
       "When holding the bands, they should be the same height on each side. You should be using a pronated grip (palms facing forward) and have the handles of the bands next to your face for this exercise. This is the starting position.",
@@ -12925,7 +12925,7 @@
       "lower_back",
       "traps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place two kettlebells between your feet. To get in the starting position, push your butt back and look straight ahead.",
       "Clean the kettlebells to your shoulders by extending through the legs and hips as you raise the kettlebells towards your shoulders. Rotate your wrists as you do so.",
@@ -12947,7 +12947,7 @@
       "quads",
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean two kettlebells to your shoulders. Clean the kettlebells to your shoulders by extending through the legs and hips as you swing the kettlebells towards your shoulders. Rotate your wrists as you do so, so that the palms face forward. Squat down a few inches and reverse the motion rapidly driving both kettlebells overhead. Immediately after the initial push, squat down again and get under the kettlebells. Once the kettlebells are locked out, stand upright to complete the exercise."
     ],
@@ -12965,7 +12965,7 @@
     "secondaryMuscles": [
       "triceps"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Clean two kettlebells to your shoulders. Clean the kettlebells to your shoulders by extending through the legs and hips as you swing the kettlebells towards your shoulders. Rotate your wrists as you do so, so that the palms face forward.",
       "Press the kettlebells up and out. As the kettlebells pass your head, lean into the weights so that the kettlebells are racked behind your head. Make sure to contract your lats, butt, and stomach for added stability."
@@ -12985,7 +12985,7 @@
       "biceps",
       "lats"
     ],
-    "equipment": "other",
+    "equipment": "kettlebell",
     "instructions": [
       "Place two kettlebells in front of your feet. Bend your knees slightly and then push your butt out as much as possible as you bend over to get in the starting position.",
       "Grab both kettlebells and pull them to your stomach, retracting your shoulder blades and flexing the elbows. Keep your back straight. Lower and repeat."
@@ -13071,7 +13071,7 @@
     "secondaryMuscles": [
       "side_delts"
     ],
-    "equipment": "other",
+    "equipment": "band",
     "instructions": [
       "To begin, stand on an exercise band so that tension begins at arm's length. Grasp the handles using a pronated (palms facing your thighs) grip that is slightly less than shoulder width. The handles should be resting on top of your thighs. Your arms should be extended with a slight bend at the elbows and your back should be straight. This will be your starting position.",
       "Use your side shoulders to lift the handles as you exhale. The handles should be close to the body as you move them up. Continue to lift the handles until they nearly touches your chin. Tip: Your elbows should drive the motion. As you lift the handles, your elbows should always be higher than your forearms. Also, keep your torso stationary and pause for a second at the top of the movement.",
@@ -13143,7 +13143,7 @@
       "hamstrings",
       "upper_back"
     ],
-    "equipment": "other",
+    "equipment": "exercise_ball",
     "instructions": [
       "To begin, lie down on an exercise ball with your torso pressing against the ball and parallel to the floor. The ball of your feet should be pressed against the floor to help keep you balanced. Place a weighted plate under your chin or behind your neck. This is the starting position.",
       "Slowly raise your torso up by bending at the waist and lower back. Remember to exhale during this movement.",
@@ -13162,7 +13162,7 @@
       "abs"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "exercise_ball",
     "instructions": [
       "To begin, lie down on an exercise ball with your left side of the torso (waist, hips and shoulder) pressed against the ball.",
       "Your feet should be on the floor while your legs are crossed and hanging from the ball. Hold a weighted plate with your right hand directly to the right side of your head. Tip: Make sure the smooth side of the plate is resting against your head.",
@@ -13207,7 +13207,7 @@
       "abs"
     ],
     "secondaryMuscles": [],
-    "equipment": "other",
+    "equipment": "medicine_ball",
     "instructions": [
       "Lie flat on your back with your feet flat on the ground or resting on a bench with your knees bent at a 90 degree angle.",
       "Hold a weight to your chest, or you may hold it extended above your torso. This will be your starting position.",
