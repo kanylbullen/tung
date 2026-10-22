@@ -34,7 +34,7 @@ import kotlinx.datetime.TimeZone
 
 /**
  * The [Importer] over a real Room database with the synthetic Jefit export
- * (`core/src/test/resources/import/jefit/`): one transaction, idempotent on
+ * (`core/src/jvmTest/resources/import/jefit/`): one transaction, idempotent on
  * the deterministic ids, stamped and dirty like every write, and undone one
  * batch at a time through the ordinary deletes.
  */
@@ -57,7 +57,7 @@ class ImporterTest {
         zone = { TimeZone.of("Europe/Stockholm") },
     )
     private val commands = AppCommandHandler(db, workouts, exercises, routines, ProgramRepository(db, clock = { now }), resolver, extended)
-    private val text = File("../core/src/test/resources/import/jefit/export-synthetic.csv").readText()
+    private val text = File("../core/src/jvmTest/resources/import/jefit/export-synthetic.csv").readText()
 
     @After
     fun closeDatabase() = db.close()

@@ -41,12 +41,12 @@ import kotlinx.datetime.TimeZone
 /**
  * Import from Jefit (issue #5) from Settings to History and back: the system
  * file picker is answered with the synthetic export
- * (`core/src/test/resources/import/jefit/`) through Robolectric's recorded
+ * (`core/src/jvmTest/resources/import/jefit/`) through Robolectric's recorded
  * activity result, so no test seam is needed in the app.
  */
 class ImportFlowTest : FlowTest() {
 
-    private val fixture = File("../core/src/test/resources/import/jefit/export-synthetic.csv")
+    private val fixture = File("../core/src/jvmTest/resources/import/jefit/export-synthetic.csv")
 
     /** The workouts' dates as History shows them, read from the same file in the app's zone. */
     private val dates: List<String> by lazy {
