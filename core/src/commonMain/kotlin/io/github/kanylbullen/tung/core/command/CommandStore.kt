@@ -9,10 +9,17 @@ import io.github.kanylbullen.tung.core.LoggedSet
  * executor, ids come from it, and the store stamps time its own way
  * (`updatedAt` and `dirty` on a device, `GREATEST(now, updated_at + 1)` on
  * the server). Reads see live rows only (a tombstoned row is none) and lists
- * come in position order.
+ * come in position order. A delete takes the store's own record for sync
+ * (a tombstone per row) with it.
  */
 interface CommandTx {
+    /** The store's clock, what it stamps writes with; a rule uses it for the times it records (a workout's start and end). */
+    fun now(): Long
+
     suspend fun workout(id: String): WorkoutRow?
+
+    /** The workout in progress (no end), the latest started when there are several; null when none. */
+    suspend fun activeWorkout(): WorkoutRow?
 
     suspend fun workoutExercise(id: String): WorkoutExerciseRow?
 
@@ -32,9 +39,19 @@ interface CommandTx {
     /** How many sets the routine [workoutId] was started from asks for of [exerciseId], read live; null outside a routine. */
     suspend fun routineTargetSets(workoutId: String, exerciseId: String): Int?
 
+    suspend fun routine(id: String): RoutineRow?
+
+    suspend fun routineExercises(routineId: String): List<RoutineExerciseRow>
+
+    suspend fun programDay(id: String): ProgramDayRow?
+
+    suspend fun insertWorkout(row: WorkoutRow)
+
     suspend fun insertWorkoutExercise(row: WorkoutExerciseRow)
 
     suspend fun insertSet(row: SetRow)
+
+    suspend fun endWorkout(id: String, endedAt: Long)
 
     suspend fun tickSet(id: String, done: Boolean)
 
@@ -42,15 +59,29 @@ interface CommandTx {
 
     suspend fun setReps(id: String, reps: Int)
 
+    /** Records that a workout was started from the routine now (`lastUsedAt`). */
+    suspend fun markRoutineUsed(routineId: String)
+
     /** Deletes one set, with whatever the store records for sync (a tombstone). */
     suspend fun deleteSet(id: String)
 
     /** Deletes an exercise of a workout and its sets, with the store's tombstones for each. */
     suspend fun deleteWorkoutExercise(id: String)
+
+    /** Deletes a workout with its exercises and sets, with the store's tombstones for each. */
+    suspend fun deleteWorkout(id: String)
 }
 
 /** A workout as the rules see it. */
-data class WorkoutRow(val id: String, val routineId: String?, val endedAt: Long?)
+data class WorkoutRow(
+    val id: String,
+    val startedAt: Long,
+    val endedAt: Long?,
+    val routineId: String?,
+    val programDayId: String?,
+    /** Who started it (`core.StartedBy`), null when unknown. */
+    val startedBy: String?,
+)
 
 /** One exercise of a workout as the rules see it. */
 data class WorkoutExerciseRow(val id: String, val workoutId: String, val exerciseId: String, val position: Int)
@@ -66,3 +97,19 @@ data class SetRow(
 ) {
     val values: LoggedSet get() = LoggedSet(weightKg, reps)
 }
+
+/** A saved routine as the rules see it. */
+data class RoutineRow(val id: String, val name: String, val lastUsedAt: Long?)
+
+/** One exercise of a routine as the rules see it. */
+data class RoutineExerciseRow(
+    val id: String,
+    val routineId: String,
+    val exerciseId: String,
+    val position: Int,
+    val targetSets: Int,
+    val targetReps: Int?,
+)
+
+/** One day of a program as the rules see it. */
+data class ProgramDayRow(val id: String, val programId: String, val routineId: String, val position: Int, val weekdays: Int)

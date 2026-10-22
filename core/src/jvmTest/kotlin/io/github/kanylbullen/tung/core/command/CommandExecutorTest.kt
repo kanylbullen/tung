@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -178,6 +179,116 @@ class CommandExecutorTest {
             executor.logSet(tx, Command.LogSet(workoutId, third, addNext = true))
             tx.sets(weId)
         }.size)
+    }
+
+    // --- start_workout, start_routine ---
+
+    @Test
+    fun startWorkoutReturnsTheOneInProgressElseStartsOneNow() {
+        tx.now = 5_000L
+        val first = done { executor.startWorkout(tx, "phone") }.ids.getValue(WORKOUT_ID)
+        val row = runBlocking { tx.workout(first) }
+        assertEquals(5_000L to "phone", row?.startedAt to row?.startedBy)
+        assertEquals("the same one again", first, done { executor.startWorkout(tx, "watch") }.ids.getValue(WORKOUT_ID))
+        done { executor.finishWorkout(tx, first) }
+        assertTrue("a new one once it is over", done { executor.startWorkout(tx, "phone") }.ids.getValue(WORKOUT_ID) != first)
+    }
+
+    @Test
+    fun startRoutineFillsTheTargetSetsFromLastSessionAndMarksTheRoutineUsed() {
+        tx.history["bench"] = listOf(LoggedSet(80.0, 8), LoggedSet(85.0, 6), LoggedSet(85.0, 5))
+        val routineId = tx.addRoutine()
+        tx.addRoutineExercise(routineId, "bench", targetSets = 2, targetReps = 8)
+        tx.addRoutineExercise(routineId, "squat", targetSets = 2, targetReps = 5)
+        val day = tx.addProgramDay(routineId)
+        tx.now = 9_000L
+        val workoutId = done { executor.startRoutine(tx, routineId, day, "phone") }.ids.getValue(WORKOUT_ID)
+        val workout = runBlocking { tx.workout(workoutId) }
+        assertEquals(Triple(routineId, day, "phone"), Triple(workout?.routineId, workout?.programDayId, workout?.startedBy))
+        val (bench, squat) = runBlocking { tx.workoutExercises(workoutId) }
+        assertEquals("the routine's two, not last session's three", listOf(80.0 to 8, 85.0 to 6), values(bench.id))
+        assertEquals("no history: 0 kg at the target reps", listOf(0.0 to 5, 0.0 to 5), values(squat.id))
+        assertEquals(9_000L, runBlocking { tx.routine(routineId) }?.lastUsedAt)
+        assertEquals("the one in progress, not a second", workoutId, done { executor.startRoutine(tx, routineId, null, "phone") }.ids.getValue(WORKOUT_ID))
+    }
+
+    @Test
+    fun startRoutineRefusesAMissingRoutineOrDayAndWritesNothing() {
+        val routineId = tx.addRoutine()
+        assertEquals(listOf("no routine nope"), rejected { executor.startRoutine(tx, "nope", null, null) }.reasons)
+        assertEquals(listOf("no program day nope"), rejected { executor.startRoutine(tx, routineId, "nope", null) }.reasons)
+        assertEquals(emptyList<String>(), tx.writes)
+    }
+
+    // --- finish_workout, delete_workout ---
+
+    @Test
+    fun finishDropsWhatIsNotLoggedAndEndsTheWorkout() {
+        val (workoutId, weId) = benchWorkout(3)
+        val (first, second, third) = runBlocking { tx.sets(weId) }
+        val empty = tx.addExercise(workoutId, "squat")
+        tx.addSet(empty, 100.0, 5)
+        val noReps = tx.addExercise(workoutId, "row")
+        tx.addSet(noReps, 40.0, 0, completed = true)
+        done { executor.tickSet(tx, first.id, true) }
+        done { executor.tickSet(tx, third.id, true) }
+        tx.now = 7_000L
+        assertEquals(workoutId, done { executor.finishWorkout(tx, workoutId) }.ids[WORKOUT_ID])
+        assertEquals("the un-ticked second set is gone", listOf(first.id, third.id), runBlocking { tx.sets(weId) }.map { it.id })
+        assertEquals("exercises without a logged set are gone", listOf(weId), runBlocking { tx.workoutExercises(workoutId) }.map { it.id })
+        assertEquals(7_000L, runBlocking { tx.workout(workoutId) }?.endedAt)
+        assertEquals("finishing again changes nothing", workoutId, done { executor.finishWorkout(tx, workoutId) }.ids[WORKOUT_ID])
+        assertEquals(7_000L, runBlocking { tx.workout(workoutId) }?.endedAt)
+    }
+
+    @Test
+    fun finishDiscardsAWorkoutWithNothingLogged() {
+        val (workoutId, _) = benchWorkout(2)
+        assertNull("no id: the workout is gone", done { executor.finishWorkout(tx, workoutId) }.ids[WORKOUT_ID])
+        assertNull(runBlocking { tx.workout(workoutId) })
+        assertEquals(emptyList<WorkoutExerciseRow>(), tx.exercises)
+        assertEquals(emptyList<SetRow>(), tx.allSets)
+    }
+
+    @Test
+    fun finishEndsAtTheGivenTimeNeverBeforeTheStart() {
+        val workoutId = tx.addWorkout(startedAt = 10_000L)
+        val weId = tx.addExercise(workoutId, "bench")
+        tx.addSet(weId, 80.0, 8, completed = true)
+        assertEquals(listOf("ended_at is before started_at"), rejected { executor.finishWorkout(tx, workoutId, endedAt = 9_000L) }.reasons)
+        tx.now = 8_000L
+        done { executor.finishWorkout(tx, workoutId) }
+        assertEquals("a clock behind the start ends it at the start", 10_000L, runBlocking { tx.workout(workoutId) }?.endedAt)
+        assertEquals(listOf("no workout nope"), rejected { executor.finishWorkout(tx, "nope") }.reasons)
+    }
+
+    @Test
+    fun deleteWorkoutTakesItsExercisesAndSetsWithIt() {
+        val (workoutId, _) = benchWorkout(2)
+        val other = benchWorkout(1).first
+        done { executor.deleteWorkout(tx, workoutId) }
+        assertNull(runBlocking { tx.workout(workoutId) })
+        assertEquals(listOf(other), tx.workouts.map { it.id })
+        assertEquals(1, tx.allSets.size)
+        assertEquals(listOf("no workout $workoutId"), rejected { executor.deleteWorkout(tx, workoutId) }.reasons)
+    }
+
+    // --- apply_plan ---
+
+    @Test
+    fun applyPlanAppendsThePlannedSetsToTheWorkoutInProgressOrANewOne() {
+        tx.history["bench"] = listOf(LoggedSet(80.0, 8))
+        val plan = listOf(
+            "bench" to listOf(PlannedSet(null, 10), PlannedSet(null, 10)),
+            "squat" to listOf(PlannedSet(100.0, 5)),
+        )
+        val workoutId = done { executor.applyPlan(tx, plan, "phone") }.ids.getValue(WORKOUT_ID)
+        val (bench, squat) = runBlocking { tx.workoutExercises(workoutId) }
+        assertEquals("a missing weight comes from last session, then the set before", listOf(80.0 to 10, 80.0 to 10), values(bench.id))
+        assertEquals(listOf(100.0 to 5), values(squat.id))
+        assertEquals("phone", runBlocking { tx.workout(workoutId) }?.startedBy)
+        assertEquals("the second plan joins the workout in progress", workoutId, done { executor.applyPlan(tx, listOf("row" to listOf(PlannedSet(40.0, 12))), "phone") }.ids.getValue(WORKOUT_ID))
+        assertEquals(listOf(0, 1, 2), runBlocking { tx.workoutExercises(workoutId) }.map { it.position })
     }
 
     // --- tick_set, set_weight, set_reps, remove_set, remove_exercise ---

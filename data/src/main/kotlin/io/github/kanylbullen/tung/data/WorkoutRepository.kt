@@ -10,16 +10,14 @@ import io.github.kanylbullen.tung.core.command.CommandExecutor
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.CommandTx
 import io.github.kanylbullen.tung.core.command.PlannedSet
 import io.github.kanylbullen.tung.core.command.id
-import io.github.kanylbullen.tung.core.command.plannedSetValues
-import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.picker.HistoricWorkout
 import io.github.kanylbullen.tung.core.picker.SUGGESTION_HISTORY_LIMIT
 import io.github.kanylbullen.tung.core.progress.ProgressSet
-import io.github.kanylbullen.tung.core.sync.SyncTable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -49,14 +47,9 @@ class WorkoutRepository(
     fun observeExercises(workoutId: String): Flow<List<WorkoutExerciseWithSets>> =
         dao.observeExercisesWithSets(workoutId)
 
-    /** Returns the workout in progress, creating one if there is none, started by [startedBy] (`core.StartedBy`). */
+    /** Returns the workout in progress, creating one if there is none, started by [startedBy] (`core.StartedBy`): [CommandExecutor.startWorkout]. */
     suspend fun startOrResumeWorkout(startedBy: String? = null): String = db.withTransaction {
-        dao.getActiveWorkout()?.id ?: run {
-            val now = clock()
-            val workout = Workout(id = newId(), startedAt = now, updatedAt = now, startedBy = startedBy)
-            dao.insertWorkout(workout)
-            workout.id
-        }
+        checkNotNull(executor.startWorkout(commandTx(), startedBy).id(WORKOUT_ID))
     }
 
     /**
@@ -153,39 +146,12 @@ class WorkoutRepository(
     /**
      * A whole planned workout in one transaction: the workout in progress, or
      * a new one, gets each of [exercises] appended in order with its planned
-     * sets, none ticked. A number the plan leaves out comes from the pre-fill
-     * rule ([plannedSetValues]). The exercise rows must exist.
+     * sets, none ticked ([CommandExecutor.applyPlan]). The exercise rows must exist.
      *
      * @return the workout's id.
      */
     suspend fun applyPlan(exercises: List<Pair<String, List<PlannedSet>>>, startedBy: String? = null): String = db.withTransaction {
-        val workoutId = startOrResumeWorkout(startedBy)
-        exercises.forEach { (exerciseId, planned) ->
-            val now = clock()
-            val workoutExercise = WorkoutExercise(
-                id = newId(),
-                workoutId = workoutId,
-                exerciseId = exerciseId,
-                position = dao.maxExercisePosition(workoutId) + 1,
-                updatedAt = now,
-            )
-            dao.insertWorkoutExercise(workoutExercise)
-            val previous = dao.previousSessionSets(exerciseId, workoutId).map { it.toLogged() }
-            plannedSetValues(planned, previous).forEachIndexed { position, values ->
-                dao.insertSet(
-                    SetEntry(
-                        id = newId(),
-                        workoutExerciseId = workoutExercise.id,
-                        position = position,
-                        weightKg = values.weightKg,
-                        reps = values.reps,
-                        completed = false,
-                        updatedAt = now,
-                    ),
-                )
-            }
-        }
-        workoutId
+        checkNotNull(executor.applyPlan(commandTx(), exercises, startedBy).id(WORKOUT_ID))
     }
 
     /** The user's history of [exerciseId] (sessions, last session, best set), live; core's [exerciseHistory] does the sums. */
@@ -217,23 +183,12 @@ class WorkoutRepository(
     /**
      * Ends the workout: drops unticked or empty sets, then exercises left with
      * no sets. A workout with nothing logged is deleted rather than kept as an
-     * empty row in the history.
+     * empty row in the history ([CommandExecutor.finishWorkout]).
      *
-     * @return true if the workout was saved, false if it was discarded.
+     * @return true if the workout was saved, false if it was discarded (or does not exist).
      */
     suspend fun finishWorkout(workoutId: String): Boolean = db.withTransaction {
-        val now = clock()
-        db.recordDeletes(SyncTable.SETS, dao.unloggedSetIds(workoutId), now)
-        dao.deleteUnloggedSets(workoutId)
-        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, dao.emptyExerciseIds(workoutId), now)
-        dao.deleteEmptyExercises(workoutId)
-        if (dao.countLoggedSets(workoutId) == 0) {
-            deleteWorkoutAt(workoutId, now)
-            false
-        } else {
-            dao.setEndedAt(workoutId, endedAt = now, updatedAt = now)
-            true
-        }
+        executor.finishWorkout(commandTx(), workoutId).id(WORKOUT_ID) != null
     }
 
     /**
@@ -250,8 +205,10 @@ class WorkoutRepository(
         dao.setVitals(workoutId, avgHeartRate, maxHeartRate, activeCalories, clock())
     }
 
-    /** Deletes the workout with its exercises and sets, with a tombstone for each. */
-    suspend fun deleteWorkout(workoutId: String) = db.withTransaction { deleteWorkoutAt(workoutId, clock()) }
+    /** Deletes the workout with its exercises and sets, with a tombstone for each; nothing for one that is gone. */
+    suspend fun deleteWorkout(workoutId: String) {
+        db.withTransaction { executor.deleteWorkout(commandTx(), workoutId) }
+    }
 
     /**
      * Deletes every workout one import wrote ([Workout.importBatchId]) through
@@ -260,17 +217,9 @@ class WorkoutRepository(
      * @return how many workouts were deleted.
      */
     suspend fun deleteImportBatch(batchId: String): Int = db.withTransaction {
-        val now = clock()
         val ids = dao.importBatchWorkoutIds(batchId)
-        ids.forEach { deleteWorkoutAt(it, now) }
+        val tx = commandTx()
+        ids.forEach { executor.deleteWorkout(tx, it) }
         ids.size
-    }
-
-    private suspend fun deleteWorkoutAt(workoutId: String, now: Long) {
-        dao.getWorkout(workoutId) ?: return
-        db.recordDeletes(SyncTable.SETS, dao.setIdsOfWorkout(workoutId), now)
-        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, dao.workoutExerciseIds(workoutId), now)
-        db.recordDeletes(SyncTable.WORKOUTS, listOf(workoutId), now)
-        dao.deleteWorkout(workoutId)
     }
 }

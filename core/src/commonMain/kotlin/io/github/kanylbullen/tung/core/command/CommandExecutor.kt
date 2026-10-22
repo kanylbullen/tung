@@ -7,11 +7,14 @@ import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
 import io.github.kanylbullen.tung.core.command.CommandResult.Done
 import io.github.kanylbullen.tung.core.command.CommandResult.Rejected
 import io.github.kanylbullen.tung.core.currentSet
+import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.prefillSet
+import io.github.kanylbullen.tung.core.routineStartSets
 
 /**
  * The rules of the commands, once, over a [CommandTx] (issue #87): what to
@@ -24,11 +27,103 @@ import io.github.kanylbullen.tung.core.prefillSet
  * Every refusal is decided before the first write. An id that does not
  * exist is [Rejected], naming it, on every platform.
  *
- * Moved so far: `add_exercise`, `add_set`, `log_set`, `tick_set`,
- * `set_weight`, `set_reps`, `remove_set`, `remove_exercise`. The other
- * commands follow one by one; until then their rules are still in the handlers.
+ * Moved so far: every workout command (`start_workout`, `start_routine`,
+ * `add_exercise`, `remove_exercise`, `add_set`, `remove_set`, `set_weight`,
+ * `set_reps`, `tick_set`, `log_set`, `finish_workout`, `delete_workout`,
+ * `apply_plan`). The routine and program commands follow one by one; until
+ * then their rules are still in the handlers.
  */
 class CommandExecutor(private val ids: () -> String = { newId() }) {
+
+    /** `start_workout` without a routine: the workout in progress (there is at most one), else a new one started now by [startedBy]. */
+    suspend fun startWorkout(tx: CommandTx, startedBy: String?): CommandResult {
+        tx.activeWorkout()?.let { return Done(mapOf(WORKOUT_ID to it.id)) }
+        return Done(mapOf(WORKOUT_ID to insertWorkout(tx, startedBy, routineId = null, programDayId = null)))
+    }
+
+    /**
+     * `start_routine`: the workout in progress if there is one (never a
+     * second), else a new workout from the routine, recording [routineId] and
+     * [programDayId]: its exercises in order with `targetSets` un-ticked sets
+     * each, filled by [routineStartSets] (last session's set at the same
+     * position, past its end the set before, 0 kg × `targetReps` with no
+     * history), and the routine marked used.
+     */
+    suspend fun startRoutine(tx: CommandTx, routineId: String, programDayId: String?, startedBy: String?): CommandResult {
+        tx.activeWorkout()?.let { return Done(mapOf(WORKOUT_ID to it.id)) }
+        tx.routine(routineId) ?: return noSuch("routine", routineId)
+        if (programDayId != null) tx.programDay(programDayId) ?: return noSuch("program day", programDayId)
+        val workoutId = insertWorkout(tx, startedBy, routineId, programDayId)
+        tx.routineExercises(routineId).forEachIndexed { position, re ->
+            val row = WorkoutExerciseRow(ids(), workoutId, re.exerciseId, position)
+            tx.insertWorkoutExercise(row)
+            routineStartSets(re.targetSets, re.targetReps, tx.previousSession(re.exerciseId, workoutId))
+                .forEachIndexed { setPosition, values ->
+                    tx.insertSet(SetRow(ids(), row.id, setPosition, values.weightKg, values.reps, completed = false))
+                }
+        }
+        tx.markRoutineUsed(routineId)
+        return Done(mapOf(WORKOUT_ID to workoutId))
+    }
+
+    /**
+     * `finish_workout`: sets that are not logged ([isLogged]: ticked with
+     * reps) are dropped, then exercises left without sets, and a workout
+     * without one logged set is deleted rather than kept empty (then no
+     * [WORKOUT_ID] comes back). It ends at [endedAt], or now (at its start if
+     * that lies ahead, a device clock that runs fast); an end before the start
+     * is refused. A workout already finished is left as it is.
+     */
+    suspend fun finishWorkout(tx: CommandTx, workoutId: String, endedAt: Long? = null): CommandResult {
+        val workout = tx.workout(workoutId) ?: return noSuch("workout", workoutId)
+        if (workout.endedAt != null) return Done(mapOf(WORKOUT_ID to workoutId))
+        val end = endedAt ?: maxOf(tx.now(), workout.startedAt)
+        if (end < workout.startedAt) return Rejected(listOf("ended_at is before started_at"))
+        var logged = 0
+        for (we in tx.workoutExercises(workoutId)) {
+            val (keep, drop) = tx.sets(we.id).partition { isLogged(it.completed, it.reps) }
+            logged += keep.size
+            if (keep.isEmpty()) tx.deleteWorkoutExercise(we.id) else drop.forEach { tx.deleteSet(it.id) }
+        }
+        if (logged == 0) {
+            tx.deleteWorkout(workoutId)
+            return Done()
+        }
+        tx.endWorkout(workoutId, end)
+        return Done(mapOf(WORKOUT_ID to workoutId))
+    }
+
+    /** `delete_workout`: the workout with its exercises and sets. */
+    suspend fun deleteWorkout(tx: CommandTx, workoutId: String): CommandResult {
+        tx.workout(workoutId) ?: return noSuch("workout", workoutId)
+        tx.deleteWorkout(workoutId)
+        return Done()
+    }
+
+    /**
+     * `apply_plan` once every exercise is a row: the workout in progress, or a
+     * new one started by [startedBy], gets each of [exercises] appended in
+     * order with its planned sets, none ticked; a number the plan leaves out
+     * comes from the pre-fill rule ([plannedSetValues]).
+     */
+    suspend fun applyPlan(tx: CommandTx, exercises: List<Pair<String, List<PlannedSet>>>, startedBy: String?): CommandResult {
+        val workoutId = tx.activeWorkout()?.id ?: insertWorkout(tx, startedBy, routineId = null, programDayId = null)
+        for ((exerciseId, planned) in exercises) {
+            val position = (tx.workoutExercises(workoutId).maxOfOrNull { it.position } ?: -1) + 1
+            val row = WorkoutExerciseRow(ids(), workoutId, exerciseId, position)
+            tx.insertWorkoutExercise(row)
+            plannedSetValues(planned, tx.previousSession(exerciseId, workoutId)).forEachIndexed { setPosition, values ->
+                tx.insertSet(SetRow(ids(), row.id, setPosition, values.weightKg, values.reps, completed = false))
+            }
+        }
+        return Done(mapOf(WORKOUT_ID to workoutId))
+    }
+
+    private suspend fun insertWorkout(tx: CommandTx, startedBy: String?, routineId: String?, programDayId: String?): String {
+        val row = WorkoutRow(ids(), startedAt = tx.now(), endedAt = null, routineId = routineId, programDayId = programDayId, startedBy = startedBy)
+        tx.insertWorkout(row)
+        return row.id
+    }
 
     /**
      * `add_exercise` once the exercise is the row [exerciseId]: appended after

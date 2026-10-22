@@ -2,9 +2,11 @@ package io.github.kanylbullen.tung.data
 
 import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.clampTargetSets
+import io.github.kanylbullen.tung.core.command.CommandExecutor
+import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.newId
-import io.github.kanylbullen.tung.core.routineStartSets
 import io.github.kanylbullen.tung.core.routineTarget
 import io.github.kanylbullen.tung.core.sync.SyncTable
 import kotlinx.coroutines.flow.Flow
@@ -131,44 +133,8 @@ class RoutineRepository(
      * @return the workout's id, or null if the routine no longer exists.
      */
     suspend fun start(routineId: String, programDayId: String? = null, startedBy: String? = null): String? = db.withTransaction {
-        workoutDao.getActiveWorkout()?.let { return@withTransaction it.id }
-        dao.getRoutine(routineId) ?: return@withTransaction null
-        val now = clock()
-        val workout = Workout(
-            id = newId(),
-            startedAt = now,
-            routineId = routineId,
-            updatedAt = now,
-            programDayId = programDayId,
-            startedBy = startedBy,
-        )
-        workoutDao.insertWorkout(workout)
-        dao.getRoutineExercises(routineId).forEachIndexed { position, re ->
-            val workoutExercise = WorkoutExercise(
-                id = newId(),
-                workoutId = workout.id,
-                exerciseId = re.exerciseId,
-                position = position,
-                updatedAt = now,
-            )
-            workoutDao.insertWorkoutExercise(workoutExercise)
-            val previous = workoutDao.previousSessionSets(re.exerciseId, workout.id).map { it.toLogged() }
-            routineStartSets(re.targetSets, re.targetReps, previous).forEachIndexed { setPosition, values ->
-                workoutDao.insertSet(
-                    SetEntry(
-                        id = newId(),
-                        workoutExerciseId = workoutExercise.id,
-                        position = setPosition,
-                        weightKg = values.weightKg,
-                        reps = values.reps,
-                        completed = false,
-                        updatedAt = now,
-                    ),
-                )
-            }
-        }
-        markUsed(routineId, now)
-        workout.id
+        // Core's rule ([CommandExecutor.startRoutine]) over this database; the Room-side entry for callers that are not commands.
+        CommandExecutor().startRoutine(RoomCommandTx(db, clock), routineId, programDayId, startedBy).id(WORKOUT_ID)
     }
 
     /** Records that a workout was started from [routineId] at [at]. */

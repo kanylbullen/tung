@@ -24,14 +24,12 @@ import io.github.kanylbullen.tung.core.command.ExerciseCandidate
 import io.github.kanylbullen.tung.core.command.PlanResolution
 import io.github.kanylbullen.tung.core.command.RefResolution
 import io.github.kanylbullen.tung.core.command.Validation
-import io.github.kanylbullen.tung.core.command.plannedSetValues
 import io.github.kanylbullen.tung.core.command.resolvePlan
 import io.github.kanylbullen.tung.core.command.resolveRef
 import io.github.kanylbullen.tung.core.command.resolveRoutinePlan
 import io.github.kanylbullen.tung.core.command.validate
 import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.newId
-import io.github.kanylbullen.tung.core.routineStartSets
 import io.github.kanylbullen.tung.core.routineTarget
 import io.github.kanylbullen.tung.core.toggleWeekday
 import io.github.kanylbullen.tung.server.ApiException
@@ -136,15 +134,16 @@ class ServerCommandHandler(
 
     private suspend fun Transaction.perform(command: Command, now: Long): CommandResult {
         return when (command) {
+            // Every server command is a REST command or an MCP tool: an assistant or a script.
             is Command.StartWorkout -> {
                 val routineId = command.routineId
                 if (routineId != null) {
-                    startRoutine(routineId, command.programDayId, now)
+                    executor.startRoutine(commandTx(now), routineId, command.programDayId, StartedBy.AGENT)
                 } else {
-                    Done(mapOf(WORKOUT_ID to (activeWorkout()?.get(Workouts.id) ?: insertWorkout(now))))
+                    executor.startWorkout(commandTx(now), StartedBy.AGENT)
                 }
             }
-            is Command.StartRoutine -> startRoutine(command.routineId, command.programDayId, now)
+            is Command.StartRoutine -> executor.startRoutine(commandTx(now), command.routineId, command.programDayId, StartedBy.AGENT)
             is Command.AddExercise -> addExercise(command, now)
             is Command.RemoveExercise -> executor.removeExercise(commandTx(now), command.workoutExerciseId)
             is Command.AddSet -> executor.addSet(commandTx(now), command.workoutExerciseId, command.count)
@@ -154,15 +153,9 @@ class ServerCommandHandler(
             is Command.TickSet -> executor.tickSet(commandTx(now), command.setId, command.done)
             is Command.LogSet -> executor.logSet(commandTx(now), command)
             is Command.SelectCurrent -> selectCurrent(command)
-            is Command.FinishWorkout -> {
-                val result = with(workouts) { finishIn(userId, command.workoutId, null) } ?: return noSuch("workout", command.workoutId)
-                // The id comes back only when the workout was kept; one with nothing logged is gone.
-                if (result.discarded) Done() else Done(mapOf(WORKOUT_ID to command.workoutId))
-            }
-            is Command.DeleteWorkout -> {
-                if (!with(workouts) { deleteIn(userId, command.workoutId) }) return noSuch("workout", command.workoutId)
-                Done()
-            }
+            // The id comes back only when the workout was kept; one with nothing logged is gone.
+            is Command.FinishWorkout -> executor.finishWorkout(commandTx(now), command.workoutId)
+            is Command.DeleteWorkout -> executor.deleteWorkout(commandTx(now), command.workoutId)
             is Command.ApplyPlan -> applyPlan(command, now)
             is Command.SetRest -> {
                 resolver.visibleRow(command.exerciseId) ?: return noSuch("exercise", command.exerciseId)
@@ -340,25 +333,6 @@ class ServerCommandHandler(
 
     // --- workouts ---
 
-    private fun Transaction.startRoutine(routineId: String, programDayId: String?, now: Long): CommandResult {
-        // At most one workout in progress: starting returns that one instead of making a second.
-        activeWorkout()?.let { return Done(mapOf(WORKOUT_ID to it[Workouts.id])) }
-        liveRoutine(routineId) ?: return noSuch("routine", routineId)
-        if (programDayId != null) liveDay(programDayId) ?: return noSuch("program day", programDayId)
-        val workoutId = insertWorkout(now, routineId, programDayId)
-        liveRoutineExercises(routineId).forEachIndexed { position, re ->
-            val exerciseId = re[RoutineExercises.exerciseId]
-            val weId = insertWorkoutExercise(workoutId, exerciseId, position, now)
-            routineStartSets(re[RoutineExercises.targetSets], re[RoutineExercises.targetReps], previousSession(exerciseId, workoutId))
-                .forEachIndexed { setPosition, values -> insertSet(weId, setPosition, values, now) }
-        }
-        Routines.update({ (Routines.userId eq userId) and (Routines.id eq routineId) }) {
-            it[lastUsedAt] = now
-            it[updatedAt] = bumped(updatedAt, now)
-        }
-        return Done(mapOf(WORKOUT_ID to workoutId))
-    }
-
     private suspend fun Transaction.addExercise(command: Command.AddExercise, now: Long): CommandResult {
         val exercise = when (val resolution = resolveRef(command.exercise, resolver)) {
             is RefResolution.Unresolved -> return NeedsAnswers(listOf(resolution.question))
@@ -396,14 +370,8 @@ class ServerCommandHandler(
             is PlanResolution.NeedsAnswers -> return NeedsAnswers(resolution.questions)
             is PlanResolution.Resolved -> resolution.plan
         }
-        val workoutId = activeWorkout()?.get(Workouts.id) ?: insertWorkout(now)
-        for (planned in plan.exercises) {
-            val exerciseId = rowFor(planned.exercise, now)
-            val weId = insertWorkoutExercise(workoutId, exerciseId, nextExercisePosition(workoutId), now)
-            plannedSetValues(planned.sets, previousSession(exerciseId, workoutId))
-                .forEachIndexed { position, values -> insertSet(weId, position, values, now) }
-        }
-        return Done(mapOf(WORKOUT_ID to workoutId))
+        // The rows first (an extended entry's is created here), then core's rule: the workout in progress or a new one, the plan appended.
+        return executor.applyPlan(commandTx(now), plan.exercises.map { rowFor(it.exercise, now) to it.sets }, StartedBy.AGENT)
     }
 
     // --- routines ---
@@ -484,13 +452,6 @@ class ServerCommandHandler(
 
     // --- rows ---
 
-    private fun Transaction.activeWorkout(): ResultRow? =
-        Workouts.selectAll()
-            .where { (Workouts.userId eq userId) and Workouts.endedAt.isNull() and Workouts.deletedAt.isNull() }
-            .orderBy(Workouts.startedAt, SortOrder.DESC)
-            .limit(1)
-            .singleOrNull()
-
     private fun Transaction.liveWorkout(id: String): ResultRow? =
         Workouts.selectAll().where { (Workouts.userId eq userId) and (Workouts.id eq id) and Workouts.deletedAt.isNull() }.singleOrNull()
 
@@ -539,58 +500,6 @@ class ServerCommandHandler(
             .where { (ProgramDays.userId eq userId) and (ProgramDays.programId eq programId) and ProgramDays.deletedAt.isNull() }
             .orderBy(ProgramDays.position, SortOrder.ASC)
             .toList()
-
-    private fun Transaction.insertWorkout(now: Long, routineId: String? = null, programDayId: String? = null): String {
-        val id = newId()
-        Workouts.insert {
-            it[userId] = this@ServerCommandHandler.userId
-            it[Workouts.id] = id
-            it[startedAt] = now
-            it[endedAt] = null
-            it[note] = null
-            it[Workouts.routineId] = routineId
-            it[Workouts.programDayId] = programDayId
-            // Every server command is a REST command or an MCP tool: an assistant or a script.
-            it[startedBy] = StartedBy.AGENT
-            it[updatedAt] = now
-        }
-        return id
-    }
-
-    private fun Transaction.insertWorkoutExercise(workoutId: String, exerciseId: String, position: Int, now: Long): String {
-        val id = newId()
-        WorkoutExercises.insert {
-            it[userId] = this@ServerCommandHandler.userId
-            it[WorkoutExercises.id] = id
-            it[WorkoutExercises.workoutId] = workoutId
-            it[WorkoutExercises.exerciseId] = exerciseId
-            it[WorkoutExercises.position] = position
-            it[updatedAt] = now
-        }
-        return id
-    }
-
-    private fun Transaction.insertSet(workoutExerciseId: String, position: Int, values: LoggedSet, now: Long): String {
-        val id = newId()
-        Sets.insert {
-            it[userId] = this@ServerCommandHandler.userId
-            it[Sets.id] = id
-            it[Sets.workoutExerciseId] = workoutExerciseId
-            it[Sets.position] = position
-            it[weightKg] = values.weightKg
-            it[reps] = values.reps
-            it[completed] = false
-            it[updatedAt] = now
-        }
-        return id
-    }
-
-    private fun Transaction.nextExercisePosition(workoutId: String): Int =
-        (liveExercises(workoutId).maxOfOrNull { it[WorkoutExercises.position] } ?: -1) + 1
-
-    /** Last session's sets for [exerciseId], from `GET /exercises/{id}/last`'s query. */
-    private fun Transaction.previousSession(exerciseId: String, workoutId: String): List<LoggedSet> =
-        with(workouts) { lastSessionIn(userId, exerciseId, workoutId) }.sets.map { LoggedSet(it.weightKg, it.reps) }
 
     private fun Transaction.setActive(programId: String, active: Boolean, now: Long) {
         Programs.update({ (Programs.userId eq userId) and (Programs.id eq programId) }) {

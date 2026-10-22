@@ -118,9 +118,6 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_exercise WHERE workoutId = :workoutId ORDER BY position")
     suspend fun getWorkoutExercises(workoutId: String): List<WorkoutExercise>
 
-    @Query("SELECT COALESCE(MAX(position), -1) FROM workout_exercise WHERE workoutId = :workoutId")
-    suspend fun maxExercisePosition(workoutId: String): Int
-
     @Insert
     suspend fun insertWorkoutExercise(workoutExercise: WorkoutExercise)
 
@@ -129,25 +126,6 @@ interface WorkoutDao {
 
     @Query("SELECT id FROM workout_exercise WHERE workoutId = :workoutId")
     suspend fun workoutExerciseIds(workoutId: String): List<String>
-
-    /** The exercises [deleteEmptyExercises] would delete. */
-    @Query(
-        """
-        SELECT id FROM workout_exercise
-        WHERE workoutId = :workoutId
-          AND NOT EXISTS (SELECT 1 FROM set_entry s WHERE s.workoutExerciseId = workout_exercise.id)
-        """
-    )
-    suspend fun emptyExerciseIds(workoutId: String): List<String>
-
-    @Query(
-        """
-        DELETE FROM workout_exercise
-        WHERE workoutId = :workoutId
-          AND NOT EXISTS (SELECT 1 FROM set_entry s WHERE s.workoutExerciseId = workout_exercise.id)
-        """
-    )
-    suspend fun deleteEmptyExercises(workoutId: String)
 
     // --- sets ---
 
@@ -182,26 +160,6 @@ interface WorkoutDao {
         """
     )
     suspend fun setIdsOfWorkout(workoutId: String): List<String>
-
-    /** The sets [deleteUnloggedSets] would delete. */
-    @Query(
-        """
-        SELECT id FROM set_entry
-        WHERE (completed = 0 OR reps <= 0)
-          AND workoutExerciseId IN (SELECT id FROM workout_exercise WHERE workoutId = :workoutId)
-        """
-    )
-    suspend fun unloggedSetIds(workoutId: String): List<String>
-
-    /** Removes sets that were never ticked or have no reps — see [io.github.kanylbullen.tung.core.isLogged]. */
-    @Query(
-        """
-        DELETE FROM set_entry
-        WHERE (completed = 0 OR reps <= 0)
-          AND workoutExerciseId IN (SELECT id FROM workout_exercise WHERE workoutId = :workoutId)
-        """
-    )
-    suspend fun deleteUnloggedSets(workoutId: String)
 
     @Query(
         """

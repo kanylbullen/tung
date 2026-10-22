@@ -71,7 +71,7 @@ class AppCommandHandler(
                 if (routineId != null) {
                     startRoutine(routineId, command.programDayId)
                 } else {
-                    Done(mapOf(WORKOUT_ID to workouts.startOrResumeWorkout(startedBy)))
+                    db.withTransaction { executor.startWorkout(workouts.commandTx(), startedBy) }
                 }
             }
             is Command.StartRoutine -> startRoutine(command.routineId, command.programDayId)
@@ -86,13 +86,9 @@ class AppCommandHandler(
             is Command.TickSet -> db.withTransaction { executor.tickSet(workouts.commandTx(), command.setId, command.done) }
             is Command.LogSet -> db.withTransaction { executor.logSet(workouts.commandTx(), command) }
             is Command.SelectCurrent -> selectCurrent(command)
-            is Command.FinishWorkout ->
-                // The id comes back only when the workout was kept; one with nothing logged is gone.
-                if (workouts.finishWorkout(command.workoutId)) Done(mapOf(WORKOUT_ID to command.workoutId)) else Done()
-            is Command.DeleteWorkout -> {
-                workouts.deleteWorkout(command.workoutId)
-                Done()
-            }
+            // The id comes back only when the workout was kept; one with nothing logged is gone.
+            is Command.FinishWorkout -> db.withTransaction { executor.finishWorkout(workouts.commandTx(), command.workoutId) }
+            is Command.DeleteWorkout -> db.withTransaction { executor.deleteWorkout(workouts.commandTx(), command.workoutId) }
             is Command.ApplyPlan -> applyPlan(command)
             is Command.SetRest -> {
                 exercises.setRestSeconds(command.exerciseId, command.seconds)
@@ -168,8 +164,7 @@ class AppCommandHandler(
     }
 
     private suspend fun startRoutine(routineId: String, programDayId: String?): CommandResult =
-        routines.start(routineId, programDayId, startedBy)?.let { Done(mapOf(WORKOUT_ID to it)) }
-            ?: Rejected(listOf("no routine $routineId"))
+        db.withTransaction { executor.startRoutine(workouts.commandTx(), routineId, programDayId, startedBy) }
 
     private suspend fun addExercise(command: Command.AddExercise): CommandResult {
         val exercise = when (val resolution = resolveRef(command.exercise, resolver)) {
@@ -223,10 +218,9 @@ class AppCommandHandler(
             is PlanResolution.Resolved -> resolution.plan
         }
         val entries = extendedEntries(plan.exercises.map { it.exercise })
-        val workoutId = db.withTransaction {
-            workouts.applyPlan(plan.exercises.map { rowFor(it.exercise, entries) to it.sets }, startedBy)
+        return db.withTransaction {
+            executor.applyPlan(workouts.commandTx(), plan.exercises.map { rowFor(it.exercise, entries) to it.sets }, startedBy)
         }
-        return Done(mapOf(WORKOUT_ID to workoutId))
     }
 
     private suspend fun saveRoutinePlan(command: Command.SaveRoutinePlan): CommandResult {
