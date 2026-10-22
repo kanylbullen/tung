@@ -661,7 +661,7 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
   sparkline of the span's values; **Recent records**. A row opens the
   exercise's progress. **The compact trends' choices** (issue #78), two
   rows of chips under the Exercises heading (`ChoiceChips`, the exercise
-  screen's style, wrapping when they do not fit): the metric **Est. 1RM ·
+  screen's style; see below when they do not fit): the metric **Est. 1RM ·
   Volume · Weekly volume** (Volume is per session: "Session volume 480 kg ·
   +60 kg in 3 months"; "Weekly volume 930 kg · …" is the last trained
   week's) and the span **3M · 12M** ("−1 kg in 12 months"); default
@@ -672,9 +672,9 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
   sheet in a workout**: a choice in either is the other's. The weekly bars
   stay at 12 weeks whatever the choice.
 - **Exercise progress** (`progress/{exerciseId}`, `ExerciseProgressScreen`):
-  metric chips (Est. 1RM · Top set · Volume · Weekly volume) above a line
-  chart, range chips (3M · 1Y · All) below it, the records with dates, the
-  last five sessions' sets. Reached from the tab and from the exercise
+  metric chips (Est. 1RM · Top set · Volume · Weekly volume, a menu on a
+  phone since four do not fit) above a line chart, range chips (3M · 1Y ·
+  All) below it, the records with dates, the last five sessions' sets. Reached from the tab and from the exercise
   page's **Progress**. Its choices start at estimated 1RM over 3 months each
   time and are not the compact trends'. Estimates and volumes are written in
   whole kilos, a top set as lifted.
@@ -693,6 +693,14 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
   `ExerciseProgressViewModel`, keyed `progress-<exerciseId>` on the screen
   and `progress-sheet-<exerciseId>` in the sheet, which hands it
   `ProgressSettings` for its choices.
+- **`ChoiceChips`** (`ProgressComponents.kt`) is always one line. It
+  measures its chips (a `SubcomposeLayout` with a probe that is never
+  placed and has no semantics) and, when they are wider than the line,
+  shows instead one chip naming the choice with an arrow ("Show all
+  choices") that opens a `DropdownMenu` of every option, the chosen one
+  ticked. So it holds for any width, font scale and language; at the flow
+  tests' 411 dp the exercise screen's metrics are the menu and every other
+  choice is chips.
 
 **Charts, `ui/common/charts/`**, drawn with Compose `Canvas`, no chart
 library: `LineChart` (line plus a dot per point, the last one larger, x
