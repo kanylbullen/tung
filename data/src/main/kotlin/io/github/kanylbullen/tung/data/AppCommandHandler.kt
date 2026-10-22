@@ -4,8 +4,8 @@ import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandExecutor
 import io.github.kanylbullen.tung.core.command.CommandHandler
-import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
@@ -27,16 +27,18 @@ import io.github.kanylbullen.tung.core.command.resolvePlan
 import io.github.kanylbullen.tung.core.command.resolveRef
 import io.github.kanylbullen.tung.core.command.resolveRoutinePlan
 import io.github.kanylbullen.tung.core.command.validate
-import io.github.kanylbullen.tung.core.currentSet
 
 /**
  * The app's one [CommandHandler]: every change to training data that a
  * screen makes goes through [execute], which validates ([validate]), resolves
- * exercise names ([resolveRef], [resolvePlan]) and then calls the
- * repositories. The repositories keep their transactions and rules; this
- * class only maps commands onto them (and asks for a sync after
- * [Command.FinishWorkout], through [onWorkoutFinished]), so a future API or MCP server that
- * calls the same commands gets the same behaviour as the buttons.
+ * exercise names ([resolveRef], [resolvePlan]) and then runs the command.
+ * `add_exercise`, `add_set` and `log_set` run core's [CommandExecutor] over
+ * Room ([WorkoutRepository.commandTx]), the same rules the server runs
+ * (issue #87); the other commands still call the repositories, which keep
+ * their transactions and rules. This class only maps commands onto them (and
+ * asks for a sync after [Command.FinishWorkout], through
+ * [onWorkoutFinished]), so the API and the MCP server that call the same
+ * commands get the same behaviour as the buttons.
  */
 class AppCommandHandler(
     private val db: TungDatabase,
@@ -51,6 +53,8 @@ class AppCommandHandler(
     /** Stamped on every workout this handler creates (`core.StartedBy`): `phone` on the phone, `watch` on a standalone watch. */
     private val startedBy: String? = null,
 ) : CommandHandler {
+
+    private val executor = CommandExecutor()
 
     override suspend fun execute(command: Command): CommandResult {
         (validate(command) as? Validation.Invalid)?.let { return Rejected(it.reasons) }
@@ -76,9 +80,7 @@ class AppCommandHandler(
                 workouts.removeExercise(command.workoutExerciseId)
                 Done()
             }
-            is Command.AddSet ->
-                workouts.addSet(command.workoutExerciseId, command.count ?: 1)?.let { Done(mapOf(SET_ID to it)) }
-                    ?: Rejected(listOf("no exercise ${command.workoutExerciseId} in the workout"))
+            is Command.AddSet -> db.withTransaction { executor.addSet(workouts.commandTx(), command.workoutExerciseId, command.count) }
             is Command.RemoveSet -> {
                 workouts.deleteSet(command.setId)
                 Done()
@@ -103,7 +105,7 @@ class AppCommandHandler(
                 workouts.setCompleted(command.setId, command.done)
                 Done(mapOf(SET_ID to command.setId))
             }
-            is Command.LogSet -> logSet(command)
+            is Command.LogSet -> db.withTransaction { executor.logSet(workouts.commandTx(), command) }
             is Command.SelectCurrent -> selectCurrent(command)
             is Command.FinishWorkout ->
                 // The id comes back only when the workout was kept; one with nothing logged is gone.
@@ -195,12 +197,12 @@ class AppCommandHandler(
             is RefResolution.Unresolved -> return NeedsAnswers(listOf(resolution.question))
             is RefResolution.Resolved -> resolution.exercise
         }
+        // Checked before the transaction, so a refusal creates no extended-catalogue row either.
         workouts.getWorkout(command.workoutId) ?: return Rejected(listOf("no workout ${command.workoutId}"))
         val entries = extendedEntries(listOf(exercise))
-        val workoutExerciseId = db.withTransaction {
-            workouts.addExercise(command.workoutId, rowFor(exercise, entries), command.sets)
+        return db.withTransaction {
+            executor.addExercise(workouts.commandTx(), command.workoutId, rowFor(exercise, entries), command.sets)
         }
-        return Done(mapOf(WORKOUT_EXERCISE_ID to workoutExerciseId, EXERCISE_ID to exercise.id))
     }
 
     /** Like [addExercise], for a saved routine: resolve first (a question writes nothing), then append. */
@@ -216,21 +218,6 @@ class AppCommandHandler(
             routines.addExercise(command.routineId, rowFor(exercise, entries), command.targetSets, command.targetReps)
         } ?: return missing
         return Done(mapOf(ROUTINE_EXERCISE_ID to routineExerciseId, EXERCISE_ID to exercise.id))
-    }
-
-    private suspend fun logSet(command: Command.LogSet): CommandResult {
-        val setId = command.setId
-            ?: currentSetId(command.workoutId)
-            ?: return Rejected(listOf("no un-ticked set left in workout ${command.workoutId}"))
-        val added = workouts.logSet(setId, addNext = command.addNext)
-        return Done(listOfNotNull(SET_ID to setId, added?.let { ADDED_SET_ID to it }).toMap())
-    }
-
-    /** The current set with no selection and nothing touched: the first un-ticked set of the first exercise that has one. */
-    private suspend fun currentSetId(workoutId: String): String? {
-        val list = workouts.getExercisesWithSets(workoutId)
-        val index = currentSet(list.map { e -> e.sortedSets.map { it.completed } }) ?: return null
-        return list[index.exercise].sortedSets[index.set].id
     }
 
     private suspend fun selectCurrent(command: Command.SelectCurrent): CommandResult {

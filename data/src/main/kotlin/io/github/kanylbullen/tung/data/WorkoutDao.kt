@@ -115,6 +115,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_exercise WHERE id = :id")
     suspend fun getWorkoutExercise(id: String): WorkoutExercise?
 
+    @Query("SELECT * FROM workout_exercise WHERE workoutId = :workoutId ORDER BY position")
+    suspend fun getWorkoutExercises(workoutId: String): List<WorkoutExercise>
+
     @Query("SELECT COALESCE(MAX(position), -1) FROM workout_exercise WHERE workoutId = :workoutId")
     suspend fun maxExercisePosition(workoutId: String): Int
 

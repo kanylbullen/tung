@@ -726,6 +726,30 @@ its signal to commands, never a new path into the database
   without touching anything when it fails. A new mutation = a new `Command`
   data class, a name in `CommandNames`, a branch in `validate` and in the
   handler (both `when`s are exhaustive, so the compiler points at them).
+- **One rule, in core (issue #87).** The rules themselves are moving out of
+  the handlers into `core/command/CommandExecutor.kt`, over a storage
+  interface, `CommandTx` (`CommandStore.kt`: the live rows as
+  `WorkoutRow`/`WorkoutExerciseRow`/`SetRow`, `previousSession`,
+  `routineTargetSets`, inserts and `tickSet`), so that the phone, the
+  server and later a web or iOS client cannot drift apart. Each handler
+  validates, resolves names, opens its own transaction and calls the
+  executor with its store: `data/RoomCommandTx` (the DAO inside
+  `db.withTransaction`, stamping `updatedAt` and `dirty` as every write
+  does; `WorkoutRepository.commandTx()`) and the server's
+  `command/ExposedCommandTx` (inside the locked transaction, stamping
+  `GREATEST(now, updated_at + 1)`). Ids come from the executor, time from
+  the store; the exercise row an `ExerciseRef` resolves to (an extended
+  entry's is created the first time) stays with the handler. Moved so far:
+  `add_exercise`, `add_set`, `log_set`; the executor is strict on every
+  platform (an id that does not exist is `Rejected`, and `log_set` refuses a
+  set with 0 reps, which every client already guards: the app opens the
+  reps sheet instead). `CommandExecutorTest` (core, over `MemoryCommandTx`)
+  is where the rules are tested; `LogSetCommandsTest`,
+  `AddExerciseCommandsTest` and the server's `CommandTest` guard the stores.
+  `WorkoutRepository.addExercise`/`addSet`/`logSet` remain as the Room-side
+  entry for callers that are not commands (the companion watch's
+  `WearCommandHandler`, tests) and run the same executor. The next commands
+  move in the order the issue lists.
 - **Exercises by reference.** A command names an exercise with an
   `ExerciseRef`: `ById` (the picker), `ByKey` (`bench_press`), `Extended`
   (an extended-catalogue id; the handler creates the row the first time) or
@@ -763,8 +787,7 @@ its signal to commands, never a new path into the database
   button's Add set is a separate `AddSet`. **`AddSet(workoutExerciseId, count)`**, wire `add_set` with
   an optional `count` (1–20, default 1): that many sets, each a copy of the
   one before, in one transaction; `setId` is the first added set. Both
-  handlers (`WorkoutRepository.addExercise`/`addSet`, `ServerCommandHandler`)
-  follow the same rule.
+  handlers run core's `CommandExecutor` for these (see "One rule, in core").
 - **`CreateRoutine(name)`** makes an empty routine (only a non-blank name;
   returns `routineId`), to be filled with `AddRoutineExercise`;
   `SaveRoutinePlan` refuses an empty plan, so this is how a routine starts
@@ -1616,12 +1639,14 @@ fallback, and only on a tap.
   with `lockUser`, names resolved by core over `ServerExerciseResolver`
   (catalogue rows shadowed by the user's own, `core.json`'s names in every
   language, the extended catalogue from `/catalog/extended.json`), and the
-  app's rules (one workout in progress, log set only ticks, and with
-  `add_next` adds a set only after the last and not past a routine's target, finish/delete via `WorkoutStore`'s
-  `finishIn`/`deleteIn`, pre-fill from `lastSessionIn`, i.e. `/last`'s query).
+  app's rules: `add_exercise`, `add_set` and `log_set` are core's
+  `CommandExecutor` over `command/ExposedCommandTx.kt` (see "Commands",
+  "One rule, in core"), the rest still written here (one workout in
+  progress, finish/delete via `WorkoutStore`'s `finishIn`/`deleteIn`,
+  pre-fill from `lastSessionIn`, i.e. `/last`'s query).
   Its own changes stamp `GREATEST(now, updated_at + 1)`; deletes are
-  tombstones. Unlike the app it answers `Rejected` for ids that do not exist,
-  and refuses `log_set` on a set with 0 reps (the app opens the reps sheet).
+  tombstones. It answers `Rejected` for ids that do not exist (the app's
+  repositories still do nothing silently for the commands not yet moved).
   **Every REST command (`POST /api/v1/commands/{name}`, `routes/CommandRoutes.kt`)
   and every MCP tool that changes data goes through it**; do not write
   training data from a route or a tool any other way. The JSON of each

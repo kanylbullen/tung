@@ -4,12 +4,10 @@ import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.StartedBy
-import io.github.kanylbullen.tung.core.addedExerciseSets
-import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.clampTargetSets
 import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandExecutor
 import io.github.kanylbullen.tung.core.command.CommandHandler
-import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
@@ -31,10 +29,8 @@ import io.github.kanylbullen.tung.core.command.resolvePlan
 import io.github.kanylbullen.tung.core.command.resolveRef
 import io.github.kanylbullen.tung.core.command.resolveRoutinePlan
 import io.github.kanylbullen.tung.core.command.validate
-import io.github.kanylbullen.tung.core.currentSet
 import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.newId
-import io.github.kanylbullen.tung.core.prefillSet
 import io.github.kanylbullen.tung.core.routineStartSets
 import io.github.kanylbullen.tung.core.routineTarget
 import io.github.kanylbullen.tung.core.toggleWeekday
@@ -118,6 +114,7 @@ class ServerCommandHandler(
 ) : CommandHandler {
 
     val resolver = ServerExerciseResolver(userId, catalogue)
+    private val executor = CommandExecutor()
 
     override suspend fun execute(command: Command): CommandResult {
         (validate(command) as? Validation.Invalid)?.let { return Rejected(it.reasons) }
@@ -157,11 +154,7 @@ class ServerCommandHandler(
                 }
                 Done()
             }
-            is Command.AddSet -> {
-                val we = liveWorkoutExercise(command.workoutExerciseId) ?: return noSuch("exercise in a workout", command.workoutExerciseId)
-                // Each a copy of the one before: the usual rule, applied [count] times. The first new set is returned.
-                Done(mapOf(SET_ID to List(command.count ?: 1) { insertPrefilledSet(we, now) }.first()))
-            }
+            is Command.AddSet -> executor.addSet(commandTx(now), command.workoutExerciseId, command.count)
             is Command.RemoveSet -> {
                 liveSet(command.setId) ?: return noSuch("set", command.setId)
                 tombstone(Sets, Sets.updatedAt, Sets.deletedAt, now) { (Sets.userId eq userId) and (Sets.id eq command.setId) }
@@ -188,7 +181,7 @@ class ServerCommandHandler(
                 tick(command.setId, command.done, now)
                 Done(mapOf(SET_ID to command.setId))
             }
-            is Command.LogSet -> logSet(command, now)
+            is Command.LogSet -> executor.logSet(commandTx(now), command)
             is Command.SelectCurrent -> selectCurrent(command)
             is Command.FinishWorkout -> {
                 val result = with(workouts) { finishIn(userId, command.workoutId, null) } ?: return noSuch("workout", command.workoutId)
@@ -401,40 +394,12 @@ class ServerCommandHandler(
             is RefResolution.Resolved -> resolution.exercise
         }
         liveWorkout(command.workoutId) ?: return noSuch("workout", command.workoutId)
-        val exerciseId = rowFor(exercise, now)
-        val weId = insertWorkoutExercise(command.workoutId, exerciseId, nextExercisePosition(command.workoutId), now)
-        // sets given: that many; else as many as last session had, at least one, each at its own position.
-        addedExerciseSets(command.sets, previousSession(exerciseId, command.workoutId))
-            .forEachIndexed { position, values -> insertSet(weId, position, values, now) }
-        return Done(mapOf(WORKOUT_EXERCISE_ID to weId, EXERCISE_ID to exerciseId))
+        // The row first (an extended entry's is created here), then core's rule: appended last, its sets pre-filled.
+        return executor.addExercise(commandTx(now), command.workoutId, rowFor(exercise, now), command.sets)
     }
 
-    private fun Transaction.logSet(command: Command.LogSet, now: Long): CommandResult {
-        liveWorkout(command.workoutId) ?: return noSuch("workout", command.workoutId)
-        val setId = command.setId
-            ?: currentSetId(command.workoutId)
-            ?: return Rejected(listOf("no un-ticked set left in workout ${command.workoutId}"))
-        val set = liveSet(setId) ?: return noSuch("set", setId)
-        val we = liveWorkoutExercise(set[Sets.workoutExerciseId]) ?: return noSuch("set", setId)
-        if (we[WorkoutExercises.workoutId] != command.workoutId) return Rejected(listOf("set $setId is not in workout ${command.workoutId}"))
-        // The app opens the reps sheet here instead of ticking; a set without reps would not count.
-        if (set[Sets.reps] <= 0) return Rejected(listOf("set $setId has 0 reps: set the reps first (set_reps), then log it"))
-        tick(setId, true, now)
-        // Issue #64: logging only ticks; the next set comes from add_set, or here only when the caller asks (add_next).
-        if (!command.addNext) return Done(mapOf(SET_ID to setId))
-        val sets = liveSets(we[WorkoutExercises.id])
-        val wasLast = sets.maxOf { it[Sets.position] } == set[Sets.position]
-        val target = if (wasLast) routineTargetSets(command.workoutId, we[WorkoutExercises.exerciseId]) else null
-        val added = if (addsNextSet(wasLast, sets.size, target)) insertPrefilledSet(we, now) else null
-        return Done(listOfNotNull(SET_ID to setId, added?.let { ADDED_SET_ID to it }).toMap())
-    }
-
-    /** The current set with no selection and nothing touched: the first un-ticked set of the first exercise that has one. */
-    private fun Transaction.currentSetId(workoutId: String): String? {
-        val sets = liveExercises(workoutId).map { liveSets(it[WorkoutExercises.id]) }
-        val index = currentSet(sets.map { list -> list.map { it[Sets.completed] } }) ?: return null
-        return sets[index.exercise][index.set][Sets.id]
-    }
+    /** Core's store over this transaction, for the rules that have moved into [CommandExecutor] (issue #87). */
+    private fun Transaction.commandTx(now: Long): ExposedCommandTx = ExposedCommandTx(this, userId, workouts, now)
 
     private fun Transaction.selectCurrent(command: Command.SelectCurrent): CommandResult {
         val setId = command.setId
@@ -649,31 +614,12 @@ class ServerCommandHandler(
         return id
     }
 
-    private fun Transaction.insertPrefilledSet(we: ResultRow, now: Long): String =
-        insertPrefilledSet(we[WorkoutExercises.workoutId], we[WorkoutExercises.id], we[WorkoutExercises.exerciseId], now)
-
-    /** A new last set for the exercise, pre-filled by the usual rule: the set before it, else last session's at this position. */
-    private fun Transaction.insertPrefilledSet(workoutId: String, workoutExerciseId: String, exerciseId: String, now: Long): String {
-        val existing = liveSets(workoutExerciseId)
-        val last = existing.lastOrNull()?.let { LoggedSet(it[Sets.weightKg], it[Sets.reps]) }
-        val values = prefillSet(last, previousSession(exerciseId, workoutId), existing.size) ?: LoggedSet(weightKg = 0.0, reps = 0)
-        val position = (existing.maxOfOrNull { it[Sets.position] } ?: -1) + 1
-        return insertSet(workoutExerciseId, position, values, now)
-    }
-
     private fun Transaction.nextExercisePosition(workoutId: String): Int =
         (liveExercises(workoutId).maxOfOrNull { it[WorkoutExercises.position] } ?: -1) + 1
 
     /** Last session's sets for [exerciseId], from `GET /exercises/{id}/last`'s query. */
     private fun Transaction.previousSession(exerciseId: String, workoutId: String): List<LoggedSet> =
         with(workouts) { lastSessionIn(userId, exerciseId, workoutId) }.sets.map { LoggedSet(it.weightKg, it.reps) }
-
-    /** How many sets the routine [workoutId] was started from asks for of [exerciseId]; null outside a routine. Read live, as in the app. */
-    private fun Transaction.routineTargetSets(workoutId: String, exerciseId: String): Int? {
-        val routineId = liveWorkout(workoutId)?.get(Workouts.routineId) ?: return null
-        liveRoutine(routineId) ?: return null
-        return liveRoutineExercises(routineId).filter { it[RoutineExercises.exerciseId] == exerciseId }.maxOfOrNull { it[RoutineExercises.targetSets] }
-    }
 
     /** The set and, with [openSets], every un-ticked set of the same exercise; null when the set does not exist. */
     private fun Transaction.setsToWrite(setId: String, openSets: Boolean): List<String>? {
@@ -760,7 +706,7 @@ private fun moved(rows: List<ResultRow>, idColumn: Column<String>, id: String, d
 }
 
 /** `GREATEST(now, updated_at + 1)`: the server's stamp for its own changes, so a write always moves a row forward. */
-private fun bumped(updatedAt: Column<Long>, now: Long): Expression<Long> =
+internal fun bumped(updatedAt: Column<Long>, now: Long): Expression<Long> =
     CustomFunction("GREATEST", LongColumnType(), longParam(now), with(SqlExpressionBuilder) { updatedAt + 1L })
 
 /** Tombstones the live rows [where] matches: `deleted_at` and `updated_at` both get [bumped]. */
