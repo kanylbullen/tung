@@ -111,4 +111,29 @@ internal class ExposedCommandTx(
             it[updatedAt] = bumped(updatedAt, now)
         }
     }
+
+    override suspend fun setWeight(id: String, weightKg: Double) {
+        Sets.update({ (Sets.userId eq userId) and (Sets.id eq id) }) {
+            it[Sets.weightKg] = weightKg
+            it[updatedAt] = bumped(updatedAt, now)
+        }
+    }
+
+    override suspend fun setReps(id: String, reps: Int) {
+        Sets.update({ (Sets.userId eq userId) and (Sets.id eq id) }) {
+            it[Sets.reps] = reps
+            it[updatedAt] = bumped(updatedAt, now)
+        }
+    }
+
+    override suspend fun deleteSet(id: String) {
+        tombstone(Sets, Sets.updatedAt, Sets.deletedAt, now) { (Sets.userId eq userId) and (Sets.id eq id) }
+    }
+
+    override suspend fun deleteWorkoutExercise(id: String) {
+        tombstone(Sets, Sets.updatedAt, Sets.deletedAt, now) { (Sets.userId eq userId) and (Sets.workoutExerciseId eq id) }
+        tombstone(WorkoutExercises, WorkoutExercises.updatedAt, WorkoutExercises.deletedAt, now) {
+            (WorkoutExercises.userId eq userId) and (WorkoutExercises.id eq id)
+        }
+    }
 }

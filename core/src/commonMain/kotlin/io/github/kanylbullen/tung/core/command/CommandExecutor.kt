@@ -24,8 +24,9 @@ import io.github.kanylbullen.tung.core.prefillSet
  * Every refusal is decided before the first write. An id that does not
  * exist is [Rejected], naming it, on every platform.
  *
- * Moved so far: `add_exercise`, `add_set`, `log_set`. The other commands
- * follow one by one; until then their rules are still in the handlers.
+ * Moved so far: `add_exercise`, `add_set`, `log_set`, `tick_set`,
+ * `set_weight`, `set_reps`, `remove_set`, `remove_exercise`. The other
+ * commands follow one by one; until then their rules are still in the handlers.
  */
 class CommandExecutor(private val ids: () -> String = { newId() }) {
 
@@ -82,6 +83,52 @@ class CommandExecutor(private val ids: () -> String = { newId() }) {
         val target = if (wasLast) tx.routineTargetSets(command.workoutId, we.exerciseId) else null
         val added = if (addsNextSet(wasLast, sets.size, target)) insertPrefilledSet(tx, we) else null
         return Done(listOfNotNull(SET_ID to setId, added?.let { ADDED_SET_ID to it }).toMap())
+    }
+
+    /** `tick_set`: the tick on a row, on or off, nothing else. */
+    suspend fun tickSet(tx: CommandTx, setId: String, done: Boolean): CommandResult {
+        tx.set(setId) ?: return noSuch("set", setId)
+        tx.tickSet(setId, done)
+        return Done(mapOf(SET_ID to setId))
+    }
+
+    /** `set_weight`: the set's weight; with [applyToOpenSets] every un-ticked set of the same exercise gets it too. */
+    suspend fun setWeight(tx: CommandTx, setId: String, weightKg: Double, applyToOpenSets: Boolean): CommandResult {
+        val ids = setsToWrite(tx, setId, applyToOpenSets) ?: return noSuch("set", setId)
+        ids.forEach { tx.setWeight(it, weightKg) }
+        return Done(mapOf(SET_ID to setId))
+    }
+
+    /** `set_reps`: the set's reps; with [applyToOpenSets] every un-ticked set of the same exercise gets them too. */
+    suspend fun setReps(tx: CommandTx, setId: String, reps: Int, applyToOpenSets: Boolean): CommandResult {
+        val ids = setsToWrite(tx, setId, applyToOpenSets) ?: return noSuch("set", setId)
+        ids.forEach { tx.setReps(it, reps) }
+        return Done(mapOf(SET_ID to setId))
+    }
+
+    /** `remove_set`. */
+    suspend fun removeSet(tx: CommandTx, setId: String): CommandResult {
+        tx.set(setId) ?: return noSuch("set", setId)
+        tx.deleteSet(setId)
+        return Done()
+    }
+
+    /** `remove_exercise`: the exercise and its sets. */
+    suspend fun removeExercise(tx: CommandTx, workoutExerciseId: String): CommandResult {
+        tx.workoutExercise(workoutExerciseId) ?: return noSuch("exercise in a workout", workoutExerciseId)
+        tx.deleteWorkoutExercise(workoutExerciseId)
+        return Done()
+    }
+
+    /**
+     * The set and, with [openSets], every un-ticked set of the same exercise
+     * ("Apply to all sets": ticked sets stay as logged, the edited one gets the
+     * value even if ticked); null when the set does not exist.
+     */
+    private suspend fun setsToWrite(tx: CommandTx, setId: String, openSets: Boolean): List<String>? {
+        val set = tx.set(setId) ?: return null
+        if (!openSets) return listOf(setId)
+        return tx.sets(set.workoutExerciseId).filter { it.id == setId || !it.completed }.map { it.id }
     }
 
     private suspend fun currentSetId(tx: CommandTx, workoutId: String): String? {

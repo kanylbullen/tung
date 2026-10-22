@@ -76,35 +76,14 @@ class AppCommandHandler(
             }
             is Command.StartRoutine -> startRoutine(command.routineId, command.programDayId)
             is Command.AddExercise -> addExercise(command)
-            is Command.RemoveExercise -> {
-                workouts.removeExercise(command.workoutExerciseId)
-                Done()
-            }
+            is Command.RemoveExercise -> db.withTransaction { executor.removeExercise(workouts.commandTx(), command.workoutExerciseId) }
             is Command.AddSet -> db.withTransaction { executor.addSet(workouts.commandTx(), command.workoutExerciseId, command.count) }
-            is Command.RemoveSet -> {
-                workouts.deleteSet(command.setId)
-                Done()
-            }
-            is Command.SetWeight -> {
-                if (command.applyToOpenSets) {
-                    workouts.updateWeightForOpenSets(command.setId, command.kg)
-                } else {
-                    workouts.updateWeight(command.setId, command.kg)
-                }
-                Done(mapOf(SET_ID to command.setId))
-            }
-            is Command.SetReps -> {
-                if (command.applyToOpenSets) {
-                    workouts.updateRepsForOpenSets(command.setId, command.reps)
-                } else {
-                    workouts.updateReps(command.setId, command.reps)
-                }
-                Done(mapOf(SET_ID to command.setId))
-            }
-            is Command.TickSet -> {
-                workouts.setCompleted(command.setId, command.done)
-                Done(mapOf(SET_ID to command.setId))
-            }
+            is Command.RemoveSet -> db.withTransaction { executor.removeSet(workouts.commandTx(), command.setId) }
+            is Command.SetWeight ->
+                db.withTransaction { executor.setWeight(workouts.commandTx(), command.setId, command.kg, command.applyToOpenSets) }
+            is Command.SetReps ->
+                db.withTransaction { executor.setReps(workouts.commandTx(), command.setId, command.reps, command.applyToOpenSets) }
+            is Command.TickSet -> db.withTransaction { executor.tickSet(workouts.commandTx(), command.setId, command.done) }
             is Command.LogSet -> db.withTransaction { executor.logSet(workouts.commandTx(), command) }
             is Command.SelectCurrent -> selectCurrent(command)
             is Command.FinishWorkout ->

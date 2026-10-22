@@ -6,14 +6,18 @@ import io.github.kanylbullen.tung.core.command.CommandTx
 import io.github.kanylbullen.tung.core.command.SetRow
 import io.github.kanylbullen.tung.core.command.WorkoutExerciseRow
 import io.github.kanylbullen.tung.core.command.WorkoutRow
+import io.github.kanylbullen.tung.core.sync.SyncTable
 
 /**
- * Core's [CommandTx] over Room, for the [CommandExecutor]: the DAO inside a
+ * Core's [CommandTx] over Room, for the [CommandExecutor]: the DAOs inside a
  * transaction the caller opened (`db.withTransaction`, which the DAO calls
  * join), stamping `updatedAt` with [clock] and `dirty` through the entities'
- * defaults and the DAO's updates, like every other write in `data/`.
+ * defaults and the DAO's updates, and a tombstone for every delete
+ * ([recordDeletes]), like every other write in `data/`.
  */
-internal class RoomCommandTx(private val dao: WorkoutDao, private val clock: () -> Long) : CommandTx {
+internal class RoomCommandTx(private val db: TungDatabase, private val clock: () -> Long) : CommandTx {
+
+    private val dao: WorkoutDao = db.workoutDao()
 
     override suspend fun workout(id: String): WorkoutRow? =
         dao.getWorkout(id)?.let { WorkoutRow(it.id, it.routineId, it.endedAt) }
@@ -39,6 +43,22 @@ internal class RoomCommandTx(private val dao: WorkoutDao, private val clock: () 
         dao.insertSet(SetEntry(row.id, row.workoutExerciseId, row.position, row.weightKg, row.reps, row.completed, updatedAt = clock()))
 
     override suspend fun tickSet(id: String, done: Boolean) = dao.setCompleted(id, done, clock())
+
+    override suspend fun setWeight(id: String, weightKg: Double) = dao.updateWeight(id, weightKg, clock())
+
+    override suspend fun setReps(id: String, reps: Int) = dao.updateReps(id, reps, clock())
+
+    override suspend fun deleteSet(id: String) {
+        db.recordDeletes(SyncTable.SETS, listOf(id), clock())
+        dao.deleteSet(id)
+    }
+
+    override suspend fun deleteWorkoutExercise(id: String) {
+        val now = clock()
+        db.recordDeletes(SyncTable.SETS, dao.setIds(id), now)
+        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, listOf(id), now)
+        dao.deleteWorkoutExercise(id)
+    }
 
     private fun WorkoutExercise.toRow() = WorkoutExerciseRow(id, workoutId, exerciseId, position)
 

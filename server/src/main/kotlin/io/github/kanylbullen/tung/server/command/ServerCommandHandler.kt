@@ -146,41 +146,12 @@ class ServerCommandHandler(
             }
             is Command.StartRoutine -> startRoutine(command.routineId, command.programDayId, now)
             is Command.AddExercise -> addExercise(command, now)
-            is Command.RemoveExercise -> {
-                val we = liveWorkoutExercise(command.workoutExerciseId) ?: return noSuch("exercise in a workout", command.workoutExerciseId)
-                tombstone(Sets, Sets.updatedAt, Sets.deletedAt, now) { (Sets.userId eq userId) and (Sets.workoutExerciseId eq we[WorkoutExercises.id]) }
-                tombstone(WorkoutExercises, WorkoutExercises.updatedAt, WorkoutExercises.deletedAt, now) {
-                    (WorkoutExercises.userId eq userId) and (WorkoutExercises.id eq we[WorkoutExercises.id])
-                }
-                Done()
-            }
+            is Command.RemoveExercise -> executor.removeExercise(commandTx(now), command.workoutExerciseId)
             is Command.AddSet -> executor.addSet(commandTx(now), command.workoutExerciseId, command.count)
-            is Command.RemoveSet -> {
-                liveSet(command.setId) ?: return noSuch("set", command.setId)
-                tombstone(Sets, Sets.updatedAt, Sets.deletedAt, now) { (Sets.userId eq userId) and (Sets.id eq command.setId) }
-                Done()
-            }
-            is Command.SetWeight -> {
-                val ids = setsToWrite(command.setId, command.applyToOpenSets) ?: return noSuch("set", command.setId)
-                Sets.update({ (Sets.userId eq userId) and (Sets.id inList ids) }) {
-                    it[weightKg] = command.kg
-                    it[updatedAt] = bumped(updatedAt, now)
-                }
-                Done(mapOf(SET_ID to command.setId))
-            }
-            is Command.SetReps -> {
-                val ids = setsToWrite(command.setId, command.applyToOpenSets) ?: return noSuch("set", command.setId)
-                Sets.update({ (Sets.userId eq userId) and (Sets.id inList ids) }) {
-                    it[reps] = command.reps
-                    it[updatedAt] = bumped(updatedAt, now)
-                }
-                Done(mapOf(SET_ID to command.setId))
-            }
-            is Command.TickSet -> {
-                liveSet(command.setId) ?: return noSuch("set", command.setId)
-                tick(command.setId, command.done, now)
-                Done(mapOf(SET_ID to command.setId))
-            }
+            is Command.RemoveSet -> executor.removeSet(commandTx(now), command.setId)
+            is Command.SetWeight -> executor.setWeight(commandTx(now), command.setId, command.kg, command.applyToOpenSets)
+            is Command.SetReps -> executor.setReps(commandTx(now), command.setId, command.reps, command.applyToOpenSets)
+            is Command.TickSet -> executor.tickSet(commandTx(now), command.setId, command.done)
             is Command.LogSet -> executor.logSet(commandTx(now), command)
             is Command.SelectCurrent -> selectCurrent(command)
             is Command.FinishWorkout -> {
@@ -621,20 +592,6 @@ class ServerCommandHandler(
     private fun Transaction.previousSession(exerciseId: String, workoutId: String): List<LoggedSet> =
         with(workouts) { lastSessionIn(userId, exerciseId, workoutId) }.sets.map { LoggedSet(it.weightKg, it.reps) }
 
-    /** The set and, with [openSets], every un-ticked set of the same exercise; null when the set does not exist. */
-    private fun Transaction.setsToWrite(setId: String, openSets: Boolean): List<String>? {
-        val set = liveSet(setId) ?: return null
-        if (!openSets) return listOf(setId)
-        return liveSets(set[Sets.workoutExerciseId]).filter { it[Sets.id] == setId || !it[Sets.completed] }.map { it[Sets.id] }
-    }
-
-    private fun Transaction.tick(setId: String, done: Boolean, now: Long) {
-        Sets.update({ (Sets.userId eq userId) and (Sets.id eq setId) }) {
-            it[completed] = done
-            it[updatedAt] = bumped(updatedAt, now)
-        }
-    }
-
     private fun Transaction.setActive(programId: String, active: Boolean, now: Long) {
         Programs.update({ (Programs.userId eq userId) and (Programs.id eq programId) }) {
             it[isActive] = active
@@ -710,7 +667,7 @@ internal fun bumped(updatedAt: Column<Long>, now: Long): Expression<Long> =
     CustomFunction("GREATEST", LongColumnType(), longParam(now), with(SqlExpressionBuilder) { updatedAt + 1L })
 
 /** Tombstones the live rows [where] matches: `deleted_at` and `updated_at` both get [bumped]. */
-private fun <T : Table> tombstone(table: T, updatedAt: Column<Long>, deletedAt: Column<Long?>, now: Long, where: SqlExpressionBuilder.() -> Op<Boolean>) {
+internal fun <T : Table> tombstone(table: T, updatedAt: Column<Long>, deletedAt: Column<Long?>, now: Long, where: SqlExpressionBuilder.() -> Op<Boolean>) {
     table.update({ where() and deletedAt.isNull() }) {
         it[deletedAt] = bumped(updatedAt, now)
         it[updatedAt] = bumped(updatedAt, now)

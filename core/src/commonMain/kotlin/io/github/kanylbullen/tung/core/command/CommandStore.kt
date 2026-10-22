@@ -37,6 +37,16 @@ interface CommandTx {
     suspend fun insertSet(row: SetRow)
 
     suspend fun tickSet(id: String, done: Boolean)
+
+    suspend fun setWeight(id: String, weightKg: Double)
+
+    suspend fun setReps(id: String, reps: Int)
+
+    /** Deletes one set, with whatever the store records for sync (a tombstone). */
+    suspend fun deleteSet(id: String)
+
+    /** Deletes an exercise of a workout and its sets, with the store's tombstones for each. */
+    suspend fun deleteWorkoutExercise(id: String)
 }
 
 /** A workout as the rules see it. */

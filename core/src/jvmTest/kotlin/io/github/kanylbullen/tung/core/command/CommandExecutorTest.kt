@@ -180,6 +180,57 @@ class CommandExecutorTest {
         }.size)
     }
 
+    // --- tick_set, set_weight, set_reps, remove_set, remove_exercise ---
+
+    @Test
+    fun tickSetTicksAndUnticksOneSet() {
+        val (_, weId) = benchWorkout(2)
+        val (first, second) = runBlocking { tx.sets(weId) }
+        done { executor.tickSet(tx, first.id, done = true) }
+        assertEquals(listOf(true, false), runBlocking { tx.sets(weId) }.map { it.completed })
+        done { executor.tickSet(tx, first.id, done = false) }
+        assertEquals(listOf(false, false), runBlocking { tx.sets(weId) }.map { it.completed })
+        assertEquals(listOf("no set nope"), rejected { executor.tickSet(tx, "nope", done = true) }.reasons)
+        assertEquals(second.id, runBlocking { tx.sets(weId) }[1].id)
+    }
+
+    @Test
+    fun applyToOpenSetsWritesTheEditedSetAndEveryUntickedOneOfItsExercise() {
+        val (_, weId) = benchWorkout(3)
+        val other = tx.addExercise(runBlocking { tx.workoutExercise(weId) }?.workoutId.orEmpty(), "squat")
+        tx.addSet(other, 100.0, 5)
+        val (first, second, third) = runBlocking { tx.sets(weId) }
+        done { executor.tickSet(tx, first.id, done = true) }
+        done { executor.tickSet(tx, second.id, done = true) }
+        done { executor.setWeight(tx, second.id, 82.5, applyToOpenSets = true) }
+        done { executor.setReps(tx, third.id, 6, applyToOpenSets = true) }
+        assertEquals(
+            "the weight: the ticked first set stays, the edited second gets it even though ticked, the open third too; the reps: the third and the open sets, so not the ticked second",
+            listOf(80.0 to 8, 82.5 to 8, 82.5 to 6),
+            values(weId),
+        )
+        assertEquals("another exercise is untouched", listOf(100.0 to 5), values(other))
+        done { executor.setWeight(tx, first.id, 70.0, applyToOpenSets = false) }
+        assertEquals(listOf(70.0 to 8, 82.5 to 6, 82.5 to 6), values(weId))
+        assertEquals(listOf("no set nope"), rejected { executor.setReps(tx, "nope", 5, applyToOpenSets = true) }.reasons)
+    }
+
+    @Test
+    fun removeSetAndRemoveExerciseDeleteWhatTheyNameAndRefuseWhatIsGone() {
+        val (workoutId, weId) = benchWorkout(2)
+        val squat = tx.addExercise(workoutId, "squat")
+        tx.addSet(squat, 100.0, 5)
+        val (first, _) = runBlocking { tx.sets(weId) }
+        done { executor.removeSet(tx, first.id) }
+        assertEquals(1, runBlocking { tx.sets(weId) }.size)
+        assertEquals(listOf("no set ${first.id}"), rejected { executor.removeSet(tx, first.id) }.reasons)
+        done { executor.removeExercise(tx, squat) }
+        assertNull(runBlocking { tx.workoutExercise(squat) })
+        assertEquals("its sets go with it", emptyList<SetRow>(), runBlocking { tx.sets(squat) })
+        assertEquals(listOf("no exercise in a workout $squat"), rejected { executor.removeExercise(tx, squat) }.reasons)
+        assertEquals(listOf("delete set ${first.id}", "delete exercise $squat"), tx.writes)
+    }
+
     @Test
     fun logSetRefusesWhatItCannotLogAndWritesNothing() {
         val (workoutId, weId) = benchWorkout(1)

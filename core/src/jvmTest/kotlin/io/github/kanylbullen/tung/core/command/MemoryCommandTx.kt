@@ -61,10 +61,27 @@ class MemoryCommandTx : CommandTx {
         writes += "insert set ${row.id}"
     }
 
-    override suspend fun tickSet(id: String, done: Boolean) {
+    override suspend fun tickSet(id: String, done: Boolean) = updateSet(id, "tick $id $done") { it.copy(completed = done) }
+
+    override suspend fun setWeight(id: String, weightKg: Double) = updateSet(id, "weight $id $weightKg") { it.copy(weightKg = weightKg) }
+
+    override suspend fun setReps(id: String, reps: Int) = updateSet(id, "reps $id $reps") { it.copy(reps = reps) }
+
+    override suspend fun deleteSet(id: String) {
+        require(allSets.removeAll { it.id == id }) { "no set $id" }
+        writes += "delete set $id"
+    }
+
+    override suspend fun deleteWorkoutExercise(id: String) {
+        allSets.removeAll { it.workoutExerciseId == id }
+        require(exercises.removeAll { it.id == id }) { "no exercise $id" }
+        writes += "delete exercise $id"
+    }
+
+    private fun updateSet(id: String, write: String, change: (SetRow) -> SetRow) {
         val index = allSets.indexOfFirst { it.id == id }
         require(index >= 0) { "no set $id" }
-        allSets[index] = allSets[index].copy(completed = done)
-        writes += "tick $id $done"
+        allSets[index] = change(allSets[index])
+        writes += write
     }
 }

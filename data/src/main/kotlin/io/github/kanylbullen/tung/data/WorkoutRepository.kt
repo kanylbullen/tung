@@ -64,7 +64,7 @@ class WorkoutRepository(
      * `add_exercise`, `add_set` and `log_set` run there, over this, inside a
      * `db.withTransaction` the caller opened (issue #87).
      */
-    internal fun commandTx(): CommandTx = RoomCommandTx(dao, clock)
+    internal fun commandTx(): CommandTx = RoomCommandTx(db, clock)
 
     private val executor = CommandExecutor()
 
@@ -82,12 +82,9 @@ class WorkoutRepository(
         }
     }
 
-    /** Removes an exercise and its sets, with a tombstone for each. */
-    suspend fun removeExercise(workoutExerciseId: String) = db.withTransaction {
-        val now = clock()
-        db.recordDeletes(SyncTable.SETS, dao.setIds(workoutExerciseId), now)
-        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, listOf(workoutExerciseId), now)
-        dao.deleteWorkoutExercise(workoutExerciseId)
+    /** Removes an exercise and its sets, with a tombstone for each; nothing for one that is gone. */
+    suspend fun removeExercise(workoutExerciseId: String) {
+        db.withTransaction { executor.removeExercise(commandTx(), workoutExerciseId) }
     }
 
     /**
@@ -100,34 +97,31 @@ class WorkoutRepository(
         executor.addSet(commandTx(), workoutExerciseId, count).id(SET_ID)
     }
 
-    suspend fun updateWeight(setId: String, weightKg: Double) = dao.updateWeight(setId, weightKg, clock())
+    suspend fun updateWeight(setId: String, weightKg: Double) {
+        db.withTransaction { executor.setWeight(commandTx(), setId, weightKg, applyToOpenSets = false) }
+    }
 
-    suspend fun updateReps(setId: String, reps: Int) = dao.updateReps(setId, reps, clock())
+    suspend fun updateReps(setId: String, reps: Int) {
+        db.withTransaction { executor.setReps(commandTx(), setId, reps, applyToOpenSets = false) }
+    }
 
     /**
      * "Apply to all sets" for weight: writes [weightKg] to [setId] and to every
      * set of its workout exercise that is not ticked. Ticked sets stay as logged;
      * the set being edited gets the value even if it is ticked.
      */
-    suspend fun updateWeightForOpenSets(setId: String, weightKg: Double) =
-        db.withTransaction {
-            val now = clock()
-            openSetIds(setId).forEach { dao.updateWeight(it, weightKg, now) }
-        }
-
-    /** "Apply to all sets" for reps; see [updateWeightForOpenSets]. */
-    suspend fun updateRepsForOpenSets(setId: String, reps: Int) =
-        db.withTransaction {
-            val now = clock()
-            openSetIds(setId).forEach { dao.updateReps(it, reps, now) }
-        }
-
-    private suspend fun openSetIds(setId: String): List<String> {
-        val set = dao.getSet(setId) ?: return emptyList()
-        return dao.getSets(set.workoutExerciseId).filter { it.id == setId || !it.completed }.map { it.id }
+    suspend fun updateWeightForOpenSets(setId: String, weightKg: Double) {
+        db.withTransaction { executor.setWeight(commandTx(), setId, weightKg, applyToOpenSets = true) }
     }
 
-    suspend fun setCompleted(setId: String, completed: Boolean) = dao.setCompleted(setId, completed, clock())
+    /** "Apply to all sets" for reps; see [updateWeightForOpenSets]. */
+    suspend fun updateRepsForOpenSets(setId: String, reps: Int) {
+        db.withTransaction { executor.setReps(commandTx(), setId, reps, applyToOpenSets = true) }
+    }
+
+    suspend fun setCompleted(setId: String, completed: Boolean) {
+        db.withTransaction { executor.tickSet(commandTx(), setId, completed) }
+    }
 
     /**
      * "Log set": ticks [setId], [CommandExecutor.logSet]'s rule (a set with 0
@@ -144,10 +138,8 @@ class WorkoutRepository(
         executor.logSet(commandTx(), Command.LogSet(workoutId, setId, addNext)).id(ADDED_SET_ID)
     }
 
-    suspend fun deleteSet(setId: String) = db.withTransaction {
-        dao.getSet(setId) ?: return@withTransaction
-        db.recordDeletes(SyncTable.SETS, listOf(setId), clock())
-        dao.deleteSet(setId)
+    suspend fun deleteSet(setId: String) {
+        db.withTransaction { executor.removeSet(commandTx(), setId) }
     }
 
     suspend fun getSet(setId: String): SetEntry? = dao.getSet(setId)
