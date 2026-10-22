@@ -100,7 +100,7 @@ databases. The packages are the ones the files had in `app/`:
 
 | Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `ProgressSettings` (the Progress tab's row span), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `ProgressSettings` (the compact trends' metric and span), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
@@ -587,7 +587,7 @@ have no documented origin.
 
 ### Progress
 
-Issue #60. The last tab, after History, and two ways into one exercise's
+Issues #60 and #78. The last tab, after History, and two ways into one exercise's
 progress. **All computation is pure in core**, `core/progress/` (package
 `io.github.kanylbullen.tung.core.progress`, `ProgressTest`), so the tab, the
 sheet and later the server and MCP compute the same:
@@ -602,15 +602,25 @@ sheet and later the server and MCP compute the same:
   exercise added twice is one session), oldest first, with the date in the
   zone, the sets, the best estimate and its set, the top set (heaviest, ties
   to more reps) and the session volume; `value(ProgressMetric)` for `E1RM`,
-  `TOP_SET`, `VOLUME`. `exerciseProgress(sets, zone)`: every exercise with a
-  session, most recently trained first.
+  `TOP_SET`, `VOLUME` (null for `WEEKLY_VOLUME`, a week's number).
+  `exerciseProgress(sets, zone)`: every exercise with a session, most
+  recently trained first.
 - **Ranges** (`ProgressRange`: `THREE_MONTHS`, `ONE_YEAR`, `ALL`) count back
-  from today (`startOn`, inclusive; `within`). **`change(points, metric)`**:
-  first to last value in the points given, null with fewer than two.
-  `ROW_RANGES` (3 and 12 months: `ONE_YEAR` is twelve months, called "1Y" on
-  the exercise screen and "12M" on the tab) and `ExerciseProgress.trend(range,
-  today)` (`RowTrend`: the estimates in range and their change) are what a
-  tab row shows.
+  from today (`startOn`, inclusive; `within`).
+- **Trends**: **`trendPoints(sessions, metric, range, today)`** is what every
+  chart and sparkline plots, `TrendPoint(date, value)` oldest first: one per
+  session in range that has a value, or for **`WEEKLY_VOLUME`** one per ISO
+  week with a session, dated its Monday, the sum of its sessions' volume.
+  Weeks without the exercise are no point (not zeros: x is the date, so a
+  gap shows), and the range's first week counts whole, from the Monday of
+  the week its first day falls in. **`change(points, metric)`** (and
+  `List<TrendPoint>.change()`): first to last value, null with fewer than
+  two. `TREND_RANGES` (3 and 12 months: `ONE_YEAR` is twelve months, called
+  "1Y" on the exercise screen and "12M" in the compact trends),
+  `TREND_METRICS` (`E1RM`, `VOLUME`, `WEEKLY_VOLUME`) and
+  `ExerciseProgress.trend(metric, range, today)` (`RowTrend`: the latest
+  value of all, the last session's or the last trained week's, then the
+  values in range and their change) are what a tab row shows.
 - **Weeks**: `weekStart` is the ISO week's Monday (1 January 2026 is in the
   week of 29 December 2025); `weeklyBuckets(sets, today, zone, weeks = 12)`
   has every week, empty ones as zeros, with the workouts that have a logged
@@ -647,30 +657,42 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
   `ic_trending_up`): "Last 12 weeks" with workouts and weeks in a row, bars
   for workouts and volume per week; **Exercises**, most recently trained
   first, each row "Est. 1RM 112 kg · +14 kg in 3 months" (or "No change", or
-  the session count when the span holds fewer than two estimates) with a
-  sparkline of the span's estimates; **Recent records**. A row opens the
-  exercise's progress. **The span** (issue #78) is the chips **3M · 12M**
-  under the Exercises heading (`ChoiceChips`, the exercise screen's style):
-  default 3 months, "−1 kg in 12 months" at 12M. It is remembered in the
-  `settings` DataStore (`data/ProgressSettings`, key `progress_rows_range`,
-  `"12m"` or no key for 3 months; `container.progressSettings`), **not
-  synced**. The weekly bars stay at 12 weeks whatever the span.
+  the session count when the span holds fewer than two values) with a
+  sparkline of the span's values; **Recent records**. A row opens the
+  exercise's progress. **The compact trends' choices** (issue #78), two
+  rows of chips under the Exercises heading (`ChoiceChips`, the exercise
+  screen's style, wrapping when they do not fit): the metric **Est. 1RM ·
+  Volume · Weekly volume** (Volume is per session: "Session volume 480 kg ·
+  +60 kg in 3 months"; "Weekly volume 930 kg · …" is the last trained
+  week's) and the span **3M · 12M** ("−1 kg in 12 months"); default
+  estimated 1RM over 3 months. Both are remembered in the `settings` DataStore
+  (`data/ProgressSettings`, keys `progress_rows_metric`, `"session_volume"`
+  or `"weekly_volume"`, and `progress_rows_range`, `"12m"`; the default is no
+  key; `container.progressSettings`), **not synced**, and **shared with the
+  sheet in a workout**: a choice in either is the other's. The weekly bars
+  stay at 12 weeks whatever the choice.
 - **Exercise progress** (`progress/{exerciseId}`, `ExerciseProgressScreen`):
-  metric chips (Est. 1RM · Top set · Volume) above a line chart, range chips
-  (3M · 1Y · All) below it, the records with dates, the last five sessions'
-  sets. Reached from the tab and from the exercise page's **Progress**.
-  Estimates and volumes are written in whole kilos, a top set as lifted.
+  metric chips (Est. 1RM · Top set · Volume · Weekly volume) above a line
+  chart, range chips (3M · 1Y · All) below it, the records with dates, the
+  last five sessions' sets. Reached from the tab and from the exercise
+  page's **Progress**. Its choices start at estimated 1RM over 3 months each
+  time and are not the compact trends'. Estimates and volumes are written in
+  whole kilos, a top set as lifted.
 - **The sheet in a workout** (`ProgressSheet`): each exercise header in the
   active workout has a trend button ("Progress for Bench press") next to its
   menu. The sheet shows the record line for the exercise's current set (the
   screen's current set if it is this exercise's, else its first open set):
   "96 × 7 would be a new best estimated 1RM", "… would be your heaviest
   weight", "… your most reps at 96 kg or more", else the reps at that weight
-  that would beat the estimate, else "is no new record"; then the estimate
-  over 3 months (compact) and the last three sessions. It writes nothing; the
-  open sheet is `rememberSaveable` state on the screen, and dismissing it
-  leaves the list, its scroll and the selection as they were. Both screens
-  share `ExerciseProgressViewModel`, keyed `progress-<exerciseId>`.
+  that would beat the estimate, else "is no new record"; then a compact
+  chart between the tab's two chip rows (Est. 1RM · Volume · Weekly volume
+  above, 3M · 12M below, the same remembered choice as the rows) and the
+  last three sessions. It writes no training data; the open sheet is
+  `rememberSaveable` state on the screen, and dismissing it leaves the list,
+  its scroll and the selection as they were. Both screens use
+  `ExerciseProgressViewModel`, keyed `progress-<exerciseId>` on the screen
+  and `progress-sheet-<exerciseId>` in the sheet, which hands it
+  `ProgressSettings` for its choices.
 
 **Charts, `ui/common/charts/`**, drawn with Compose `Canvas`, no chart
 library: `LineChart` (line plus a dot per point, the last one larger, x
@@ -681,7 +703,8 @@ proportional to the date), `BarChart` (a zero is a short baseline mark), and
 last date under the x axis as the locale writes a short month and day
 (`shortDate`, `getBestDateTimePattern("MMMd")`). **Each chart is one semantics
 node whose content description is its summary** ("Estimated 1RM, 3 months:
-from 98 to 112 kg"), which is what a screen reader says and what
+from 98 to 112 kg", "Weekly volume, 12 months: from 360 to 930 kg";
+`chartSummary`, a row's sparkline too), which is what a screen reader says and what
 `ProgressFlowTest` asserts; with fewer than two sessions in range the chart is
 "Log this exercise in two workouts to see a chart" and the summary says so.
 
