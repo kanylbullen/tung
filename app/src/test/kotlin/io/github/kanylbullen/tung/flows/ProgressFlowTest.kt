@@ -57,6 +57,14 @@ class ProgressFlowTest : FlowTest() {
     private val trendMetric get() = runBlocking { app.container.progressSettings.trendMetric.first() }
     private val trendRange get() = runBlocking { app.container.progressSettings.trendRange.first() }
 
+    /** Picks [option] from a chart's choice shown as a menu, because its chips do not fit on one line. */
+    private fun chooseFromMenu(option: String) {
+        clickDescription(str(R.string.progress_show_choices))
+        clickText(option)
+        // The menu closes and its chip names the new choice.
+        waitFor(hasContentDescription(str(R.string.progress_show_choices)) and hasText(option))
+    }
+
     private fun openTab() {
         clickText(str(R.string.nav_progress))
         waitFor(hasTestTag(PROGRESS_LIST_TAG))
@@ -202,7 +210,8 @@ class ProgressFlowTest : FlowTest() {
     /**
      * From the exercise page, "Progress" opens the chart: estimated 1RM over 3
      * months, then the top set, then the top set over all time; the records
-     * and the last sessions are listed under it.
+     * and the last sessions are listed under it. Its four metrics do not fit
+     * on one line, so they are a menu; the three ranges are chips.
      */
     @Test
     fun exerciseProgressSwitchesMetricAndRange() {
@@ -219,8 +228,14 @@ class ProgressFlowTest : FlowTest() {
         waitFor(hasTestTag(EXERCISE_PROGRESS_TAG))
 
         assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")))
+        // The menu's chip names the choice; the other metrics are only in the menu.
+        check(compose.onAllNodes(hasText(str(R.string.progress_metric_top_set))).fetchSemanticsNodes().isEmpty())
+        assertShown(hasText(str(R.string.progress_metric_e1rm)) and hasContentDescription(str(R.string.progress_show_choices)))
         screenshot("1-e1rm-3m")
 
+        clickDescription(str(R.string.progress_show_choices))
+        assertShown(hasText(str(R.string.progress_metric_weekly_volume)))
+        screenshot("1b-metric-menu")
         clickText(str(R.string.progress_metric_top_set))
         assertShown(hasContentDescription(summary(R.string.progress_metric_top_set_long, R.string.progress_range_3m_long, "84", "96")))
 
@@ -228,11 +243,11 @@ class ProgressFlowTest : FlowTest() {
         assertShown(hasContentDescription(summary(R.string.progress_metric_top_set_long, R.string.progress_range_all_long, "60", "96")))
         screenshot("2-top-set-all")
 
-        clickText(str(R.string.progress_metric_volume))
+        chooseFromMenu(str(R.string.progress_metric_volume))
         clickText(str(R.string.progress_range_1y))
         assertShown(hasContentDescription(summary(R.string.progress_metric_volume_long, R.string.progress_range_1y_long, "420", "480")))
         // One session a week, so the weeks are the sessions; the screen's choice is not the tab's.
-        clickText(str(R.string.progress_metric_weekly_volume))
+        chooseFromMenu(str(R.string.progress_metric_weekly_volume))
         assertShown(hasContentDescription(summary(R.string.progress_metric_weekly_volume_long, R.string.progress_range_1y_long, "420", "480")))
         check(trendMetric == ProgressMetric.E1RM && trendRange == ProgressRange.THREE_MONTHS)
 
