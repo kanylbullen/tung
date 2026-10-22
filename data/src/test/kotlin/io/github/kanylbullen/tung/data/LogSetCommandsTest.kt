@@ -28,7 +28,7 @@ class LogSetCommandsTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val db = TungDatabase.buildInMemory(context)
     private var now = 1_000L
-    private val extended = ExtendedCatalog({ File("../catalog/extended.json").inputStream() })
+    private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val workouts = WorkoutRepository(db, clock = { now })
     private val commands = AppCommandHandler(
         db = db,

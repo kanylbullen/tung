@@ -22,11 +22,13 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.toKotlinTimeZone
 
 data class ProgressUiState(
     val loading: Boolean = true,
-    val today: LocalDate = LocalDate.MIN,
+    val today: LocalDate = LocalDate.fromEpochDays(0),
     val overview: ProgressOverview = ProgressOverview.EMPTY,
     /** The exercises by id, for their names. */
     val exercises: Map<String, Exercise> = emptyMap(),
@@ -41,11 +43,11 @@ data class ProgressUiState(
 class ProgressViewModel(workouts: WorkoutRepository, exercises: ExerciseRepository, private val clock: Clock) : ViewModel() {
     val state: StateFlow<ProgressUiState> =
         combine(workouts.observeProgressSets(), exercises.observeExercises()) { sets, all ->
-            val today = LocalDate.now(clock)
+            val today = clock.today()
             ProgressUiState(
                 loading = false,
                 today = today,
-                overview = progressOverview(sets, today, clock.zone),
+                overview = progressOverview(sets, today, clock.zone.toKotlinTimeZone()),
                 exercises = all.associateBy { it.id },
             )
         }.flowOn(Dispatchers.Default)
@@ -54,7 +56,7 @@ class ProgressViewModel(workouts: WorkoutRepository, exercises: ExerciseReposito
 
 data class ExerciseProgressUiState(
     val loading: Boolean = true,
-    val today: LocalDate = LocalDate.MIN,
+    val today: LocalDate = LocalDate.fromEpochDays(0),
     val exercise: Exercise? = null,
     /** Every session, oldest first. */
     val sessions: List<SessionPoint> = emptyList(),
@@ -81,10 +83,10 @@ class ExerciseProgressViewModel(
         workouts.observeProgressSets(exerciseId),
         exercises.observeExercises().map { all -> all.firstOrNull { it.id == exerciseId } },
     ) { sets, exercise ->
-        val sessions = sessionPoints(sets, clock.zone)
+        val sessions = sessionPoints(sets, clock.zone.toKotlinTimeZone())
         ExerciseProgressUiState(
             loading = false,
-            today = LocalDate.now(clock),
+            today = clock.today(),
             exercise = exercise,
             sessions = sessions,
             records = exerciseRecords(sessions),
@@ -103,3 +105,6 @@ class ExerciseProgressViewModel(
         range.value = value
     }
 }
+
+/** The clock's date as core's `LocalDate` (kotlinx-datetime). */
+private fun Clock.today(): LocalDate = java.time.LocalDate.now(this).toKotlinLocalDate()

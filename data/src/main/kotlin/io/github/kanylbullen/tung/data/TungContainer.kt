@@ -44,6 +44,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.Clock
+import kotlinx.datetime.toKotlinTimeZone
 
 /**
  * Hand-rolled dependency container, shared by the phone app and the watch app.
@@ -119,7 +120,7 @@ class TungContainer(
                     }.getOrDefault(ImportAliases.EMPTY)
                 }
             },
-            zone = { clock.zone },
+            zone = { clock.zone.toKotlinTimeZone() },
             history = ImportHistory(settings),
         )
     }

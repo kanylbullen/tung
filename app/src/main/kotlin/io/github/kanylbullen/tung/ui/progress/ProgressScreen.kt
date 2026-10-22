@@ -47,7 +47,7 @@ import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.theme.Tung
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /** The semantics tag of the tab's list, which the flow tests scroll. */
 const val PROGRESS_LIST_TAG = "progress-list"

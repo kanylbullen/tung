@@ -16,7 +16,8 @@ import io.github.kanylbullen.tung.core.progress.repsToBeatE1rm
 import io.github.kanylbullen.tung.ui.common.charts.ChartPoint
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.localWeight
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toJavaLocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
@@ -42,11 +43,11 @@ fun signedChange(metric: ProgressMetric, change: Change): String? {
 
 /** A short month and day as the locale writes it: "Oct 21", "21 okt.". */
 fun shortDate(date: LocalDate, locale: Locale = Locale.getDefault()): String =
-    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMd"), locale).format(date)
+    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMd"), locale).format(date.toJavaLocalDate())
 
 /** Day, month and year as the locale writes them: "Oct 21, 2026". */
 fun mediumDate(date: LocalDate, locale: Locale = Locale.getDefault()): String =
-    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "yMMMd"), locale).format(date)
+    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "yMMMd"), locale).format(date.toJavaLocalDate())
 
 @Composable
 fun metricLabel(metric: ProgressMetric): String = stringResource(
@@ -86,7 +87,7 @@ fun rangeLongLabel(range: ProgressRange): String = stringResource(
 
 /** The points a line chart plots for [metric]: one per session that has a value, x the epoch day. */
 fun chartPoints(sessions: List<SessionPoint>, metric: ProgressMetric): List<ChartPoint> =
-    sessions.mapNotNull { s -> s.value(metric)?.let { ChartPoint(s.date.toEpochDay(), it) } }
+    sessions.mapNotNull { s -> s.value(metric)?.let { ChartPoint(s.date.toEpochDays().toLong(), it) } }
 
 /** "Estimated 1RM, 3 months: from 92 to 101 kg", or that there are too few sessions. */
 @Composable

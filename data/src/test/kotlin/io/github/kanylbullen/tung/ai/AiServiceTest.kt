@@ -71,7 +71,7 @@ class AiServiceTest {
     private var clockMillis = now.toEpochMilli()
 
     private val catalogue = CoreCatalog.parse(File("../catalog/core.json").readText())
-    private val extended = ExtendedCatalog({ File("../catalog/extended.json").inputStream() })
+    private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val workouts = WorkoutRepository(db, clock = { clockMillis })
     private val routines = RoutineRepository(db, clock = { clockMillis })
     private val programs = ProgramRepository(db, clock = { clockMillis })

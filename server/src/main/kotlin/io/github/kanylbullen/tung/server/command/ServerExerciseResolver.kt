@@ -36,7 +36,7 @@ class ServerCatalogue(val core: List<CoreExercise>, val extended: List<ExtendedE
             fun read(path: String) = ServerCatalogue::class.java.getResourceAsStream(path)
                 ?: error("$path is missing from the classpath")
             val core = read("/catalog/core.json").use { CoreCatalog.parse(it.readBytes().toString(Charsets.UTF_8)) }
-            val extended = read("/catalog/extended.json").use(ExtendedCatalog::parse)
+            val extended = read("/catalog/extended.json").use { ExtendedCatalog.parse(it.readBytes().toString(Charsets.UTF_8)) }
             return ServerCatalogue(core, extended)
         }
     }

@@ -36,7 +36,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.robolectric.Shadows.shadowOf
 import java.io.File
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
 
 /**
  * Import from Jefit (issue #5) from Settings to History and back: the system
@@ -50,7 +50,7 @@ class ImportFlowTest : FlowTest() {
 
     /** The workouts' dates as History shows them, read from the same file in the app's zone. */
     private val dates: List<String> by lazy {
-        JefitImport.parse(fixture.readText(), ZoneId.systemDefault()).workouts.map { localDate(it.startedAt) }
+        JefitImport.parse(fixture.readText(), TimeZone.currentSystemDefault()).workouts.map { localDate(it.startedAt) }
     }
 
     private fun counts(workouts: Int, sets: Int, routines: Int) = listOf(
@@ -198,7 +198,7 @@ class ImportFlowTest : FlowTest() {
     @Test
     fun aSuggestionChipChoosesAndSkipAllRemainingDecidesTheRest() {
         openImport(threeNames)
-        val usage = JefitImport.parse(threeNames, ZoneId.systemDefault()).nameUsage()
+        val usage = JefitImport.parse(threeNames, TimeZone.currentSystemDefault()).nameUsage()
         val hammer = usage.getValue("Dumbbell Hammer Curl to Press").workouts
         scrollToInList("Dumbbell Hammer Curl to Press")
         waitFor(hasText(plural(R.plurals.import_used_in_workouts, hammer, hammer)))

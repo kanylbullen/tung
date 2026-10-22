@@ -170,7 +170,7 @@ configured anywhere; Google matches it by package and signature.
 `POST /api/v1/sync` keeps the app's eight tables (exercises, workouts,
 workout exercises, sets, routines, routine exercises, programs, program days)
 in step with the server, row by row. The protocol types are shared with the
-app in [`core/.../sync/SyncProtocol.kt`](../core/src/main/kotlin/io/github/kanylbullen/tung/core/sync/SyncProtocol.kt);
+app in [`core/.../sync/SyncProtocol.kt`](../core/src/commonMain/kotlin/io/github/kanylbullen/tung/core/sync/SyncProtocol.kt);
 the full description is in the OpenAPI spec.
 
 ```json

@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate
+import kotlinx.datetime.toKotlinLocalDate
 
 /** One day of the active program, ready to show and to start. */
 data class ProgramDayUi(
@@ -153,7 +154,7 @@ class HomeViewModel(
                 )
             }
             val plan = days.mapIndexed { index, day -> PlanDay(day.id, index, day.weekdays) }
-            val suggested = suggestedDay(mode, plan, date, active.lastCompletedDayId)
+            val suggested = suggestedDay(mode, plan, date.toKotlinLocalDate(), active.lastCompletedDayId)
             return TodayUi(
                 programName = active.program.name,
                 mode = mode,

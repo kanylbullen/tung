@@ -34,7 +34,7 @@ KOTLIN = ROOT / "data/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExerci
 # The apps whose strings.xml carry the ex_* block; each has values/ with the markers.
 APPS = ["app", "wear"]
 
-# Same order as core/src/main/kotlin/io/github/kanylbullen/tung/core/Catalog.kt;
+# Same order as core/src/commonMain/kotlin/io/github/kanylbullen/tung/core/Catalog.kt;
 # the muscle-group order is the order in the Kotlin list.
 MUSCLE_GROUPS = ["chest", "back", "shoulders", "biceps", "triceps", "legs", "glutes", "core", "fullbody"]
 EQUIPMENT = [

@@ -112,7 +112,7 @@ and send the same `WatchCommand`s either way.
 
 ## Protocol (companion mode)
 
-Shared classes in `core/src/main/kotlin/io/github/kanylbullen/tung/core/wear/WatchProtocol.kt`,
+Shared classes in `core/src/commonMain/kotlin/io/github/kanylbullen/tung/core/wear/WatchProtocol.kt`,
 JSON with kotlinx-serialization (`type` tags the command; unknown fields are ignored).
 
 | Direction | Transport | Path | Payload |

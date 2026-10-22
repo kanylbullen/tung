@@ -19,6 +19,7 @@ import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
+import kotlinx.datetime.TimeZone
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToLong
@@ -153,7 +154,7 @@ fun localWeekday(epochMillis: Long): String {
 @Composable
 fun lastUsedText(lastUsedAt: Long?, now: Long): String {
     if (lastUsedAt == null) return stringResource(R.string.routine_never)
-    val ago = when (val days = daysAgo(lastUsedAt, now, ZoneId.systemDefault()).toInt()) {
+    val ago = when (val days = daysAgo(lastUsedAt, now, TimeZone.currentSystemDefault()).toInt()) {
         0 -> stringResource(R.string.routine_today)
         1 -> stringResource(R.string.routine_yesterday)
         else -> pluralStringResource(R.plurals.routine_days_ago, days, days)

@@ -30,7 +30,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
 
 /**
  * The [Importer] over a real Room database with the synthetic Jefit export
@@ -44,7 +44,7 @@ class ImporterTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val db = TungDatabase.buildInMemory(context)
     private var now = 5_000_000L
-    private val extended = ExtendedCatalog({ File("../catalog/extended.json").inputStream() })
+    private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val names = CoreCatalog.parse(File("../catalog/core.json").readText()).associate { it.key to it.name.values.toList() }
     private val workouts = WorkoutRepository(db, clock = { now })
     private val exercises = ExerciseRepository(db.exerciseDao(), clock = { now })
@@ -54,7 +54,7 @@ class ImporterTest {
         importer = Importer(db, workouts, exercises, routines, extended, clock = { now }),
         resolver = resolver,
         aliases = { ImportAliases.parse(File("../catalog/aliases/jefit.json").readText()) },
-        zone = { ZoneId.of("Europe/Stockholm") },
+        zone = { TimeZone.of("Europe/Stockholm") },
     )
     private val commands = AppCommandHandler(db, workouts, exercises, routines, ProgramRepository(db, clock = { now }), resolver, extended)
     private val text = File("../core/src/test/resources/import/jefit/export-synthetic.csv").readText()
