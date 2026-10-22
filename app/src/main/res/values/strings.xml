@@ -722,19 +722,20 @@
         <item quantity="one">%d session</item>
         <item quantity="other">%d sessions</item>
     </plurals>
-    <!-- An exercise row: "Est. 1RM 101 kg". -->
+    <!-- An exercise row's latest value: "Est. 1RM 101 kg", the last session's volume, the last trained week's volume. -->
     <string name="progress_e1rm_value">Est. 1RM %1$s kg</string>
-    <!-- The sparkline for a screen reader. -->
-    <string name="progress_sparkline_summary">Estimated 1RM, 3 months: from %1$s to %2$s kg</string>
-    <string name="progress_sparkline_summary_12m">Estimated 1RM, 12 months: from %1$s to %2$s kg</string>
+    <string name="progress_session_volume_value">Session volume %1$s kg</string>
+    <string name="progress_weekly_volume_value">Weekly volume %1$s kg</string>
     <string name="progress_open_exercise">Open progress for %1$s</string>
     <!-- Metric chips and their names inside a sentence. -->
     <string name="progress_metric_e1rm">Est. 1RM</string>
     <string name="progress_metric_top_set">Top set</string>
     <string name="progress_metric_volume">Volume</string>
+    <string name="progress_metric_weekly_volume">Weekly volume</string>
     <string name="progress_metric_e1rm_long">Estimated 1RM</string>
     <string name="progress_metric_top_set_long">Top set</string>
     <string name="progress_metric_volume_long">Session volume</string>
+    <string name="progress_metric_weekly_volume_long">Weekly volume</string>
     <!-- Range chips and their names inside a sentence. -->
     <string name="progress_range_3m">3M</string>
     <string name="progress_range_1y">1Y</string>
@@ -742,9 +743,10 @@
     <string name="progress_range_3m_long">3 months</string>
     <string name="progress_range_1y_long">1 year</string>
     <string name="progress_range_all_long">all time</string>
-    <!-- The Progress tab's span for its exercise rows: 3M (progress_range_3m) or 12M. -->
+    <!-- The span of the Progress tab's rows and the sheet in a workout: 3M (progress_range_3m) or 12M. -->
     <string name="progress_range_12m">12M</string>
-    <!-- A chart for a screen reader: "Estimated 1RM, 3 months: from 92 to 101 kg". -->
+    <string name="progress_range_12m_long">12 months</string>
+    <!-- A chart or a row's sparkline for a screen reader: "Estimated 1RM, 3 months: from 92 to 101 kg". -->
     <string name="progress_chart_summary">%1$s, %2$s: from %3$s to %4$s kg</string>
     <string name="progress_chart_summary_empty">%1$s, %2$s: not enough sessions for a chart</string>
     <string name="progress_chart_empty">Log this exercise in two workouts to see a chart</string>

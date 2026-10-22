@@ -34,9 +34,10 @@ import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.progress.ExerciseProgress
 import io.github.kanylbullen.tung.core.progress.ProgressMetric
 import io.github.kanylbullen.tung.core.progress.ProgressRange
-import io.github.kanylbullen.tung.core.progress.ROW_RANGES
 import io.github.kanylbullen.tung.core.progress.RecentRecord
 import io.github.kanylbullen.tung.core.progress.RowTrend
+import io.github.kanylbullen.tung.core.progress.TREND_METRICS
+import io.github.kanylbullen.tung.core.progress.TREND_RANGES
 import io.github.kanylbullen.tung.core.progress.trend
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.ui.common.Stat
@@ -56,8 +57,9 @@ const val PROGRESS_LIST_TAG = "progress-list"
 /**
  * The Progress tab: the last 12 weeks (workouts and volume per week, the
  * weekly streak), every exercise with history, most recently trained first,
- * with a sparkline of its estimated 1RM and the change over 3 or 12 months
- * (the chips above the list, remembered), and the latest records. A row opens [onOpenExercise] with the exercise's id.
+ * with a sparkline and the change over 3 or 12 months of its estimated 1RM or
+ * its volume per session or per week (the chips above the list, remembered),
+ * and the latest records. A row opens [onOpenExercise] with the exercise's id.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,9 +91,10 @@ fun ProgressScreen(onOpenExercise: (String) -> Unit) {
             }
             item(key = "overview") { Overview(state) }
             item(key = "exercises") { ProgressHeading(stringResource(R.string.progress_exercises)) }
-            item(key = "rows-range") { ChoiceChips(ROW_RANGES, state.rowsRange, { rowRangeLabel(it) }, vm::setRowsRange) }
+            item(key = "rows-metric") { ChoiceChips(TREND_METRICS, state.trendMetric, { metricLabel(it) }, vm::setTrendMetric) }
+            item(key = "rows-range") { ChoiceChips(TREND_RANGES, state.trendRange, { trendRangeLabel(it) }, vm::setTrendRange) }
             items(overview.exercises, key = { "ex-${it.exerciseId}" }) { exercise ->
-                ExerciseRow(exercise, state.exercises[exercise.exerciseId], state.rowsRange, state.today) {
+                ExerciseRow(exercise, state.exercises[exercise.exerciseId], state.trendMetric, state.trendRange, state.today) {
                     onOpenExercise(exercise.exerciseId)
                 }
             }
@@ -146,36 +149,50 @@ private fun Overview(state: ProgressUiState) {
     }
 }
 
-/** The tab's chip for a row span: "3M" or "12M" (the exercise screen calls 12 months "1Y"). */
-@Composable
-private fun rowRangeLabel(range: ProgressRange): String =
-    if (range == ProgressRange.ONE_YEAR) stringResource(R.string.progress_range_12m) else rangeLabel(range)
-
 /**
  * What a row says about its span: "+7 kg in 3 months", "No change in 12
  * months", or how many sessions there are when the span holds fewer than two
- * estimates.
+ * values.
  */
 @Composable
-private fun changeText(exercise: ExerciseProgress, trend: RowTrend, range: ProgressRange): String {
+private fun changeText(exercise: ExerciseProgress, trend: RowTrend, metric: ProgressMetric, range: ProgressRange): String {
     val change = trend.change
         ?: return pluralStringResource(R.plurals.progress_sessions, exercise.sessions.size, exercise.sessions.size)
     val twelve = range == ProgressRange.ONE_YEAR
-    val signed = signedChange(ProgressMetric.E1RM, change)
+    val signed = signedChange(metric, change)
         ?: return stringResource(if (twelve) R.string.progress_no_change_12m else R.string.progress_no_change_3m)
     return stringResource(if (twelve) R.string.progress_change_12m else R.string.progress_change_3m, signed)
 }
 
+/** A row's latest value: "Est. 1RM 112 kg", "Session volume 480 kg", "Weekly volume 960 kg". */
 @Composable
-private fun ExerciseRow(exercise: ExerciseProgress, row: Exercise?, range: ProgressRange, today: LocalDate, onClick: () -> Unit) {
+private fun latestText(metric: ProgressMetric, kg: Double): String = stringResource(
+    when (metric) {
+        ProgressMetric.E1RM -> R.string.progress_e1rm_value
+        ProgressMetric.VOLUME -> R.string.progress_session_volume_value
+        ProgressMetric.WEEKLY_VOLUME -> R.string.progress_weekly_volume_value
+        // Not offered on the rows (TREND_METRICS).
+        ProgressMetric.TOP_SET -> R.string.progress_kg
+    },
+    metricText(metric, kg),
+)
+
+@Composable
+private fun ExerciseRow(
+    exercise: ExerciseProgress,
+    row: Exercise?,
+    metric: ProgressMetric,
+    range: ProgressRange,
+    today: LocalDate,
+    onClick: () -> Unit,
+) {
     val name = row?.let { exerciseDisplayName(it.nameKey, it.name) }.orEmpty()
-    val latest = exercise.sessions.lastOrNull { it.e1rmKg != null }?.e1rmKg
-    val trend = exercise.trend(range, today)
+    val trend = exercise.trend(metric, range, today)
     val details = listOfNotNull(
-        latest?.let { stringResource(R.string.progress_e1rm_value, metricText(ProgressMetric.E1RM, it)) },
-        changeText(exercise, trend, range),
+        trend.latest?.let { latestText(metric, it) },
+        changeText(exercise, trend, metric, range),
     ).joinToString(stringResource(R.string.row_separator))
-    val spark = trend.estimates
+    val spark = trend.values
     val open = stringResource(R.string.progress_open_exercise, name)
     Row(
         modifier = Modifier
@@ -191,14 +208,7 @@ private fun ExerciseRow(exercise: ExerciseProgress, row: Exercise?, range: Progr
         }
         if (spark.size >= 2) {
             Spacer(Modifier.width(12.dp))
-            Sparkline(
-                spark,
-                stringResource(
-                    if (range == ProgressRange.ONE_YEAR) R.string.progress_sparkline_summary_12m else R.string.progress_sparkline_summary,
-                    metricText(ProgressMetric.E1RM, spark.first()),
-                    metricText(ProgressMetric.E1RM, spark.last()),
-                ),
-            )
+            Sparkline(spark, chartSummary(metric, trendRangeLongLabel(range), spark))
         }
     }
 }

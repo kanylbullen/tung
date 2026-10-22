@@ -183,23 +183,126 @@ class ProgressTest {
             ),
             utc,
         ).single()
-        assertEquals(listOf(ProgressRange.THREE_MONTHS, ProgressRange.ONE_YEAR), ROW_RANGES)
+        assertEquals(listOf(ProgressRange.THREE_MONTHS, ProgressRange.ONE_YEAR), TREND_RANGES)
+        assertEquals(listOf(ProgressMetric.E1RM, ProgressMetric.VOLUME, ProgressMetric.WEEKLY_VOLUME), TREND_METRICS)
 
-        val three = bench.trend(ProgressRange.THREE_MONTHS, today)
-        assertEquals(listOf(89.0), three.estimates)
+        val three = bench.trend(ProgressMetric.E1RM, ProgressRange.THREE_MONTHS, today)
+        assertEquals(listOf(89.0), three.values)
+        assertEquals(89.0, three.latest!!, 1e-9)
         assertNull(three.change)
 
-        val twelve = bench.trend(ProgressRange.ONE_YEAR, today)
-        assertEquals(listOf(90.0, 89.0), twelve.estimates)
+        val twelve = bench.trend(ProgressMetric.E1RM, ProgressRange.ONE_YEAR, today)
+        assertEquals(listOf(90.0, 89.0), twelve.values)
+        assertEquals(89.0, twelve.latest!!, 1e-9)
         assertEquals(-1.0, twelve.change!!.delta, 1e-9)
 
         // The first day of the 12 months counts; the day before does not.
         val edge = exerciseProgress(
             listOf(set("edge", at("2025-10-21"), 80.0, 1), set("before", at("2025-10-20"), 70.0, 1), set("now", at("2026-10-20"), 85.0, 1)),
             utc,
-        ).single().trend(ProgressRange.ONE_YEAR, today)
-        assertEquals(listOf(80.0, 85.0), edge.estimates)
+        ).single().trend(ProgressMetric.E1RM, ProgressRange.ONE_YEAR, today)
+        assertEquals(listOf(80.0, 85.0), edge.values)
         assertEquals(5.0, edge.change!!.delta, 1e-9)
+    }
+
+    /**
+     * Weekly volume sums an ISO week's sessions and is dated its Monday: Monday
+     * 12, Thursday 15 and Sunday 18 October are one week, Monday 19 the next. A
+     * single session has no weekly value.
+     */
+    @Test
+    fun weeklyVolumeSumsTheWeekAndIsDatedItsMonday() {
+        val sessions = sessionPoints(
+            listOf(
+                set("mon", at("2026-10-12"), 80.0, 5, position = 0),
+                set("mon", at("2026-10-12"), 80.0, 5, position = 1),
+                set("thu", at("2026-10-15"), 70.0, 10),
+                set("sun", at("2026-10-18"), 60.0, 10),
+                set("next", at("2026-10-19"), 100.0, 5),
+            ),
+            utc,
+        )
+        assertEquals(
+            listOf(TrendPoint(LocalDate.parse("2026-10-12"), 2100.0), TrendPoint(LocalDate.parse("2026-10-19"), 500.0)),
+            sessions.trendPoints(ProgressMetric.WEEKLY_VOLUME),
+        )
+        assertEquals(listOf(800.0, 700.0, 600.0, 500.0), sessions.trendPoints(ProgressMetric.VOLUME).map { it.value })
+        assertEquals(LocalDate.parse("2026-10-15"), sessions.trendPoints(ProgressMetric.VOLUME)[1].date)
+        assertNull(sessions.first().value(ProgressMetric.WEEKLY_VOLUME))
+
+        val change = change(sessions, ProgressMetric.WEEKLY_VOLUME)!!
+        assertEquals(2100.0, change.from, 1e-9)
+        assertEquals(500.0, change.to, 1e-9)
+        assertNull(change(sessions.take(3), ProgressMetric.WEEKLY_VOLUME))
+    }
+
+    /**
+     * Three months back from Wednesday 21 October is Tuesday 21 July: a session
+     * metric starts that day, weekly volume on that week's Monday, so the
+     * first week is whole and Sunday 19 July (the week before) is out.
+     */
+    @Test
+    fun weeklyVolumeCountsTheRangesFirstWeekWhole() {
+        val today = LocalDate.parse("2026-10-21")
+        val sessions = sessionPoints(
+            listOf(
+                set("sun", at("2026-07-19"), 50.0, 10),
+                set("mon", at("2026-07-20"), 100.0, 5),
+                set("now", at("2026-10-20"), 80.0, 5),
+            ),
+            utc,
+        )
+        assertEquals(
+            listOf(TrendPoint(LocalDate.parse("2026-07-20"), 500.0), TrendPoint(LocalDate.parse("2026-10-19"), 400.0)),
+            trendPoints(sessions, ProgressMetric.WEEKLY_VOLUME, ProgressRange.THREE_MONTHS, today),
+        )
+        assertEquals(
+            listOf(TrendPoint(LocalDate.parse("2026-10-20"), 400.0)),
+            trendPoints(sessions, ProgressMetric.VOLUME, ProgressRange.THREE_MONTHS, today),
+        )
+        assertEquals(
+            listOf("2026-07-13", "2026-07-20", "2026-10-19").map(LocalDate::parse),
+            trendPoints(sessions, ProgressMetric.WEEKLY_VOLUME, ProgressRange.ALL, today).map { it.date },
+        )
+    }
+
+    /**
+     * A row by volume: per session the last session's volume and the change
+     * from the first session in range; per week the last trained week's sum,
+     * also when that week is out of range.
+     */
+    @Test
+    fun rowTrendByVolumePerSessionAndPerWeek() {
+        val today = LocalDate.parse("2026-10-21")
+        val bench = exerciseProgress(
+            listOf(
+                set("a", at("2026-09-14"), 70.0, 5),
+                set("b", at("2026-10-12"), 80.0, 5),
+                set("c", at("2026-10-19"), 85.0, 5),
+                set("d", at("2026-10-20"), 90.0, 5),
+            ),
+            utc,
+        ).single()
+
+        val session = bench.trend(ProgressMetric.VOLUME, ProgressRange.THREE_MONTHS, today)
+        assertEquals(listOf(350.0, 400.0, 425.0, 450.0), session.values)
+        assertEquals(450.0, session.latest!!, 1e-9)
+        assertEquals(100.0, session.change!!.delta, 1e-9)
+
+        val weekly = bench.trend(ProgressMetric.WEEKLY_VOLUME, ProgressRange.THREE_MONTHS, today)
+        assertEquals(listOf(350.0, 400.0, 875.0), weekly.values)
+        assertEquals(875.0, weekly.latest!!, 1e-9)
+        assertEquals(525.0, weekly.change!!.delta, 1e-9)
+
+        assertEquals(90.0 * (1 + 5 / 30.0), bench.trend(ProgressMetric.E1RM, ProgressRange.THREE_MONTHS, today).latest!!, 1e-9)
+
+        val old = exerciseProgress(
+            listOf(set("x", at("2025-01-06"), 60.0, 10), set("y", at("2025-01-08"), 60.0, 5)),
+            utc,
+        ).single().trend(ProgressMetric.WEEKLY_VOLUME, ProgressRange.THREE_MONTHS, today)
+        assertTrue(old.values.isEmpty())
+        assertEquals(900.0, old.latest!!, 1e-9)
+        assertNull(old.change)
     }
 
     @Test

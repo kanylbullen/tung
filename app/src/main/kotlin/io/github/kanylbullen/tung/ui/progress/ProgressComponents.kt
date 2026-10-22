@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.ui.progress
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -41,10 +43,11 @@ internal fun ProgressMuted(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** A row of single-choice chips: the metric or the range of a chart. */
+/** A row of single-choice chips: the metric or the range of a chart. It wraps when the chips do not fit. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun <T> ChoiceChips(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
-    Row(
+    FlowRow(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
