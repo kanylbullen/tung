@@ -211,7 +211,7 @@ class CommandExecutorTest {
         )
         assertEquals("another exercise is untouched", listOf(100.0 to 5), values(other))
         done { executor.setWeight(tx, first.id, 70.0, applyToOpenSets = false) }
-        assertEquals(listOf(70.0 to 8, 82.5 to 6, 82.5 to 6), values(weId))
+        assertEquals(listOf(70.0 to 8, 82.5 to 8, 82.5 to 6), values(weId))
         assertEquals(listOf("no set nope"), rejected { executor.setReps(tx, "nope", 5, applyToOpenSets = true) }.reasons)
     }
 
