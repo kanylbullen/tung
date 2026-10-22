@@ -235,7 +235,22 @@
 
     <!-- Summary -->
     <string name="summary_title">Workout done</string>
-    <string name="summary_best_set">Best set</string>
+    <!-- The summary after a workout: each exercise with its sets, volume and best estimated 1RM; the muscles worked; progress charts. -->
+    <string name="summary_exercises">Exercises</string>
+    <plurals name="summary_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d sets</item>
+    </plurals>
+    <string name="summary_muscles">Muscles worked</string>
+    <!-- The muscle map for a screen reader: "Muscles worked: Chest 50%, Triceps 25%, Front delts 25%". -->
+    <string name="summary_muscles_description">Muscles worked: %1$s</string>
+    <string name="summary_muscle_item">%1$s %2$s</string>
+    <!-- A muscle with under half a percent of the work: "<1%". -->
+    <string name="summary_muscle_less_than">&lt;%1$s</string>
+    <plurals name="summary_muscles_uncounted">
+        <item quantity="one">%d set of a custom exercise is not counted: custom exercises have no muscles</item>
+        <item quantity="other">%d sets of custom exercises are not counted: custom exercises have no muscles</item>
+    </plurals>
     <string name="summary_record">New record</string>
     <string name="summary_done">Done</string>
     <string name="times_sign">×</string>

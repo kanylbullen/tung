@@ -49,39 +49,74 @@ private const val REST_ALPHA = 0.22f
  */
 @Composable
 fun MuscleMap(primary: Set<Muscle>, secondary: Set<Muscle>, modifier: Modifier = Modifier, height: Dp = 160.dp) {
-    val colors = Tung.colors
-    val silhouette = colors.border
-    val rest = colors.muted.copy(alpha = REST_ALPHA)
-    val accent = colors.accent
-    val faint = colors.accent.copy(alpha = SECONDARY_ALPHA)
+    val accent = Tung.colors.accent
+    val faint = accent.copy(alpha = SECONDARY_ALPHA)
     val description = mapDescription(primary, secondary - primary)
 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Canvas(
-            Modifier
-                .height(height)
-                .width(height * BodyMap.ASPECT * 2 + height * GAP)
-                .semantics { contentDescription = description },
-        ) {
-            val figureWidth = size.height * BodyMap.ASPECT
-            val gap = size.height * GAP
-            BodySide.entries.forEachIndexed { i, side ->
-                val left = i * (figureWidth + gap)
-                drawPolygon(BodyMap.outlines.getValue(side), left, figureWidth, silhouette)
-                // Rest first, then secondary, then primary, so a trained region is never hidden under an untrained neighbour.
-                val regions = BodyMap.regionsOn(side)
-                regions.filter { it.muscle !in primary && it.muscle !in secondary }
-                    .forEach { drawPolygon(it.points, left, figureWidth, rest) }
-                regions.filter { it.muscle in secondary && it.muscle !in primary }
-                    .forEach { drawPolygon(it.points, left, figureWidth, faint) }
-                regions.filter { it.muscle in primary }
-                    .forEach { drawPolygon(it.points, left, figureWidth, accent) }
+        BodyFigures(height, description) { muscle ->
+            when (muscle) {
+                in primary -> 1f
+                in secondary -> SECONDARY_ALPHA
+                else -> 0f
             }
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Legend(accent, stringResource(R.string.exercise_map_primary))
             if ((secondary - primary).isNotEmpty()) Legend(faint, stringResource(R.string.exercise_map_secondary))
+        }
+    }
+}
+
+/** The least worked muscle of a heat map is the accent at this alpha; the most worked is the full accent. */
+private const val HEAT_MIN_ALPHA = 0.3f
+
+/**
+ * The body as [MuscleMap] draws it, each muscle in the accent by how much it
+ * was worked: [intensity] is 0 for an untrained muscle (the muted surface
+ * tone) and 1 for the most worked one, the rest in between from
+ * [HEAT_MIN_ALPHA]. [description] is what a screen reader says for the map.
+ */
+@Composable
+fun MuscleHeatMap(intensity: (Muscle) -> Double, description: String, modifier: Modifier = Modifier, height: Dp = 160.dp) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        BodyFigures(height, description) { muscle ->
+            val i = intensity(muscle).toFloat().coerceIn(0f, 1f)
+            if (i <= 0f) 0f else HEAT_MIN_ALPHA + (1f - HEAT_MIN_ALPHA) * i
+        }
+    }
+}
+
+/**
+ * Both figures, one semantics node described by [description]. [shade] is
+ * each muscle's accent alpha, 0 for one drawn in the untrained tone; regions
+ * are painted from the faintest up, so a trained region is never hidden
+ * under a less trained neighbour.
+ */
+@Composable
+private fun BodyFigures(height: Dp, description: String, shade: (Muscle) -> Float) {
+    val colors = Tung.colors
+    val silhouette = colors.border
+    val rest = colors.muted.copy(alpha = REST_ALPHA)
+    val accent = colors.accent
+    Canvas(
+        Modifier
+            .height(height)
+            .width(height * BodyMap.ASPECT * 2 + height * GAP)
+            .semantics { contentDescription = description },
+    ) {
+        val figureWidth = size.height * BodyMap.ASPECT
+        val gap = size.height * GAP
+        BodySide.entries.forEachIndexed { i, side ->
+            val left = i * (figureWidth + gap)
+            drawPolygon(BodyMap.outlines.getValue(side), left, figureWidth, silhouette)
+            BodyMap.regionsOn(side)
+                .map { it to shade(it.muscle) }
+                .sortedBy { it.second }
+                .forEach { (region, alpha) ->
+                    drawPolygon(region.points, left, figureWidth, if (alpha <= 0f) rest else accent.copy(alpha = alpha))
+                }
         }
     }
 }
