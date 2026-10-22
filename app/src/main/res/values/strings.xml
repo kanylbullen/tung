@@ -746,6 +746,8 @@
     <!-- The span of the Progress tab's rows and the sheet in a workout: 3M (progress_range_3m) or 12M. -->
     <string name="progress_range_12m">12M</string>
     <string name="progress_range_12m_long">12 months</string>
+    <!-- The arrow on a chart's choice when its chips do not fit on one line and it opens a menu. -->
+    <string name="progress_show_choices">Show all choices</string>
     <!-- A chart or a row's sparkline for a screen reader: "Estimated 1RM, 3 months: from 92 to 101 kg". -->
     <string name="progress_chart_summary">%1$s, %2$s: from %3$s to %4$s kg</string>
     <string name="progress_chart_summary_empty">%1$s, %2$s: not enough sessions for a chart</string>
