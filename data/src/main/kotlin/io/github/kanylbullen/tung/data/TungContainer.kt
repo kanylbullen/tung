@@ -200,7 +200,7 @@ class TungContainer(
     /** "My equipment": what the Exercises tab, the picker and the assistant keep to. Not synced. */
     val equipmentSettings: EquipmentSettings by lazy { EquipmentSettings(settings) }
 
-    /** The Progress tab's span for its exercise rows, 3 or 12 months. Not synced. */
+    /** The compact trends' span and metric, shared by the Progress tab's rows and the sheet in a workout. Not synced. */
     val progressSettings: ProgressSettings by lazy { ProgressSettings(settings) }
 
     // --- sync with tung-server (sync/, CLAUDE.md "Sync") ---
