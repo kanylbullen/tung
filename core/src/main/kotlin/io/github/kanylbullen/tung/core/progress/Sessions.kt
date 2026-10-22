@@ -111,6 +111,8 @@ fun sessionPoints(sets: List<ProgressSet>, zone: ZoneId): List<SessionPoint> =
 /** How far back a chart looks. */
 enum class ProgressRange {
     THREE_MONTHS,
+
+    /** Twelve months back; "1Y" on the exercise screen, "12M" on the Progress tab's rows. */
     ONE_YEAR,
     ALL;
 
@@ -157,3 +159,15 @@ fun exerciseProgress(sets: List<ProgressSet>, zone: ZoneId): List<ExerciseProgre
     sets.groupBy { it.exerciseId }
         .mapNotNull { (id, rows) -> sessionPoints(rows, zone).takeIf { it.isNotEmpty() }?.let { ExerciseProgress(id, it) } }
         .sortedWith(compareByDescending<ExerciseProgress> { it.lastAt }.thenBy { it.exerciseId })
+
+/** The spans the Progress tab's exercise rows offer: 3 and 12 months ([ProgressRange.ONE_YEAR]). */
+val ROW_RANGES: List<ProgressRange> = listOf(ProgressRange.THREE_MONTHS, ProgressRange.ONE_YEAR)
+
+/** What an exercise row shows for a span: the estimated 1RMs in it, oldest first, and their [change]. */
+data class RowTrend(val estimates: List<Double>, val change: Change?)
+
+/** This exercise's estimated 1RM over [range] back from [today], for its row on the Progress tab. */
+fun ExerciseProgress.trend(range: ProgressRange, today: LocalDate): RowTrend {
+    val inRange = sessions.within(range, today)
+    return RowTrend(inRange.mapNotNull { it.e1rmKg }, change(inRange, ProgressMetric.E1RM))
+}

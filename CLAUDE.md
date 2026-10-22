@@ -100,7 +100,7 @@ databases. The packages are the ones the files had in `app/`:
 
 | Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `ProgressSettings` (the Progress tab's row span), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
@@ -607,6 +607,10 @@ sheet and later the server and MCP compute the same:
 - **Ranges** (`ProgressRange`: `THREE_MONTHS`, `ONE_YEAR`, `ALL`) count back
   from today (`startOn`, inclusive; `within`). **`change(points, metric)`**:
   first to last value in the points given, null with fewer than two.
+  `ROW_RANGES` (3 and 12 months: `ONE_YEAR` is twelve months, called "1Y" on
+  the exercise screen and "12M" on the tab) and `ExerciseProgress.trend(range,
+  today)` (`RowTrend`: the estimates in range and their change) are what a
+  tab row shows.
 - **Weeks**: `weekStart` is the ISO week's Monday (1 January 2026 is in the
   week of 29 December 2025); `weeklyBuckets(sets, today, zone, weeks = 12)`
   has every week, empty ones as zeros, with the workouts that have a logged
@@ -643,9 +647,14 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
   `ic_trending_up`): "Last 12 weeks" with workouts and weeks in a row, bars
   for workouts and volume per week; **Exercises**, most recently trained
   first, each row "Est. 1RM 112 kg · +14 kg in 3 months" (or "No change", or
-  the session count when 3 months hold fewer than two estimates) with a
-  sparkline of the 3 months' estimates; **Recent records**. A row opens the
-  exercise's progress.
+  the session count when the span holds fewer than two estimates) with a
+  sparkline of the span's estimates; **Recent records**. A row opens the
+  exercise's progress. **The span** (issue #78) is the chips **3M · 12M**
+  under the Exercises heading (`ChoiceChips`, the exercise screen's style):
+  default 3 months, "−1 kg in 12 months" at 12M. It is remembered in the
+  `settings` DataStore (`data/ProgressSettings`, key `progress_rows_range`,
+  `"12m"` or no key for 3 months; `container.progressSettings`), **not
+  synced**. The weekly bars stay at 12 weeks whatever the span.
 - **Exercise progress** (`progress/{exerciseId}`, `ExerciseProgressScreen`):
   metric chips (Est. 1RM · Top set · Volume) above a line chart, range chips
   (3M · 1Y · All) below it, the records with dates, the last five sessions'

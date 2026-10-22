@@ -9,9 +9,11 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.catalogExerciseId
+import io.github.kanylbullen.tung.core.progress.ProgressRange
 import io.github.kanylbullen.tung.ui.exercises.EXERCISE_PAGE_TAG
 import io.github.kanylbullen.tung.ui.progress.EXERCISE_PROGRESS_TAG
 import io.github.kanylbullen.tung.ui.progress.PROGRESS_LIST_TAG
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.robolectric.annotation.Config
 import java.time.Clock
@@ -92,6 +94,59 @@ class ProgressFlowTest : FlowTest() {
         compose.onNode(hasText(benchRow)).performClick()
         waitFor(hasTestTag(EXERCISE_PROGRESS_TAG))
         assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")))
+    }
+
+    /**
+     * The rows' span (issue #78): bench press logged 8 and 2 months ago. At 3M
+     * (the default) its row has one estimate in range, so it shows the session
+     * count and no sparkline; at 12M it gains "+14 kg in 12 months" and the
+     * sparkline from 98 to 112. The choice is stored and survives leaving and
+     * reopening the tab; the weekly bars stay at 12 weeks.
+     */
+    @Test
+    fun theRowsFollowThreeOrTwelveMonthsAndRememberIt() {
+        app.today = Clock.fixed(today.atTime(12, 0).atZone(zone).toInstant(), zone)
+        seedFinishedWorkout(at("2026-02-21"), bench(), 84.0, 5)
+        seedFinishedWorkout(at("2026-08-21"), bench(), 96.0, 5)
+        openTab()
+
+        val sep = str(R.string.row_separator)
+        val threeMonths = "${str(R.string.progress_e1rm_value, "112")}$sep${plural(R.plurals.progress_sessions, 2, 2)}"
+        val twelveMonths = "${str(R.string.progress_e1rm_value, "112")}$sep${str(R.string.progress_change_12m, str(R.string.progress_change_up, "14"))}"
+        val sparkline12 = str(R.string.progress_sparkline_summary_12m, "98", "112")
+        val list = compose.onNode(hasTestTag(PROGRESS_LIST_TAG))
+        waitFor(hasText(threeMonths))
+        list.performScrollToNode(hasText(threeMonths))
+        assertShown(hasText(benchPress) and hasText(threeMonths))
+        check(compose.onAllNodes(hasContentDescription(str(R.string.progress_sparkline_summary, "98", "112"))).fetchSemanticsNodes().isEmpty())
+        check(compose.onAllNodes(hasContentDescription(str(R.string.progress_sparkline_summary, "112", "112"))).fetchSemanticsNodes().isEmpty())
+        screenshot("1-rows-3m")
+
+        list.performScrollToNode(hasText(str(R.string.progress_range_12m)))
+        clickText(str(R.string.progress_range_12m))
+        // The list is one exercise long, so the row is composed; wait for the new range to reach it.
+        waitFor(hasText(twelveMonths))
+        list.performScrollToNode(hasText(twelveMonths))
+        assertShown(hasText(benchPress) and hasText(twelveMonths))
+        assertShown(hasContentDescription(sparkline12))
+        // The weekly bars do not follow: one workout (2 months ago) in the last 12 weeks.
+        waitFor(hasContentDescription(str(R.string.progress_workouts_summary, 1, 0)))
+        check(runBlocking { app.container.progressSettings.current() } == ProgressRange.ONE_YEAR)
+        screenshot("2-rows-12m")
+
+        clickText(str(R.string.nav_home))
+        waitGone(hasTestTag(PROGRESS_LIST_TAG))
+        openTab()
+        waitFor(hasText(twelveMonths))
+        list.performScrollToNode(hasText(twelveMonths))
+        assertShown(hasContentDescription(sparkline12))
+
+        list.performScrollToNode(hasText(str(R.string.progress_range_3m)))
+        clickText(str(R.string.progress_range_3m))
+        waitFor(hasText(threeMonths))
+        list.performScrollToNode(hasText(threeMonths))
+        assertShown(hasText(threeMonths))
+        check(runBlocking { app.container.progressSettings.current() } == ProgressRange.THREE_MONTHS)
     }
 
     /**
