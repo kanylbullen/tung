@@ -138,11 +138,8 @@ class TungContainer(
      */
     val commands: CommandHandler by lazy {
         AppCommandHandler(
-            db = database,
             workouts = workoutRepository,
-            exercises = exerciseRepository,
             resolver = exerciseResolver,
-            extendedCatalog = extendedCatalog,
             onWorkoutFinished = ::workoutFinished,
             startedBy = startedBy,
         )

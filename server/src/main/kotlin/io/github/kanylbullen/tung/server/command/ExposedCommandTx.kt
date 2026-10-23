@@ -4,7 +4,9 @@ import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
-import io.github.kanylbullen.tung.core.command.CommandExecutor
+import io.github.kanylbullen.tung.core.command.CommandResult
+import io.github.kanylbullen.tung.core.command.CommandRules
+import io.github.kanylbullen.tung.core.command.CommandStore
 import io.github.kanylbullen.tung.core.command.CommandTx
 import io.github.kanylbullen.tung.core.command.ExerciseRow
 import io.github.kanylbullen.tung.core.command.ProgramDayRow
@@ -14,6 +16,7 @@ import io.github.kanylbullen.tung.core.command.RoutineRow
 import io.github.kanylbullen.tung.core.command.SetRow
 import io.github.kanylbullen.tung.core.command.WorkoutExerciseRow
 import io.github.kanylbullen.tung.core.command.WorkoutRow
+import io.github.kanylbullen.tung.server.Db
 import io.github.kanylbullen.tung.server.Exercises
 import io.github.kanylbullen.tung.server.ProgramDays
 import io.github.kanylbullen.tung.server.Programs
@@ -24,6 +27,7 @@ import io.github.kanylbullen.tung.server.WorkoutExercises
 import io.github.kanylbullen.tung.server.WorkoutStore
 import io.github.kanylbullen.tung.server.Workouts
 import io.github.kanylbullen.tung.server.copyCatalogueExercise
+import io.github.kanylbullen.tung.server.lockUser
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.Transaction
@@ -34,8 +38,29 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 
 /**
+ * Core's [CommandStore] over the server's database for one user: one
+ * transaction per command, started with the user's lock ([lockUser]), over an
+ * [ExposedCommandTx] stamped with [clock]. A result that is not
+ * [CommandResult.Done] is rolled back: every refusal is decided before the
+ * first write, this only makes that a guarantee.
+ */
+internal class ExposedCommandStore(
+    private val db: Db,
+    private val userId: String,
+    private val workouts: WorkoutStore,
+    private val clock: () -> Long,
+) : CommandStore {
+    override suspend fun transaction(block: suspend (CommandTx) -> CommandResult): CommandResult = db.suspendingTx {
+        lockUser(userId)
+        val result = block(ExposedCommandTx(this, userId, workouts, clock()))
+        if (result !is CommandResult.Done) rollback()
+        result
+    }
+}
+
+/**
  * Core's [CommandTx] over the server's tables for one user, for the
- * [CommandExecutor]: the live rows (no tombstones) inside the transaction the
+ * [CommandRules]: the live rows (no tombstones) inside the transaction the
  * caller opened under the user's lock, writes stamped with [now] (or
  * `stored + 1` when that is later, the server's rule for its own changes,
  * [bumped]), deletes as tombstones. The `seq` trigger does the rest.
@@ -65,6 +90,18 @@ internal class ExposedCommandTx(
             it[isCustom] = row.isCustom
             it[restSeconds] = row.restSeconds
             it[updatedAt] = now
+        }
+    }
+
+    /** The user's own row with that id: inserted when there is none, revived when sync tombstoned it, left alone when live. */
+    override suspend fun ensureExerciseRow(row: ExerciseRow) {
+        val stored = Exercises.selectAll().where { (Exercises.userId eq userId) and (Exercises.id eq row.id) }.singleOrNull()
+        when {
+            stored == null -> insertExercise(row)
+            stored[Exercises.deletedAt] != null -> Exercises.update({ (Exercises.userId eq userId) and (Exercises.id eq row.id) }) {
+                it[deletedAt] = null
+                it[updatedAt] = bumped(updatedAt, now)
+            }
         }
     }
 

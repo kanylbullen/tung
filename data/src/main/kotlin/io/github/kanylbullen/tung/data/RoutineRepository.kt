@@ -1,7 +1,7 @@
 package io.github.kanylbullen.tung.data
 
 import androidx.room.withTransaction
-import io.github.kanylbullen.tung.core.command.CommandExecutor
+import io.github.kanylbullen.tung.core.command.CommandRules
 import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
 import io.github.kanylbullen.tung.core.command.RoutineExercisePlan
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * All routine reads, and the Room-side entry to the routine writes for
  * callers that are not commands (the import, tests): each runs core's rule
- * ([CommandExecutor], issue #87) over this database, as `AppCommandHandler`
+ * ([CommandRules], issue #87) over this database, as `AppCommandHandler`
  * does for the commands.
  */
 class RoutineRepository(
@@ -20,7 +20,7 @@ class RoutineRepository(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
 
-    private val executor = CommandExecutor()
+    private val executor = CommandRules()
 
     private fun tx() = RoomCommandTx(db, clock)
 
@@ -32,7 +32,7 @@ class RoutineRepository(
         dao.observeRoutineExercises(routineId)
 
     /**
-     * Saves [workoutId] as a new routine called [name] ([CommandExecutor.saveRoutine]):
+     * Saves [workoutId] as a new routine called [name] ([CommandRules.saveRoutine]):
      * its exercises in workout order, each with one target set per logged set
      * and the most common rep count as target reps. Saving the same workout
      * twice makes two routines.
@@ -45,7 +45,7 @@ class RoutineRepository(
 
     /**
      * Creates a routine called [name] from a plan rather than a workout
-     * ([CommandExecutor.saveRoutinePlan]): the [exercises] in order, each an
+     * ([CommandRules.saveRoutinePlan]): the [exercises] in order, each an
      * exercise id with its target sets (kept within the allowed range) and
      * target reps. The exercise rows must exist.
      *
@@ -69,13 +69,13 @@ class RoutineRepository(
         checkNotNull(result.id(ROUTINE_ID)) { "$result" }
     }
 
-    /** Creates an empty routine called [name] ([CommandExecutor.createRoutine]) and returns its id. */
+    /** Creates an empty routine called [name] ([CommandRules.createRoutine]) and returns its id. */
     suspend fun create(name: String): String = db.withTransaction {
         checkNotNull(executor.createRoutine(tx(), name).id(ROUTINE_ID))
     }
 
     /**
-     * Starts a workout from [routineId] ([CommandExecutor.startRoutine]): the
+     * Starts a workout from [routineId] ([CommandRules.startRoutine]): the
      * routine's exercises in order, each with its target number of sets,
      * unticked and pre-filled from the previous session position by position.
      * Marks the routine used. [programDayId] is recorded on the workout when
@@ -97,7 +97,7 @@ class RoutineRepository(
 
     /**
      * Deletes the routine, its exercises and the program days that use it,
-     * with a tombstone for each ([CommandExecutor.deleteRoutine]). Workouts
+     * with a tombstone for each ([CommandRules.deleteRoutine]). Workouts
      * started from it are kept; a routine already gone is left alone.
      */
     suspend fun delete(routineId: String) = db.withTransaction {

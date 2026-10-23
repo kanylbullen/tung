@@ -5,7 +5,17 @@ import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 
-/** A [CommandTx] over lists, for testing the executor's rules without a database. */
+/** A [CommandStore] over one [MemoryCommandTx]: every command runs over the same lists, and the transactions are counted. */
+class MemoryCommandStore(val tx: MemoryCommandTx = MemoryCommandTx()) : CommandStore {
+    var transactions = 0
+
+    override suspend fun transaction(block: suspend (CommandTx) -> CommandResult): CommandResult {
+        transactions++
+        return block(tx)
+    }
+}
+
+/** A [CommandTx] over lists, for testing the rules without a database. */
 class MemoryCommandTx : CommandTx {
     val exerciseRows = mutableListOf<ExerciseRow>()
     val workouts = mutableListOf<WorkoutRow>()
@@ -78,6 +88,12 @@ class MemoryCommandTx : CommandTx {
     override suspend fun insertExercise(row: ExerciseRow) {
         exerciseRows += row
         writes += "insert exercise row ${row.id}"
+    }
+
+    override suspend fun ensureExerciseRow(row: ExerciseRow) {
+        if (exerciseRows.any { it.id == row.id }) return
+        exerciseRows += row
+        writes += "ensure exercise row ${row.id}"
     }
 
     override suspend fun setRest(id: String, seconds: Int?) = update(exerciseRows, id, { it.id }, "rest $id $seconds") { it.copy(restSeconds = seconds) }

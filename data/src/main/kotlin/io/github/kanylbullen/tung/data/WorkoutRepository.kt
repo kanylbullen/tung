@@ -6,7 +6,8 @@ import io.github.kanylbullen.tung.core.HistorySet
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.exerciseHistory
 import io.github.kanylbullen.tung.core.command.Command
-import io.github.kanylbullen.tung.core.command.CommandExecutor
+import io.github.kanylbullen.tung.core.command.CommandRules
+import io.github.kanylbullen.tung.core.command.CommandStore
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
@@ -47,24 +48,23 @@ class WorkoutRepository(
     fun observeExercises(workoutId: String): Flow<List<WorkoutExerciseWithSets>> =
         dao.observeExercisesWithSets(workoutId)
 
-    /** Returns the workout in progress, creating one if there is none, started by [startedBy] (`core.StartedBy`): [CommandExecutor.startWorkout]. */
+    /** Returns the workout in progress, creating one if there is none, started by [startedBy] (`core.StartedBy`): [CommandRules.startWorkout]. */
     suspend fun startOrResumeWorkout(startedBy: String? = null): String = db.withTransaction {
         checkNotNull(executor.startWorkout(commandTx(), startedBy).id(WORKOUT_ID))
     }
 
-    /**
-     * Core's store over this database for the [CommandExecutor]: the rules of
-     * `add_exercise`, `add_set` and `log_set` run there, over this, inside a
-     * `db.withTransaction` the caller opened (issue #87).
-     */
+    /** Core's store over this database for the [CommandRules], inside a `db.withTransaction` the caller opened (issue #87). */
     internal fun commandTx(): CommandTx = RoomCommandTx(db, clock)
 
-    private val executor = CommandExecutor()
+    /** Core's [CommandStore] over this database, with this repository's clock: what `AppCommandHandler`'s executor runs in. */
+    internal fun commandStore(): CommandStore = RoomCommandStore(db, clock)
+
+    private val executor = CommandRules()
 
     /**
      * Adds an exercise at the end with [sets] sets, or, when null, as many as
      * it had last session (one with no history), each filled in from last time
-     * at its own position: [CommandExecutor.addExercise]'s rule, for callers
+     * at its own position: [CommandRules.addExercise]'s rule, for callers
      * that are not commands (the companion watch's handler, tests). The
      * workout must exist.
      */
@@ -82,7 +82,7 @@ class WorkoutRepository(
 
     /**
      * Adds [count] sets after the last one, each pre-filled by the usual rule
-     * (a copy of the set before it): [CommandExecutor.addSet]'s rule. One transaction.
+     * (a copy of the set before it): [CommandRules.addSet]'s rule. One transaction.
      *
      * @return the id of the first added set, or null when there is no such exercise.
      */
@@ -117,7 +117,7 @@ class WorkoutRepository(
     }
 
     /**
-     * "Log set": ticks [setId], [CommandExecutor.logSet]'s rule (a set with 0
+     * "Log set": ticks [setId], [CommandRules.logSet]'s rule (a set with 0
      * reps is not logged). Only with [addNext] (the wire's `log_set.add_next`,
      * the behaviour before issue #64) does it also add the next set when this
      * was the last set of its exercise, never past a routine's target sets.
@@ -146,7 +146,7 @@ class WorkoutRepository(
     /**
      * A whole planned workout in one transaction: the workout in progress, or
      * a new one, gets each of [exercises] appended in order with its planned
-     * sets, none ticked ([CommandExecutor.applyPlan]). The exercise rows must exist.
+     * sets, none ticked ([CommandRules.applyPlan]). The exercise rows must exist.
      *
      * @return the workout's id.
      */
@@ -183,7 +183,7 @@ class WorkoutRepository(
     /**
      * Ends the workout: drops unticked or empty sets, then exercises left with
      * no sets. A workout with nothing logged is deleted rather than kept as an
-     * empty row in the history ([CommandExecutor.finishWorkout]).
+     * empty row in the history ([CommandRules.finishWorkout]).
      *
      * @return true if the workout was saved, false if it was discarded (or does not exist).
      */

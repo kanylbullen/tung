@@ -2,7 +2,7 @@ package io.github.kanylbullen.tung.data
 
 import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.ProgramMode
-import io.github.kanylbullen.tung.core.command.CommandExecutor
+import io.github.kanylbullen.tung.core.command.CommandRules
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
 import io.github.kanylbullen.tung.core.command.id
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * All program reads, and the Room-side entry to the program writes for
  * callers that are not commands (tests): each runs core's rule
- * ([CommandExecutor], issue #87) over this database, as `AppCommandHandler`
+ * ([CommandRules], issue #87) over this database, as `AppCommandHandler`
  * does for the commands. Starting a program day goes through
  * [RoutineRepository.start] with the day's id, so the workout records it.
  */
@@ -21,7 +21,7 @@ class ProgramRepository(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
 
-    private val executor = CommandExecutor()
+    private val executor = CommandRules()
 
     private fun tx() = RoomCommandTx(db, clock)
 

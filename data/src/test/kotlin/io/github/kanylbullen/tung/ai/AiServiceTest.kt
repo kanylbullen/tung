@@ -77,11 +77,8 @@ class AiServiceTest {
     private val programs = ProgramRepository(db, clock = { clockMillis })
     private val resolver = AppExerciseResolver(db.exerciseDao(), { catalogue.associate { it.key to it.name.values.toList() } }, extended)
     private val commands = AppCommandHandler(
-        db = db,
         workouts = workouts,
-        exercises = ExerciseRepository(db, clock = { clockMillis }),
         resolver = resolver,
-        extendedCatalog = extended,
     )
     private val settings by lazy { AiSettings(store, keys) }
     private val service by lazy {

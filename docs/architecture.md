@@ -155,9 +155,11 @@ dictated or recognised at once ("deadlift, bench press and biceps curl, five
 sets of ten, 50, 60 and 20 kg"). A plan names exercises by catalogue key;
 anything that does not resolve is returned as a question, not guessed.
 
-Implemented in `core/command/` with the app's handler in
-`data/AppCommandHandler.kt` (#21); `CLAUDE.md`, "Commands", is the
-reference for the rules.
+Implemented in `core/command/` (#21): the rules once, in `CommandRules`,
+run by `CommandExecutor` over each platform's `CommandStore` (#87), with the
+app's wrapper in `data/AppCommandHandler.kt` and the server's in
+`server/.../command/ServerCommandHandler.kt`; `CLAUDE.md`, "Commands", is
+the reference for the rules.
 
 ## Voice
 

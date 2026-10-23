@@ -37,11 +37,8 @@ class RoutineEditingCommandsTest {
     private var now = 1_000L
     private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val commands = AppCommandHandler(
-        db = db,
         workouts = WorkoutRepository(db, clock = { now }),
-        exercises = ExerciseRepository(db, clock = { now }),
         resolver = AppExerciseResolver(db.exerciseDao(), { mapOf("bench_press" to listOf("Bench press", "Bänkpress")) }, extended),
-        extendedCatalog = extended,
     )
     private val bench = catalogExerciseId("bench_press")
 

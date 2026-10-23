@@ -55,7 +55,7 @@ class ImporterTest {
         aliases = { ImportAliases.parse(File("../catalog/aliases/jefit.json").readText()) },
         zone = { TimeZone.of("Europe/Stockholm") },
     )
-    private val commands = AppCommandHandler(db, workouts, exercises, resolver, extended)
+    private val commands = AppCommandHandler(workouts, resolver)
     private val text = File("../core/src/jvmTest/resources/import/jefit/export-synthetic.csv").readText()
 
     @After

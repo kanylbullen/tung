@@ -2,7 +2,7 @@ package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.Command
-import io.github.kanylbullen.tung.core.command.CommandExecutor
+import io.github.kanylbullen.tung.core.command.CommandRules
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.server.command.ExposedCommandTx
@@ -33,7 +33,7 @@ private const val MAX_NOTE = 10_000
  */
 class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
 
-    private val executor = CommandExecutor()
+    private val executor = CommandRules()
 
     /** Newest first; [finishedOnly] leaves out the workout in progress (the MCP history tool). */
     suspend fun page(userId: String, limit: Int, before: Long?, finishedOnly: Boolean = false): WorkoutPage = db.tx {
@@ -158,7 +158,7 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
         }
     }
 
-    /** Tombstones the workout with its exercises and sets: core's `delete_workout` ([CommandExecutor.deleteWorkout]). */
+    /** Tombstones the workout with its exercises and sets: core's `delete_workout` ([CommandRules.deleteWorkout]). */
     suspend fun delete(userId: String, id: String) = db.suspendingTx {
         lockUser(userId)
         val result = executor.deleteWorkout(ExposedCommandTx(this, userId, this@WorkoutStore, System.currentTimeMillis()), id)
@@ -167,7 +167,7 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
 
     /**
      * Finishes the workout as the app does, core's `finish_workout`
-     * ([CommandExecutor.finishWorkout]): sets that are not logged (ticked with
+     * ([CommandRules.finishWorkout]): sets that are not logged (ticked with
      * reps > 0) are dropped, then exercises left without sets, and a workout
      * without one logged set is discarded instead of saved empty. Finishing a
      * finished workout returns it unchanged. Without `ended_at` the workout

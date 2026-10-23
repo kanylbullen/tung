@@ -4,7 +4,10 @@ import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
-import io.github.kanylbullen.tung.core.command.CommandExecutor
+import androidx.room.withTransaction
+import io.github.kanylbullen.tung.core.command.CommandResult
+import io.github.kanylbullen.tung.core.command.CommandRules
+import io.github.kanylbullen.tung.core.command.CommandStore
 import io.github.kanylbullen.tung.core.command.CommandTx
 import io.github.kanylbullen.tung.core.command.ExerciseRow
 import io.github.kanylbullen.tung.core.command.ProgramDayRow
@@ -16,8 +19,14 @@ import io.github.kanylbullen.tung.core.command.WorkoutExerciseRow
 import io.github.kanylbullen.tung.core.command.WorkoutRow
 import io.github.kanylbullen.tung.core.sync.SyncTable
 
+/** Core's [CommandStore] over Room: one `db.withTransaction` per command, over a [RoomCommandTx]. */
+internal class RoomCommandStore(private val db: TungDatabase, private val clock: () -> Long) : CommandStore {
+    override suspend fun transaction(block: suspend (CommandTx) -> CommandResult): CommandResult =
+        db.withTransaction { block(RoomCommandTx(db, clock)) }
+}
+
 /**
- * Core's [CommandTx] over Room, for the [CommandExecutor]: the DAOs inside a
+ * Core's [CommandTx] over Room, for the [CommandRules]: the DAOs inside a
  * transaction the caller opened (`db.withTransaction`, which the DAO calls
  * join), stamping `updatedAt` with [clock] and `dirty` through the entities'
  * defaults and the DAO's updates, and a tombstone for every delete
@@ -39,6 +48,20 @@ internal class RoomCommandTx(private val db: TungDatabase, private val clock: ()
     }
 
     override suspend fun insertExercise(row: ExerciseRow) = exerciseDao.insert(
+        Exercise(
+            id = row.id,
+            name = row.name,
+            nameKey = row.nameKey,
+            muscleGroup = row.muscleGroup.key,
+            equipment = row.equipment.key,
+            isCustom = row.isCustom,
+            updatedAt = clock(),
+            restSeconds = row.restSeconds,
+        ),
+    )
+
+    /** Insert-if-absent on the deterministic id, so picking the same extended entry again, or on another device, is the same row. */
+    override suspend fun ensureExerciseRow(row: ExerciseRow) = exerciseDao.insertIfAbsent(
         Exercise(
             id = row.id,
             name = row.name,

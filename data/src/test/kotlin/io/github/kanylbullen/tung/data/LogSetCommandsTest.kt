@@ -31,11 +31,8 @@ class LogSetCommandsTest {
     private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val workouts = WorkoutRepository(db, clock = { now })
     private val commands = AppCommandHandler(
-        db = db,
         workouts = workouts,
-        exercises = ExerciseRepository(db, clock = { now }),
         resolver = AppExerciseResolver(db.exerciseDao(), { mapOf("bench_press" to listOf("Bench press")) }, extended),
-        extendedCatalog = extended,
     )
     private val bench = ExerciseRef.ByKey("bench_press")
 

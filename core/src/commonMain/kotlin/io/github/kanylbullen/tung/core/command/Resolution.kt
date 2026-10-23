@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.core.command
 
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.normalizeForSearch
 import io.github.kanylbullen.tung.core.prefillSet
 
@@ -12,8 +13,9 @@ import io.github.kanylbullen.tung.core.prefillSet
  * if it has one, and [extendedId] when it is an extended-catalogue entry that
  * may not have a database row yet (its [id] is then
  * [io.github.kanylbullen.tung.core.extendedExerciseId], and the handler
- * creates the row before using it). [equipment] is what it is done with, when
- * the resolver knows it: suggestions may prefer the same load
+ * creates the row before using it, from [muscleGroup] and [equipment], which
+ * a resolver fills in for an extended entry). [equipment] is what it is done
+ * with, when the resolver knows it: suggestions may prefer the same load
  * (`importSuggestions`); an exact match never depends on it.
  */
 data class ExerciseCandidate(
@@ -22,6 +24,7 @@ data class ExerciseCandidate(
     val nameKey: String? = null,
     val extendedId: String? = null,
     val equipment: Equipment? = null,
+    val muscleGroup: MuscleGroup? = null,
 ) {
     val displayName: String get() = names.firstOrNull().orEmpty()
 }

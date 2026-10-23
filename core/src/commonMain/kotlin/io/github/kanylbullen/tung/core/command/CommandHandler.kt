@@ -1,10 +1,12 @@
 package io.github.kanylbullen.tung.core.command
 
 /**
- * Runs [Command]s. One implementation per place that holds the data: the app
- * over Room today (`AppCommandHandler`), a server later. Every implementation
- * validates first ([validate]) and resolves names before writing anything
- * ([resolvePlan]), so a command means the same thing wherever it is executed.
+ * Runs [Command]s. The implementation is [CommandExecutor], one for every
+ * place that holds the data, over that place's [CommandStore]: the app's
+ * `AppCommandHandler` and the server's `ServerCommandHandler` wrap it for
+ * their own side effects. It validates first ([validate]) and resolves names
+ * before writing anything ([resolvePlan]), so a command means the same thing
+ * wherever it is executed.
  */
 interface CommandHandler {
     suspend fun execute(command: Command): CommandResult

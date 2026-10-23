@@ -114,10 +114,6 @@ class ExerciseStore(private val db: Db) {
         return ExerciseDto(id, null, name, muscleGroup, equipment, isCustom, restSeconds, now)
     }
 
-    /** The user's row with [id], live or tombstoned, or null. */
-    fun Transaction.ownRowAnyState(userId: String, id: String): ResultRow? =
-        Exercises.selectAll().where { (Exercises.userId eq userId) and (Exercises.id eq id) }.singleOrNull()
-
     /**
      * Changes `name` and/or `rest_seconds` (null = follow the default). An own
      * exercise takes both; a catalogue exercise only `rest_seconds`, which makes

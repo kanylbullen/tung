@@ -6,7 +6,7 @@ import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 
 /**
- * What the [CommandExecutor] reads and writes, inside one transaction the
+ * What the [CommandRules] read and write, inside one transaction the
  * store has opened: Room in `data/`, Exposed on the server, and later a web
  * or iOS client's own store (issue #87). Storage only: the rules live in the
  * executor, ids come from it, and the store stamps time its own way
@@ -27,6 +27,13 @@ interface CommandTx {
 
     /** A new exercise of the user's own. */
     suspend fun insertExercise(row: ExerciseRow)
+
+    /**
+     * Makes sure [row] exists, for an extended-catalogue entry's row: inserted
+     * when absent, brought back when a sync had deleted it, left as it is
+     * when there (the id is the same on every device).
+     */
+    suspend fun ensureExerciseRow(row: ExerciseRow)
 
     /**
      * The rest between the exercise's sets ([seconds], 0 for none, null to
@@ -204,5 +211,5 @@ data class ProgramRow(val id: String, val name: String, val mode: ProgramMode, v
 /** One day of a program as the rules see it. */
 data class ProgramDayRow(val id: String, val programId: String, val routineId: String, val position: Int, val weekdays: Int)
 
-/** One exercise of a routine to create: the exercise's row id with its targets, for [CommandExecutor.saveRoutinePlan]. */
+/** One exercise of a routine to create: the exercise's row id with its targets, for [CommandRules.saveRoutinePlan]. */
 data class RoutineExercisePlan(val exerciseId: String, val targetSets: Int, val targetReps: Int?)
