@@ -86,7 +86,7 @@ class TungContainer(
     val workoutRepository: WorkoutRepository by lazy { WorkoutRepository(database) }
     val routineRepository: RoutineRepository by lazy { RoutineRepository(database) }
     val programRepository: ProgramRepository by lazy { ProgramRepository(database) }
-    val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database.exerciseDao()) }
+    val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database) }
     val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog.fromAssets(this.context) }
 
     /** `core.json` from the assets, read the first time a name is resolved or the muscles are needed. */
@@ -141,8 +141,6 @@ class TungContainer(
             db = database,
             workouts = workoutRepository,
             exercises = exerciseRepository,
-            routines = routineRepository,
-            programs = programRepository,
             resolver = exerciseResolver,
             extendedCatalog = extendedCatalog,
             onWorkoutFinished = ::workoutFinished,

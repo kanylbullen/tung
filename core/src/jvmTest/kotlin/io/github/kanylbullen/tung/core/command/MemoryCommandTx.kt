@@ -1,10 +1,13 @@
 package io.github.kanylbullen.tung.core.command
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 
 /** A [CommandTx] over lists, for testing the executor's rules without a database. */
 class MemoryCommandTx : CommandTx {
+    val exerciseRows = mutableListOf<ExerciseRow>()
     val workouts = mutableListOf<WorkoutRow>()
     val exercises = mutableListOf<WorkoutExerciseRow>()
     val allSets = mutableListOf<SetRow>()
@@ -26,6 +29,11 @@ class MemoryCommandTx : CommandTx {
     var now = 1_000L
 
     private var nextId = 1
+
+    fun addExerciseRow(id: String = "e${nextId++}", name: String = "Bench press", restSeconds: Int? = null, custom: Boolean = false): String {
+        exerciseRows += ExerciseRow(id, name, nameKey = null, MuscleGroup.CHEST, Equipment.BARBELL, custom, restSeconds)
+        return id
+    }
 
     fun addWorkout(id: String = "w${nextId++}", routineId: String? = null, startedAt: Long = now, endedAt: Long? = null): String {
         workouts += WorkoutRow(id, startedAt, endedAt, routineId, programDayId = null, startedBy = null)
@@ -64,6 +72,15 @@ class MemoryCommandTx : CommandTx {
     }
 
     override fun now(): Long = now
+
+    override suspend fun exercise(id: String): ExerciseRow? = exerciseRows.firstOrNull { it.id == id }
+
+    override suspend fun insertExercise(row: ExerciseRow) {
+        exerciseRows += row
+        writes += "insert exercise row ${row.id}"
+    }
+
+    override suspend fun setRest(id: String, seconds: Int?) = update(exerciseRows, id, { it.id }, "rest $id $seconds") { it.copy(restSeconds = seconds) }
 
     override suspend fun workout(id: String): WorkoutRow? = workouts.firstOrNull { it.id == id }
 

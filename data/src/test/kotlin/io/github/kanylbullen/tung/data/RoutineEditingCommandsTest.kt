@@ -39,9 +39,7 @@ class RoutineEditingCommandsTest {
     private val commands = AppCommandHandler(
         db = db,
         workouts = WorkoutRepository(db, clock = { now }),
-        exercises = ExerciseRepository(db.exerciseDao(), clock = { now }),
-        routines = RoutineRepository(db, clock = { now }),
-        programs = ProgramRepository(db, clock = { now }),
+        exercises = ExerciseRepository(db, clock = { now }),
         resolver = AppExerciseResolver(db.exerciseDao(), { mapOf("bench_press" to listOf("Bench press", "Bänkpress")) }, extended),
         extendedCatalog = extended,
     )

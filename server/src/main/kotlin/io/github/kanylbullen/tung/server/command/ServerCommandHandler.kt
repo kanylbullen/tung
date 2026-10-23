@@ -6,9 +6,6 @@ import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandExecutor
 import io.github.kanylbullen.tung.core.command.CommandHandler
-import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
-import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
-import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.CommandResult.Done
 import io.github.kanylbullen.tung.core.command.CommandResult.NeedsAnswers
@@ -22,15 +19,11 @@ import io.github.kanylbullen.tung.core.command.resolvePlan
 import io.github.kanylbullen.tung.core.command.resolveRef
 import io.github.kanylbullen.tung.core.command.resolveRoutinePlan
 import io.github.kanylbullen.tung.core.command.validate
-import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.Db
 import io.github.kanylbullen.tung.server.ExerciseStore
 import io.github.kanylbullen.tung.server.Exercises
-import io.github.kanylbullen.tung.server.Sets
-import io.github.kanylbullen.tung.server.WorkoutExercises
 import io.github.kanylbullen.tung.server.WorkoutStore
-import io.github.kanylbullen.tung.server.Workouts
 import io.github.kanylbullen.tung.server.lockUser
 import io.github.kanylbullen.tung.server.push.ChangeNotifier
 import org.jetbrains.exposed.sql.Column
@@ -38,14 +31,11 @@ import org.jetbrains.exposed.sql.CustomFunction
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.LongColumnType
 import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.longParam
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 
 /** Longest name a command may give an exercise, routine or program; the same cap as the REST API's. */
@@ -82,10 +72,10 @@ class CommandService(
  * The `seq` trigger stamps every written row, so a change made here reaches
  * the phone on its next sync like any other write.
  *
- * Every workout, routine and program command is core's [CommandExecutor]
- * over [ExposedCommandTx] (issue #87), the rule the app runs over Room;
- * `set_rest` and `create_exercise` write the exercise table here, and
- * `select_current` only reads. An id that is gone is [Rejected], naming it.
+ * Every command is core's [CommandExecutor] over [ExposedCommandTx] (issue
+ * #87), the rule the app runs over Room; what is written here is the row an
+ * extended-catalogue entry resolves to ([rowFor]) and the REST API's cap on
+ * names ([MAX_COMMAND_NAME]). An id that is gone is [Rejected], naming it.
  */
 class ServerCommandHandler(
     private val db: Db,
@@ -139,23 +129,15 @@ class ServerCommandHandler(
             is Command.SetReps -> executor.setReps(commandTx(now), command.setId, command.reps, command.applyToOpenSets)
             is Command.TickSet -> executor.tickSet(commandTx(now), command.setId, command.done)
             is Command.LogSet -> executor.logSet(commandTx(now), command)
-            is Command.SelectCurrent -> selectCurrent(command)
+            is Command.SelectCurrent -> executor.selectCurrent(commandTx(now), command)
             // The id comes back only when the workout was kept; one with nothing logged is gone.
             is Command.FinishWorkout -> executor.finishWorkout(commandTx(now), command.workoutId)
             is Command.DeleteWorkout -> executor.deleteWorkout(commandTx(now), command.workoutId)
             is Command.ApplyPlan -> applyPlan(command, now)
-            is Command.SetRest -> {
-                resolver.visibleRow(command.exerciseId) ?: return noSuch("exercise", command.exerciseId)
-                with(exercises) { patchIn(userId, command.exerciseId, name = null, restGiven = true, rest = command.seconds, now = now) }
-                Done(mapOf(EXERCISE_ID to command.exerciseId))
-            }
+            is Command.SetRest -> executor.setRest(commandTx(now), command.exerciseId, command.seconds)
             is Command.CreateExercise -> {
                 nameTooLong(command.name)?.let { return it }
-                val id = newId()
-                with(exercises) {
-                    insertOwn(userId, id, command.name.trim(), command.muscleGroup.key, command.equipment.key, isCustom = true, now = now)
-                }
-                Done(mapOf(EXERCISE_ID to id))
+                executor.createExercise(commandTx(now), command.name, command.muscleGroup, command.equipment)
             }
             is Command.SaveRoutine -> {
                 nameTooLong(command.name)?.let { return it }
@@ -202,27 +184,14 @@ class ServerCommandHandler(
             is RefResolution.Unresolved -> return NeedsAnswers(listOf(resolution.question))
             is RefResolution.Resolved -> resolution.exercise
         }
-        liveWorkout(command.workoutId) ?: return noSuch("workout", command.workoutId)
-        // The row first (an extended entry's is created here), then core's rule: appended last, its sets pre-filled.
-        return executor.addExercise(commandTx(now), command.workoutId, rowFor(exercise, now), command.sets)
+        val tx = commandTx(now)
+        // The workout first, so a missing one does not even get the extended entry's row; then core's rule.
+        tx.workout(command.workoutId) ?: return noSuch("workout", command.workoutId)
+        return executor.addExercise(tx, command.workoutId, rowFor(exercise, now), command.sets)
     }
 
     /** Core's store over this transaction, for the rules that have moved into [CommandExecutor] (issue #87). */
     private fun Transaction.commandTx(now: Long): ExposedCommandTx = ExposedCommandTx(this, userId, workouts, now)
-
-    private fun Transaction.selectCurrent(command: Command.SelectCurrent): CommandResult {
-        val setId = command.setId
-        val set = if (setId != null) {
-            liveSet(setId) ?: return noSuch("set", setId)
-        } else {
-            val workoutExerciseId = checkNotNull(command.workoutExerciseId)
-            liveWorkoutExercise(workoutExerciseId) ?: return noSuch("exercise in a workout", workoutExerciseId)
-            liveSets(workoutExerciseId).firstOrNull { !it[Sets.completed] }
-                ?: return Rejected(listOf("no un-ticked set in $workoutExerciseId"))
-        }
-        if (set[Sets.completed]) return Rejected(listOf("set ${set[Sets.id]} is already ticked"))
-        return Done(mapOf(SET_ID to set[Sets.id], WORKOUT_EXERCISE_ID to set[Sets.workoutExerciseId]))
-    }
 
     /**
      * Resolves the whole plan first (anything unknown → questions, nothing
@@ -261,25 +230,6 @@ class ServerCommandHandler(
         tx.routine(command.routineId) ?: return noSuch("routine", command.routineId)
         return executor.addRoutineExercise(tx, command.routineId, rowFor(exercise, now), command.targetSets, command.targetReps)
     }
-
-    // --- rows ---
-
-    private fun Transaction.liveWorkout(id: String): ResultRow? =
-        Workouts.selectAll().where { (Workouts.userId eq userId) and (Workouts.id eq id) and Workouts.deletedAt.isNull() }.singleOrNull()
-
-    private fun Transaction.liveWorkoutExercise(id: String): ResultRow? =
-        WorkoutExercises.selectAll()
-            .where { (WorkoutExercises.userId eq userId) and (WorkoutExercises.id eq id) and WorkoutExercises.deletedAt.isNull() }
-            .singleOrNull()
-
-    private fun Transaction.liveSet(id: String): ResultRow? =
-        Sets.selectAll().where { (Sets.userId eq userId) and (Sets.id eq id) and Sets.deletedAt.isNull() }.singleOrNull()
-
-    private fun Transaction.liveSets(workoutExerciseId: String): List<ResultRow> =
-        Sets.selectAll()
-            .where { (Sets.userId eq userId) and (Sets.workoutExerciseId eq workoutExerciseId) and Sets.deletedAt.isNull() }
-            .orderBy(Sets.position, SortOrder.ASC)
-            .toList()
 
     /**
      * The id of [candidate]'s row, creating the row of an extended-catalogue

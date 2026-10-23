@@ -79,9 +79,7 @@ class AiServiceTest {
     private val commands = AppCommandHandler(
         db = db,
         workouts = workouts,
-        exercises = ExerciseRepository(db.exerciseDao(), clock = { clockMillis }),
-        routines = routines,
-        programs = programs,
+        exercises = ExerciseRepository(db, clock = { clockMillis }),
         resolver = resolver,
         extendedCatalog = extended,
     )
@@ -259,7 +257,7 @@ class AiServiceTest {
     fun matchingSendsOnlyTheNamesAndTheCatalogue() = runBlocking {
         seedHistory()
         routines.createFromPlan("Push day secret", emptyList())
-        val ownId = ExerciseRepository(db.exerciseDao(), clock = { clockMillis })
+        val ownId = ExerciseRepository(db, clock = { clockMillis })
             .createExercise("Lat pulldown at my gym", io.github.kanylbullen.tung.core.MuscleGroup.BACK, io.github.kanylbullen.tung.core.Equipment.MACHINE)
         SyncSettings(store).signedIn("https://tung.example.org", "lifter@example.org")
         settings.save(AiProviderKind.ANTHROPIC, server.url("/").toString().trimEnd('/'), "claude-test-model", jsonMode = true)

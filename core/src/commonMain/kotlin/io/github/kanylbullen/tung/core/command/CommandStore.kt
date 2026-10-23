@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.core.command
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 
 /**
@@ -17,6 +19,21 @@ import io.github.kanylbullen.tung.core.ProgramMode
 interface CommandTx {
     /** The store's clock, what it stamps writes with; a rule uses it for the times it records (a workout's start and end). */
     fun now(): Long
+
+    // --- exercises ---
+
+    /** The exercise with [id] as the user sees it (on a server with a shared catalogue: their own row, else the catalogue's); null when none. */
+    suspend fun exercise(id: String): ExerciseRow?
+
+    /** A new exercise of the user's own. */
+    suspend fun insertExercise(row: ExerciseRow)
+
+    /**
+     * The rest between the exercise's sets ([seconds], 0 for none, null to
+     * follow the default). A store with a shared catalogue makes the user's
+     * copy of a catalogue exercise here, the first time.
+     */
+    suspend fun setRest(id: String, seconds: Int?)
 
     // --- workouts ---
 
@@ -130,6 +147,17 @@ interface CommandTx {
     /** Deletes the program's own row, with the store's tombstone; its days are already gone. */
     suspend fun deleteProgram(id: String)
 }
+
+/** An exercise as the rules see it; [restSeconds] null follows the default. */
+data class ExerciseRow(
+    val id: String,
+    val name: String,
+    val nameKey: String?,
+    val muscleGroup: MuscleGroup,
+    val equipment: Equipment,
+    val isCustom: Boolean,
+    val restSeconds: Int?,
+)
 
 /** A workout as the rules see it. */
 data class WorkoutRow(

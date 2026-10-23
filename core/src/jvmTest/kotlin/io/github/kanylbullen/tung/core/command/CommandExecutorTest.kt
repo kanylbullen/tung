@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.core.command
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
@@ -628,5 +630,50 @@ class CommandExecutorTest {
         done { executor.toggleProgramWeekday(tx, day2, 1) }
         assertEquals(4, runBlocking { tx.programDay(day2) }?.weekdays)
         assertEquals(listOf("no program day nope"), rejected { executor.toggleProgramWeekday(tx, "nope", 1) }.reasons)
+    }
+
+    // --- exercises and select_current ---
+
+    @Test
+    fun setRestWritesOnlyAChangeAndRefusesAnUnknownExercise() {
+        val bench = tx.addExerciseRow(restSeconds = null)
+        assertEquals(mapOf(EXERCISE_ID to bench), done { executor.setRest(tx, bench, 120) }.ids)
+        done { executor.setRest(tx, bench, 120) }
+        done { executor.setRest(tx, bench, 0) }
+        done { executor.setRest(tx, bench, null) }
+        done { executor.setRest(tx, bench, null) }
+        assertEquals(listOf("rest $bench 120", "rest $bench 0", "rest $bench null"), tx.writes)
+        assertEquals(listOf("no exercise nope"), rejected { executor.setRest(tx, "nope", 60) }.reasons)
+    }
+
+    @Test
+    fun createExerciseMakesACustomRowNamedAsTyped() {
+        val id = done { executor.createExercise(tx, "  Zercher squat ", MuscleGroup.LEGS, Equipment.BARBELL) }.ids.getValue(EXERCISE_ID)
+        assertEquals(
+            ExerciseRow(id, "Zercher squat", nameKey = null, MuscleGroup.LEGS, Equipment.BARBELL, isCustom = true, restSeconds = null),
+            runBlocking { tx.exercise(id) },
+        )
+        assertEquals(listOf("insert exercise row $id"), tx.writes)
+    }
+
+    @Test
+    fun selectCurrentResolvesASetWithoutWritingAndRefusesATickedOne() {
+        val (_, weId) = benchWorkout(3)
+        val (first, second, third) = runBlocking { tx.sets(weId) }
+        runBlocking { tx.tickSet(first.id, true) }
+        tx.writes.clear()
+        assertEquals(mapOf(SET_ID to second.id, WORKOUT_EXERCISE_ID to weId), done { executor.selectCurrent(tx, Command.SelectCurrent(setId = second.id)) }.ids)
+        assertEquals(
+            "the first un-ticked set of the exercise",
+            mapOf(SET_ID to second.id, WORKOUT_EXERCISE_ID to weId),
+            done { executor.selectCurrent(tx, Command.SelectCurrent(workoutExerciseId = weId)) }.ids,
+        )
+        assertEquals(listOf("set ${first.id} is already ticked"), rejected { executor.selectCurrent(tx, Command.SelectCurrent(setId = first.id)) }.reasons)
+        assertEquals(listOf("no set nope"), rejected { executor.selectCurrent(tx, Command.SelectCurrent(setId = "nope")) }.reasons)
+        assertEquals(listOf("no exercise in a workout nope"), rejected { executor.selectCurrent(tx, Command.SelectCurrent(workoutExerciseId = "nope")) }.reasons)
+        runBlocking { tx.tickSet(second.id, true); tx.tickSet(third.id, true) }
+        tx.writes.clear()
+        assertEquals(listOf("no un-ticked set in $weId"), rejected { executor.selectCurrent(tx, Command.SelectCurrent(workoutExerciseId = weId)) }.reasons)
+        assertEquals("select_current writes nothing", emptyList<String>(), tx.writes)
     }
 }

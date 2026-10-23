@@ -16,7 +16,6 @@ import io.github.kanylbullen.tung.core.sync.SyncTable
 import io.github.kanylbullen.tung.data.AppCommandHandler
 import io.github.kanylbullen.tung.data.AppExerciseResolver
 import io.github.kanylbullen.tung.data.ExerciseRepository
-import io.github.kanylbullen.tung.data.ProgramRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.WorkoutRepository
@@ -47,7 +46,7 @@ class ImporterTest {
     private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val names = CoreCatalog.parse(File("../catalog/core.json").readText()).associate { it.key to it.name.values.toList() }
     private val workouts = WorkoutRepository(db, clock = { now })
-    private val exercises = ExerciseRepository(db.exerciseDao(), clock = { now })
+    private val exercises = ExerciseRepository(db, clock = { now })
     private val routines = RoutineRepository(db, clock = { now })
     private val resolver = AppExerciseResolver(db.exerciseDao(), { names }, extended)
     private val service = ImportService(
@@ -56,7 +55,7 @@ class ImporterTest {
         aliases = { ImportAliases.parse(File("../catalog/aliases/jefit.json").readText()) },
         zone = { TimeZone.of("Europe/Stockholm") },
     )
-    private val commands = AppCommandHandler(db, workouts, exercises, routines, ProgramRepository(db, clock = { now }), resolver, extended)
+    private val commands = AppCommandHandler(db, workouts, exercises, resolver, extended)
     private val text = File("../core/src/jvmTest/resources/import/jefit/export-synthetic.csv").readText()
 
     @After

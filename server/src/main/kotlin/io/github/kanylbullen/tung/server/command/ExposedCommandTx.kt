@@ -1,9 +1,12 @@
 package io.github.kanylbullen.tung.server.command
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.command.CommandExecutor
 import io.github.kanylbullen.tung.core.command.CommandTx
+import io.github.kanylbullen.tung.core.command.ExerciseRow
 import io.github.kanylbullen.tung.core.command.ProgramDayRow
 import io.github.kanylbullen.tung.core.command.ProgramRow
 import io.github.kanylbullen.tung.core.command.RoutineExerciseRow
@@ -11,6 +14,7 @@ import io.github.kanylbullen.tung.core.command.RoutineRow
 import io.github.kanylbullen.tung.core.command.SetRow
 import io.github.kanylbullen.tung.core.command.WorkoutExerciseRow
 import io.github.kanylbullen.tung.core.command.WorkoutRow
+import io.github.kanylbullen.tung.server.Exercises
 import io.github.kanylbullen.tung.server.ProgramDays
 import io.github.kanylbullen.tung.server.Programs
 import io.github.kanylbullen.tung.server.RoutineExercises
@@ -19,11 +23,13 @@ import io.github.kanylbullen.tung.server.Sets
 import io.github.kanylbullen.tung.server.WorkoutExercises
 import io.github.kanylbullen.tung.server.WorkoutStore
 import io.github.kanylbullen.tung.server.Workouts
+import io.github.kanylbullen.tung.server.copyCatalogueExercise
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 
@@ -42,6 +48,47 @@ internal class ExposedCommandTx(
 ) : CommandTx {
 
     override fun now(): Long = now
+
+    // --- exercises ---
+
+    /** The user's own live row with [id], else the catalogue's: what shadows what, as `ServerExerciseResolver.visibleRow` sees it. */
+    override suspend fun exercise(id: String): ExerciseRow? = visibleExercise(id)?.toExerciseRow()
+
+    override suspend fun insertExercise(row: ExerciseRow) {
+        Exercises.insert {
+            it[userId] = this@ExposedCommandTx.userId
+            it[Exercises.id] = row.id
+            it[nameKey] = row.nameKey
+            it[name] = row.name
+            it[muscleGroup] = row.muscleGroup.key
+            it[equipment] = row.equipment.key
+            it[isCustom] = row.isCustom
+            it[restSeconds] = row.restSeconds
+            it[updatedAt] = now
+        }
+    }
+
+    /** The user's own row takes the rest; a catalogue exercise gets the user's copy with it ([copyCatalogueExercise]). */
+    override suspend fun setRest(id: String, seconds: Int?) {
+        val visible = checkNotNull(visibleExercise(id)) { "no exercise $id" }
+        if (visible[Exercises.userId] != null) {
+            Exercises.update({ (Exercises.userId eq userId) and (Exercises.id eq id) }) {
+                it[restSeconds] = seconds
+                it[updatedAt] = bumped(updatedAt, now)
+            }
+        } else {
+            tx.copyCatalogueExercise(userId, visible, seconds, now)
+        }
+    }
+
+    private fun visibleExercise(id: String): ResultRow? {
+        val rows = Exercises.selectAll()
+            .where { (Exercises.id eq id) and (Exercises.userId.isNull() or ((Exercises.userId eq userId) and Exercises.deletedAt.isNull())) }
+            .toList()
+        return rows.firstOrNull { it[Exercises.userId] != null } ?: rows.firstOrNull()
+    }
+
+    // --- workouts (reads) ---
 
     override suspend fun workout(id: String): WorkoutRow? =
         Workouts.selectAll()
@@ -283,7 +330,7 @@ internal class ExposedCommandTx(
         tombstone(Programs, Programs.updatedAt, Programs.deletedAt, now) { (Programs.userId eq userId) and (Programs.id eq id) }
     }
 
-    // --- workouts ---
+    // --- workouts (writes) ---
 
     override suspend fun insertWorkout(row: WorkoutRow) {
         Workouts.insert {
@@ -372,6 +419,12 @@ internal class ExposedCommandTx(
         }
         tombstone(Workouts, Workouts.updatedAt, Workouts.deletedAt, now) { (Workouts.userId eq userId) and (Workouts.id eq id) }
     }
+
+    private fun ResultRow.toExerciseRow() = ExerciseRow(
+        this[Exercises.id], this[Exercises.name], this[Exercises.nameKey],
+        MuscleGroup.fromKey(this[Exercises.muscleGroup]), Equipment.fromKey(this[Exercises.equipment]),
+        this[Exercises.isCustom], this[Exercises.restSeconds],
+    )
 
     private fun ResultRow.toRow() = WorkoutRow(
         this[Workouts.id], this[Workouts.startedAt], this[Workouts.endedAt],

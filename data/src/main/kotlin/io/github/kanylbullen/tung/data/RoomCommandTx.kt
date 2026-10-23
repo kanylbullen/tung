@@ -1,9 +1,12 @@
 package io.github.kanylbullen.tung.data
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.command.CommandExecutor
 import io.github.kanylbullen.tung.core.command.CommandTx
+import io.github.kanylbullen.tung.core.command.ExerciseRow
 import io.github.kanylbullen.tung.core.command.ProgramDayRow
 import io.github.kanylbullen.tung.core.command.ProgramRow
 import io.github.kanylbullen.tung.core.command.RoutineExerciseRow
@@ -23,10 +26,35 @@ import io.github.kanylbullen.tung.core.sync.SyncTable
 internal class RoomCommandTx(private val db: TungDatabase, private val clock: () -> Long) : CommandTx {
 
     private val dao: WorkoutDao = db.workoutDao()
+    private val exerciseDao: ExerciseDao = db.exerciseDao()
     private val routineDao: RoutineDao = db.routineDao()
     private val programDao: ProgramDao = db.programDao()
 
     override fun now(): Long = clock()
+
+    // --- exercises ---
+
+    override suspend fun exercise(id: String): ExerciseRow? = exerciseDao.getById(id)?.let {
+        ExerciseRow(it.id, it.name, it.nameKey, MuscleGroup.fromKey(it.muscleGroup), Equipment.fromKey(it.equipment), it.isCustom, it.restSeconds)
+    }
+
+    override suspend fun insertExercise(row: ExerciseRow) = exerciseDao.insert(
+        Exercise(
+            id = row.id,
+            name = row.name,
+            nameKey = row.nameKey,
+            muscleGroup = row.muscleGroup.key,
+            equipment = row.equipment.key,
+            isCustom = row.isCustom,
+            updatedAt = clock(),
+            restSeconds = row.restSeconds,
+        ),
+    )
+
+    /** An ordinary update, catalogue rows included (they are rows here), so `updatedAt` moves and the row goes up as the user's copy. */
+    override suspend fun setRest(id: String, seconds: Int?) = exerciseDao.updateRestSeconds(id, seconds, clock())
+
+    // --- workouts (reads) ---
 
     override suspend fun workout(id: String): WorkoutRow? = dao.getWorkout(id)?.toRow()
 
@@ -132,7 +160,7 @@ internal class RoomCommandTx(private val db: TungDatabase, private val clock: ()
         programDao.deleteProgram(id)
     }
 
-    // --- workouts ---
+    // --- workouts (writes) ---
 
     override suspend fun insertWorkout(row: WorkoutRow) = dao.insertWorkout(
         Workout(

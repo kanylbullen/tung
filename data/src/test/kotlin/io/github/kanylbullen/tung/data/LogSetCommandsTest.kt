@@ -33,9 +33,7 @@ class LogSetCommandsTest {
     private val commands = AppCommandHandler(
         db = db,
         workouts = workouts,
-        exercises = ExerciseRepository(db.exerciseDao(), clock = { now }),
-        routines = RoutineRepository(db, clock = { now }),
-        programs = ProgramRepository(db, clock = { now }),
+        exercises = ExerciseRepository(db, clock = { now }),
         resolver = AppExerciseResolver(db.exerciseDao(), { mapOf("bench_press" to listOf("Bench press")) }, extended),
         extendedCatalog = extended,
     )

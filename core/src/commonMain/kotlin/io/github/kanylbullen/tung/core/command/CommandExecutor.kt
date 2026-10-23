@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.core.command
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.addedExerciseSets
 import io.github.kanylbullen.tung.core.addsNextSet
@@ -45,10 +47,48 @@ import io.github.kanylbullen.tung.core.toggleWeekday
  * (`create_program`, `rename_program`, `set_program_mode`,
  * `activate_program`, `deactivate_program`, `delete_program`,
  * `add_program_day`, `remove_program_day`, `move_program_day`,
- * `toggle_program_weekday`). Still in the handlers: `set_rest`,
- * `create_exercise` (the exercise table) and `select_current` (a read).
+ * `toggle_program_weekday`), `set_rest`, `create_exercise` and
+ * `select_current`: every command. What is left in the handlers is
+ * validation, name resolution and the row for an [ExerciseRef].
  */
 class CommandExecutor(private val ids: () -> String = { newId() }) {
+
+    // --- exercises ---
+
+    /** `set_rest`: the seconds between the exercise's sets, 0 for none, null to follow the default; written only when it changes. */
+    suspend fun setRest(tx: CommandTx, exerciseId: String, seconds: Int?): CommandResult {
+        val exercise = tx.exercise(exerciseId) ?: return noSuch("exercise", exerciseId)
+        if (exercise.restSeconds != seconds) tx.setRest(exerciseId, seconds)
+        return Done(mapOf(EXERCISE_ID to exerciseId))
+    }
+
+    /** `create_exercise`: a custom exercise of the user's own, named as typed (trimmed), following the default rest. */
+    suspend fun createExercise(tx: CommandTx, name: String, muscleGroup: MuscleGroup, equipment: Equipment): CommandResult {
+        val row = ExerciseRow(ids(), name.trim(), nameKey = null, muscleGroup, equipment, isCustom = true, restSeconds = null)
+        tx.insertExercise(row)
+        return Done(mapOf(EXERCISE_ID to row.id))
+    }
+
+    // --- workouts ---
+
+    /**
+     * `select_current`: the set a client means to log next, resolved and
+     * checked but not written anywhere (the selection is view state): the set
+     * named, or the first un-ticked set of the exercise named; a ticked set is
+     * refused. Answers [SET_ID] and [WORKOUT_EXERCISE_ID].
+     */
+    suspend fun selectCurrent(tx: CommandTx, command: Command.SelectCurrent): CommandResult {
+        val setId = command.setId
+        val set = if (setId != null) {
+            tx.set(setId) ?: return noSuch("set", setId)
+        } else {
+            val workoutExerciseId = checkNotNull(command.workoutExerciseId) { "a setId or a workoutExerciseId" }
+            tx.workoutExercise(workoutExerciseId) ?: return noSuch("exercise in a workout", workoutExerciseId)
+            tx.sets(workoutExerciseId).firstOrNull { !it.completed } ?: return Rejected(listOf("no un-ticked set in $workoutExerciseId"))
+        }
+        if (set.completed) return Rejected(listOf("set ${set.id} is already ticked"))
+        return Done(mapOf(SET_ID to set.id, WORKOUT_EXERCISE_ID to set.workoutExerciseId))
+    }
 
     /** `start_workout` without a routine: the workout in progress (there is at most one), else a new one started now by [startedBy]. */
     suspend fun startWorkout(tx: CommandTx, startedBy: String?): CommandResult {
