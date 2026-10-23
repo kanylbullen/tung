@@ -1,9 +1,11 @@
 package io.github.kanylbullen.tung.data
 
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.command.CommandExecutor
 import io.github.kanylbullen.tung.core.command.CommandTx
 import io.github.kanylbullen.tung.core.command.ProgramDayRow
+import io.github.kanylbullen.tung.core.command.ProgramRow
 import io.github.kanylbullen.tung.core.command.RoutineExerciseRow
 import io.github.kanylbullen.tung.core.command.RoutineRow
 import io.github.kanylbullen.tung.core.command.SetRow
@@ -44,13 +46,93 @@ internal class RoomCommandTx(private val db: TungDatabase, private val clock: ()
 
     override suspend fun routineTargetSets(workoutId: String, exerciseId: String): Int? = dao.routineTargetSets(workoutId, exerciseId)
 
+    // --- routines ---
+
     override suspend fun routine(id: String): RoutineRow? = routineDao.getRoutine(id)?.let { RoutineRow(it.id, it.name, it.lastUsedAt) }
 
-    override suspend fun routineExercises(routineId: String): List<RoutineExerciseRow> =
-        routineDao.getRoutineExercises(routineId).map { RoutineExerciseRow(it.id, it.routineId, it.exerciseId, it.position, it.targetSets, it.targetReps) }
+    override suspend fun routineExercise(id: String): RoutineExerciseRow? = routineDao.getRoutineExercise(id)?.toRow()
 
-    override suspend fun programDay(id: String): ProgramDayRow? =
-        programDao.getDay(id)?.let { ProgramDayRow(it.id, it.programId, it.routineId, it.position, it.weekdays) }
+    override suspend fun routineExercises(routineId: String): List<RoutineExerciseRow> =
+        routineDao.getRoutineExercises(routineId).map { it.toRow() }
+
+    override suspend fun insertRoutine(row: RoutineRow) =
+        routineDao.insertRoutine(Routine(id = row.id, name = row.name, updatedAt = clock(), lastUsedAt = row.lastUsedAt))
+
+    override suspend fun insertRoutineExercise(row: RoutineExerciseRow) = routineDao.insertRoutineExercise(
+        RoutineExercise(
+            id = row.id,
+            routineId = row.routineId,
+            exerciseId = row.exerciseId,
+            position = row.position,
+            targetSets = row.targetSets,
+            targetReps = row.targetReps,
+            updatedAt = clock(),
+        ),
+    )
+
+    override suspend fun renameRoutine(id: String, name: String) = routineDao.rename(id, name, clock())
+
+    override suspend fun markRoutineUsed(routineId: String) {
+        val now = clock()
+        routineDao.setLastUsedAt(routineId, lastUsedAt = now, updatedAt = now)
+    }
+
+    override suspend fun setRoutineExercisePosition(id: String, position: Int) = routineDao.setPosition(id, position, clock())
+
+    override suspend fun setTargetSets(id: String, targetSets: Int) = routineDao.setTargetSets(id, targetSets, clock())
+
+    override suspend fun setTargetReps(id: String, targetReps: Int?) = routineDao.setTargetReps(id, targetReps, clock())
+
+    override suspend fun deleteRoutineExercise(id: String) {
+        db.recordDeletes(SyncTable.ROUTINE_EXERCISES, listOf(id), clock())
+        routineDao.deleteRoutineExercise(id)
+    }
+
+    override suspend fun deleteRoutine(id: String) {
+        db.recordDeletes(SyncTable.ROUTINES, listOf(id), clock())
+        routineDao.deleteRoutine(id)
+    }
+
+    // --- programs ---
+
+    override suspend fun program(id: String): ProgramRow? = programDao.getProgram(id)?.toRow()
+
+    override suspend fun activePrograms(): List<ProgramRow> = programDao.getActivePrograms().map { it.toRow() }
+
+    override suspend fun programDay(id: String): ProgramDayRow? = programDao.getDay(id)?.toRow()
+
+    override suspend fun programDays(programId: String): List<ProgramDayRow> = programDao.getDays(programId).map { it.toRow() }
+
+    override suspend fun programDaysUsing(routineId: String): List<ProgramDayRow> = programDao.getDaysUsing(routineId).map { it.toRow() }
+
+    override suspend fun insertProgram(row: ProgramRow) =
+        programDao.insertProgram(Program(id = row.id, name = row.name, mode = row.mode.key, isActive = row.isActive, updatedAt = clock()))
+
+    override suspend fun insertProgramDay(row: ProgramDayRow) = programDao.insertDay(
+        ProgramDay(id = row.id, programId = row.programId, routineId = row.routineId, position = row.position, weekdays = row.weekdays, updatedAt = clock()),
+    )
+
+    override suspend fun renameProgram(id: String, name: String) = programDao.rename(id, name, clock())
+
+    override suspend fun setProgramMode(id: String, mode: ProgramMode) = programDao.setMode(id, mode.key, clock())
+
+    override suspend fun setProgramActive(id: String, active: Boolean) = programDao.setActive(id, active, clock())
+
+    override suspend fun setProgramDayPosition(id: String, position: Int) = programDao.setPosition(id, position, clock())
+
+    override suspend fun setProgramDayWeekdays(id: String, weekdays: Int) = programDao.setWeekdays(id, weekdays, clock())
+
+    override suspend fun deleteProgramDay(id: String) {
+        db.recordDeletes(SyncTable.PROGRAM_DAYS, listOf(id), clock())
+        programDao.deleteDay(id)
+    }
+
+    override suspend fun deleteProgram(id: String) {
+        db.recordDeletes(SyncTable.PROGRAMS, listOf(id), clock())
+        programDao.deleteProgram(id)
+    }
+
+    // --- workouts ---
 
     override suspend fun insertWorkout(row: WorkoutRow) = dao.insertWorkout(
         Workout(
@@ -78,11 +160,6 @@ internal class RoomCommandTx(private val db: TungDatabase, private val clock: ()
 
     override suspend fun setReps(id: String, reps: Int) = dao.updateReps(id, reps, clock())
 
-    override suspend fun markRoutineUsed(routineId: String) {
-        val now = clock()
-        routineDao.setLastUsedAt(routineId, lastUsedAt = now, updatedAt = now)
-    }
-
     override suspend fun deleteSet(id: String) {
         db.recordDeletes(SyncTable.SETS, listOf(id), clock())
         dao.deleteSet(id)
@@ -108,4 +185,10 @@ internal class RoomCommandTx(private val db: TungDatabase, private val clock: ()
     private fun WorkoutExercise.toRow() = WorkoutExerciseRow(id, workoutId, exerciseId, position)
 
     private fun SetEntry.toRow() = SetRow(id, workoutExerciseId, position, weightKg, reps, completed)
+
+    private fun RoutineExercise.toRow() = RoutineExerciseRow(id, routineId, exerciseId, position, targetSets, targetReps)
+
+    private fun Program.toRow() = ProgramRow(id, name, ProgramMode.fromKey(mode), isActive)
+
+    private fun ProgramDay.toRow() = ProgramDayRow(id, programId, routineId, position, weekdays)
 }

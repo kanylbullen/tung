@@ -22,6 +22,7 @@ import io.github.kanylbullen.tung.core.command.ExerciseCandidate
 import io.github.kanylbullen.tung.core.command.ExerciseResolver
 import io.github.kanylbullen.tung.core.command.PlanResolution
 import io.github.kanylbullen.tung.core.command.RefResolution
+import io.github.kanylbullen.tung.core.command.RoutineExercisePlan
 import io.github.kanylbullen.tung.core.command.Validation
 import io.github.kanylbullen.tung.core.command.resolvePlan
 import io.github.kanylbullen.tung.core.command.resolveRef
@@ -32,13 +33,13 @@ import io.github.kanylbullen.tung.core.command.validate
  * The app's one [CommandHandler]: every change to training data that a
  * screen makes goes through [execute], which validates ([validate]), resolves
  * exercise names ([resolveRef], [resolvePlan]) and then runs the command.
- * `add_exercise`, `add_set` and `log_set` run core's [CommandExecutor] over
- * Room ([WorkoutRepository.commandTx]), the same rules the server runs
- * (issue #87); the other commands still call the repositories, which keep
- * their transactions and rules. This class only maps commands onto them (and
- * asks for a sync after [Command.FinishWorkout], through
- * [onWorkoutFinished]), so the API and the MCP server that call the same
- * commands get the same behaviour as the buttons.
+ * Every workout, routine and program command runs core's [CommandExecutor]
+ * over Room ([WorkoutRepository.commandTx]) in one transaction, the same
+ * rules the server runs (issue #87); `set_rest` and `create_exercise` still
+ * call [ExerciseRepository], and `select_current` only reads. This class only
+ * maps commands onto them (and asks for a sync after [Command.FinishWorkout],
+ * through [onWorkoutFinished]), so the API and the MCP server that call the
+ * same commands get the same behaviour as the buttons.
  */
 class AppCommandHandler(
     private val db: TungDatabase,
@@ -96,70 +97,30 @@ class AppCommandHandler(
             }
             is Command.CreateExercise ->
                 Done(mapOf(EXERCISE_ID to exercises.createExercise(command.name, command.muscleGroup, command.equipment)))
-            is Command.SaveRoutine ->
-                routines.saveFromWorkout(command.workoutId, command.name)?.let { Done(mapOf(ROUTINE_ID to it)) }
-                    ?: Rejected(listOf("the workout has no logged set to save"))
+            is Command.SaveRoutine -> db.withTransaction { executor.saveRoutine(workouts.commandTx(), command.workoutId, command.name) }
             is Command.SaveRoutinePlan -> saveRoutinePlan(command)
-            is Command.CreateRoutine -> Done(mapOf(ROUTINE_ID to routines.create(command.name)))
-            is Command.RenameRoutine -> {
-                routines.rename(command.routineId, command.name)
-                Done()
-            }
-            is Command.DeleteRoutine -> {
-                routines.delete(command.routineId)
-                Done()
-            }
-            is Command.MoveRoutineExercise -> {
-                routines.move(command.routineExerciseId, command.delta)
-                Done()
-            }
-            is Command.AdjustTargetSets -> {
-                routines.adjustTargetSets(command.routineExerciseId, command.delta)
-                Done()
-            }
+            is Command.CreateRoutine -> db.withTransaction { executor.createRoutine(workouts.commandTx(), command.name) }
+            is Command.RenameRoutine -> db.withTransaction { executor.renameRoutine(workouts.commandTx(), command.routineId, command.name) }
+            is Command.DeleteRoutine -> db.withTransaction { executor.deleteRoutine(workouts.commandTx(), command.routineId) }
+            is Command.MoveRoutineExercise ->
+                db.withTransaction { executor.moveRoutineExercise(workouts.commandTx(), command.routineExerciseId, command.delta) }
+            is Command.AdjustTargetSets ->
+                db.withTransaction { executor.adjustTargetSets(workouts.commandTx(), command.routineExerciseId, command.delta) }
             is Command.AddRoutineExercise -> addRoutineExercise(command)
-            is Command.RemoveRoutineExercise -> {
-                routines.removeExercise(command.routineExerciseId)
-                Done()
-            }
-            is Command.SetTargetReps -> {
-                routines.setTargetReps(command.routineExerciseId, command.reps)
-                Done()
-            }
-            is Command.CreateProgram -> Done(mapOf(PROGRAM_ID to programs.create(command.name, command.mode)))
-            is Command.RenameProgram -> {
-                programs.rename(command.programId, command.name)
-                Done()
-            }
-            is Command.SetProgramMode -> {
-                programs.setMode(command.programId, command.mode)
-                Done()
-            }
-            is Command.ActivateProgram -> {
-                programs.activate(command.programId)
-                Done()
-            }
-            is Command.DeactivateProgram -> {
-                programs.deactivate(command.programId)
-                Done()
-            }
-            is Command.DeleteProgram -> {
-                programs.delete(command.programId)
-                Done()
-            }
-            is Command.AddProgramDay -> Done(mapOf(PROGRAM_DAY_ID to programs.addDay(command.programId, command.routineId)))
-            is Command.RemoveProgramDay -> {
-                programs.removeDay(command.dayId)
-                Done()
-            }
-            is Command.MoveProgramDay -> {
-                programs.moveDay(command.dayId, command.delta)
-                Done()
-            }
-            is Command.ToggleProgramWeekday -> {
-                programs.toggleWeekday(command.dayId, command.weekday)
-                Done()
-            }
+            is Command.RemoveRoutineExercise ->
+                db.withTransaction { executor.removeRoutineExercise(workouts.commandTx(), command.routineExerciseId) }
+            is Command.SetTargetReps -> db.withTransaction { executor.setTargetReps(workouts.commandTx(), command.routineExerciseId, command.reps) }
+            is Command.CreateProgram -> db.withTransaction { executor.createProgram(workouts.commandTx(), command.name, command.mode) }
+            is Command.RenameProgram -> db.withTransaction { executor.renameProgram(workouts.commandTx(), command.programId, command.name) }
+            is Command.SetProgramMode -> db.withTransaction { executor.setProgramMode(workouts.commandTx(), command.programId, command.mode) }
+            is Command.ActivateProgram -> db.withTransaction { executor.activateProgram(workouts.commandTx(), command.programId) }
+            is Command.DeactivateProgram -> db.withTransaction { executor.deactivateProgram(workouts.commandTx(), command.programId) }
+            is Command.DeleteProgram -> db.withTransaction { executor.deleteProgram(workouts.commandTx(), command.programId) }
+            is Command.AddProgramDay -> db.withTransaction { executor.addProgramDay(workouts.commandTx(), command.programId, command.routineId) }
+            is Command.RemoveProgramDay -> db.withTransaction { executor.removeProgramDay(workouts.commandTx(), command.dayId) }
+            is Command.MoveProgramDay -> db.withTransaction { executor.moveProgramDay(workouts.commandTx(), command.dayId, command.delta) }
+            is Command.ToggleProgramWeekday ->
+                db.withTransaction { executor.toggleProgramWeekday(workouts.commandTx(), command.dayId, command.weekday) }
         }
     }
 
@@ -185,13 +146,13 @@ class AppCommandHandler(
             is RefResolution.Unresolved -> return NeedsAnswers(listOf(resolution.question))
             is RefResolution.Resolved -> resolution.exercise
         }
-        val missing = Rejected(listOf("no routine ${command.routineId}"))
-        if (!routines.exists(command.routineId)) return missing
         val entries = extendedEntries(listOf(exercise))
-        val routineExerciseId = db.withTransaction {
-            routines.addExercise(command.routineId, rowFor(exercise, entries), command.targetSets, command.targetReps)
-        } ?: return missing
-        return Done(mapOf(ROUTINE_EXERCISE_ID to routineExerciseId, EXERCISE_ID to exercise.id))
+        return db.withTransaction {
+            val tx = workouts.commandTx()
+            // The routine first, so a missing one does not even get the extended entry's row; then core's rule.
+            tx.routine(command.routineId) ?: return@withTransaction Rejected(listOf("no routine ${command.routineId}"))
+            executor.addRoutineExercise(tx, command.routineId, rowFor(exercise, entries), command.targetSets, command.targetReps)
+        }
     }
 
     private suspend fun selectCurrent(command: Command.SelectCurrent): CommandResult {
@@ -229,13 +190,13 @@ class AppCommandHandler(
             is PlanResolution.Resolved -> resolution.plan
         }
         val entries = extendedEntries(plan.exercises.map { it.exercise })
-        val routineId = db.withTransaction {
-            routines.createFromPlan(
+        return db.withTransaction {
+            executor.saveRoutinePlan(
+                workouts.commandTx(),
                 plan.name,
-                plan.exercises.map { Triple(rowFor(it.exercise, entries), it.targetSets, it.targetReps) },
+                plan.exercises.map { RoutineExercisePlan(rowFor(it.exercise, entries), it.targetSets, it.targetReps) },
             )
         }
-        return Done(mapOf(ROUTINE_ID to routineId))
     }
 
     /** The extended-catalogue entries [candidates] refer to, read before a transaction starts (the catalogue loads on IO). */

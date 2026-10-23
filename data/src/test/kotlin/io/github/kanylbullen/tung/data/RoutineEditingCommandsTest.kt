@@ -176,8 +176,9 @@ class RoutineEditingCommandsTest {
             count("SELECT COUNT(*) FROM tombstones WHERE tableName = '${SyncTable.ROUTINE_EXERCISES.key}' AND id = '$first' AND deletedAt = 3000 AND dirty = 1"),
         )
 
-        // Gone already: nothing happens, nothing more is recorded.
-        done(Command.RemoveRoutineExercise(first))
+        // Gone already: refused by name, and nothing more is recorded.
+        val gone = run(Command.RemoveRoutineExercise(first))
+        assertEquals(CommandResult.Rejected(listOf("no exercise in a routine $first")), gone)
         assertEquals(1, count("SELECT COUNT(*) FROM tombstones"))
     }
 

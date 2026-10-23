@@ -1,21 +1,14 @@
 package io.github.kanylbullen.tung.server.command
 
 import io.github.kanylbullen.tung.core.Equipment
-import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.StartedBy
-import io.github.kanylbullen.tung.core.clampTargetSets
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandExecutor
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
-import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
-import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
-import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_EXERCISE_ID
-import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
-import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.CommandResult.Done
 import io.github.kanylbullen.tung.core.command.CommandResult.NeedsAnswers
@@ -23,23 +16,17 @@ import io.github.kanylbullen.tung.core.command.CommandResult.Rejected
 import io.github.kanylbullen.tung.core.command.ExerciseCandidate
 import io.github.kanylbullen.tung.core.command.PlanResolution
 import io.github.kanylbullen.tung.core.command.RefResolution
+import io.github.kanylbullen.tung.core.command.RoutineExercisePlan
 import io.github.kanylbullen.tung.core.command.Validation
 import io.github.kanylbullen.tung.core.command.resolvePlan
 import io.github.kanylbullen.tung.core.command.resolveRef
 import io.github.kanylbullen.tung.core.command.resolveRoutinePlan
 import io.github.kanylbullen.tung.core.command.validate
-import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.newId
-import io.github.kanylbullen.tung.core.routineTarget
-import io.github.kanylbullen.tung.core.toggleWeekday
 import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.Db
 import io.github.kanylbullen.tung.server.ExerciseStore
 import io.github.kanylbullen.tung.server.Exercises
-import io.github.kanylbullen.tung.server.ProgramDays
-import io.github.kanylbullen.tung.server.Programs
-import io.github.kanylbullen.tung.server.RoutineExercises
-import io.github.kanylbullen.tung.server.Routines
 import io.github.kanylbullen.tung.server.Sets
 import io.github.kanylbullen.tung.server.WorkoutExercises
 import io.github.kanylbullen.tung.server.WorkoutStore
@@ -57,7 +44,6 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.longParam
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
@@ -96,9 +82,10 @@ class CommandService(
  * The `seq` trigger stamps every written row, so a change made here reaches
  * the phone on its next sync like any other write.
  *
- * Where the app's repositories silently do nothing for an id that is gone,
- * this handler answers [Rejected] naming it: its callers are scripts and
- * assistants, which need to know.
+ * Every workout, routine and program command is core's [CommandExecutor]
+ * over [ExposedCommandTx] (issue #87), the rule the app runs over Room;
+ * `set_rest` and `create_exercise` write the exercise table here, and
+ * `select_current` only reads. An id that is gone is [Rejected], naming it.
  */
 class ServerCommandHandler(
     private val db: Db,
@@ -170,164 +157,41 @@ class ServerCommandHandler(
                 }
                 Done(mapOf(EXERCISE_ID to id))
             }
-            is Command.SaveRoutine -> saveRoutine(command, now)
+            is Command.SaveRoutine -> {
+                nameTooLong(command.name)?.let { return it }
+                executor.saveRoutine(commandTx(now), command.workoutId, command.name)
+            }
             is Command.SaveRoutinePlan -> saveRoutinePlan(command, now)
             is Command.CreateRoutine -> {
                 nameTooLong(command.name)?.let { return it }
-                Done(mapOf(ROUTINE_ID to insertRoutine(command.name.trim(), emptyList(), now)))
+                executor.createRoutine(commandTx(now), command.name)
             }
             is Command.RenameRoutine -> {
                 nameTooLong(command.name)?.let { return it }
-                liveRoutine(command.routineId) ?: return noSuch("routine", command.routineId)
-                Routines.update({ (Routines.userId eq userId) and (Routines.id eq command.routineId) }) {
-                    it[name] = command.name.trim()
-                    it[updatedAt] = bumped(updatedAt, now)
-                }
-                Done()
+                executor.renameRoutine(commandTx(now), command.routineId, command.name)
             }
-            is Command.DeleteRoutine -> {
-                liveRoutine(command.routineId) ?: return noSuch("routine", command.routineId)
-                // The program days that use it go too, as the foreign key cascades in the app; positions keep their gap, as there.
-                tombstone(ProgramDays, ProgramDays.updatedAt, ProgramDays.deletedAt, now) {
-                    (ProgramDays.userId eq userId) and (ProgramDays.routineId eq command.routineId)
-                }
-                tombstone(RoutineExercises, RoutineExercises.updatedAt, RoutineExercises.deletedAt, now) {
-                    (RoutineExercises.userId eq userId) and (RoutineExercises.routineId eq command.routineId)
-                }
-                tombstone(Routines, Routines.updatedAt, Routines.deletedAt, now) { (Routines.userId eq userId) and (Routines.id eq command.routineId) }
-                Done()
-            }
-            is Command.MoveRoutineExercise -> {
-                val re = liveRoutineExercise(command.routineExerciseId) ?: return noSuch("exercise in a routine", command.routineExerciseId)
-                moved(liveRoutineExercises(re[RoutineExercises.routineId]), RoutineExercises.id, command.routineExerciseId, command.delta)
-                    ?.let { writeRoutineExercisePositions(it, now) }
-                Done()
-            }
-            is Command.AdjustTargetSets -> {
-                val re = liveRoutineExercise(command.routineExerciseId) ?: return noSuch("exercise in a routine", command.routineExerciseId)
-                val target = clampTargetSets(re[RoutineExercises.targetSets] + command.delta)
-                if (target != re[RoutineExercises.targetSets]) {
-                    RoutineExercises.update({ (RoutineExercises.userId eq userId) and (RoutineExercises.id eq command.routineExerciseId) }) {
-                        it[targetSets] = target
-                        it[updatedAt] = bumped(updatedAt, now)
-                    }
-                }
-                Done()
-            }
+            is Command.DeleteRoutine -> executor.deleteRoutine(commandTx(now), command.routineId)
+            is Command.MoveRoutineExercise -> executor.moveRoutineExercise(commandTx(now), command.routineExerciseId, command.delta)
+            is Command.AdjustTargetSets -> executor.adjustTargetSets(commandTx(now), command.routineExerciseId, command.delta)
             is Command.AddRoutineExercise -> addRoutineExercise(command, now)
-            is Command.RemoveRoutineExercise -> {
-                val re = liveRoutineExercise(command.routineExerciseId) ?: return noSuch("exercise in a routine", command.routineExerciseId)
-                tombstone(RoutineExercises, RoutineExercises.updatedAt, RoutineExercises.deletedAt, now) {
-                    (RoutineExercises.userId eq userId) and (RoutineExercises.id eq command.routineExerciseId)
-                }
-                // Close the gap, as the app does, so the rest keep their order from 0.
-                writeRoutineExercisePositions(liveRoutineExercises(re[RoutineExercises.routineId]), now)
-                Done()
-            }
-            is Command.SetTargetReps -> {
-                val re = liveRoutineExercise(command.routineExerciseId) ?: return noSuch("exercise in a routine", command.routineExerciseId)
-                if (re[RoutineExercises.targetReps] != command.reps) {
-                    RoutineExercises.update({ (RoutineExercises.userId eq userId) and (RoutineExercises.id eq command.routineExerciseId) }) {
-                        it[targetReps] = command.reps
-                        it[updatedAt] = bumped(updatedAt, now)
-                    }
-                }
-                Done()
-            }
+            is Command.RemoveRoutineExercise -> executor.removeRoutineExercise(commandTx(now), command.routineExerciseId)
+            is Command.SetTargetReps -> executor.setTargetReps(commandTx(now), command.routineExerciseId, command.reps)
             is Command.CreateProgram -> {
                 nameTooLong(command.name)?.let { return it }
-                val id = newId()
-                Programs.insert {
-                    it[Programs.userId] = this@ServerCommandHandler.userId
-                    it[Programs.id] = id
-                    it[name] = command.name.trim()
-                    it[mode] = command.mode.key
-                    it[isActive] = false
-                    it[updatedAt] = now
-                }
-                Done(mapOf(PROGRAM_ID to id))
+                executor.createProgram(commandTx(now), command.name, command.mode)
             }
             is Command.RenameProgram -> {
                 nameTooLong(command.name)?.let { return it }
-                liveProgram(command.programId) ?: return noSuch("program", command.programId)
-                Programs.update({ (Programs.userId eq userId) and (Programs.id eq command.programId) }) {
-                    it[name] = command.name.trim()
-                    it[updatedAt] = bumped(updatedAt, now)
-                }
-                Done()
+                executor.renameProgram(commandTx(now), command.programId, command.name)
             }
-            is Command.SetProgramMode -> {
-                val program = liveProgram(command.programId) ?: return noSuch("program", command.programId)
-                // Days and their weekdays stay, so switching back restores the schedule.
-                if (program[Programs.mode] != command.mode.key) {
-                    Programs.update({ (Programs.userId eq userId) and (Programs.id eq command.programId) }) {
-                        it[mode] = command.mode.key
-                        it[updatedAt] = bumped(updatedAt, now)
-                    }
-                }
-                Done()
-            }
-            is Command.ActivateProgram -> {
-                val program = liveProgram(command.programId) ?: return noSuch("program", command.programId)
-                // At most one active program: every other one is switched off in the same transaction.
-                Programs.update({
-                    (Programs.userId eq userId) and Programs.deletedAt.isNull() and (Programs.isActive eq true) and (Programs.id neq command.programId)
-                }) {
-                    it[isActive] = false
-                    it[updatedAt] = bumped(updatedAt, now)
-                }
-                if (!program[Programs.isActive]) setActive(command.programId, true, now)
-                Done()
-            }
-            is Command.DeactivateProgram -> {
-                val program = liveProgram(command.programId) ?: return noSuch("program", command.programId)
-                if (program[Programs.isActive]) setActive(command.programId, false, now)
-                Done()
-            }
-            is Command.DeleteProgram -> {
-                liveProgram(command.programId) ?: return noSuch("program", command.programId)
-                tombstone(ProgramDays, ProgramDays.updatedAt, ProgramDays.deletedAt, now) {
-                    (ProgramDays.userId eq userId) and (ProgramDays.programId eq command.programId)
-                }
-                tombstone(Programs, Programs.updatedAt, Programs.deletedAt, now) { (Programs.userId eq userId) and (Programs.id eq command.programId) }
-                Done()
-            }
-            is Command.AddProgramDay -> {
-                liveProgram(command.programId) ?: return noSuch("program", command.programId)
-                liveRoutine(command.routineId) ?: return noSuch("routine", command.routineId)
-                val position = (liveDays(command.programId).maxOfOrNull { it[ProgramDays.position] } ?: -1) + 1
-                val id = newId()
-                ProgramDays.insert {
-                    it[ProgramDays.userId] = this@ServerCommandHandler.userId
-                    it[ProgramDays.id] = id
-                    it[programId] = command.programId
-                    it[routineId] = command.routineId
-                    it[ProgramDays.position] = position
-                    it[weekdays] = 0
-                    it[updatedAt] = now
-                }
-                Done(mapOf(PROGRAM_DAY_ID to id))
-            }
-            is Command.RemoveProgramDay -> {
-                val day = liveDay(command.dayId) ?: return noSuch("program day", command.dayId)
-                tombstone(ProgramDays, ProgramDays.updatedAt, ProgramDays.deletedAt, now) { (ProgramDays.userId eq userId) and (ProgramDays.id eq command.dayId) }
-                // Close the gap, so rotating days keep counting 1, 2, 3.
-                writeDayPositions(liveDays(day[ProgramDays.programId]), now)
-                Done()
-            }
-            is Command.MoveProgramDay -> {
-                val day = liveDay(command.dayId) ?: return noSuch("program day", command.dayId)
-                moved(liveDays(day[ProgramDays.programId]), ProgramDays.id, command.dayId, command.delta)?.let { writeDayPositions(it, now) }
-                Done()
-            }
-            is Command.ToggleProgramWeekday -> {
-                val day = liveDay(command.dayId) ?: return noSuch("program day", command.dayId)
-                ProgramDays.update({ (ProgramDays.userId eq userId) and (ProgramDays.id eq command.dayId) }) {
-                    it[weekdays] = toggleWeekday(day[ProgramDays.weekdays], command.weekday)
-                    it[updatedAt] = bumped(updatedAt, now)
-                }
-                Done()
-            }
+            is Command.SetProgramMode -> executor.setProgramMode(commandTx(now), command.programId, command.mode)
+            is Command.ActivateProgram -> executor.activateProgram(commandTx(now), command.programId)
+            is Command.DeactivateProgram -> executor.deactivateProgram(commandTx(now), command.programId)
+            is Command.DeleteProgram -> executor.deleteProgram(commandTx(now), command.programId)
+            is Command.AddProgramDay -> executor.addProgramDay(commandTx(now), command.programId, command.routineId)
+            is Command.RemoveProgramDay -> executor.removeProgramDay(commandTx(now), command.dayId)
+            is Command.MoveProgramDay -> executor.moveProgramDay(commandTx(now), command.dayId, command.delta)
+            is Command.ToggleProgramWeekday -> executor.toggleProgramWeekday(commandTx(now), command.dayId, command.weekday)
         }
     }
 
@@ -376,78 +240,26 @@ class ServerCommandHandler(
 
     // --- routines ---
 
-    private fun Transaction.saveRoutine(command: Command.SaveRoutine, now: Long): CommandResult {
-        nameTooLong(command.name)?.let { return it }
-        liveWorkout(command.workoutId) ?: return noSuch("workout", command.workoutId)
-        val targets = liveExercises(command.workoutId)
-            .map { we ->
-                we[WorkoutExercises.exerciseId] to routineTarget(
-                    liveSets(we[WorkoutExercises.id])
-                        .filter { isLogged(it[Sets.completed], it[Sets.reps]) }
-                        .map { LoggedSet(it[Sets.weightKg], it[Sets.reps]) },
-                )
-            }
-            .filter { (_, target) -> target.sets > 0 }
-        if (targets.isEmpty()) return Rejected(listOf("the workout has no logged set to save"))
-        val routineId = insertRoutine(command.name.trim(), targets.map { (exerciseId, target) -> Triple(exerciseId, target.sets, target.reps) }, now)
-        return Done(mapOf(ROUTINE_ID to routineId))
-    }
-
+    /** Resolves the whole plan first (anything unknown → questions, nothing written), then core's rule with the rows. */
     private suspend fun Transaction.saveRoutinePlan(command: Command.SaveRoutinePlan, now: Long): CommandResult {
         nameTooLong(command.plan.name)?.let { return it }
         val plan = when (val resolution = resolveRoutinePlan(command.plan, resolver)) {
             is PlanResolution.NeedsAnswers -> return NeedsAnswers(resolution.questions)
             is PlanResolution.Resolved -> resolution.plan
         }
-        val rows = plan.exercises.map { Triple(rowFor(it.exercise, now), it.targetSets, it.targetReps) }
-        return Done(mapOf(ROUTINE_ID to insertRoutine(plan.name, rows, now)))
+        val rows = plan.exercises.map { RoutineExercisePlan(rowFor(it.exercise, now), it.targetSets, it.targetReps) }
+        return executor.saveRoutinePlan(commandTx(now), plan.name, rows)
     }
 
-    /** Appends to a saved routine; resolves first, so an unknown name writes nothing. */
+    /** Appends to a saved routine; resolves first, so an unknown name writes nothing, and a missing routine not even the row. */
     private suspend fun Transaction.addRoutineExercise(command: Command.AddRoutineExercise, now: Long): CommandResult {
         val exercise = when (val resolution = resolveRef(command.exercise, resolver)) {
             is RefResolution.Unresolved -> return NeedsAnswers(listOf(resolution.question))
             is RefResolution.Resolved -> resolution.exercise
         }
-        liveRoutine(command.routineId) ?: return noSuch("routine", command.routineId)
-        val exerciseId = rowFor(exercise, now)
-        val position = (liveRoutineExercises(command.routineId).maxOfOrNull { it[RoutineExercises.position] } ?: -1) + 1
-        val id = newId()
-        RoutineExercises.insert {
-            it[userId] = this@ServerCommandHandler.userId
-            it[RoutineExercises.id] = id
-            it[routineId] = command.routineId
-            it[RoutineExercises.exerciseId] = exerciseId
-            it[RoutineExercises.position] = position
-            it[targetSets] = clampTargetSets(command.targetSets)
-            it[targetReps] = command.targetReps
-            it[updatedAt] = now
-        }
-        return Done(mapOf(ROUTINE_EXERCISE_ID to id, EXERCISE_ID to exerciseId))
-    }
-
-    private fun Transaction.insertRoutine(name: String, exercises: List<Triple<String, Int, Int?>>, now: Long): String {
-        val newRoutineId = newId()
-        Routines.insert {
-            it[userId] = this@ServerCommandHandler.userId
-            it[id] = newRoutineId
-            it[Routines.name] = name
-            it[lastUsedAt] = null
-            it[updatedAt] = now
-        }
-        exercises.forEachIndexed { position, (exerciseId, targetSets, targetReps) ->
-            RoutineExercises.insert {
-                it[userId] = this@ServerCommandHandler.userId
-                it[id] = newId()
-                it[routineId] = newRoutineId
-                it[RoutineExercises.exerciseId] = exerciseId
-                it[RoutineExercises.position] = position
-                it[RoutineExercises.targetSets] = clampTargetSets(targetSets)
-                it[RoutineExercises.targetReps] = targetReps
-                it[updatedAt] = now
-            }
-        }
-        return newRoutineId
+        val tx = commandTx(now)
+        tx.routine(command.routineId) ?: return noSuch("routine", command.routineId)
+        return executor.addRoutineExercise(tx, command.routineId, rowFor(exercise, now), command.targetSets, command.targetReps)
     }
 
     // --- rows ---
@@ -460,12 +272,6 @@ class ServerCommandHandler(
             .where { (WorkoutExercises.userId eq userId) and (WorkoutExercises.id eq id) and WorkoutExercises.deletedAt.isNull() }
             .singleOrNull()
 
-    private fun Transaction.liveExercises(workoutId: String): List<ResultRow> =
-        WorkoutExercises.selectAll()
-            .where { (WorkoutExercises.userId eq userId) and (WorkoutExercises.workoutId eq workoutId) and WorkoutExercises.deletedAt.isNull() }
-            .orderBy(WorkoutExercises.position, SortOrder.ASC)
-            .toList()
-
     private fun Transaction.liveSet(id: String): ResultRow? =
         Sets.selectAll().where { (Sets.userId eq userId) and (Sets.id eq id) and Sets.deletedAt.isNull() }.singleOrNull()
 
@@ -474,61 +280,6 @@ class ServerCommandHandler(
             .where { (Sets.userId eq userId) and (Sets.workoutExerciseId eq workoutExerciseId) and Sets.deletedAt.isNull() }
             .orderBy(Sets.position, SortOrder.ASC)
             .toList()
-
-    private fun Transaction.liveRoutine(id: String): ResultRow? =
-        Routines.selectAll().where { (Routines.userId eq userId) and (Routines.id eq id) and Routines.deletedAt.isNull() }.singleOrNull()
-
-    private fun Transaction.liveRoutineExercise(id: String): ResultRow? =
-        RoutineExercises.selectAll()
-            .where { (RoutineExercises.userId eq userId) and (RoutineExercises.id eq id) and RoutineExercises.deletedAt.isNull() }
-            .singleOrNull()
-
-    private fun Transaction.liveRoutineExercises(routineId: String): List<ResultRow> =
-        RoutineExercises.selectAll()
-            .where { (RoutineExercises.userId eq userId) and (RoutineExercises.routineId eq routineId) and RoutineExercises.deletedAt.isNull() }
-            .orderBy(RoutineExercises.position, SortOrder.ASC)
-            .toList()
-
-    private fun Transaction.liveProgram(id: String): ResultRow? =
-        Programs.selectAll().where { (Programs.userId eq userId) and (Programs.id eq id) and Programs.deletedAt.isNull() }.singleOrNull()
-
-    private fun Transaction.liveDay(id: String): ResultRow? =
-        ProgramDays.selectAll().where { (ProgramDays.userId eq userId) and (ProgramDays.id eq id) and ProgramDays.deletedAt.isNull() }.singleOrNull()
-
-    private fun Transaction.liveDays(programId: String): List<ResultRow> =
-        ProgramDays.selectAll()
-            .where { (ProgramDays.userId eq userId) and (ProgramDays.programId eq programId) and ProgramDays.deletedAt.isNull() }
-            .orderBy(ProgramDays.position, SortOrder.ASC)
-            .toList()
-
-    private fun Transaction.setActive(programId: String, active: Boolean, now: Long) {
-        Programs.update({ (Programs.userId eq userId) and (Programs.id eq programId) }) {
-            it[isActive] = active
-            it[updatedAt] = bumped(updatedAt, now)
-        }
-    }
-
-    private fun Transaction.writeRoutineExercisePositions(rows: List<ResultRow>, now: Long) {
-        rows.forEachIndexed { position, row ->
-            if (row[RoutineExercises.position] != position) {
-                RoutineExercises.update({ (RoutineExercises.userId eq userId) and (RoutineExercises.id eq row[RoutineExercises.id]) }) {
-                    it[RoutineExercises.position] = position
-                    it[updatedAt] = bumped(updatedAt, now)
-                }
-            }
-        }
-    }
-
-    private fun Transaction.writeDayPositions(days: List<ResultRow>, now: Long) {
-        days.forEachIndexed { position, day ->
-            if (day[ProgramDays.position] != position) {
-                ProgramDays.update({ (ProgramDays.userId eq userId) and (ProgramDays.id eq day[ProgramDays.id]) }) {
-                    it[ProgramDays.position] = position
-                    it[updatedAt] = bumped(updatedAt, now)
-                }
-            }
-        }
-    }
 
     /**
      * The id of [candidate]'s row, creating the row of an extended-catalogue
@@ -559,16 +310,6 @@ class ServerCommandHandler(
 
     private fun nameTooLong(name: String): Rejected? =
         if (name.trim().length > MAX_COMMAND_NAME) Rejected(listOf("the name can be at most $MAX_COMMAND_NAME characters")) else null
-}
-
-/** [rows] (in position order) with the row [id] moved [delta] places; null when it is not there or would move past an end. */
-private fun moved(rows: List<ResultRow>, idColumn: Column<String>, id: String, delta: Int): List<ResultRow>? {
-    val list = rows.toMutableList()
-    val from = list.indexOfFirst { it[idColumn] == id }
-    val to = from + delta
-    if (from < 0 || to !in list.indices) return null
-    list.add(to, list.removeAt(from))
-    return list
 }
 
 /** `GREATEST(now, updated_at + 1)`: the server's stamp for its own changes, so a write always moves a row forward. */

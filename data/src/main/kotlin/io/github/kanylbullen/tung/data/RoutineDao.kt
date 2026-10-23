@@ -40,13 +40,6 @@ interface RoutineDao {
     @Query("DELETE FROM routine WHERE id = :id")
     suspend fun deleteRoutine(id: String)
 
-    @Query("SELECT id FROM routine_exercise WHERE routineId = :routineId")
-    suspend fun routineExerciseIds(routineId: String): List<String>
-
-    /** The program days that use [routineId]; deleting the routine cascades to them. */
-    @Query("SELECT id FROM program_day WHERE routineId = :routineId")
-    suspend fun programDayIdsUsing(routineId: String): List<String>
-
     // --- exercises within a routine ---
 
     @Insert
@@ -70,9 +63,6 @@ interface RoutineDao {
 
     @Query("UPDATE routine_exercise SET targetReps = :targetReps, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setTargetReps(id: String, targetReps: Int?, updatedAt: Long)
-
-    @Query("SELECT COALESCE(MAX(position), -1) FROM routine_exercise WHERE routineId = :routineId")
-    suspend fun maxPosition(routineId: String): Int
 
     @Query("DELETE FROM routine_exercise WHERE id = :id")
     suspend fun deleteRoutineExercise(id: String)

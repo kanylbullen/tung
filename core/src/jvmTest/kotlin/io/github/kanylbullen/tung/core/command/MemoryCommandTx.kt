@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.core.command
 
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.ProgramMode
 
 /** A [CommandTx] over lists, for testing the executor's rules without a database. */
 class MemoryCommandTx : CommandTx {
@@ -9,6 +10,7 @@ class MemoryCommandTx : CommandTx {
     val allSets = mutableListOf<SetRow>()
     val routines = mutableListOf<RoutineRow>()
     val routineExerciseRows = mutableListOf<RoutineExerciseRow>()
+    val programs = mutableListOf<ProgramRow>()
     val programDays = mutableListOf<ProgramDayRow>()
 
     /** Last session per exercise id, as a store would answer it. */
@@ -51,8 +53,13 @@ class MemoryCommandTx : CommandTx {
         return id
     }
 
-    fun addProgramDay(routineId: String, programId: String = "p1", id: String = "d${nextId++}"): String {
-        programDays += ProgramDayRow(id, programId, routineId, programDays.count { it.programId == programId }, weekdays = 0)
+    fun addProgram(id: String = "p${nextId++}", name: String = "PPL", mode: ProgramMode = ProgramMode.ROTATING, active: Boolean = false): String {
+        programs += ProgramRow(id, name, mode, active)
+        return id
+    }
+
+    fun addProgramDay(routineId: String, programId: String = "p1", id: String = "d${nextId++}", weekdays: Int = 0): String {
+        programDays += ProgramDayRow(id, programId, routineId, programDays.count { it.programId == programId }, weekdays)
         return id
     }
 
@@ -79,10 +86,22 @@ class MemoryCommandTx : CommandTx {
 
     override suspend fun routine(id: String): RoutineRow? = routines.firstOrNull { it.id == id }
 
+    override suspend fun routineExercise(id: String): RoutineExerciseRow? = routineExerciseRows.firstOrNull { it.id == id }
+
     override suspend fun routineExercises(routineId: String): List<RoutineExerciseRow> =
         routineExerciseRows.filter { it.routineId == routineId }.sortedBy { it.position }
 
+    override suspend fun program(id: String): ProgramRow? = programs.firstOrNull { it.id == id }
+
+    override suspend fun activePrograms(): List<ProgramRow> = programs.filter { it.isActive }
+
     override suspend fun programDay(id: String): ProgramDayRow? = programDays.firstOrNull { it.id == id }
+
+    override suspend fun programDays(programId: String): List<ProgramDayRow> =
+        programDays.filter { it.programId == programId }.sortedBy { it.position }
+
+    override suspend fun programDaysUsing(routineId: String): List<ProgramDayRow> =
+        programDays.filter { it.routineId == routineId }.sortedBy { it.position }
 
     override suspend fun insertWorkout(row: WorkoutRow) {
         workouts += row
@@ -112,11 +131,72 @@ class MemoryCommandTx : CommandTx {
 
     override suspend fun setReps(id: String, reps: Int) = updateSet(id, "reps $id $reps") { it.copy(reps = reps) }
 
-    override suspend fun markRoutineUsed(routineId: String) {
-        val index = routines.indexOfFirst { it.id == routineId }
-        require(index >= 0) { "no routine $routineId" }
-        routines[index] = routines[index].copy(lastUsedAt = now)
-        writes += "used $routineId"
+    override suspend fun insertRoutine(row: RoutineRow) {
+        routines += row
+        writes += "insert routine ${row.id}"
+    }
+
+    override suspend fun insertRoutineExercise(row: RoutineExerciseRow) {
+        routineExerciseRows += row
+        writes += "insert routine exercise ${row.id}"
+    }
+
+    override suspend fun renameRoutine(id: String, name: String) = updateRoutine(id, "rename $id $name") { it.copy(name = name) }
+
+    override suspend fun markRoutineUsed(routineId: String) = updateRoutine(routineId, "used $routineId") { it.copy(lastUsedAt = now) }
+
+    override suspend fun setRoutineExercisePosition(id: String, position: Int) =
+        updateRoutineExercise(id, "position $id $position") { it.copy(position = position) }
+
+    override suspend fun setTargetSets(id: String, targetSets: Int) =
+        updateRoutineExercise(id, "target sets $id $targetSets") { it.copy(targetSets = targetSets) }
+
+    override suspend fun setTargetReps(id: String, targetReps: Int?) =
+        updateRoutineExercise(id, "target reps $id $targetReps") { it.copy(targetReps = targetReps) }
+
+    override suspend fun deleteRoutineExercise(id: String) {
+        require(routineExerciseRows.removeAll { it.id == id }) { "no routine exercise $id" }
+        writes += "delete routine exercise $id"
+    }
+
+    override suspend fun deleteRoutine(id: String) {
+        check(routineExerciseRows.none { it.routineId == id }) { "routine $id still has exercises" }
+        check(programDays.none { it.routineId == id }) { "routine $id is still used by a program day" }
+        require(routines.removeAll { it.id == id }) { "no routine $id" }
+        writes += "delete routine $id"
+    }
+
+    override suspend fun insertProgram(row: ProgramRow) {
+        programs += row
+        writes += "insert program ${row.id}"
+    }
+
+    override suspend fun insertProgramDay(row: ProgramDayRow) {
+        programDays += row
+        writes += "insert day ${row.id}"
+    }
+
+    override suspend fun renameProgram(id: String, name: String) = updateProgram(id, "rename $id $name") { it.copy(name = name) }
+
+    override suspend fun setProgramMode(id: String, mode: ProgramMode) = updateProgram(id, "mode $id ${mode.key}") { it.copy(mode = mode) }
+
+    override suspend fun setProgramActive(id: String, active: Boolean) = updateProgram(id, "active $id $active") { it.copy(isActive = active) }
+
+    override suspend fun setProgramDayPosition(id: String, position: Int) =
+        updateDay(id, "day position $id $position") { it.copy(position = position) }
+
+    override suspend fun setProgramDayWeekdays(id: String, weekdays: Int) =
+        updateDay(id, "weekdays $id $weekdays") { it.copy(weekdays = weekdays) }
+
+    override suspend fun deleteProgramDay(id: String) {
+        require(programDays.removeAll { it.id == id }) { "no program day $id" }
+        writes += "delete day $id"
+    }
+
+    override suspend fun deleteProgram(id: String) {
+        check(programDays.none { it.programId == id }) { "program $id still has days" }
+        require(programs.removeAll { it.id == id }) { "no program $id" }
+        writes += "delete program $id"
     }
 
     override suspend fun deleteSet(id: String) {
@@ -138,10 +218,21 @@ class MemoryCommandTx : CommandTx {
         writes += "delete workout $id"
     }
 
-    private fun updateSet(id: String, write: String, change: (SetRow) -> SetRow) {
-        val index = allSets.indexOfFirst { it.id == id }
-        require(index >= 0) { "no set $id" }
-        allSets[index] = change(allSets[index])
+    private fun updateSet(id: String, write: String, change: (SetRow) -> SetRow) = update(allSets, id, { it.id }, write, change)
+
+    private fun updateRoutine(id: String, write: String, change: (RoutineRow) -> RoutineRow) = update(routines, id, { it.id }, write, change)
+
+    private fun updateRoutineExercise(id: String, write: String, change: (RoutineExerciseRow) -> RoutineExerciseRow) =
+        update(routineExerciseRows, id, { it.id }, write, change)
+
+    private fun updateProgram(id: String, write: String, change: (ProgramRow) -> ProgramRow) = update(programs, id, { it.id }, write, change)
+
+    private fun updateDay(id: String, write: String, change: (ProgramDayRow) -> ProgramDayRow) = update(programDays, id, { it.id }, write, change)
+
+    private fun <T> update(rows: MutableList<T>, id: String, idOf: (T) -> String, write: String, change: (T) -> T) {
+        val index = rows.indexOfFirst { idOf(it) == id }
+        require(index >= 0) { "no row $id" }
+        rows[index] = change(rows[index])
         writes += write
     }
 }

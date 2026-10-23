@@ -1,7 +1,13 @@
 package io.github.kanylbullen.tung.core.command
 
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_EXERCISE_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
@@ -12,9 +18,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The rules of `add_exercise`, `add_set` and `log_set` over an in-memory
- * store: what the app's and the server's command tests check against their
- * databases, once, where the rule lives (issue #87).
+ * The rules of the commands over an in-memory store: what the app's and the
+ * server's command tests check against their databases, once, where the rule
+ * lives (issue #87).
  */
 class CommandExecutorTest {
 
@@ -356,5 +362,271 @@ class CommandExecutorTest {
             rejected { executor.logSet(tx, Command.LogSet(workoutId, empty)) }.reasons,
         )
         assertEquals(emptyList<String>(), tx.writes)
+    }
+
+    // --- routines ---
+
+    private fun routineOrder(routineId: String) = runBlocking { tx.routineExercises(routineId) }.map { it.exerciseId }
+
+    private fun routinePositions(routineId: String) = runBlocking { tx.routineExercises(routineId) }.map { it.position }
+
+    @Test
+    fun createRoutineMakesAnEmptyRoutineWithATrimmedName() {
+        val routineId = done { executor.createRoutine(tx, "  Legs ") }.ids.getValue(ROUTINE_ID)
+        assertEquals(RoutineRow(routineId, "Legs", lastUsedAt = null), runBlocking { tx.routine(routineId) })
+        assertEquals(emptyList<RoutineExerciseRow>(), runBlocking { tx.routineExercises(routineId) })
+        assertEquals(listOf("insert routine $routineId"), tx.writes)
+    }
+
+    @Test
+    fun saveRoutineTakesTheLoggedSetsPerExerciseAndTheMostCommonReps() {
+        val workoutId = tx.addWorkout()
+        val bench = tx.addExercise(workoutId, "bench")
+        tx.addSet(bench, 80.0, 8, completed = true)
+        tx.addSet(bench, 80.0, 8, completed = true)
+        tx.addSet(bench, 80.0, 6, completed = true)
+        tx.addSet(bench, 80.0, 6, completed = false)
+        tx.addSet(bench, 80.0, 0, completed = true)
+        val squat = tx.addExercise(workoutId, "squat")
+        tx.addSet(squat, 100.0, 5, completed = false)
+        val row = tx.addExercise(workoutId, "row")
+        tx.addSet(row, 60.0, 10, completed = true)
+        tx.addSet(row, 60.0, 12, completed = true)
+
+        val routineId = done { executor.saveRoutine(tx, workoutId, " Push ") }.ids.getValue(ROUTINE_ID)
+        assertEquals("Push", runBlocking { tx.routine(routineId) }?.name)
+        assertEquals(
+            "one target set per logged set, the most common reps (the first of a tie); squat had none logged",
+            listOf(Triple("bench", 3, 8), Triple("row", 2, 10)),
+            runBlocking { tx.routineExercises(routineId) }.map { Triple(it.exerciseId, it.targetSets, it.targetReps) },
+        )
+        assertEquals(listOf(0, 1), routinePositions(routineId))
+
+        val again = done { executor.saveRoutine(tx, workoutId, "Push") }.ids.getValue(ROUTINE_ID)
+        assertTrue("saving twice makes two routines", again != routineId)
+    }
+
+    @Test
+    fun saveRoutineRefusesAWorkoutWithNothingLoggedAndWritesNothing() {
+        val workoutId = tx.addWorkout()
+        tx.addSet(tx.addExercise(workoutId, "bench"), 80.0, 8, completed = false)
+        assertEquals(listOf("the workout has no logged set to save"), rejected { executor.saveRoutine(tx, workoutId, "Push") }.reasons)
+        assertEquals(listOf("no workout nope"), rejected { executor.saveRoutine(tx, "nope", "Push") }.reasons)
+        assertEquals(emptyList<String>(), tx.writes)
+    }
+
+    @Test
+    fun saveRoutinePlanTakesTheCallersIdsAndKeepsTargetSetsInRange() {
+        val plan = listOf(RoutineExercisePlan("bench", 3, 8), RoutineExercisePlan("squat", 25, null))
+        val imported = done { executor.saveRoutinePlan(tx, "Legs", plan, routineId = "r-import", routineExerciseIds = listOf("re-a", "re-b")) }
+        assertEquals("r-import", imported.ids[ROUTINE_ID])
+        assertEquals(
+            listOf(RoutineExerciseRow("re-a", "r-import", "bench", 0, 3, 8), RoutineExerciseRow("re-b", "r-import", "squat", 1, 20, null)),
+            runBlocking { tx.routineExercises("r-import") },
+        )
+        val own = done { executor.saveRoutinePlan(tx, "Legs", plan) }.ids.getValue(ROUTINE_ID)
+        assertTrue("new ids otherwise", own.startsWith("id"))
+        assertEquals(listOf("bench", "squat"), routineOrder(own))
+    }
+
+    @Test
+    fun renameRoutineTrimsAndRefusesWhatIsGone() {
+        val routineId = tx.addRoutine(name = "Push")
+        done { executor.renameRoutine(tx, routineId, " Push day ") }
+        assertEquals("Push day", runBlocking { tx.routine(routineId) }?.name)
+        assertEquals(listOf("no routine nope"), rejected { executor.renameRoutine(tx, "nope", "x") }.reasons)
+    }
+
+    @Test
+    fun deleteRoutineTakesItsExercisesAndTheDaysThatStartIt() {
+        val routineId = tx.addRoutine()
+        val bench = tx.addRoutineExercise(routineId, "bench", 3)
+        val squat = tx.addRoutineExercise(routineId, "squat", 3)
+        val other = tx.addRoutine(name = "Pull")
+        tx.addProgram("p1")
+        val day1 = tx.addProgramDay(routineId, "p1")
+        val day2 = tx.addProgramDay(other, "p1")
+        val day3 = tx.addProgramDay(routineId, "p1")
+
+        done { executor.deleteRoutine(tx, routineId) }
+        assertNull(runBlocking { tx.routine(routineId) })
+        assertEquals(listOf(day2), runBlocking { tx.programDays("p1") }.map { it.id })
+        assertEquals("the other day keeps its position", 1, runBlocking { tx.programDay(day2) }?.position)
+        assertEquals("the other routine stays", "Pull", runBlocking { tx.routine(other) }?.name)
+        assertEquals(
+            listOf("delete day $day1", "delete day $day3", "delete routine exercise $bench", "delete routine exercise $squat", "delete routine $routineId"),
+            tx.writes,
+        )
+        assertEquals(listOf("no routine $routineId"), rejected { executor.deleteRoutine(tx, routineId) }.reasons)
+    }
+
+    @Test
+    fun addRoutineExerciseAppendsLastWithItsTargets() {
+        val routineId = tx.addRoutine()
+        tx.addRoutineExercise(routineId, "bench", 3, 8)
+        val result = done { executor.addRoutineExercise(tx, routineId, "squat", targetSets = 5, targetReps = 5) }
+        val added = result.ids.getValue(ROUTINE_EXERCISE_ID)
+        assertEquals("squat", result.ids[EXERCISE_ID])
+        assertEquals(RoutineExerciseRow(added, routineId, "squat", 1, 5, 5), runBlocking { tx.routineExercise(added) })
+        val clamped = done { executor.addRoutineExercise(tx, routineId, "row", targetSets = 99, targetReps = null) }.ids.getValue(ROUTINE_EXERCISE_ID)
+        assertEquals(20, runBlocking { tx.routineExercise(clamped) }?.targetSets)
+        assertEquals(listOf(0, 1, 2), routinePositions(routineId))
+        assertEquals(listOf("no routine nope"), rejected { executor.addRoutineExercise(tx, "nope", "bench", 3, null) }.reasons)
+    }
+
+    @Test
+    fun removeRoutineExerciseClosesTheGapAndWritesOnlyTheRowsThatMove() {
+        val routineId = tx.addRoutine()
+        val bench = tx.addRoutineExercise(routineId, "bench", 3)
+        val squat = tx.addRoutineExercise(routineId, "squat", 3)
+        val row = tx.addRoutineExercise(routineId, "row", 3)
+        done { executor.removeRoutineExercise(tx, bench) }
+        assertEquals(listOf("squat", "row"), routineOrder(routineId))
+        assertEquals(listOf(0, 1), routinePositions(routineId))
+        assertEquals(listOf("delete routine exercise $bench", "position $squat 0", "position $row 1"), tx.writes)
+        assertEquals("gone already", listOf("no exercise in a routine $bench"), rejected { executor.removeRoutineExercise(tx, bench) }.reasons)
+        assertEquals(3, tx.writes.size)
+    }
+
+    @Test
+    fun moveRoutineExerciseSwapsNeighboursAndStopsAtTheEnds() {
+        val routineId = tx.addRoutine()
+        val bench = tx.addRoutineExercise(routineId, "bench", 3)
+        val squat = tx.addRoutineExercise(routineId, "squat", 3)
+        val row = tx.addRoutineExercise(routineId, "row", 3)
+        done { executor.moveRoutineExercise(tx, row, -1) }
+        assertEquals(listOf("bench", "row", "squat"), routineOrder(routineId))
+        assertEquals("only the two that changed", listOf("position $row 1", "position $squat 2"), tx.writes)
+        done { executor.moveRoutineExercise(tx, bench, -1) }
+        done { executor.moveRoutineExercise(tx, squat, 1) }
+        assertEquals("past an end nothing moves", 2, tx.writes.size)
+        done { executor.moveRoutineExercise(tx, bench, 2) }
+        assertEquals(listOf("row", "squat", "bench"), routineOrder(routineId))
+        assertEquals(listOf("no exercise in a routine nope"), rejected { executor.moveRoutineExercise(tx, "nope", 1) }.reasons)
+    }
+
+    @Test
+    fun targetSetsAndRepsAreWrittenOnlyWhenTheyChange() {
+        val routineId = tx.addRoutine()
+        val bench = tx.addRoutineExercise(routineId, "bench", 3, 8)
+        done { executor.adjustTargetSets(tx, bench, 1) }
+        assertEquals(4, runBlocking { tx.routineExercise(bench) }?.targetSets)
+        done { executor.adjustTargetSets(tx, bench, 100) }
+        assertEquals("clamped to the range", 20, runBlocking { tx.routineExercise(bench) }?.targetSets)
+        done { executor.adjustTargetSets(tx, bench, 1) }
+        done { executor.adjustTargetSets(tx, bench, -100) }
+        done { executor.adjustTargetSets(tx, bench, -1) }
+        assertEquals(listOf("target sets $bench 4", "target sets $bench 20", "target sets $bench 1"), tx.writes)
+
+        tx.writes.clear()
+        done { executor.setTargetReps(tx, bench, 12) }
+        done { executor.setTargetReps(tx, bench, 12) }
+        done { executor.setTargetReps(tx, bench, null) }
+        done { executor.setTargetReps(tx, bench, null) }
+        assertEquals(listOf("target reps $bench 12", "target reps $bench null"), tx.writes)
+        assertEquals(listOf("no exercise in a routine nope"), rejected { executor.setTargetReps(tx, "nope", 8) }.reasons)
+        assertEquals(listOf("no exercise in a routine nope"), rejected { executor.adjustTargetSets(tx, "nope", 1) }.reasons)
+    }
+
+    // --- programs ---
+
+    @Test
+    fun createProgramStartsInactiveAndEmptyWithATrimmedName() {
+        val programId = done { executor.createProgram(tx, " PPL ", ProgramMode.ROTATING) }.ids.getValue(PROGRAM_ID)
+        assertEquals(ProgramRow(programId, "PPL", ProgramMode.ROTATING, isActive = false), runBlocking { tx.program(programId) })
+        assertEquals(emptyList<ProgramDayRow>(), runBlocking { tx.programDays(programId) })
+        done { executor.renameProgram(tx, programId, " Push pull legs ") }
+        assertEquals("Push pull legs", runBlocking { tx.program(programId) }?.name)
+        assertEquals(listOf("no program nope"), rejected { executor.renameProgram(tx, "nope", "x") }.reasons)
+    }
+
+    @Test
+    fun theModeSwitchesWithoutTouchingTheDays() {
+        val routineId = tx.addRoutine()
+        val programId = tx.addProgram(mode = ProgramMode.ROTATING)
+        val day = tx.addProgramDay(routineId, programId, weekdays = 2)
+        done { executor.setProgramMode(tx, programId, ProgramMode.FIXED) }
+        done { executor.setProgramMode(tx, programId, ProgramMode.FIXED) }
+        assertEquals(ProgramMode.FIXED, runBlocking { tx.program(programId) }?.mode)
+        assertEquals("the day and its weekdays stay", 2, runBlocking { tx.programDay(day) }?.weekdays)
+        assertEquals(listOf("mode $programId fixed"), tx.writes)
+        assertEquals(listOf("no program nope"), rejected { executor.setProgramMode(tx, "nope", ProgramMode.FIXED) }.reasons)
+    }
+
+    @Test
+    fun atMostOneProgramIsActive() {
+        val one = tx.addProgram(active = true)
+        val two = tx.addProgram(active = true)
+        val three = tx.addProgram()
+        done { executor.activateProgram(tx, three) }
+        assertEquals(listOf(three), runBlocking { tx.activePrograms() }.map { it.id })
+        assertEquals(listOf("active $one false", "active $two false", "active $three true"), tx.writes)
+        done { executor.activateProgram(tx, three) }
+        assertEquals("already active: nothing written", 3, tx.writes.size)
+        done { executor.deactivateProgram(tx, one) }
+        assertEquals("already inactive: nothing written", 3, tx.writes.size)
+        done { executor.deactivateProgram(tx, three) }
+        assertEquals(emptyList<ProgramRow>(), runBlocking { tx.activePrograms() })
+        assertEquals(listOf("no program nope"), rejected { executor.activateProgram(tx, "nope") }.reasons)
+        assertEquals(listOf("no program nope"), rejected { executor.deactivateProgram(tx, "nope") }.reasons)
+    }
+
+    @Test
+    fun deleteProgramTakesItsDaysAndLeavesTheRoutines() {
+        val routineId = tx.addRoutine()
+        val programId = tx.addProgram()
+        val day1 = tx.addProgramDay(routineId, programId)
+        val day2 = tx.addProgramDay(routineId, programId)
+        val other = tx.addProgram()
+        val otherDay = tx.addProgramDay(routineId, other)
+        done { executor.deleteProgram(tx, programId) }
+        assertNull(runBlocking { tx.program(programId) })
+        assertEquals(listOf(otherDay), runBlocking { tx.programDaysUsing(routineId) }.map { it.id })
+        assertEquals(listOf("delete day $day1", "delete day $day2", "delete program $programId"), tx.writes)
+        assertEquals(listOf("no program $programId"), rejected { executor.deleteProgram(tx, programId) }.reasons)
+    }
+
+    @Test
+    fun addProgramDayNeedsAProgramAndARoutineAndGoesLast() {
+        val routineId = tx.addRoutine()
+        val programId = tx.addProgram()
+        val first = done { executor.addProgramDay(tx, programId, routineId) }.ids.getValue(PROGRAM_DAY_ID)
+        val second = done { executor.addProgramDay(tx, programId, routineId) }.ids.getValue(PROGRAM_DAY_ID)
+        assertEquals(
+            listOf(ProgramDayRow(first, programId, routineId, 0, 0), ProgramDayRow(second, programId, routineId, 1, 0)),
+            runBlocking { tx.programDays(programId) },
+        )
+        assertEquals(listOf("no program nope"), rejected { executor.addProgramDay(tx, "nope", routineId) }.reasons)
+        assertEquals(listOf("no routine nope"), rejected { executor.addProgramDay(tx, programId, "nope") }.reasons)
+        assertEquals(2, tx.writes.size)
+    }
+
+    @Test
+    fun daysAreRemovedMovedAndGivenWeekdays() {
+        val routineId = tx.addRoutine()
+        val programId = tx.addProgram()
+        val day1 = tx.addProgramDay(routineId, programId)
+        val day2 = tx.addProgramDay(routineId, programId)
+        val day3 = tx.addProgramDay(routineId, programId)
+
+        done { executor.removeProgramDay(tx, day1) }
+        assertEquals(listOf(day2 to 0, day3 to 1), runBlocking { tx.programDays(programId) }.map { it.id to it.position })
+        assertEquals(listOf("delete day $day1", "day position $day2 0", "day position $day3 1"), tx.writes)
+        assertEquals(listOf("no program day $day1"), rejected { executor.removeProgramDay(tx, day1) }.reasons)
+
+        tx.writes.clear()
+        done { executor.moveProgramDay(tx, day3, -1) }
+        assertEquals(listOf(day3, day2), runBlocking { tx.programDays(programId) }.map { it.id })
+        done { executor.moveProgramDay(tx, day3, -1) }
+        assertEquals("past the top nothing moves", listOf("day position $day3 0", "day position $day2 1"), tx.writes)
+        assertEquals(listOf("no program day nope"), rejected { executor.moveProgramDay(tx, "nope", 1) }.reasons)
+
+        tx.writes.clear()
+        done { executor.toggleProgramWeekday(tx, day2, 1) }
+        done { executor.toggleProgramWeekday(tx, day2, 3) }
+        assertEquals("Monday and Wednesday", 1 or 4, runBlocking { tx.programDay(day2) }?.weekdays)
+        done { executor.toggleProgramWeekday(tx, day2, 1) }
+        assertEquals(4, runBlocking { tx.programDay(day2) }?.weekdays)
+        assertEquals(listOf("no program day nope"), rejected { executor.toggleProgramWeekday(tx, "nope", 1) }.reasons)
     }
 }

@@ -2,13 +2,17 @@ package io.github.kanylbullen.tung.data
 
 import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.ProgramMode
-import io.github.kanylbullen.tung.core.newId
-import io.github.kanylbullen.tung.core.sync.SyncTable
-import io.github.kanylbullen.tung.core.toggleWeekday
+import io.github.kanylbullen.tung.core.command.CommandExecutor
+import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
+import io.github.kanylbullen.tung.core.command.id
 import kotlinx.coroutines.flow.Flow
 
 /**
- * All program reads and writes. Starting a program day goes through
+ * All program reads, and the Room-side entry to the program writes for
+ * callers that are not commands (tests): each runs core's rule
+ * ([CommandExecutor], issue #87) over this database, as `AppCommandHandler`
+ * does for the commands. Starting a program day goes through
  * [RoutineRepository.start] with the day's id, so the workout records it.
  */
 class ProgramRepository(
@@ -16,6 +20,10 @@ class ProgramRepository(
     private val dao: ProgramDao = db.programDao(),
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
+
+    private val executor = CommandExecutor()
+
+    private fun tx() = RoomCommandTx(db, clock)
 
     fun observePrograms(): Flow<List<ProgramSummaryRow>> = dao.observeProgramSummaries()
 
@@ -29,98 +37,36 @@ class ProgramRepository(
     fun observeLastCompletedDayId(programId: String): Flow<String?> = dao.observeLastCompletedDayId(programId)
 
     /** Creates an inactive, empty program and returns its id. */
-    suspend fun create(name: String, mode: ProgramMode): String {
-        val trimmed = name.trim()
-        require(trimmed.isNotEmpty()) { "a program needs a name" }
-        val program = Program(id = newId(), name = trimmed, mode = mode.key, isActive = false, updatedAt = clock())
-        dao.insertProgram(program)
-        return program.id
-    }
-
-    suspend fun rename(programId: String, name: String) {
-        val trimmed = name.trim()
-        require(trimmed.isNotEmpty()) { "a program needs a name" }
-        dao.rename(programId, trimmed, clock())
-    }
-
-    /**
-     * Switches the program between fixed and rotating. Its days, their order
-     * and their weekdays are kept, so switching back restores the schedule.
-     */
-    suspend fun setMode(programId: String, mode: ProgramMode) = db.withTransaction {
-        val program = dao.getProgram(programId) ?: return@withTransaction
-        if (program.mode != mode.key) dao.setMode(programId, mode.key, clock())
+    suspend fun create(name: String, mode: ProgramMode): String = db.withTransaction {
+        checkNotNull(executor.createProgram(tx(), name, mode).id(PROGRAM_ID))
     }
 
     /** Makes [programId] the one active program; every other program is deactivated in the same transaction. */
     suspend fun activate(programId: String) = db.withTransaction {
-        dao.getProgram(programId) ?: return@withTransaction
-        val now = clock()
-        dao.deactivateOthers(programId, now)
-        dao.setActive(programId, true, now)
+        executor.activateProgram(tx(), programId)
+        Unit
     }
-
-    /** Leaves no program active, if [programId] was the active one. */
-    suspend fun deactivate(programId: String) = dao.setActive(programId, false, clock())
 
     /** Deletes the program and its days, with a tombstone for each. Workouts started from it are kept. */
     suspend fun delete(programId: String) = db.withTransaction {
-        dao.getProgram(programId) ?: return@withTransaction
-        val now = clock()
-        db.recordDeletes(SyncTable.PROGRAM_DAYS, dao.dayIds(programId), now)
-        db.recordDeletes(SyncTable.PROGRAMS, listOf(programId), now)
-        dao.deleteProgram(programId)
+        executor.deleteProgram(tx(), programId)
+        Unit
     }
 
     /** Adds [routineId] as the program's last day, with no weekdays. Returns the day's id. */
     suspend fun addDay(programId: String, routineId: String): String = db.withTransaction {
-        val day = ProgramDay(
-            id = newId(),
-            programId = programId,
-            routineId = routineId,
-            position = dao.maxPosition(programId) + 1,
-            weekdays = 0,
-            updatedAt = clock(),
-        )
-        dao.insertDay(day)
-        day.id
+        checkNotNull(executor.addProgramDay(tx(), programId, routineId).id(PROGRAM_DAY_ID))
     }
 
     /** Removes one day and closes the gap, so the rest keep counting 1, 2, 3. */
     suspend fun removeDay(dayId: String) = db.withTransaction {
-        val day = dao.getDay(dayId) ?: return@withTransaction
-        db.recordDeletes(SyncTable.PROGRAM_DAYS, listOf(dayId), clock())
-        dao.deleteDay(dayId)
-        renumber(day.programId)
+        executor.removeProgramDay(tx(), dayId)
+        Unit
     }
 
-    /**
-     * Moves one day [delta] places (-1 up, +1 down), reading the order inside
-     * the transaction. A move past either end does nothing.
-     */
-    suspend fun moveDay(dayId: String, delta: Int) = db.withTransaction {
-        val day = dao.getDay(dayId) ?: return@withTransaction
-        val days = dao.getDays(day.programId).toMutableList()
-        val from = days.indexOfFirst { it.id == dayId }
-        val to = from + delta
-        if (from < 0 || to !in days.indices) return@withTransaction
-        days.add(to, days.removeAt(from))
-        writePositions(days)
-    }
-
-    /** Switches [weekday] (ISO, 1 Monday … 7 Sunday) on or off for one day; reads the current value itself. */
+    /** Switches [weekday] (ISO, 1 Monday … 7 Sunday) on or off for one day. */
     suspend fun toggleWeekday(dayId: String, weekday: Int) = db.withTransaction {
-        val day = dao.getDay(dayId) ?: return@withTransaction
-        dao.setWeekdays(dayId, toggleWeekday(day.weekdays, weekday), clock())
-    }
-
-    private suspend fun renumber(programId: String) = writePositions(dao.getDays(programId))
-
-    /** Gives [days] the positions 0, 1, 2 … in list order; only rows whose position changes are written. */
-    private suspend fun writePositions(days: List<ProgramDay>) {
-        val now = clock()
-        days.forEachIndexed { position, day ->
-            if (day.position != position) dao.setPosition(day.id, position, now)
-        }
+        executor.toggleProgramWeekday(tx(), dayId, weekday)
+        Unit
     }
 }

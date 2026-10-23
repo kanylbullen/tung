@@ -726,37 +726,54 @@ its signal to commands, never a new path into the database
   without touching anything when it fails. A new mutation = a new `Command`
   data class, a name in `CommandNames`, a branch in `validate` and in the
   handler (both `when`s are exhaustive, so the compiler points at them).
-- **One rule, in core (issue #87).** The rules themselves are moving out of
-  the handlers into `core/command/CommandExecutor.kt`, over a storage
-  interface, `CommandTx` (`CommandStore.kt`: the live rows as
-  `WorkoutRow`/`WorkoutExerciseRow`/`SetRow`, `previousSession`,
-  `routineTargetSets`, inserts and `tickSet`), so that the phone, the
-  server and later a web or iOS client cannot drift apart. Each handler
-  validates, resolves names, opens its own transaction and calls the
-  executor with its store: `data/RoomCommandTx` (the DAO inside
-  `db.withTransaction`, stamping `updatedAt` and `dirty` as every write
-  does; `WorkoutRepository.commandTx()`) and the server's
-  `command/ExposedCommandTx` (inside the locked transaction, stamping
-  `GREATEST(now, updated_at + 1)`). Ids come from the executor, time from
-  the store; the exercise row an `ExerciseRef` resolves to (an extended
-  entry's is created the first time) stays with the handler. Moved so far:
-  every workout command (`start_workout`, `start_routine`, `add_exercise`,
-  `remove_exercise`, `add_set`, `remove_set`, `set_weight`, `set_reps`,
-  `tick_set`, `log_set`, `finish_workout`, `delete_workout`, `apply_plan`);
-  the routine and program commands are next, in the order the issue lists.
-  The executor is strict on every platform (an id that does not exist is
-  `Rejected`, `log_set` refuses a set with 0 reps, which every client
-  already guards: the app opens the reps sheet instead, and finishing a
-  finished workout leaves it as it is). `CommandExecutorTest` (core, over
-  `MemoryCommandTx`) is where the rules are tested; `LogSetCommandsTest`,
-  `AddExerciseCommandsTest`, `DirtyTrackingTest` and the server's
+- **One rule, in core (issue #87).** The rules themselves live in
+  `core/command/CommandExecutor.kt`, over a storage interface, `CommandTx`
+  (`CommandStore.kt`: the live rows as `WorkoutRow`/`WorkoutExerciseRow`/
+  `SetRow`/`RoutineRow`/`RoutineExerciseRow`/`ProgramRow`/`ProgramDayRow`,
+  `previousSession`, `routineTargetSets`, `activePrograms`,
+  `programDaysUsing`, inserts, the one-column updates and the deletes, one
+  row each: a parent is deleted only after the executor deleted its
+  children), so that the phone, the server and later a web or iOS client
+  cannot drift apart. Each handler validates, resolves names, opens its own
+  transaction and calls the executor with its store: `data/RoomCommandTx`
+  (the DAOs inside `db.withTransaction`, stamping `updatedAt` and `dirty` as
+  every write does, a tombstone per delete; `WorkoutRepository.commandTx()`)
+  and the server's `command/ExposedCommandTx` (inside the locked
+  transaction, stamping `GREATEST(now, updated_at + 1)`, deletes as
+  tombstones). Ids come from the executor, time from the store; the exercise
+  row an `ExerciseRef` resolves to (an extended entry's is created the first
+  time) stays with the handler, which checks the routine or workout exists
+  before making it. Moved: every workout command (`start_workout`,
+  `start_routine`, `add_exercise`, `remove_exercise`, `add_set`,
+  `remove_set`, `set_weight`, `set_reps`, `tick_set`, `log_set`,
+  `finish_workout`, `delete_workout`, `apply_plan`), every routine command
+  (`create_routine`, `save_routine`, `save_routine_plan`, `rename_routine`,
+  `delete_routine`, `add_routine_exercise`, `remove_routine_exercise`,
+  `move_routine_exercise`, `adjust_target_sets`, `set_target_reps`) and
+  every program command (`create_program`, `rename_program`,
+  `set_program_mode`, `activate_program`, `deactivate_program`,
+  `delete_program`, `add_program_day`, `remove_program_day`,
+  `move_program_day`, `toggle_program_weekday`). Still in the handlers:
+  `set_rest` and `create_exercise` (the exercise table) and
+  `select_current` (a read); then the executor becomes the handler (the
+  issue's last step). The executor is strict on every platform (an id that
+  does not exist is `Rejected`, `log_set` refuses a set with 0 reps, which
+  every client already guards: the app opens the reps sheet instead, and
+  finishing a finished workout leaves it as it is) and writes only what
+  changes (the same target reps, mode or active state again writes
+  nothing). `CommandExecutorTest` (core, over `MemoryCommandTx`) is where
+  the rules are tested; `LogSetCommandsTest`, `AddExerciseCommandsTest`,
+  `RoutineEditingCommandsTest`, `DirtyTrackingTest` and the server's
   `CommandTest` guard the stores. `WorkoutRepository`'s write functions
   (`startOrResumeWorkout`, `addExercise`, `addSet`, `logSet`, `updateWeight`,
-  `finishWorkout`, …) and `RoutineRepository.start` remain as the Room-side
-  entry for callers that are not commands (the companion watch's
-  `WearCommandHandler`, the import's undo, tests) and run the same executor;
-  on the server `WorkoutStore.finish`/`delete` (the REST routes) do too, so
-  `POST /workouts/{id}/finish` and the command are one rule.
+  `finishWorkout`, …), `RoutineRepository`'s (`start`, `saveFromWorkout`,
+  `createFromPlan`, `create`, `rename`, `delete`) and `ProgramRepository`'s
+  (`create`, `activate`, `delete`, `addDay`, `removeDay`, `toggleWeekday`)
+  remain as the Room-side entry for callers that are not commands (the
+  companion watch's `WearCommandHandler`, the import, tests) and run the
+  same executor; on the server `WorkoutStore.finish`/`delete` (the REST
+  routes) do too, so `POST /workouts/{id}/finish` and the command are one
+  rule.
 - **Exercises by reference.** A command names an exercise with an
   `ExerciseRef`: `ById` (the picker), `ByKey` (`bench_press`), `Extended`
   (an extended-catalogue id; the handler creates the row the first time) or
@@ -1646,13 +1663,13 @@ fallback, and only on a tap.
   with `lockUser`, names resolved by core over `ServerExerciseResolver`
   (catalogue rows shadowed by the user's own, `core.json`'s names in every
   language, the extended catalogue from `/catalog/extended.json`), and the
-  app's rules: every workout command is core's `CommandExecutor` over
-  `command/ExposedCommandTx.kt` (see "Commands", "One rule, in core"; its
-  pre-fill reads `lastSessionIn`, i.e. `/last`'s query), the routine and
-  program commands still written here.
+  app's rules: every workout, routine and program command is core's
+  `CommandExecutor` over `command/ExposedCommandTx.kt` (see "Commands", "One
+  rule, in core"; its pre-fill reads `lastSessionIn`, i.e. `/last`'s query),
+  and only `set_rest` and `create_exercise` write a table here, after the
+  server's own cap on names (`MAX_COMMAND_NAME`, the REST API's).
   Its own changes stamp `GREATEST(now, updated_at + 1)`; deletes are
-  tombstones. It answers `Rejected` for ids that do not exist (the app's
-  repositories still do nothing silently for the commands not yet moved).
+  tombstones. It answers `Rejected` for ids that do not exist, as the app does.
   **Every REST command (`POST /api/v1/commands/{name}`, `routes/CommandRoutes.kt`)
   and every MCP tool that changes data goes through it**; do not write
   training data from a route or a tool any other way. The JSON of each

@@ -1,10 +1,16 @@
 package io.github.kanylbullen.tung.core.command
 
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.addedExerciseSets
 import io.github.kanylbullen.tung.core.addsNextSet
+import io.github.kanylbullen.tung.core.clampTargetSets
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_EXERCISE_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.ROUTINE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
@@ -15,6 +21,8 @@ import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.prefillSet
 import io.github.kanylbullen.tung.core.routineStartSets
+import io.github.kanylbullen.tung.core.routineTarget
+import io.github.kanylbullen.tung.core.toggleWeekday
 
 /**
  * The rules of the commands, once, over a [CommandTx] (issue #87): what to
@@ -30,8 +38,15 @@ import io.github.kanylbullen.tung.core.routineStartSets
  * Moved so far: every workout command (`start_workout`, `start_routine`,
  * `add_exercise`, `remove_exercise`, `add_set`, `remove_set`, `set_weight`,
  * `set_reps`, `tick_set`, `log_set`, `finish_workout`, `delete_workout`,
- * `apply_plan`). The routine and program commands follow one by one; until
- * then their rules are still in the handlers.
+ * `apply_plan`), every routine command (`create_routine`, `save_routine`,
+ * `save_routine_plan`, `rename_routine`, `delete_routine`,
+ * `add_routine_exercise`, `remove_routine_exercise`, `move_routine_exercise`,
+ * `adjust_target_sets`, `set_target_reps`) and every program command
+ * (`create_program`, `rename_program`, `set_program_mode`,
+ * `activate_program`, `deactivate_program`, `delete_program`,
+ * `add_program_day`, `remove_program_day`, `move_program_day`,
+ * `toggle_program_weekday`). Still in the handlers: `set_rest`,
+ * `create_exercise` (the exercise table) and `select_current` (a read).
  */
 class CommandExecutor(private val ids: () -> String = { newId() }) {
 
@@ -213,6 +228,222 @@ class CommandExecutor(private val ids: () -> String = { newId() }) {
         tx.workoutExercise(workoutExerciseId) ?: return noSuch("exercise in a workout", workoutExerciseId)
         tx.deleteWorkoutExercise(workoutExerciseId)
         return Done()
+    }
+
+    // --- routines ---
+
+    /** `create_routine`: an empty routine called [name] (trimmed), to be filled with `add_routine_exercise`. */
+    suspend fun createRoutine(tx: CommandTx, name: String): CommandResult =
+        Done(mapOf(ROUTINE_ID to insertRoutine(tx, name, emptyList(), routineId = ids(), routineExerciseIds = null)))
+
+    /**
+     * `save_routine`: [workoutId] as a new routine called [name]: its
+     * exercises in workout order, each with one target set per logged set
+     * and the most common rep count as target reps ([routineTarget]);
+     * exercises without a logged set are left out, and a workout without one
+     * is refused. Saving the same workout twice makes two routines.
+     */
+    suspend fun saveRoutine(tx: CommandTx, workoutId: String, name: String): CommandResult {
+        tx.workout(workoutId) ?: return noSuch("workout", workoutId)
+        val exercises = tx.workoutExercises(workoutId)
+            .map { we -> we.exerciseId to routineTarget(tx.sets(we.id).filter { isLogged(it.completed, it.reps) }.map { it.values }) }
+            .filter { (_, target) -> target.sets > 0 }
+            .map { (exerciseId, target) -> RoutineExercisePlan(exerciseId, target.sets, target.reps) }
+        if (exercises.isEmpty()) return Rejected(listOf("the workout has no logged set to save"))
+        return Done(mapOf(ROUTINE_ID to insertRoutine(tx, name, exercises, routineId = ids(), routineExerciseIds = null)))
+    }
+
+    /**
+     * `save_routine_plan` once every exercise is a row: a routine called
+     * [name] with [exercises] in order, each with its target sets (kept
+     * within the allowed range) and target reps. The ids are new unless the
+     * caller has its own ([routineId], [routineExerciseIds], one per
+     * exercise): an import passes its deterministic ids.
+     */
+    suspend fun saveRoutinePlan(
+        tx: CommandTx,
+        name: String,
+        exercises: List<RoutineExercisePlan>,
+        routineId: String = ids(),
+        routineExerciseIds: List<String>? = null,
+    ): CommandResult {
+        require(routineExerciseIds == null || routineExerciseIds.size == exercises.size) { "one id per routine exercise" }
+        return Done(mapOf(ROUTINE_ID to insertRoutine(tx, name, exercises, routineId, routineExerciseIds)))
+    }
+
+    private suspend fun insertRoutine(
+        tx: CommandTx,
+        name: String,
+        exercises: List<RoutineExercisePlan>,
+        routineId: String,
+        routineExerciseIds: List<String>?,
+    ): String {
+        tx.insertRoutine(RoutineRow(routineId, name.trim(), lastUsedAt = null))
+        exercises.forEachIndexed { position, plan ->
+            val id = routineExerciseIds?.get(position) ?: ids()
+            tx.insertRoutineExercise(RoutineExerciseRow(id, routineId, plan.exerciseId, position, clampTargetSets(plan.targetSets), plan.targetReps))
+        }
+        return routineId
+    }
+
+    /** `rename_routine`: the name, trimmed. */
+    suspend fun renameRoutine(tx: CommandTx, routineId: String, name: String): CommandResult {
+        tx.routine(routineId) ?: return noSuch("routine", routineId)
+        tx.renameRoutine(routineId, name.trim())
+        return Done()
+    }
+
+    /**
+     * `delete_routine`: the routine, its exercises and the program days that
+     * start it (a day without a routine has nothing to start; the other days
+     * keep their positions). Workouts started from it are kept.
+     */
+    suspend fun deleteRoutine(tx: CommandTx, routineId: String): CommandResult {
+        tx.routine(routineId) ?: return noSuch("routine", routineId)
+        tx.programDaysUsing(routineId).forEach { tx.deleteProgramDay(it.id) }
+        tx.routineExercises(routineId).forEach { tx.deleteRoutineExercise(it.id) }
+        tx.deleteRoutine(routineId)
+        return Done()
+    }
+
+    /**
+     * `add_routine_exercise` once the exercise is the row [exerciseId]:
+     * appended after the routine's last exercise with [targetSets] (kept
+     * within the allowed range) and [targetReps].
+     */
+    suspend fun addRoutineExercise(tx: CommandTx, routineId: String, exerciseId: String, targetSets: Int, targetReps: Int?): CommandResult {
+        tx.routine(routineId) ?: return noSuch("routine", routineId)
+        val position = (tx.routineExercises(routineId).maxOfOrNull { it.position } ?: -1) + 1
+        val row = RoutineExerciseRow(ids(), routineId, exerciseId, position, clampTargetSets(targetSets), targetReps)
+        tx.insertRoutineExercise(row)
+        return Done(mapOf(ROUTINE_EXERCISE_ID to row.id, EXERCISE_ID to exerciseId))
+    }
+
+    /** `remove_routine_exercise`: the row goes and the positions after it close up, so the rest keep their order from 0. */
+    suspend fun removeRoutineExercise(tx: CommandTx, routineExerciseId: String): CommandResult {
+        val re = tx.routineExercise(routineExerciseId) ?: return noSuch("exercise in a routine", routineExerciseId)
+        tx.deleteRoutineExercise(routineExerciseId)
+        writeRoutinePositions(tx, tx.routineExercises(re.routineId))
+        return Done()
+    }
+
+    /** `move_routine_exercise`: [delta] places (−1 up, +1 down) within its routine; a move past either end changes nothing. */
+    suspend fun moveRoutineExercise(tx: CommandTx, routineExerciseId: String, delta: Int): CommandResult {
+        val re = tx.routineExercise(routineExerciseId) ?: return noSuch("exercise in a routine", routineExerciseId)
+        moved(tx.routineExercises(re.routineId), routineExerciseId, delta, RoutineExerciseRow::id)?.let { writeRoutinePositions(tx, it) }
+        return Done()
+    }
+
+    /** `adjust_target_sets`: [delta] added to the target sets, kept within the allowed range; written only when it changes. */
+    suspend fun adjustTargetSets(tx: CommandTx, routineExerciseId: String, delta: Int): CommandResult {
+        val re = tx.routineExercise(routineExerciseId) ?: return noSuch("exercise in a routine", routineExerciseId)
+        val target = clampTargetSets(re.targetSets + delta)
+        if (target != re.targetSets) tx.setTargetSets(routineExerciseId, target)
+        return Done()
+    }
+
+    /** `set_target_reps`: the reps the exercise aims at per set, null for none; written only when it changes. */
+    suspend fun setTargetReps(tx: CommandTx, routineExerciseId: String, targetReps: Int?): CommandResult {
+        val re = tx.routineExercise(routineExerciseId) ?: return noSuch("exercise in a routine", routineExerciseId)
+        if (re.targetReps != targetReps) tx.setTargetReps(routineExerciseId, targetReps)
+        return Done()
+    }
+
+    /** Gives [rows] (in list order) the positions 0, 1, 2 …; only rows whose position changes are written. */
+    private suspend fun writeRoutinePositions(tx: CommandTx, rows: List<RoutineExerciseRow>) {
+        rows.forEachIndexed { position, re -> if (re.position != position) tx.setRoutineExercisePosition(re.id, position) }
+    }
+
+    // --- programs ---
+
+    /** `create_program`: an inactive, empty program called [name] (trimmed) in [mode]. */
+    suspend fun createProgram(tx: CommandTx, name: String, mode: ProgramMode): CommandResult {
+        val row = ProgramRow(ids(), name.trim(), mode, isActive = false)
+        tx.insertProgram(row)
+        return Done(mapOf(PROGRAM_ID to row.id))
+    }
+
+    /** `rename_program`: the name, trimmed. */
+    suspend fun renameProgram(tx: CommandTx, programId: String, name: String): CommandResult {
+        tx.program(programId) ?: return noSuch("program", programId)
+        tx.renameProgram(programId, name.trim())
+        return Done()
+    }
+
+    /** `set_program_mode`: fixed or rotating; the days, their order and their weekdays stay, so switching back restores the schedule. */
+    suspend fun setProgramMode(tx: CommandTx, programId: String, mode: ProgramMode): CommandResult {
+        val program = tx.program(programId) ?: return noSuch("program", programId)
+        if (program.mode != mode) tx.setProgramMode(programId, mode)
+        return Done()
+    }
+
+    /** `activate_program`: at most one active program, so every other active one is switched off in the same transaction. */
+    suspend fun activateProgram(tx: CommandTx, programId: String): CommandResult {
+        val program = tx.program(programId) ?: return noSuch("program", programId)
+        tx.activePrograms().filter { it.id != programId }.forEach { tx.setProgramActive(it.id, false) }
+        if (!program.isActive) tx.setProgramActive(programId, true)
+        return Done()
+    }
+
+    /** `deactivate_program`: leaves no program active, if this was the active one. */
+    suspend fun deactivateProgram(tx: CommandTx, programId: String): CommandResult {
+        val program = tx.program(programId) ?: return noSuch("program", programId)
+        if (program.isActive) tx.setProgramActive(programId, false)
+        return Done()
+    }
+
+    /** `delete_program`: the program and its days. Workouts started from it are kept. */
+    suspend fun deleteProgram(tx: CommandTx, programId: String): CommandResult {
+        tx.program(programId) ?: return noSuch("program", programId)
+        tx.programDays(programId).forEach { tx.deleteProgramDay(it.id) }
+        tx.deleteProgram(programId)
+        return Done()
+    }
+
+    /** `add_program_day`: [routineId] as the program's last day, with no weekdays. */
+    suspend fun addProgramDay(tx: CommandTx, programId: String, routineId: String): CommandResult {
+        tx.program(programId) ?: return noSuch("program", programId)
+        tx.routine(routineId) ?: return noSuch("routine", routineId)
+        val position = (tx.programDays(programId).maxOfOrNull { it.position } ?: -1) + 1
+        val row = ProgramDayRow(ids(), programId, routineId, position, weekdays = 0)
+        tx.insertProgramDay(row)
+        return Done(mapOf(PROGRAM_DAY_ID to row.id))
+    }
+
+    /** `remove_program_day`: the day goes and the gap closes, so rotating days keep counting 1, 2, 3. */
+    suspend fun removeProgramDay(tx: CommandTx, dayId: String): CommandResult {
+        val day = tx.programDay(dayId) ?: return noSuch("program day", dayId)
+        tx.deleteProgramDay(dayId)
+        writeDayPositions(tx, tx.programDays(day.programId))
+        return Done()
+    }
+
+    /** `move_program_day`: [delta] places (−1 up, +1 down); a move past either end changes nothing. */
+    suspend fun moveProgramDay(tx: CommandTx, dayId: String, delta: Int): CommandResult {
+        val day = tx.programDay(dayId) ?: return noSuch("program day", dayId)
+        moved(tx.programDays(day.programId), dayId, delta, ProgramDayRow::id)?.let { writeDayPositions(tx, it) }
+        return Done()
+    }
+
+    /** `toggle_program_weekday`: [weekday] (ISO, 1 Monday … 7 Sunday) on or off for the day ([toggleWeekday]). */
+    suspend fun toggleProgramWeekday(tx: CommandTx, dayId: String, weekday: Int): CommandResult {
+        val day = tx.programDay(dayId) ?: return noSuch("program day", dayId)
+        tx.setProgramDayWeekdays(dayId, toggleWeekday(day.weekdays, weekday))
+        return Done()
+    }
+
+    private suspend fun writeDayPositions(tx: CommandTx, days: List<ProgramDayRow>) {
+        days.forEachIndexed { position, day -> if (day.position != position) tx.setProgramDayPosition(day.id, position) }
+    }
+
+    /** [rows] (in position order) with the row [id] moved [delta] places; null when it is not there or would move past an end. */
+    private fun <T> moved(rows: List<T>, id: String, delta: Int, idOf: (T) -> String): List<T>? {
+        val list = rows.toMutableList()
+        val from = list.indexOfFirst { idOf(it) == id }
+        val to = from + delta
+        if (from < 0 || to !in list.indices) return null
+        list.add(to, list.removeAt(from))
+        return list
     }
 
     /**
