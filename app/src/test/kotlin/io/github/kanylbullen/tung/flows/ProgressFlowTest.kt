@@ -15,7 +15,6 @@ import io.github.kanylbullen.tung.ui.exercises.EXERCISE_PAGE_TAG
 import io.github.kanylbullen.tung.ui.progress.EXERCISE_PROGRESS_TAG
 import io.github.kanylbullen.tung.ui.progress.PROGRESS_LIST_TAG
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.robolectric.annotation.Config
 import java.time.Clock
@@ -54,8 +53,8 @@ class ProgressFlowTest : FlowTest() {
     private fun summary(metric: Int, range: Int, from: String, to: String) =
         str(R.string.progress_chart_summary, str(metric), str(range), from, to)
 
-    private val trendMetric get() = runBlocking { app.container.progressSettings.trendMetric.first() }
-    private val trendRange get() = runBlocking { app.container.progressSettings.trendRange.first() }
+    private suspend fun trendMetric() = app.container.progressSettings.trendMetric.first()
+    private suspend fun trendRange() = app.container.progressSettings.trendRange.first()
 
     /** Picks [option] from a chart's choice shown as a menu, because its chips do not fit on one line. */
     private fun chooseFromMenu(option: String) {
@@ -144,7 +143,7 @@ class ProgressFlowTest : FlowTest() {
         assertShown(hasContentDescription(sparkline12))
         // The weekly bars do not follow: one workout (2 months ago) in the last 12 weeks.
         waitFor(hasContentDescription(str(R.string.progress_workouts_summary, 1, 0)))
-        check(trendRange == ProgressRange.ONE_YEAR)
+        waitUntilStored(ProgressRange.ONE_YEAR) { trendRange() }
         screenshot("2-rows-12m")
 
         clickText(str(R.string.nav_home))
@@ -159,7 +158,7 @@ class ProgressFlowTest : FlowTest() {
         waitFor(hasText(threeMonths))
         list.performScrollToNode(hasText(threeMonths))
         assertShown(hasText(threeMonths))
-        check(trendRange == ProgressRange.THREE_MONTHS)
+        waitUntilStored(ProgressRange.THREE_MONTHS) { trendRange() }
     }
 
     /**
@@ -191,7 +190,7 @@ class ProgressFlowTest : FlowTest() {
         list.performScrollToNode(hasText(perSession))
         assertShown(hasText(benchPress) and hasText(perSession))
         assertShown(hasContentDescription(summary(R.string.progress_metric_volume_long, R.string.progress_range_3m_long, "350", "450")))
-        check(trendMetric == ProgressMetric.VOLUME)
+        waitUntilStored(ProgressMetric.VOLUME) { trendMetric() }
         screenshot("1-rows-session-volume")
 
         list.performScrollToNode(hasText(str(R.string.progress_metric_weekly_volume)))
@@ -200,7 +199,7 @@ class ProgressFlowTest : FlowTest() {
         list.performScrollToNode(hasText(perWeek))
         assertShown(hasText(benchPress) and hasText(perWeek))
         assertShown(hasContentDescription(summary(R.string.progress_metric_weekly_volume_long, R.string.progress_range_3m_long, "350", "875")))
-        check(trendMetric == ProgressMetric.WEEKLY_VOLUME)
+        waitUntilStored(ProgressMetric.WEEKLY_VOLUME) { trendMetric() }
         screenshot("2-rows-weekly-volume")
 
         list.performScrollToNode(bars)
@@ -249,7 +248,7 @@ class ProgressFlowTest : FlowTest() {
         // One session a week, so the weeks are the sessions; the screen's choice is not the tab's.
         chooseFromMenu(str(R.string.progress_metric_weekly_volume))
         assertShown(hasContentDescription(summary(R.string.progress_metric_weekly_volume_long, R.string.progress_range_1y_long, "420", "480")))
-        check(trendMetric == ProgressMetric.E1RM && trendRange == ProgressRange.THREE_MONTHS)
+        waitUntilStored(ProgressMetric.E1RM to ProgressRange.THREE_MONTHS) { trendMetric() to trendRange() }
 
         val list = compose.onNode(hasTestTag(EXERCISE_PROGRESS_TAG))
         list.performScrollToNode(hasText(str(R.string.progress_record_e1rm)))
@@ -322,7 +321,7 @@ class ProgressFlowTest : FlowTest() {
         clickText(str(R.string.progress_metric_weekly_volume))
         val weekly = summary(R.string.progress_metric_weekly_volume_long, R.string.progress_range_12m_long, "360", "930")
         assertShown(hasContentDescription(weekly))
-        waitUntil { trendMetric == ProgressMetric.WEEKLY_VOLUME && trendRange == ProgressRange.ONE_YEAR }
+        waitUntilStored(ProgressMetric.WEEKLY_VOLUME to ProgressRange.ONE_YEAR) { trendMetric() to trendRange() }
         screenshot("2-sheet-weekly-12m")
         dismissSheet(weekly)
         assertShown(hasContentDescription(str(R.string.workout_edit_weight, "96")))

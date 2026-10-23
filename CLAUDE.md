@@ -1872,6 +1872,11 @@ part of `./gradlew test`. Only them:
   output, so a run restored from the build cache restores them too. They are
   drawn with `View.draw`, because `captureToImage()` times out under
   Robolectric on API 34.
+- **A value in the `settings` DataStore is checked with
+  `waitUntilStored(expected) { … }`** (`FlowTest`), never read once with
+  `runBlocking { ….first() }` right after a tap: a screen can show a choice
+  before DataStore has written it (Training's rest is the screen's own
+  value), and a read that throws counts as not yet.
 - **`addExercise(query, name)` dismisses the first-time weight sheet** an
   exercise with no history opens (issue #55, `dismissSheet` runs the sheet
   scrim's click action, "Close sheet" in the app's language), so flows that add an exercise and then

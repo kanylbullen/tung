@@ -19,7 +19,6 @@ import io.github.kanylbullen.tung.ui.exercises.EXERCISES_LIST_TAG
 import io.github.kanylbullen.tung.ui.settings.EQUIPMENT_SETTINGS_ROW_TAG
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.text.Collator
 import java.util.Locale
@@ -33,17 +32,16 @@ class EquipmentFlowTest : FlowTest() {
 
     private fun chip(label: String) = hasTestTag(EQUIPMENT_CHIP_TAG) and hasText(label)
 
-    private fun stored(): Set<Equipment> = runBlocking { app.container.equipmentSettings.current() }
+    private fun waitForStored(expected: Set<Equipment>) = waitUntilStored(expected) { app.container.equipmentSettings.current() }
 
     /** Taps the chip, then "Bodyweight only", then "Done". */
     private fun chooseBodyweightOnly() {
         compose.onNode(hasTestTag(EQUIPMENT_CHIP_TAG)).performClick()
         waitFor(hasTestTag(EQUIPMENT_SHEET_TAG))
         compose.onNode(hasTestTag(EQUIPMENT_BODYWEIGHT_ONLY_TAG)).performClick()
-        // Saved at once: the chip under the sheet already says so. Read the store only after that,
-        // since DataStore 1.1.1 can fail a read that races the file's very first write.
+        // Saved at once: the chip under the sheet already says so.
         waitFor(chip(str(R.string.my_equipment_chip_count, 1)))
-        assertEquals(EquipmentFilter.BODYWEIGHT_ONLY, stored())
+        waitForStored(EquipmentFilter.BODYWEIGHT_ONLY)
         screenshot("sheet-bodyweight-only")
         clickText(str(R.string.my_equipment_done))
         waitGone(hasTestTag(EQUIPMENT_SHEET_TAG))
@@ -135,7 +133,7 @@ class EquipmentFlowTest : FlowTest() {
         waitFor(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(R.string.my_equipment_everything)))
         clickText(str(R.string.my_equipment_done))
         waitGone(hasTestTag(EQUIPMENT_SHEET_TAG))
-        assertEquals(EquipmentFilter.ALL, stored())
+        waitForStored(EquipmentFilter.ALL)
 
         leaveSettings()
         clickText(str(R.string.nav_exercises))
