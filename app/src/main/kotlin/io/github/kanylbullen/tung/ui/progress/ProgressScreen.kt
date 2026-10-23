@@ -35,8 +35,10 @@ import io.github.kanylbullen.tung.core.progress.ExerciseProgress
 import io.github.kanylbullen.tung.core.progress.ProgressMetric
 import io.github.kanylbullen.tung.core.progress.ProgressRange
 import io.github.kanylbullen.tung.core.progress.RecentRecord
-import io.github.kanylbullen.tung.core.progress.change
-import io.github.kanylbullen.tung.core.progress.within
+import io.github.kanylbullen.tung.core.progress.RowTrend
+import io.github.kanylbullen.tung.core.progress.TREND_METRICS
+import io.github.kanylbullen.tung.core.progress.TREND_RANGES
+import io.github.kanylbullen.tung.core.progress.trend
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.ui.common.Stat
 import io.github.kanylbullen.tung.ui.common.StatRow
@@ -55,15 +57,16 @@ const val PROGRESS_LIST_TAG = "progress-list"
 /**
  * The Progress tab: the last 12 weeks (workouts and volume per week, the
  * weekly streak), every exercise with history, most recently trained first,
- * with a sparkline of its estimated 1RM and the change over 3 months, and the
- * latest records. A row opens [onOpenExercise] with the exercise's id.
+ * with a sparkline and the change over 3 or 12 months of its estimated 1RM or
+ * its volume per session or per week (the chips above the list, remembered),
+ * and the latest records. A row opens [onOpenExercise] with the exercise's id.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProgressScreen(onOpenExercise: (String) -> Unit) {
     val container = appContainer()
     val vm: ProgressViewModel = viewModel(
-        factory = factoryOf { ProgressViewModel(container.workoutRepository, container.exerciseRepository, container.clock) },
+        factory = factoryOf { ProgressViewModel(container.workoutRepository, container.exerciseRepository, container.progressSettings, container.clock) },
     )
     val state by vm.state.collectAsStateWithLifecycle()
 
@@ -88,8 +91,12 @@ fun ProgressScreen(onOpenExercise: (String) -> Unit) {
             }
             item(key = "overview") { Overview(state) }
             item(key = "exercises") { ProgressHeading(stringResource(R.string.progress_exercises)) }
+            item(key = "rows-metric") { ChoiceChips(TREND_METRICS, state.trendMetric, { metricLabel(it) }, vm::setTrendMetric) }
+            item(key = "rows-range") { ChoiceChips(TREND_RANGES, state.trendRange, { trendRangeLabel(it) }, vm::setTrendRange) }
             items(overview.exercises, key = { "ex-${it.exerciseId}" }) { exercise ->
-                ExerciseRow(exercise, state.exercises[exercise.exerciseId], state.today) { onOpenExercise(exercise.exerciseId) }
+                ExerciseRow(exercise, state.exercises[exercise.exerciseId], state.trendMetric, state.trendRange, state.today) {
+                    onOpenExercise(exercise.exerciseId)
+                }
             }
             if (overview.recentRecords.isNotEmpty()) {
                 item(key = "records") { ProgressHeading(stringResource(R.string.progress_records_recent)) }
@@ -142,25 +149,50 @@ private fun Overview(state: ProgressUiState) {
     }
 }
 
-/** What a row says about the last 3 months: "+7 kg in 3 months", "No change in 3 months", or how many sessions there are. */
+/**
+ * What a row says about its span: "+7 kg in 3 months", "No change in 12
+ * months", or how many sessions there are when the span holds fewer than two
+ * values.
+ */
 @Composable
-private fun changeText(exercise: ExerciseProgress, today: LocalDate): String {
-    val recent = exercise.sessions.within(ProgressRange.THREE_MONTHS, today)
-    val change = change(recent, ProgressMetric.E1RM)
+private fun changeText(exercise: ExerciseProgress, trend: RowTrend, metric: ProgressMetric, range: ProgressRange): String {
+    val change = trend.change
         ?: return pluralStringResource(R.plurals.progress_sessions, exercise.sessions.size, exercise.sessions.size)
-    val signed = signedChange(ProgressMetric.E1RM, change) ?: return stringResource(R.string.progress_no_change_3m)
-    return stringResource(R.string.progress_change_3m, signed)
+    val twelve = range == ProgressRange.ONE_YEAR
+    val signed = signedChange(metric, change)
+        ?: return stringResource(if (twelve) R.string.progress_no_change_12m else R.string.progress_no_change_3m)
+    return stringResource(if (twelve) R.string.progress_change_12m else R.string.progress_change_3m, signed)
 }
 
+/** A row's latest value: "Est. 1RM 112 kg", "Session volume 480 kg", "Weekly volume 960 kg". */
 @Composable
-private fun ExerciseRow(exercise: ExerciseProgress, row: Exercise?, today: LocalDate, onClick: () -> Unit) {
+private fun latestText(metric: ProgressMetric, kg: Double): String = stringResource(
+    when (metric) {
+        ProgressMetric.E1RM -> R.string.progress_e1rm_value
+        ProgressMetric.VOLUME -> R.string.progress_session_volume_value
+        ProgressMetric.WEEKLY_VOLUME -> R.string.progress_weekly_volume_value
+        // Not offered on the rows (TREND_METRICS).
+        ProgressMetric.TOP_SET -> R.string.progress_kg
+    },
+    metricText(metric, kg),
+)
+
+@Composable
+private fun ExerciseRow(
+    exercise: ExerciseProgress,
+    row: Exercise?,
+    metric: ProgressMetric,
+    range: ProgressRange,
+    today: LocalDate,
+    onClick: () -> Unit,
+) {
     val name = row?.let { exerciseDisplayName(it.nameKey, it.name) }.orEmpty()
-    val latest = exercise.sessions.lastOrNull { it.e1rmKg != null }?.e1rmKg
+    val trend = exercise.trend(metric, range, today)
     val details = listOfNotNull(
-        latest?.let { stringResource(R.string.progress_e1rm_value, metricText(ProgressMetric.E1RM, it)) },
-        changeText(exercise, today),
+        trend.latest?.let { latestText(metric, it) },
+        changeText(exercise, trend, metric, range),
     ).joinToString(stringResource(R.string.row_separator))
-    val spark = exercise.sessions.within(ProgressRange.THREE_MONTHS, today).mapNotNull { it.e1rmKg }
+    val spark = trend.values
     val open = stringResource(R.string.progress_open_exercise, name)
     Row(
         modifier = Modifier
@@ -176,14 +208,7 @@ private fun ExerciseRow(exercise: ExerciseProgress, row: Exercise?, today: Local
         }
         if (spark.size >= 2) {
             Spacer(Modifier.width(12.dp))
-            Sparkline(
-                spark,
-                stringResource(
-                    R.string.progress_sparkline_summary,
-                    metricText(ProgressMetric.E1RM, spark.first()),
-                    metricText(ProgressMetric.E1RM, spark.last()),
-                ),
-            )
+            Sparkline(spark, chartSummary(metric, trendRangeLongLabel(range), spark))
         }
     }
 }

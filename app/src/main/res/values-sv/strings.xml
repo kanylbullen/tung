@@ -231,7 +231,19 @@
 
     <!-- Summary -->
     <string name="summary_title">Pass klart</string>
-    <string name="summary_best_set">Bästa set</string>
+    <string name="summary_exercises">Övningar</string>
+    <plurals name="summary_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d set</item>
+    </plurals>
+    <string name="summary_muscles">Tränade muskler</string>
+    <string name="summary_muscles_description">Tränade muskler: %1$s</string>
+    <string name="summary_muscle_item">%1$s %2$s</string>
+    <string name="summary_muscle_less_than">&lt;%1$s</string>
+    <plurals name="summary_muscles_uncounted">
+        <item quantity="one">%d set av en egen övning räknas inte: egna övningar har inga muskler</item>
+        <item quantity="other">%d set av egna övningar räknas inte: egna övningar har inga muskler</item>
+    </plurals>
     <string name="summary_record">Nytt rekord</string>
     <string name="summary_done">Klar</string>
     <string name="times_sign">×</string>
@@ -601,6 +613,15 @@
     <string name="import_chosen_create">Ny övning ”%1$s”</string>
     <string name="import_chosen_skip">Hoppas över</string>
     <string name="import_suggestion">%1$s?</string>
+    <string name="import_decided_count">%1$d av %2$d bestämda</string>
+    <string name="import_decided_use">✓ %1$s</string>
+    <string name="import_decided_create">✓ Skapa ”%1$s”</string>
+    <string name="import_decided_skip">✓ Hoppas över</string>
+    <string name="import_decided_use_description">%1$s: importeras som %2$s</string>
+    <string name="import_decided_create_description">%1$s: importeras som en ny övning</string>
+    <string name="import_decided_skip_description">%1$s: hoppas över</string>
+    <string name="import_change">Ändra</string>
+    <string name="import_change_description">Ändra %1$s</string>
     <plurals name="import_used_in_workouts">
         <item quantity="one">I %d pass</item>
         <item quantity="other">I %d pass</item>
@@ -725,25 +746,33 @@
     <string name="progress_change_down">−%1$s kg</string>
     <string name="progress_change_3m">%1$s på 3 månader</string>
     <string name="progress_no_change_3m">Ingen förändring på 3 månader</string>
+    <string name="progress_change_12m">%1$s på 12 månader</string>
+    <string name="progress_no_change_12m">Ingen förändring på 12 månader</string>
     <plurals name="progress_sessions">
         <item quantity="one">%d pass</item>
         <item quantity="other">%d pass</item>
     </plurals>
     <string name="progress_e1rm_value">Uppsk. 1RM %1$s kg</string>
-    <string name="progress_sparkline_summary">Uppskattad 1RM, 3 månader: från %1$s till %2$s kg</string>
+    <string name="progress_session_volume_value">Passvolym %1$s kg</string>
+    <string name="progress_weekly_volume_value">Veckovolym %1$s kg</string>
     <string name="progress_open_exercise">Öppna framsteg för %1$s</string>
     <string name="progress_metric_e1rm">Uppsk. 1RM</string>
     <string name="progress_metric_top_set">Tyngsta set</string>
     <string name="progress_metric_volume">Volym</string>
+    <string name="progress_metric_weekly_volume">Veckovolym</string>
     <string name="progress_metric_e1rm_long">Uppskattad 1RM</string>
     <string name="progress_metric_top_set_long">Tyngsta set</string>
     <string name="progress_metric_volume_long">Volym per pass</string>
+    <string name="progress_metric_weekly_volume_long">Volym per vecka</string>
     <string name="progress_range_3m">3 mån</string>
     <string name="progress_range_1y">1 år</string>
     <string name="progress_range_all">Allt</string>
     <string name="progress_range_3m_long">3 månader</string>
     <string name="progress_range_1y_long">1 år</string>
     <string name="progress_range_all_long">all tid</string>
+    <string name="progress_range_12m">12 mån</string>
+    <string name="progress_range_12m_long">12 månader</string>
+    <string name="progress_show_choices">Visa alla val</string>
     <string name="progress_chart_summary">%1$s, %2$s: från %3$s till %4$s kg</string>
     <string name="progress_chart_summary_empty">%1$s, %2$s: för få pass för ett diagram</string>
     <string name="progress_chart_empty">Logga övningen i två pass så syns ett diagram</string>

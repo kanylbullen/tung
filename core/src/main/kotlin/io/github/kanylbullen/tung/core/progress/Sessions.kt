@@ -51,6 +51,13 @@ enum class ProgressMetric {
 
     /** The session's weight × reps, summed. */
     VOLUME,
+
+    /**
+     * The volume of every session in an ISO week, summed: one point per week
+     * that has a session, dated its Monday ([trendPoints]). A week's number,
+     * so a single session has none ([SessionPoint.value] is null).
+     */
+    WEEKLY_VOLUME,
 }
 
 /**
@@ -75,6 +82,7 @@ data class SessionPoint(
         ProgressMetric.E1RM -> e1rmKg
         ProgressMetric.TOP_SET -> topSet.weightKg
         ProgressMetric.VOLUME -> volumeKg
+        ProgressMetric.WEEKLY_VOLUME -> null
     }
 }
 
@@ -111,6 +119,8 @@ fun sessionPoints(sets: List<ProgressSet>, zone: ZoneId): List<SessionPoint> =
 /** How far back a chart looks. */
 enum class ProgressRange {
     THREE_MONTHS,
+
+    /** Twelve months back; "1Y" on the exercise screen, "12M" on the Progress tab's rows. */
     ONE_YEAR,
     ALL;
 
@@ -133,16 +143,44 @@ data class Change(val from: Double, val to: Double) {
     val delta: Double get() = to - from
 }
 
+/** One point of a trend: a session's day, or a week's Monday for [ProgressMetric.WEEKLY_VOLUME], and the value. */
+data class TrendPoint(val date: LocalDate, val value: Double)
+
+/**
+ * [metric] over these sessions as they are (oldest first): one point per
+ * session that has a value, or per ISO week that has a session for
+ * [ProgressMetric.WEEKLY_VOLUME], whose value is the week's sessions' volume.
+ */
+fun List<SessionPoint>.trendPoints(metric: ProgressMetric): List<TrendPoint> = when (metric) {
+    ProgressMetric.WEEKLY_VOLUME ->
+        groupBy { weekStart(it.date) }
+            .map { (week, sessions) -> TrendPoint(week, sessions.sumOf { it.volumeKg }) }
+            .sortedBy { it.date }
+    else -> mapNotNull { s -> s.value(metric)?.let { TrendPoint(s.date, it) } }
+}
+
+/**
+ * [metric] over [range] back from [today], oldest first: the sessions
+ * [within] it, or for [ProgressMetric.WEEKLY_VOLUME] every week from the one
+ * the range's first day falls in, counted whole, so the first point is not
+ * part of a week.
+ */
+fun trendPoints(sessions: List<SessionPoint>, metric: ProgressMetric, range: ProgressRange, today: LocalDate): List<TrendPoint> {
+    if (metric != ProgressMetric.WEEKLY_VOLUME) return sessions.within(range, today).trendPoints(metric)
+    val start = range.startOn(today)?.let(::weekStart) ?: return sessions.trendPoints(metric)
+    return sessions.filter { !it.date.isBefore(start) }.trendPoints(metric)
+}
+
+/** From the first point to the last; null with fewer than two, since one point is no trend. */
+fun List<TrendPoint>.change(): Change? = if (size < 2) null else Change(first().value, last().value)
+
 /**
  * How [metric] moved over [points] (already cut to a range, oldest first):
- * from the first session that has a value to the last. Null with fewer than
- * two such sessions, since one point is no trend.
+ * from the first session that has a value to the last (from the first week
+ * to the last for [ProgressMetric.WEEKLY_VOLUME]). Null with fewer than two
+ * such points, since one point is no trend.
  */
-fun change(points: List<SessionPoint>, metric: ProgressMetric): Change? {
-    val values = points.mapNotNull { it.value(metric) }
-    if (values.size < 2) return null
-    return Change(values.first(), values.last())
-}
+fun change(points: List<SessionPoint>, metric: ProgressMetric): Change? = points.trendPoints(metric).change()
 
 /** One exercise's sessions, for the Progress tab's list. */
 data class ExerciseProgress(val exerciseId: String, val sessions: List<SessionPoint>) {
@@ -157,3 +195,30 @@ fun exerciseProgress(sets: List<ProgressSet>, zone: ZoneId): List<ExerciseProgre
     sets.groupBy { it.exerciseId }
         .mapNotNull { (id, rows) -> sessionPoints(rows, zone).takeIf { it.isNotEmpty() }?.let { ExerciseProgress(id, it) } }
         .sortedWith(compareByDescending<ExerciseProgress> { it.lastAt }.thenBy { it.exerciseId })
+
+/**
+ * The spans the compact trends offer, the Progress tab's exercise rows and
+ * the sheet inside a workout: 3 and 12 months ([ProgressRange.ONE_YEAR]).
+ */
+val TREND_RANGES: List<ProgressRange> = listOf(ProgressRange.THREE_MONTHS, ProgressRange.ONE_YEAR)
+
+/** The metrics the compact trends offer: estimated 1RM, and volume per session or per week. */
+val TREND_METRICS: List<ProgressMetric> = listOf(ProgressMetric.E1RM, ProgressMetric.VOLUME, ProgressMetric.WEEKLY_VOLUME)
+
+/**
+ * What an exercise row shows for a metric and a span: the latest value of
+ * all (the last session's, or the last trained week's), the values in the
+ * span, oldest first, and their [change].
+ */
+data class RowTrend(val latest: Double?, val values: List<Double>, val change: Change?)
+
+/** This exercise's [metric] over [range] back from [today], for its row on the Progress tab. */
+fun ExerciseProgress.trend(metric: ProgressMetric, range: ProgressRange, today: LocalDate): RowTrend {
+    val inRange = trendPoints(sessions, metric, range, today)
+    val latest = if (metric == ProgressMetric.WEEKLY_VOLUME) {
+        sessions.lastOrNull()?.let { last -> sessions.filter { weekStart(it.date) == weekStart(last.date) }.sumOf { it.volumeKg } }
+    } else {
+        sessions.lastOrNull { it.value(metric) != null }?.value(metric)
+    }
+    return RowTrend(latest, inRange.map { it.value }, inRange.change())
+}

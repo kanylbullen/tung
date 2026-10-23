@@ -45,6 +45,7 @@ fun HomeScreen(
     onOpenDetail: (String) -> Unit,
     onShowHistory: () -> Unit,
     onShowRoutines: () -> Unit,
+    onOpenRoutine: (String) -> Unit = {},
     onShowSettings: () -> Unit,
     onShowAssistant: () -> Unit,
 ) {
@@ -149,6 +150,8 @@ fun HomeScreen(
                     now = today,
                     startEnabled = !state.loading && state.activeWorkout == null,
                     onStart = { vm.startRoutine(row.id, onOpenWorkout) },
+                    // A tap opens the routine, so its exercises can be seen before Start.
+                    onClick = { onOpenRoutine(row.id) },
                 )
             }
         }

@@ -75,7 +75,8 @@ with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
 extended-catalogue search), the command surface (`core/command/`, see
 "Commands"), the picker's suggestions (`core/picker/`, see "Smart picker"),
 the Exercises tab's browse list and the catalogue by id (`core/catalog/`),
-the muscle map's shapes (`core/muscles/BodyMap.kt`) and an exercise's history
+the muscle map's shapes (`core/muscles/BodyMap.kt`) and a workout's sets per
+muscle (`core/muscles/MuscleWork.kt`, see "Workout summary"), an exercise's history
 (`ExerciseHistory.kt`; see "Exercises tab and exercise page"), progress
 (`core/progress/`: estimated 1RM, sessions, weeks, streak, records; see
 "Progress"), the sync protocol with its pure rules (`core/sync/`, see
@@ -100,7 +101,7 @@ databases. The packages are the ones the files had in `app/`:
 
 | Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `ProgressSettings` (the compact trends' metric and span), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
@@ -137,7 +138,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap` with `MuscleHeatMap`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -203,7 +204,8 @@ Progress,
 switched with `navigateToTab` (`saveState`/`restoreState`, like the others):
 the Programs row on top, then every routine by last use, each with Start and
 its detail behind a tap; routine and program details are pushed on top of the
-tab, so back returns to it. Home keeps its Routines section and "Today"; its
+tab, so back returns to it. Home keeps its Routines section, the three most recently used
+(`HomeViewModel.HOME_ROUTINES`), and "Today"; its
 "All" switches to the tab, and so does the Assistant's "Save program".
 **"+ New routine"** in the tab's top bar opens `RoutineNameDialog` and runs
 `CreateRoutine(name)` (`RoutineRepository.create`: an empty routine, stamped
@@ -438,8 +440,10 @@ build it from its classpath copies. free-exercise-db has one `shoulders`, so
 the import maps every one to `side_delts` (`catalog/README.md`); front and
 rear delts come only from `core.json`. Table and rules: `catalog/README.md`,
 "Muscles". The exercise page draws them on a body (the muscle map, see
-"Exercises tab and exercise page"); every muscle has a region there, so a
-new `Muscle` needs one in `core/muscles/BodyMap.kt` too (`BodyMapTest`).
+"Exercises tab and exercise page"), and the workout summary shades them by
+how much a workout worked them (see "Workout summary"); every muscle has a
+region there, so a new `Muscle` needs one in `core/muscles/BodyMap.kt` too
+(`BodyMapTest`).
 
 ### The extended catalogue
 
@@ -601,7 +605,7 @@ have no documented origin.
 
 ### Progress
 
-Issue #60. The last tab, after History, and two ways into one exercise's
+Issues #60 and #78. The last tab, after History, and two ways into one exercise's
 progress. **All computation is pure in core**, `core/progress/` (package
 `io.github.kanylbullen.tung.core.progress`, `ProgressTest`), so the tab, the
 sheet and later the server and MCP compute the same:
@@ -616,11 +620,25 @@ sheet and later the server and MCP compute the same:
   exercise added twice is one session), oldest first, with the date in the
   zone, the sets, the best estimate and its set, the top set (heaviest, ties
   to more reps) and the session volume; `value(ProgressMetric)` for `E1RM`,
-  `TOP_SET`, `VOLUME`. `exerciseProgress(sets, zone)`: every exercise with a
-  session, most recently trained first.
+  `TOP_SET`, `VOLUME` (null for `WEEKLY_VOLUME`, a week's number).
+  `exerciseProgress(sets, zone)`: every exercise with a session, most
+  recently trained first.
 - **Ranges** (`ProgressRange`: `THREE_MONTHS`, `ONE_YEAR`, `ALL`) count back
-  from today (`startOn`, inclusive; `within`). **`change(points, metric)`**:
-  first to last value in the points given, null with fewer than two.
+  from today (`startOn`, inclusive; `within`).
+- **Trends**: **`trendPoints(sessions, metric, range, today)`** is what every
+  chart and sparkline plots, `TrendPoint(date, value)` oldest first: one per
+  session in range that has a value, or for **`WEEKLY_VOLUME`** one per ISO
+  week with a session, dated its Monday, the sum of its sessions' volume.
+  Weeks without the exercise are no point (not zeros: x is the date, so a
+  gap shows), and the range's first week counts whole, from the Monday of
+  the week its first day falls in. **`change(points, metric)`** (and
+  `List<TrendPoint>.change()`): first to last value, null with fewer than
+  two. `TREND_RANGES` (3 and 12 months: `ONE_YEAR` is twelve months, called
+  "1Y" on the exercise screen and "12M" in the compact trends),
+  `TREND_METRICS` (`E1RM`, `VOLUME`, `WEEKLY_VOLUME`) and
+  `ExerciseProgress.trend(metric, range, today)` (`RowTrend`: the latest
+  value of all, the last session's or the last trained week's, then the
+  values in range and their change) are what a tab row shows.
 - **Weeks**: `weekStart` is the ISO week's Monday (1 January 2026 is in the
   week of 29 December 2025); `weeklyBuckets(sets, today, zone, weeks = 12)`
   has every week, empty ones as zeros, with the workouts that have a logged
@@ -657,25 +675,50 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
   `ic_trending_up`): "Last 12 weeks" with workouts and weeks in a row, bars
   for workouts and volume per week; **Exercises**, most recently trained
   first, each row "Est. 1RM 112 kg · +14 kg in 3 months" (or "No change", or
-  the session count when 3 months hold fewer than two estimates) with a
-  sparkline of the 3 months' estimates; **Recent records**. A row opens the
-  exercise's progress.
+  the session count when the span holds fewer than two values) with a
+  sparkline of the span's values; **Recent records**. A row opens the
+  exercise's progress. **The compact trends' choices** (issue #78), two
+  rows of chips under the Exercises heading (`ChoiceChips`, the exercise
+  screen's style; see below when they do not fit): the metric **Est. 1RM ·
+  Volume · Weekly volume** (Volume is per session: "Session volume 480 kg ·
+  +60 kg in 3 months"; "Weekly volume 930 kg · …" is the last trained
+  week's) and the span **3M · 12M** ("−1 kg in 12 months"); default
+  estimated 1RM over 3 months. Both are remembered in the `settings` DataStore
+  (`data/ProgressSettings`, keys `progress_rows_metric`, `"session_volume"`
+  or `"weekly_volume"`, and `progress_rows_range`, `"12m"`; the default is no
+  key; `container.progressSettings`), **not synced**, and **shared with the
+  sheet in a workout**: a choice in either is the other's. The weekly bars
+  stay at 12 weeks whatever the choice.
 - **Exercise progress** (`progress/{exerciseId}`, `ExerciseProgressScreen`):
-  metric chips (Est. 1RM · Top set · Volume) above a line chart, range chips
-  (3M · 1Y · All) below it, the records with dates, the last five sessions'
-  sets. Reached from the tab and from the exercise page's **Progress**.
-  Estimates and volumes are written in whole kilos, a top set as lifted.
+  metric chips (Est. 1RM · Top set · Volume · Weekly volume, a menu on a
+  phone since four do not fit) above a line chart, range chips (3M · 1Y ·
+  All) below it, the records with dates, the last five sessions' sets. Reached from the tab and from the exercise
+  page's **Progress**. Its choices start at estimated 1RM over 3 months each
+  time and are not the compact trends'. Estimates and volumes are written in
+  whole kilos, a top set as lifted.
 - **The sheet in a workout** (`ProgressSheet`): each exercise header in the
   active workout has a trend button ("Progress for Bench press") next to its
   menu. The sheet shows the record line for the exercise's current set (the
   screen's current set if it is this exercise's, else its first open set):
   "96 × 7 would be a new best estimated 1RM", "… would be your heaviest
   weight", "… your most reps at 96 kg or more", else the reps at that weight
-  that would beat the estimate, else "is no new record"; then the estimate
-  over 3 months (compact) and the last three sessions. It writes nothing; the
-  open sheet is `rememberSaveable` state on the screen, and dismissing it
-  leaves the list, its scroll and the selection as they were. Both screens
-  share `ExerciseProgressViewModel`, keyed `progress-<exerciseId>`.
+  that would beat the estimate, else "is no new record"; then a compact
+  chart between the tab's two chip rows (Est. 1RM · Volume · Weekly volume
+  above, 3M · 12M below, the same remembered choice as the rows) and the
+  last three sessions. It writes no training data; the open sheet is
+  `rememberSaveable` state on the screen, and dismissing it leaves the list,
+  its scroll and the selection as they were. Both screens use
+  `ExerciseProgressViewModel`, keyed `progress-<exerciseId>` on the screen
+  and `progress-sheet-<exerciseId>` in the sheet, which hands it
+  `ProgressSettings` for its choices.
+- **`ChoiceChips`** (`ProgressComponents.kt`) is always one line. It
+  measures its chips (a `SubcomposeLayout` with a probe that is never
+  placed and has no semantics) and, when they are wider than the line,
+  shows instead one chip naming the choice with an arrow ("Show all
+  choices") that opens a `DropdownMenu` of every option, the chosen one
+  ticked. So it holds for any width, font scale and language; at the flow
+  tests' 411 dp the exercise screen's metrics are the menu and every other
+  choice is chips.
 
 **Charts, `ui/common/charts/`**, drawn with Compose `Canvas`, no chart
 library: `LineChart` (line plus a dot per point, the last one larger, x
@@ -686,9 +729,47 @@ proportional to the date), `BarChart` (a zero is a short baseline mark), and
 last date under the x axis as the locale writes a short month and day
 (`shortDate`, `getBestDateTimePattern("MMMd")`). **Each chart is one semantics
 node whose content description is its summary** ("Estimated 1RM, 3 months:
-from 98 to 112 kg"), which is what a screen reader says and what
+from 98 to 112 kg", "Weekly volume, 12 months: from 360 to 930 kg";
+`chartSummary`, a row's sparkline too), which is what a screen reader says and what
 `ProgressFlowTest` asserts; with fewer than two sessions in range the chart is
 "Log this exercise in two workouts to see a chart" and the summary says so.
+
+### Workout summary
+
+The screen after Finish (`ui/summary/`, route `summary/{id}`,
+`SummaryScreen` + `SummaryViewModel`), one `LazyColumn` (`SUMMARY_LIST_TAG`)
+under the top bar, with **Save as routine** and **Done** side by side in a
+bottom bar that stays put whatever is scrolled:
+
+- **Stats**: duration, sets, volume, as before.
+- **Exercises**: each row "2 sets · 960 kg · Est. 1RM 112 kg" (logged sets,
+  `ExerciseReport.volumeKg`, `e1rmKg`: the best Epley estimate of its sets),
+  "New record" when it is one, and the best set in large numbers.
+- **Muscles worked**: the body (`MuscleHeatMap`, the exercise page's
+  `BodyMap` with each muscle in the accent by how much it was worked, from
+  30 % for the least to full for the most) and a row per muscle, most worked
+  first: its name, its percentage and a bar against the most worked one.
+  The numbers are core's **`muscleBreakdown`** (`core/muscles/MuscleWork.kt`,
+  `MuscleWorkTest`): **sets per muscle**, so weight does not enter
+  (bodyweight work counts, a heavy squat does not drown the curls). Each
+  logged set credits each primary muscle of its exercise with one set and
+  each secondary one with `SECONDARY_SET_CREDIT` = 0.5; a muscle in both is
+  primary. Percentages are of all credit and rounded by largest remainder
+  (`wholePercents`), so they add up to 100 (a sliver shows "<1%"). The
+  muscles come from `container.catalogueMuscles`; a custom exercise has
+  none, and its sets are a muted line ("2 sets of custom exercises are not
+  counted…", `uncountedSets`). A screen reader hears the map as "Muscles
+  worked: chest 50%, front delts 25%, triceps 25%".
+- **Progress**: the compact trends' chips (Est. 1RM · Volume · Weekly
+  volume, 3M · 12M; the same remembered choice as the Progress tab and the
+  workout sheet, `ProgressSettings`) and, per exercise of the workout (once
+  each, in workout order), its name, which opens its progress
+  (`progress/{exerciseId}`), and a `ProgressChart` over every finished
+  workout (`WorkoutRepository.observeProgressSets()`), this one the last
+  point.
+
+`SummaryFlowTest` (light and dark) covers the rows, the muscles and their
+percentages, the charts and the shared choice.
 
 ## Commands
 
@@ -1268,7 +1349,23 @@ Jefit is done; Strong and Hevy follow in the same frame.
   (`ImportPreview.usage`), so the person sees which names carry history, and
   the best two offline suggestions as chips ("Lat pulldown?"); a chip is the
   same as Choose with that exercise. Above the rows, "Create all remaining"
-  and "Skip all remaining" decide only the rows still "Not decided".
+  and "Skip all remaining" decide only the rows still "Not decided", and
+  "8 of 11 decided" counts the rows (`ImportUiState.decidedCount`).
+  **A decided row collapses** (issue #77, `DecidedRow`): the name, the usage
+  line and one decision line in `accentText` with a check ("✓ Leverage Iso
+  Row", "✓ Create “Heel Walking”", "✓ Skipped"), one node for a screen reader
+  ("Machine Seated Row: imported as Leverage Iso Row"), and a quiet **Change**
+  text button (described "Change Machine Seated Row"). No filled button, no
+  chips, no proposal and no Choose/Create/Skip while it is collapsed: after
+  Accept an accent-filled Choose read as the next step. Every decision path
+  (Accept, a chip, Choose's pick, Create, Skip, the bulk actions) goes
+  through the ViewModel's `choose` or the bulk functions and collapses the
+  row the same way. **Change** (`reopen`) puts the name in
+  `ImportUiState.reopened`: the row shows exactly the open layout again
+  ("As …", the selected chip), but **the decision stands until a new one is
+  made**, so the counter keeps it, Import stays enabled, and Choose then back
+  from the picker leaves it decided; the next decision collapses it, and the
+  bulk actions leave a reopened row alone (it is decided).
   Import is enabled once every name is decided; the summary says
   what was added and offers "Undo import".
 - **"Suggest with the assistant"** (issue #71), above the rows when a BYOK
@@ -1317,7 +1414,9 @@ Jefit is done; Strong and Hevy follow in the same frame.
   import" and undo after it; a suggestion chip and "Skip all
   remaining"; the assistant against a MockWebServer, "What is sent", the
   proposals and "Accept all high-confidence"; the confidence tags and
-  Accept's style in the light and the dark theme). `AssistantFlowTest`
+  Accept's style in the light and the dark theme; Accept collapsing a row,
+  Change reopening it with the decision kept, the counter, and "Create all
+  remaining" collapsing the rest). `AssistantFlowTest`
   checks that an `en-rSE` phone asks for English and an `sv` one for
   Swedish; core's `AiLanguageTest` the mapping and every request type.
 

@@ -194,6 +194,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                     onOpenDetail = { id -> nav.navigate(Routes.detail(id)) },
                     onShowHistory = { nav.navigateToTab(Routes.HISTORY) },
                     onShowRoutines = { nav.navigateToTab(Routes.ROUTINES) },
+                    onOpenRoutine = { id -> nav.navigate(Routes.routine(id)) },
                     onShowSettings = { nav.navigate(Routes.SETTINGS) },
                     onShowAssistant = { nav.navigate(Routes.assistant()) },
                 )
@@ -357,7 +358,11 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
             }
             composable(Routes.SUMMARY, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
-                SummaryScreen(workoutId = id, onDone = { nav.popBackStack(Routes.HOME, inclusive = false) })
+                SummaryScreen(
+                    workoutId = id,
+                    onDone = { nav.popBackStack(Routes.HOME, inclusive = false) },
+                    onOpenProgress = { exerciseId -> nav.navigate(Routes.exerciseProgress(exerciseId)) },
+                )
             }
         }
     }

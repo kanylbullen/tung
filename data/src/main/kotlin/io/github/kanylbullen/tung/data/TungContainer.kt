@@ -200,6 +200,9 @@ class TungContainer(
     /** "My equipment": what the Exercises tab, the picker and the assistant keep to. Not synced. */
     val equipmentSettings: EquipmentSettings by lazy { EquipmentSettings(settings) }
 
+    /** The compact trends' span and metric, shared by the Progress tab's rows and the sheet in a workout. Not synced. */
+    val progressSettings: ProgressSettings by lazy { ProgressSettings(settings) }
+
     // --- sync with tung-server (sync/, CLAUDE.md "Sync") ---
     private val tokenStore: TokenStore by lazy { createTokenStore(this.context) }
     val syncSettings: SyncSettings by lazy { SyncSettings(settings) }
