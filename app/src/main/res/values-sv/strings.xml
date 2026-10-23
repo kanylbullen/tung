@@ -596,6 +596,15 @@
     <string name="import_chosen_create">Ny övning ”%1$s”</string>
     <string name="import_chosen_skip">Hoppas över</string>
     <string name="import_suggestion">%1$s?</string>
+    <string name="import_decided_count">%1$d av %2$d bestämda</string>
+    <string name="import_decided_use">✓ %1$s</string>
+    <string name="import_decided_create">✓ Skapa ”%1$s”</string>
+    <string name="import_decided_skip">✓ Hoppas över</string>
+    <string name="import_decided_use_description">%1$s: importeras som %2$s</string>
+    <string name="import_decided_create_description">%1$s: importeras som en ny övning</string>
+    <string name="import_decided_skip_description">%1$s: hoppas över</string>
+    <string name="import_change">Ändra</string>
+    <string name="import_change_description">Ändra %1$s</string>
     <plurals name="import_used_in_workouts">
         <item quantity="one">I %d pass</item>
         <item quantity="other">I %d pass</item>

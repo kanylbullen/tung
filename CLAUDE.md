@@ -1315,7 +1315,23 @@ Jefit is done; Strong and Hevy follow in the same frame.
   (`ImportPreview.usage`), so the person sees which names carry history, and
   the best two offline suggestions as chips ("Lat pulldown?"); a chip is the
   same as Choose with that exercise. Above the rows, "Create all remaining"
-  and "Skip all remaining" decide only the rows still "Not decided".
+  and "Skip all remaining" decide only the rows still "Not decided", and
+  "8 of 11 decided" counts the rows (`ImportUiState.decidedCount`).
+  **A decided row collapses** (issue #77, `DecidedRow`): the name, the usage
+  line and one decision line in `accentText` with a check ("✓ Leverage Iso
+  Row", "✓ Create “Heel Walking”", "✓ Skipped"), one node for a screen reader
+  ("Machine Seated Row: imported as Leverage Iso Row"), and a quiet **Change**
+  text button (described "Change Machine Seated Row"). No filled button, no
+  chips, no proposal and no Choose/Create/Skip while it is collapsed: after
+  Accept an accent-filled Choose read as the next step. Every decision path
+  (Accept, a chip, Choose's pick, Create, Skip, the bulk actions) goes
+  through the ViewModel's `choose` or the bulk functions and collapses the
+  row the same way. **Change** (`reopen`) puts the name in
+  `ImportUiState.reopened`: the row shows exactly the open layout again
+  ("As …", the selected chip), but **the decision stands until a new one is
+  made**, so the counter keeps it, Import stays enabled, and Choose then back
+  from the picker leaves it decided; the next decision collapses it, and the
+  bulk actions leave a reopened row alone (it is decided).
   Import is enabled once every name is decided; the summary says
   what was added and offers "Undo import".
 - **"Suggest with the assistant"** (issue #71), above the rows when a BYOK
@@ -1361,7 +1377,9 @@ Jefit is done; Strong and Hevy follow in the same frame.
   Robolectric's `receiveResult`, no app seam; a suggestion chip and "Skip all
   remaining"; the assistant against a MockWebServer, "What is sent", the
   proposals and "Accept all high-confidence"; the confidence tags and
-  Accept's style in the light and the dark theme). `AssistantFlowTest`
+  Accept's style in the light and the dark theme; Accept collapsing a row,
+  Change reopening it with the decision kept, the counter, and "Create all
+  remaining" collapsing the rest). `AssistantFlowTest`
   checks that an `en-rSE` phone asks for English and an `sv` one for
   Swedish; core's `AiLanguageTest` the mapping and every request type.
 

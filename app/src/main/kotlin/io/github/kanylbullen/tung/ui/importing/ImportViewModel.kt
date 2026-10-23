@@ -48,6 +48,11 @@ data class ImportUiState(
     val preview: ImportPreview? = null,
     /** The review's decisions, for the names in [ImportPreview.unmatched] only. */
     val choices: Map<String, ImportChoice> = emptyMap(),
+    /**
+     * Decided names whose row "Change" opened again (issue #77). The decision
+     * stays until a new one is made, which collapses the row again.
+     */
+    val reopened: Set<String> = emptySet(),
     val result: ImportResult? = null,
     val removed: Int = 0,
     /** A BYOK provider is set up, so "Suggest with the assistant" is offered. */
@@ -56,6 +61,12 @@ data class ImportUiState(
 ) {
     val undecided: List<String> get() = preview?.unmatched.orEmpty().filter { it !in choices }
     val canImport: Boolean get() = phase == ImportPhase.Preview && undecided.isEmpty()
+
+    /** "8 of 11 decided" above the rows. */
+    val decidedCount: Int get() = preview?.unmatched.orEmpty().count { it in choices }
+
+    /** A decided row shows only its decision and "Change" (issue #77). */
+    fun collapsed(name: String): Boolean = name in choices && name !in reopened
 
     /** The undecided names the assistant matched with high confidence: what "Accept all high-confidence" decides. */
     val highConfidence: List<String> get() =
@@ -107,14 +118,25 @@ class ImportViewModel(
         }
     }
 
+    /** Every decision path ends here or in the bulk ones below, and each collapses the row it decides. */
     fun choose(name: String, choice: ImportChoice) {
-        local.update { it.copy(choices = it.choices + (name to choice)) }
+        local.update { it.copy(choices = it.choices + (name to choice), reopened = it.reopened - name) }
+    }
+
+    /** "Change" on a decided row: shows the row's options again; the decision stands until another is made. */
+    fun reopen(name: String) {
+        if (name !in local.value.choices) return
+        local.update { it.copy(reopened = it.reopened + name) }
     }
 
     /** A suggestion's chip, or a proposal's Accept: the same as choosing [exercise] in the picker. */
     fun use(name: String, exercise: ExerciseCandidate) = choose(name, ImportChoice.Use(exercise))
 
-    /** "Create all remaining" / "Skip all remaining": [choice] for every name still undecided, the others untouched. */
+    /**
+     * "Create all remaining" / "Skip all remaining": [choice] for every name
+     * still undecided, the others untouched (a reopened row is decided, so it
+     * stays open with its decision).
+     */
     fun decideRemaining(choice: ImportChoice) {
         local.update { s -> s.copy(choices = s.choices + s.undecided.associateWith { choice }) }
     }
