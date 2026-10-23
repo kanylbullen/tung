@@ -41,7 +41,7 @@ with its Play services provider) and `googleid` 1.1.1, in `app/` only.
 watch's `TungWearApp`) holds the database and the repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
 (`ui/common/Containers.kt`) and get repositories (for reads), `container.commands`
 (for every change, see "Commands") and nav arguments in the constructor;
-the active workout's factory also passes `createSavedStateHandle()`, for the rest timer.
+the active workout's factory also passes `createSavedStateHandle()`, for the rest timer, and so does the Routines tab's, for its selection.
 
 ## Layers
 
@@ -126,7 +126,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
   without the library knowing either app.
 - **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`,
   `RoutineEditingCommandsTest` (`create_routine` and the routine-editing
-  commands through `AppCommandHandler`), `AddExerciseCommandsTest`
+  commands through `AppCommandHandler`), `DeleteRoutinesCommandTest`, `AddExerciseCommandsTest`
   (`add_exercise` set counts and pre-fill, `add_set` with a count), `LogSetCommandsTest`
   (`log_set` only ticks; `add_next` and routine targets), `ProgressSetsTest` (the progress reads), `ImporterTest` and `SyncMappingImportTest` (see "Import"), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
   application). `FakeSyncServer` and `MemoryTokenStore` are Kotlin test
@@ -168,7 +168,7 @@ column). All in `app/.../ui/settings/`:
 | Training | `settings/training` | "Default rest 1:30 · kg" | `TrainingScreen`: the default rest (−/+ 30 s, 0–300 s), the unit (kg), and "My equipment" (`EquipmentSection`, issue #65) |
 | Assistant | `settings/assistant` | the model, or "Not set up" | `AiSection` |
 | Health Connect | `settings/health` | "Writing workouts", "Off", … | `HealthConnectSection` |
-| Data | `settings/data` | "Last import 21 Oct" | `ImportSection` (import's `onDone` pops back here) |
+| Data | `settings/data` | "Last import 21 Oct" | `ImportSection` (import's `onDone` pops back here): import, "Undo last import", "Delete routines from the last import (N)" |
 | About | `settings/about` | "Version 0.1.0 · dogfood" | `AboutScreen` in `SettingsGroups.kt`: version and build type (`BuildConfig`), AGPL-3.0 with the source link, the catalogue's credit (core CC0, free-exercise-db Unlicense) |
 
 A section's own composable keeps its logic and has no title of its own: the
@@ -211,6 +211,20 @@ tab, so back returns to it. Home keeps its Routines section, the three most rece
 `CreateRoutine(name)` (`RoutineRepository.create`: an empty routine, stamped
 and dirty), then opens the routine's detail, which says "Add exercises with
 + Exercise" until it has one.
+
+**Selection mode** (issue #79, `RoutinesViewModel`): a long press on a row
+starts it with that routine selected (the row's long-press action is labelled
+"Select" for a screen reader); a tap then toggles a row, which is
+`selectable` (announced as selected) with a checkbox where Start was: the
+Start buttons are hidden while selecting. The top bar becomes ✕, "3
+selected", "Select all" (until all are) and a delete icon; ✕ or back leaves.
+The selection is in the ViewModel's `SavedStateHandle`, so it survives
+rotation and process death, and a routine that disappears drops out of it.
+Delete asks once (`DeleteRoutinesDialog`, shared with Settings → Data):
+"Delete 12 routines?", "Your workout history is kept.", and, when any of
+them is a program day, "3 program days that use them go too."
+(`RoutineRepository.programDaysUsing`); then one `DeleteRoutines` with the
+ids, one transaction and one sync.
 
 **Editing a saved routine** (routine detail, `ui/routines/RoutineDetail*`),
 each a command:
@@ -839,6 +853,19 @@ its signal to commands, never a new path into the database
   clearing is explicit), and for programs `SetProgramMode` next to the day
   commands. Wire names: `add_routine_exercise`, `remove_routine_exercise`,
   `set_target_reps`, `set_program_mode`.
+- **`DeleteRoutines(ids)`**, wire `delete_routines` with `routine_ids`
+  (issue #79): 1–500 non-blank ids (`MAX_DELETE_ROUTINES`), a duplicate
+  counts once. Each routine goes as `delete_routine` takes it (its exercises
+  and the program days that use it, a tombstone for every row; workouts
+  started from it stay), all in **one transaction** in both handlers
+  (`RoutineRepository.deleteAll`, `ServerCommandHandler.deleteRoutine`).
+  Returns `deletedCount` (a number as a string, like every id value). Ids
+  that are gone: the app skips them, as `delete_routine` does (a list of only
+  gone ids is `Done` with `deletedCount` 0); the server skips them too and
+  answers `Rejected` only when none of the ids exists, as its
+  `delete_routine` rejects a missing id. Callers: the Routines tab's
+  selection mode and Settings → Data's "Delete routines from the last
+  import".
 - **`CommandNames` are stable.** Each command has a snake_case wire name
   (`log_set`, `apply_plan`, …): the future REST route and MCP tool name.
   Clients and saved prompts outside the repository will call them, so a name
@@ -1304,7 +1331,14 @@ Jefit is done; Strong and Hevy follow in the same frame.
   remembers the last import in the `settings` DataStore (`ImportHistory`).
 - **app.** Settings → Data (`ui/settings/ImportSection.kt`, in `DataSettingsScreen`):
   "Import from Jefit" opens the system file picker (`ACTION_OPEN_DOCUMENT`,
-  `text/*` and `*/*`), and "Undo last import" while one is remembered. The
+  `text/*` and `*/*`), and "Undo last import" while one is remembered.
+  **"Delete routines from the last import (N)"** (issue #79) shows while
+  routines that import created (`LastImport.routineIds`) still exist, N
+  counting those that do (live, over the routines Flow); it asks with
+  `DeleteRoutinesDialog` ("The import's workouts are kept.", plus the program
+  days that go) and runs one `DeleteRoutines` with those ids. The import's
+  workouts are untouched, and undo still works afterwards: it deletes the
+  batch's workouts and skips routines that are already gone. The
   file goes to `import?uri=…` (`ui/importing/`): read on IO (at most 64 MB),
   then the preview — date range, workouts · sets · routines, the set types
   imported as normal sets, what was skipped and why — and the review: each
@@ -1372,9 +1406,12 @@ Jefit is done; Strong and Hevy follow in the same frame.
   suggestions) and `AiMatchTest` (see "In-app AI (BYOK)").
   Data: `ImporterTest` (stamped and dirty, idempotent, undo with tombstones
   leaves other workouts, re-import after undo), `SyncMappingImportTest`,
+  `DeleteRoutinesCommandTest` (`delete_routines`: one transaction, tombstones
+  for routines, their exercises and program days, history kept, gone ids),
   `MigrationTest`, and `AiServiceTest`'s matching case. Server:
   `ImportColumnsTest`. Flows: `ImportFlowTest` (the picker answered through
-  Robolectric's `receiveResult`, no app seam; a suggestion chip and "Skip all
+  Robolectric's `receiveResult`, no app seam; "Delete routines from the last
+  import" and undo after it; a suggestion chip and "Skip all
   remaining"; the assistant against a MockWebServer, "What is sent", the
   proposals and "Accept all high-confidence"; the confidence tags and
   Accept's style in the light and the dark theme; Accept collapsing a row,

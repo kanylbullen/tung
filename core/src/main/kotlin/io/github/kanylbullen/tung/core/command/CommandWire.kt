@@ -111,7 +111,7 @@ object CommandWire {
 
     private enum class Kind(val nullable: Boolean = false) {
         ID, TEXT, INT, NUMBER, BOOL, NULLABLE_INT(nullable = true), MUSCLE_GROUP, EQUIPMENT, PROGRAM_MODE,
-        EXERCISE, PLAN_EXERCISES, ROUTINE_EXERCISES,
+        EXERCISE, PLAN_EXERCISES, ROUTINE_EXERCISES, ID_LIST,
     }
 
     private class Field(val name: String, val kind: Kind, val required: Boolean, val description: String)
@@ -216,6 +216,9 @@ object CommandWire {
         "create_routine" to Spec(listOf(name)) { Command.CreateRoutine(it.text("name")) },
         "rename_routine" to Spec(listOf(routineId, name)) { Command.RenameRoutine(it.id("routine_id"), it.text("name")) },
         "delete_routine" to Spec(listOf(routineId)) { Command.DeleteRoutine(it.id("routine_id")) },
+        "delete_routines" to Spec(
+            listOf(req("routine_ids", Kind.ID_LIST, "The routines' ids, 1 to $MAX_DELETE_ROUTINES; a duplicate counts once.")),
+        ) { Command.DeleteRoutines(it.ids("routine_ids")) },
         "move_routine_exercise" to Spec(listOf(routineExerciseId, delta)) {
             Command.MoveRoutineExercise(it.id("routine_exercise_id"), it.int("delta"))
         },
@@ -281,6 +284,12 @@ object CommandWire {
             Kind.EQUIPMENT -> enumOf(Equipment.entries.map { it.key })
             Kind.PROGRAM_MODE -> enumOf(ProgramMode.entries.map { it.key })
             Kind.EXERCISE -> exerciseSchema(this)
+            Kind.ID_LIST -> {
+                put("type", "array")
+                put("minItems", 1)
+                put("maxItems", MAX_DELETE_ROUTINES)
+                putJsonObject("items") { put("type", "string") }
+            }
             Kind.PLAN_EXERCISES -> {
                 put("type", "array")
                 put("minItems", 1)
@@ -364,6 +373,10 @@ object CommandWire {
             Kind.EXERCISE -> if (exerciseRef(value) == null) {
                 reasons += "$at must be an object with exactly one of key, id, name or extended (a string), or a name as a string"
             }
+            Kind.ID_LIST -> {
+                val items = value as? JsonArray ?: return run { reasons += "$at must be an array of ids" }
+                items.forEachIndexed { i, item -> if (item.string() == null) reasons += "$at[$i] must be a string" }
+            }
             Kind.PLAN_EXERCISES -> {
                 val items = value as? JsonArray ?: return run { reasons += "$at must be an array" }
                 items.forEachIndexed { i, item -> checkPlanExercise(item, "$at[$i]", reasons) }
@@ -428,6 +441,7 @@ object CommandWire {
         fun double(name: String): Double = requireNotNull(args[name]?.double())
         fun bool(name: String): Boolean = args[name]?.takeUnless { it is JsonNull }?.bool() ?: false
         fun exercise(name: String): ExerciseRef = requireNotNull(args[name]?.let(::exerciseRef))
+        fun ids(name: String): List<String> = (args[name] as JsonArray).map { requireNotNull(it.string()) }
 
         fun planExercises(name: String): List<PlannedExercise> = (args[name] as JsonArray).map { item ->
             val obj = item as JsonObject

@@ -45,6 +45,7 @@ fun CommandResult.id(key: String): String? = (this as? CommandResult.Done)?.ids?
  * - [ROUTINE_EXERCISE_ID]: AddRoutineExercise (the new row); [EXERCISE_ID] with it (the exercise it resolved to).
  * - [PROGRAM_ID]: CreateProgram.
  * - [PROGRAM_DAY_ID]: AddProgramDay.
+ * - [DELETED_COUNT]: DeleteRoutines, how many routines it deleted (a number as a string; duplicates and ids that are gone not counted).
  */
 object CommandIds {
     const val WORKOUT_ID = "workoutId"
@@ -56,4 +57,5 @@ object CommandIds {
     const val ROUTINE_EXERCISE_ID = "routineExerciseId"
     const val PROGRAM_ID = "programId"
     const val PROGRAM_DAY_ID = "programDayId"
+    const val DELETED_COUNT = "deletedCount"
 }

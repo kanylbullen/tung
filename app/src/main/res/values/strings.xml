@@ -260,6 +260,23 @@
     <string name="routines_title">Routines</string>
     <string name="routines_all">All</string>
     <string name="routines_empty">No routines. Create one with + New routine, or save a finished workout as a routine from its summary or from its menu in History.</string>
+    <plurals name="routines_selected">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="routines_select">Select</string>
+    <string name="routines_select_all">Select all</string>
+    <string name="routines_leave_selection">Leave selection</string>
+    <string name="routines_delete_selected">Delete selected routines</string>
+    <plurals name="routines_delete_many_title">
+        <item quantity="one">Delete %1$d routine?</item>
+        <item quantity="other">Delete %1$d routines?</item>
+    </plurals>
+    <string name="routines_delete_many_body">Your workout history is kept.</string>
+    <plurals name="routines_delete_many_days">
+        <item quantity="one">%1$d program day that uses them goes too.</item>
+        <item quantity="other">%1$d program days that use them go too.</item>
+    </plurals>
     <string name="routine_start">Start</string>
     <string name="routine_start_description">Start %1$s</string>
     <string name="routine_last">Last: %1$s</string>
@@ -715,6 +732,8 @@
         <item quantity="other">Last import: %1$d workouts, %2$s</item>
     </plurals>
     <string name="import_undo_last">Undo last import</string>
+    <string name="import_delete_routines">Delete routines from the last import (%1$d)</string>
+    <string name="import_delete_routines_body">The import\'s workouts are kept.</string>
 
     <!-- Progress (ui/progress, CLAUDE.md "Progress") -->
     <string name="nav_progress">Progress</string>

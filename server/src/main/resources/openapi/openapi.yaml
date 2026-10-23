@@ -926,6 +926,7 @@ paths:
         | `create_routine` | `name` (an empty routine; fill it with `add_routine_exercise`) |
         | `rename_routine` | `routine_id`, `name` |
         | `delete_routine` | `routine_id` |
+        | `delete_routines` | `routine_ids` (1–500 ids, a duplicate counts once; ids that are gone are skipped, rejected only when none exists; answers `deletedCount`) |
         | `move_routine_exercise` | `routine_exercise_id`, `delta` |
         | `adjust_target_sets` | `routine_exercise_id`, `delta` |
         | `add_routine_exercise` | `routine_id`, `exercise`, `target_sets`? (1–20, default 3), `target_reps`? (1–999 or null) |
@@ -952,7 +953,7 @@ paths:
             type: string
             enum: [start_workout, start_routine, add_exercise, remove_exercise, add_set, remove_set, set_weight, set_reps,
               tick_set, log_set, select_current, finish_workout, delete_workout, apply_plan, set_rest, create_exercise,
-              save_routine, save_routine_plan, create_routine, rename_routine, delete_routine, move_routine_exercise,
+              save_routine, save_routine_plan, create_routine, rename_routine, delete_routine, delete_routines, move_routine_exercise,
               adjust_target_sets, add_routine_exercise, remove_routine_exercise, set_target_reps,
               create_program, rename_program, set_program_mode, activate_program, deactivate_program, delete_program,
               add_program_day, remove_program_day, move_program_day, toggle_program_weekday]

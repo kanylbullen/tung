@@ -269,12 +269,32 @@ class RoutineRepository(
      * Deletes the routine, its exercises and the program days that use it
      * (both cascade), with a tombstone for each. Workouts started from it are kept.
      */
-    suspend fun delete(routineId: String) = db.withTransaction {
-        dao.getRoutine(routineId) ?: return@withTransaction
-        val now = clock()
-        db.recordDeletes(SyncTable.PROGRAM_DAYS, dao.programDayIdsUsing(routineId), now)
-        db.recordDeletes(SyncTable.ROUTINE_EXERCISES, dao.routineExerciseIds(routineId), now)
-        db.recordDeletes(SyncTable.ROUTINES, listOf(routineId), now)
-        dao.deleteRoutine(routineId)
+    suspend fun delete(routineId: String) {
+        deleteAll(listOf(routineId))
     }
+
+    /**
+     * [delete] for several routines in **one** transaction: each routine that
+     * still exists goes with its exercises and the program days that use it,
+     * a tombstone for every row. Ids that are gone, and duplicates, are ignored.
+     *
+     * @return how many routines were deleted.
+     */
+    suspend fun deleteAll(routineIds: List<String>): Int = db.withTransaction {
+        val now = clock()
+        var deleted = 0
+        for (routineId in routineIds.distinct()) {
+            dao.getRoutine(routineId) ?: continue
+            db.recordDeletes(SyncTable.PROGRAM_DAYS, dao.programDayIdsUsing(routineId), now)
+            db.recordDeletes(SyncTable.ROUTINE_EXERCISES, dao.routineExerciseIds(routineId), now)
+            db.recordDeletes(SyncTable.ROUTINES, listOf(routineId), now)
+            dao.deleteRoutine(routineId)
+            deleted++
+        }
+        deleted
+    }
+
+    /** How many program days use any of [routineIds], i.e. go with them when they are deleted. */
+    suspend fun programDaysUsing(routineIds: Collection<String>): Int =
+        routineIds.distinct().sumOf { dao.programDayIdsUsing(it).size }
 }

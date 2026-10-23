@@ -6,6 +6,7 @@ import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.DELETED_COUNT
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
@@ -132,6 +133,8 @@ class AppCommandHandler(
                 routines.delete(command.routineId)
                 Done()
             }
+            // Like delete_routine, an id that is gone is not an error here; only the count says what happened.
+            is Command.DeleteRoutines -> Done(mapOf(DELETED_COUNT to routines.deleteAll(command.ids).toString()))
             is Command.MoveRoutineExercise -> {
                 routines.move(command.routineExerciseId, command.delta)
                 Done()

@@ -253,6 +253,23 @@
     <string name="routines_title">Rutiner</string>
     <string name="routines_all">Alla</string>
     <string name="routines_empty">Inga rutiner. Skapa en med + Ny rutin, eller spara ett avslutat pass som rutin från sammanfattningen eller från passets meny i historiken.</string>
+    <plurals name="routines_selected">
+        <item quantity="one">%1$d vald</item>
+        <item quantity="other">%1$d valda</item>
+    </plurals>
+    <string name="routines_select">Välj</string>
+    <string name="routines_select_all">Välj alla</string>
+    <string name="routines_leave_selection">Avsluta urval</string>
+    <string name="routines_delete_selected">Radera valda rutiner</string>
+    <plurals name="routines_delete_many_title">
+        <item quantity="one">Radera %1$d rutin?</item>
+        <item quantity="other">Radera %1$d rutiner?</item>
+    </plurals>
+    <string name="routines_delete_many_body">Din träningshistorik finns kvar.</string>
+    <plurals name="routines_delete_many_days">
+        <item quantity="one">%1$d programdag som använder dem försvinner också.</item>
+        <item quantity="other">%1$d programdagar som använder dem försvinner också.</item>
+    </plurals>
     <string name="routine_start">Starta</string>
     <string name="routine_start_description">Starta %1$s</string>
     <string name="routine_last">Senast: %1$s</string>
@@ -704,6 +721,8 @@
         <item quantity="other">Senaste importen: %1$d pass, %2$s</item>
     </plurals>
     <string name="import_undo_last">Ångra senaste importen</string>
+    <string name="import_delete_routines">Radera rutiner från senaste importen (%1$d)</string>
+    <string name="import_delete_routines_body">Importens pass finns kvar.</string>
 
     <!-- Progress (ui/progress, CLAUDE.md "Progress") -->
     <string name="nav_progress">Framsteg</string>
