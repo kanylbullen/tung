@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.bestSet
 import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.isNewRecord
+import io.github.kanylbullen.tung.core.progress.estimatedOneRepMax
 import io.github.kanylbullen.tung.core.totalVolume
 import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
@@ -12,13 +13,20 @@ import io.github.kanylbullen.tung.data.toLogged
 
 data class ExerciseReport(
     val workoutExerciseId: String,
+    val exerciseId: String,
     /** Fallback name; shown through `exerciseDisplayName(nameKey, name)`. */
     val name: String,
     val nameKey: String?,
+    /** The logged sets only. */
     val sets: List<LoggedSet>,
     val best: LoggedSet?,
     val isRecord: Boolean,
-)
+) {
+    val volumeKg: Double get() = totalVolume(sets)
+
+    /** The best estimated 1RM of the sets (core's Epley, 1–12 reps), null when none has one. */
+    val e1rmKg: Double? get() = sets.mapNotNull { estimatedOneRepMax(it) }.maxOrNull()
+}
 
 /** A finished workout as the summary and detail screens show it. */
 data class WorkoutReport(
@@ -46,6 +54,7 @@ suspend fun buildWorkoutReport(
         val sets = e.sortedSets.filter { isLogged(it.completed, it.reps) }.map { it.toLogged() }
         ExerciseReport(
             workoutExerciseId = e.workoutExercise.id,
+            exerciseId = e.exercise.id,
             name = e.exercise.name,
             nameKey = e.exercise.nameKey,
             sets = sets,

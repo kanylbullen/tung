@@ -357,7 +357,11 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
             }
             composable(Routes.SUMMARY, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
-                SummaryScreen(workoutId = id, onDone = { nav.popBackStack(Routes.HOME, inclusive = false) })
+                SummaryScreen(
+                    workoutId = id,
+                    onDone = { nav.popBackStack(Routes.HOME, inclusive = false) },
+                    onOpenProgress = { exerciseId -> nav.navigate(Routes.exerciseProgress(exerciseId)) },
+                )
             }
         }
     }

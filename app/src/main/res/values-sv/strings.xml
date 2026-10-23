@@ -231,7 +231,19 @@
 
     <!-- Summary -->
     <string name="summary_title">Pass klart</string>
-    <string name="summary_best_set">Bästa set</string>
+    <string name="summary_exercises">Övningar</string>
+    <plurals name="summary_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d set</item>
+    </plurals>
+    <string name="summary_muscles">Tränade muskler</string>
+    <string name="summary_muscles_description">Tränade muskler: %1$s</string>
+    <string name="summary_muscle_item">%1$s %2$s</string>
+    <string name="summary_muscle_less_than">&lt;%1$s</string>
+    <plurals name="summary_muscles_uncounted">
+        <item quantity="one">%d set av en egen övning räknas inte: egna övningar har inga muskler</item>
+        <item quantity="other">%d set av egna övningar räknas inte: egna övningar har inga muskler</item>
+    </plurals>
     <string name="summary_record">Nytt rekord</string>
     <string name="summary_done">Klar</string>
     <string name="times_sign">×</string>

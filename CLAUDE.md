@@ -75,7 +75,8 @@ with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
 extended-catalogue search), the command surface (`core/command/`, see
 "Commands"), the picker's suggestions (`core/picker/`, see "Smart picker"),
 the Exercises tab's browse list and the catalogue by id (`core/catalog/`),
-the muscle map's shapes (`core/muscles/BodyMap.kt`) and an exercise's history
+the muscle map's shapes (`core/muscles/BodyMap.kt`) and a workout's sets per
+muscle (`core/muscles/MuscleWork.kt`, see "Workout summary"), an exercise's history
 (`ExerciseHistory.kt`; see "Exercises tab and exercise page"), progress
 (`core/progress/`: estimated 1RM, sessions, weeks, streak, records; see
 "Progress"), the sync protocol with its pure rules (`core/sync/`, see
@@ -137,7 +138,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap` with `MuscleHeatMap`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -424,8 +425,10 @@ build it from its classpath copies. free-exercise-db has one `shoulders`, so
 the import maps every one to `side_delts` (`catalog/README.md`); front and
 rear delts come only from `core.json`. Table and rules: `catalog/README.md`,
 "Muscles". The exercise page draws them on a body (the muscle map, see
-"Exercises tab and exercise page"); every muscle has a region there, so a
-new `Muscle` needs one in `core/muscles/BodyMap.kt` too (`BodyMapTest`).
+"Exercises tab and exercise page"), and the workout summary shades them by
+how much a workout worked them (see "Workout summary"); every muscle has a
+region there, so a new `Muscle` needs one in `core/muscles/BodyMap.kt` too
+(`BodyMapTest`).
 
 ### The extended catalogue
 
@@ -715,6 +718,43 @@ from 98 to 112 kg", "Weekly volume, 12 months: from 360 to 930 kg";
 `chartSummary`, a row's sparkline too), which is what a screen reader says and what
 `ProgressFlowTest` asserts; with fewer than two sessions in range the chart is
 "Log this exercise in two workouts to see a chart" and the summary says so.
+
+### Workout summary
+
+The screen after Finish (`ui/summary/`, route `summary/{id}`,
+`SummaryScreen` + `SummaryViewModel`), one `LazyColumn` (`SUMMARY_LIST_TAG`)
+under the top bar, with **Save as routine** and **Done** side by side in a
+bottom bar that stays put whatever is scrolled:
+
+- **Stats**: duration, sets, volume, as before.
+- **Exercises**: each row "2 sets · 960 kg · Est. 1RM 112 kg" (logged sets,
+  `ExerciseReport.volumeKg`, `e1rmKg`: the best Epley estimate of its sets),
+  "New record" when it is one, and the best set in large numbers.
+- **Muscles worked**: the body (`MuscleHeatMap`, the exercise page's
+  `BodyMap` with each muscle in the accent by how much it was worked, from
+  30 % for the least to full for the most) and a row per muscle, most worked
+  first: its name, its percentage and a bar against the most worked one.
+  The numbers are core's **`muscleBreakdown`** (`core/muscles/MuscleWork.kt`,
+  `MuscleWorkTest`): **sets per muscle**, so weight does not enter
+  (bodyweight work counts, a heavy squat does not drown the curls). Each
+  logged set credits each primary muscle of its exercise with one set and
+  each secondary one with `SECONDARY_SET_CREDIT` = 0.5; a muscle in both is
+  primary. Percentages are of all credit and rounded by largest remainder
+  (`wholePercents`), so they add up to 100 (a sliver shows "<1%"). The
+  muscles come from `container.catalogueMuscles`; a custom exercise has
+  none, and its sets are a muted line ("2 sets of custom exercises are not
+  counted…", `uncountedSets`). A screen reader hears the map as "Muscles
+  worked: chest 50%, front delts 25%, triceps 25%".
+- **Progress**: the compact trends' chips (Est. 1RM · Volume · Weekly
+  volume, 3M · 12M; the same remembered choice as the Progress tab and the
+  workout sheet, `ProgressSettings`) and, per exercise of the workout (once
+  each, in workout order), its name, which opens its progress
+  (`progress/{exerciseId}`), and a `ProgressChart` over every finished
+  workout (`WorkoutRepository.observeProgressSets()`), this one the last
+  point.
+
+`SummaryFlowTest` (light and dark) covers the rows, the muscles and their
+percentages, the charts and the shared choice.
 
 ## Commands
 
