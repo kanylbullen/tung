@@ -51,7 +51,8 @@ class SummaryFlowTest : FlowTest() {
         clickDescription(str(R.string.workout_mark_done, 1))
         waitForDescription(str(R.string.workout_mark_undone, 1))
         finishWorkout()
-        waitForText(str(R.string.summary_title))
+        // The top bar shows at once; the list and Done come with the report.
+        waitForText(str(R.string.summary_done))
     }
 
     @Test
@@ -95,6 +96,8 @@ class SummaryFlowTest : FlowTest() {
         list.performScrollToNode(hasText(str(R.string.progress_metric_weekly_volume)))
         clickText(str(R.string.progress_metric_weekly_volume))
         val weekly = chart(R.string.progress_metric_weekly_volume_long, "420", "540")
+        // The choice goes through DataStore and the ViewModel before the chart changes.
+        waitFor(hasContentDescription(weekly))
         list.performScrollToNode(hasContentDescription(weekly))
         assertShown(hasContentDescription(weekly))
         // The Progress tab's choice: the summary shares it.
