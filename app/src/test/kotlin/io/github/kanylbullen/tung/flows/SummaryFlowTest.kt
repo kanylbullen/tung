@@ -11,7 +11,6 @@ import io.github.kanylbullen.tung.core.progress.ProgressMetric
 import io.github.kanylbullen.tung.ui.progress.EXERCISE_PROGRESS_TAG
 import io.github.kanylbullen.tung.ui.summary.SUMMARY_LIST_TAG
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.robolectric.annotation.Config
 import java.time.Clock
@@ -101,7 +100,7 @@ class SummaryFlowTest : FlowTest() {
         list.performScrollToNode(hasContentDescription(weekly))
         assertShown(hasContentDescription(weekly))
         // The Progress tab's choice: the summary shares it.
-        waitUntil { runBlocking { app.container.progressSettings.trendMetric.first() } == ProgressMetric.WEEKLY_VOLUME }
+        waitUntilStored(ProgressMetric.WEEKLY_VOLUME) { app.container.progressSettings.trendMetric.first() }
         screenshot("4-progress-weekly")
 
         // The chart's exercise opens its progress; back returns to the summary.

@@ -135,6 +135,28 @@ abstract class FlowTest {
         }
     }
 
+    /**
+     * Waits until [read], a read of what the app keeps in its `settings`
+     * DataStore, gives [expected]. A screen shows a choice before DataStore has
+     * written it, so a stored value is waited for, never read once right after
+     * a tap. A read that throws counts as not yet: it runs on the test thread
+     * while the app writes, and DataStore before 1.1.3 threw
+     * FileNotFoundException when the file's very first write landed mid-read.
+     * On timeout the error names the last read, value or exception.
+     */
+    protected fun <T> waitUntilStored(expected: T, read: suspend () -> T) {
+        var last: Result<T>? = null
+        try {
+            waitUntil {
+                val result = runCatching { runBlocking { read() } }
+                last = result
+                result.isSuccess && result.getOrNull() == expected
+            }
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError("${testName.methodName}: stored value never became $expected, last read $last", e)
+        }
+    }
+
     protected fun waitForText(text: String) = waitFor(hasText(text))
 
     protected fun waitForDescription(description: String) = waitFor(hasContentDescription(description))

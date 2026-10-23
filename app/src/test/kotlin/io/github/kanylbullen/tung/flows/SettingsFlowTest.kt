@@ -36,7 +36,7 @@ class SettingsFlowTest : FlowTest() {
     @After
     fun stopServer() = fake.stop()
 
-    private fun restDefault(): Int = runBlocking { app.container.restTimer.defaultSeconds.first() }
+    private fun waitForRestDefault(seconds: Int) = waitUntilStored(seconds) { app.container.restTimer.defaultSeconds.first() }
 
     private fun serverField() = hasSetTextAction() and hasText(str(R.string.sync_server_url))
 
@@ -120,13 +120,13 @@ class SettingsFlowTest : FlowTest() {
         waitForText("1:30")
         clickDescription(str(R.string.rest_longer))
         waitForText("2:00")
-        waitUntil { restDefault() == 120 }
+        waitForRestDefault(120)
         screenshot("1-rest-2-00")
         repeat(4) { clickDescription(str(R.string.rest_shorter)) }
         waitForText(str(R.string.rest_off))
-        waitUntil { restDefault() == 0 }
+        waitForRestDefault(0)
         clickDescription(str(R.string.rest_longer))
-        waitUntil { restDefault() == 30 }
+        waitForRestDefault(30)
 
         clickDescription(str(R.string.action_back))
         waitForText(str(R.string.settings_summary_training, "0:30"))

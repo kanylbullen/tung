@@ -30,7 +30,7 @@ Adding an app language:
 
 Kotlin 2.0.21, Jetpack Compose (BOM 2024.12.01), Material 3, Room 2.6.1 via
 KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
-DataStore 1.1.1 (small state outside Room). AGP 8.7.3,
+DataStore 1.1.7 (small state outside Room). AGP 8.7.3,
 Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26. For sync only:
 Ktor client 3.0.3 (OkHttp engine, kotlinx JSON), WorkManager 2.10.0,
 androidx.security-crypto 1.0.0 (the stable release) and lifecycle-process;
@@ -379,6 +379,11 @@ notification); denied, the countdown and the vibration still work.
 The DataStore is built in `TungContainer` with `PreferenceDataStoreFactory`,
 not the `preferencesDataStore` delegate: the delegate is a process-wide
 singleton, and Robolectric makes a new application for every flow test.
+It must be at least 1.1.3: in 1.1.1 a read that raced the file's very first
+write (a fresh install, e.g. the first workout's `stored` read next to
+`firstTimeAskingForNotifications`) threw `FileNotFoundException` when the
+write's atomic move landed between the failed open and the `exists` check;
+1.1.3 reads again.
 
 ### Ids and `updatedAt`
 
@@ -1867,6 +1872,11 @@ part of `./gradlew test`. Only them:
   output, so a run restored from the build cache restores them too. They are
   drawn with `View.draw`, because `captureToImage()` times out under
   Robolectric on API 34.
+- **A value in the `settings` DataStore is checked with
+  `waitUntilStored(expected) { … }`** (`FlowTest`), never read once with
+  `runBlocking { ….first() }` right after a tap: a screen can show a choice
+  before DataStore has written it (Training's rest is the screen's own
+  value), and a read that throws counts as not yet.
 - **`addExercise(query, name)` dismisses the first-time weight sheet** an
   exercise with no history opens (issue #55, `dismissSheet` runs the sheet
   scrim's click action, "Close sheet" in the app's language), so flows that add an exercise and then

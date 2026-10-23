@@ -74,8 +74,9 @@ dependencies {
     api("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
-    // Small state outside Room (the rest timer, sync's settings).
-    api("androidx.datastore:datastore-preferences:1.1.1")
+    // Small state outside Room (the rest timer, sync's settings). At least 1.1.3: before it a read
+    // that raced the file's very first write (a fresh install) threw FileNotFoundException.
+    api("androidx.datastore:datastore-preferences:1.1.7")
 
     // Sync with tung-server: Ktor client on OkHttp, kotlinx JSON, WorkManager for the
     // background sync, the session token in EncryptedSharedPreferences.
