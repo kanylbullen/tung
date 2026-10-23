@@ -204,7 +204,8 @@ Progress,
 switched with `navigateToTab` (`saveState`/`restoreState`, like the others):
 the Programs row on top, then every routine by last use, each with Start and
 its detail behind a tap; routine and program details are pushed on top of the
-tab, so back returns to it. Home keeps its Routines section and "Today"; its
+tab, so back returns to it. Home keeps its Routines section, the three most recently used
+(`HomeViewModel.HOME_ROUTINES`), and "Today"; its
 "All" switches to the tab, and so does the Assistant's "Save program".
 **"+ New routine"** in the tab's top bar opens `RoutineNameDialog` and runs
 `CreateRoutine(name)` (`RoutineRepository.create`: an empty routine, stamped

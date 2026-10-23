@@ -194,6 +194,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                     onOpenDetail = { id -> nav.navigate(Routes.detail(id)) },
                     onShowHistory = { nav.navigateToTab(Routes.HISTORY) },
                     onShowRoutines = { nav.navigateToTab(Routes.ROUTINES) },
+                    onOpenRoutine = { id -> nav.navigate(Routes.routine(id)) },
                     onShowSettings = { nav.navigate(Routes.SETTINGS) },
                     onShowAssistant = { nav.navigate(Routes.assistant()) },
                 )
