@@ -75,7 +75,7 @@
         <item quantity="one">Ta bort %1$s och dess loggade set?</item>
         <item quantity="other">Ta bort %1$s och dess %2$d loggade set?</item>
     </plurals>
-    <string name="workout_remove_exercise_body">Seten raderas från det här passet.</string>
+    <string name="workout_remove_exercise_body">Det du loggat för den i det här passet raderas.</string>
     <string name="workout_remove_exercise_confirm">Ta bort</string>
     <string name="workout_discarded">Passet sparades inte eftersom inga set var bockade.</string>
     <string name="workout_not_found">Passet finns inte längre. Gå tillbaka och starta ett nytt.</string>

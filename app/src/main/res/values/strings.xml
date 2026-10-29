@@ -80,7 +80,7 @@
         <item quantity="one">Remove %1$s and its logged set?</item>
         <item quantity="other">Remove %1$s and its %2$d logged sets?</item>
     </plurals>
-    <string name="workout_remove_exercise_body">The sets are deleted from this workout.</string>
+    <string name="workout_remove_exercise_body">What you logged for it in this workout is deleted.</string>
     <string name="workout_remove_exercise_confirm">Remove</string>
     <string name="workout_discarded">The workout was not saved because no sets were ticked.</string>
     <string name="workout_not_found">This workout no longer exists. Go back and start a new one.</string>
