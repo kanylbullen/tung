@@ -19,6 +19,26 @@
     <string name="home_recent">Recent workouts</string>
     <string name="home_empty">No workouts yet. Start your first and it will show up here.</string>
     <string name="home_show_all">Show all</string>
+    <!-- Home's "This week" block: the hero number is the week's volume in kg, under it the counts, then the days. -->
+    <string name="home_this_week">This week</string>
+    <plurals name="home_week_workouts">
+        <item quantity="one">%d workout</item>
+        <item quantity="other">%d workouts</item>
+    </plurals>
+    <plurals name="home_week_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d sets</item>
+    </plurals>
+    <string name="home_week_none">No workout yet this week</string>
+    <string name="home_week_best">Best of the last 12 weeks</string>
+    <!-- The seven bars, for a screen reader: "Volume per day this week: Monday 3 020 kg, Wednesday 4 420 kg" or "…: nothing yet" -->
+    <string name="home_week_days_description">Volume per day this week: %1$s</string>
+    <string name="home_week_day_volume">%1$s %2$s kg</string>
+    <string name="home_week_days_none">nothing yet</string>
+    <!-- The small body on Home: "Muscles worked this week: chest 50 %, …" -->
+    <string name="home_muscles_description">Muscles worked this week: %1$s</string>
+    <!-- A finished workout's row without a routine and without exercises -->
+    <string name="workout_row_untitled">Workout</string>
 
     <!-- Workout list rows and stats -->
     <string name="duration_hours_minutes">%1$d h %2$d min</string>

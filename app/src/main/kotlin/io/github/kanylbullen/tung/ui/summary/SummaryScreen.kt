@@ -60,6 +60,7 @@ import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.common.muscleLabel
+import io.github.kanylbullen.tung.ui.common.percentText
 import io.github.kanylbullen.tung.ui.exercises.MuscleHeatMap
 import io.github.kanylbullen.tung.ui.progress.ChoiceChips
 import io.github.kanylbullen.tung.ui.progress.ProgressChart
@@ -72,7 +73,6 @@ import io.github.kanylbullen.tung.ui.progress.trendRangeLongLabel
 import io.github.kanylbullen.tung.ui.routines.RoutineNameDialog
 import io.github.kanylbullen.tung.ui.routines.defaultRoutineName
 import io.github.kanylbullen.tung.ui.theme.Tung
-import java.text.NumberFormat
 import java.util.Locale
 
 /** The semantics tag of the summary's list, which the flow tests scroll. */
@@ -255,13 +255,6 @@ private fun ExerciseRow(exercise: ExerciseReport) {
             )
         }
     }
-}
-
-/** "50%" as the locale writes it, or "<1%" for a muscle with a sliver of the work. */
-@Composable
-private fun percentText(percent: Int): String {
-    val format = NumberFormat.getPercentInstance()
-    return if (percent > 0) format.format(percent / 100.0) else stringResource(R.string.summary_muscle_less_than, format.format(0.01))
 }
 
 /** "Chest 50%", for the map's description. */
