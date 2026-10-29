@@ -95,11 +95,11 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.unifiedpush.android:connector:2.5.0")
 
-    // Health Connect (issue #45): write finished workouts, read heart rate and calories. 1.1.0-beta01 was
-    // the newest that built with compileSdk 35 and AGP 8.7; with compileSdk 36 and AGP 8.9.1 the stable
-    // 1.1.0 is now possible and is a follow-up of its own. Only the phone builds the real gateway; the
-    // watch carries the library unused.
-    implementation("androidx.health.connect:connect-client:1.1.0-beta01")
+    // Health Connect (issue #45): write finished workouts, read heart rate and calories. The stable 1.1.0
+    // (October 2025, no change since rc03) needs compileSdk 36, which the build has since PR #95; nothing
+    // the gateway calls moved between beta01 and it. Only the phone builds the real gateway; the watch
+    // carries the library unused.
+    implementation("androidx.health.connect:connect-client:1.1.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")

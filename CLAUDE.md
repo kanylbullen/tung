@@ -1215,9 +1215,8 @@ to Health Connect, it stores what the phone syncs.
   `availability`, `permissions(access)`, `hasPermissions(access)`, the
   permission sheet's `ActivityResultContract`, `writeSession`, `readVitals`),
   `AndroidHealthConnectGateway` (the real one, over
-  `androidx.health.connect:connect-client:1.1.0-beta01`; the stable 1.1.0
-  needs compileSdk 36, which the build now has, so moving to it is possible
-  and a follow-up of its own), and
+  `androidx.health.connect:connect-client:1.1.0`, the stable release, which
+  needs compileSdk 36), and
   `HealthConnectRecorder`, which does the work. `FakeHealthConnect` is in
   data's test fixtures. `TungContainer(createHealthConnect = …)` is the seam:
   `TungApp` passes `::AndroidHealthConnectGateway`, the watch nothing (null),
