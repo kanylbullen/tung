@@ -126,7 +126,8 @@ dependencies {
     }
     // The Ongoing Activity of a workout in progress (WatchOngoing.kt), on data's notification.
     implementation("androidx.wear:wear-ongoing:1.0.0")
-    implementation("androidx.core:core-ktx:1.15.0")
+    // The same androidx.core as data/, which needs 1.17.0 for the phone's Live Update.
+    implementation("androidx.core:core-ktx:1.17.0")
     // TungWearApp is WorkManager's Configuration.Provider (sync in the background), and
     // syncs when the app comes to the foreground, as the phone does.
     implementation("androidx.work:work-runtime-ktx:2.10.0")

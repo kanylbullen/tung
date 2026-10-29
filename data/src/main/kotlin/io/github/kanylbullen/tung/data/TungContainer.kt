@@ -180,11 +180,12 @@ class TungContainer(
 
     /**
      * The ongoing notification of the workout in progress in this database
-     * (CLAUDE.md, "Ongoing workout and push"). The phone starts it from
-     * `TungApp.onCreate`; the watch builds its own over the state it shows.
+     * (CLAUDE.md, "Ongoing workout and push"), a Live Update on Android 16.
+     * The phone starts it from `TungApp.onCreate`; the watch builds its own
+     * over the state it shows, without the Live Update.
      */
     val ongoingWorkout: OngoingWorkoutNotifier by lazy {
-        OngoingWorkoutNotifier(this.context, ongoingWorkouts(this.context, workoutRepository, routineRepository), appScope)
+        OngoingWorkoutNotifier(this.context, ongoingWorkouts(this.context, workoutRepository, routineRepository), appScope, liveUpdate = true)
     }
 
     /**

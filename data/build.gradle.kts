@@ -69,7 +69,9 @@ dependencies {
 
     api("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("androidx.core:core-ktx:1.15.0")
+    // 1.17.0 for NotificationCompat's Live Update on Android 16 (setRequestPromotedOngoing and
+    // setShortCriticalText, ongoing/OngoingWorkoutNotifier.kt); it needs compileSdk 36.
+    implementation("androidx.core:core-ktx:1.17.0")
 
     // Room: the apps read the repositories' Flows of entities, so the entity types are API.
     api("androidx.room:room-runtime:2.6.1")

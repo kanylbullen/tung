@@ -14,8 +14,10 @@ import androidx.core.content.ContextCompat
 import io.github.kanylbullen.tung.data.R
 import io.github.kanylbullen.tung.data.TungHost
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
 /**
@@ -34,6 +36,23 @@ import kotlinx.coroutines.launch
  * finishes silently. [decorate] runs on the builder before it is posted: the
  * watch attaches its Ongoing Activity there.
  *
+ * With [liveUpdate], on Android 16 (API 36) and above, the notification asks to
+ * be a **Live Update**: promoted to the top of the shade and the lock screen,
+ * with a chip in the status bar that shows the current set's numbers
+ * ([chipText], "80×8"). The standard template it already uses is one of the
+ * promotable styles, so title, body, chronometer and actions are the same;
+ * the request is an extra the system honours only with
+ * `POST_PROMOTED_NOTIFICATIONS` (granted by default, revocable in Settings)
+ * and otherwise ignores, so a revoked permission leaves the ordinary ongoing
+ * notification. The phone passes it; the watch never does (its chip is its
+ * Ongoing Activity, and Wear OS 6 is Android 16 too, so the API level alone
+ * would not keep it out). Below API 36 nothing is called, because the compat
+ * builder writes the request and the chip text into the extras on every API
+ * level. The chip follows the current set's weight and reps, so while it is
+ * on the source is debounced by [DEBOUNCE_MILLIS] (as the watch publisher
+ * does): a run of −/+ taps is one post, not one per tap, and the last one is
+ * never the one the system's rate limit drops.
+ *
  * Nothing is posted without the notification permission (Android 13+); the
  * rest timer's one-time request asks for it ([io.github.kanylbullen.tung.timer.RestTimerController.firstTimeAskingForNotifications]).
  */
@@ -42,16 +61,21 @@ class OngoingWorkoutNotifier(
     private val source: Flow<OngoingWorkout?>,
     private val scope: CoroutineScope,
     private val actions: Boolean = true,
+    private val liveUpdate: Boolean = false,
     private val decorate: (builder: NotificationCompat.Builder, workout: OngoingWorkout, open: PendingIntent) -> Unit = { _, _, _ -> },
 ) {
     private val context: Context = context.applicationContext ?: context
     private var job: Job? = null
 
+    private val promoting: Boolean get() = liveUpdate && Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA
+
     /** Starts following [source]; a second call while running does nothing. */
+    @OptIn(FlowPreview::class)
     @Synchronized
     fun start() {
         if (job?.isActive == true) return
-        job = scope.launch { source.collect(::show) }
+        val updates = if (promoting) source.debounce(DEBOUNCE_MILLIS) else source
+        job = scope.launch { updates.collect(::show) }
     }
 
     @Synchronized
@@ -113,6 +137,12 @@ class OngoingWorkoutNotifier(
             }
             builder.addAction(0, context.getString(R.string.ongoing_finish), activity(REQUEST_FINISH, host.finishWorkoutIntent(workout.workoutId)))
         }
+        if (promoting) {
+            // Android 16's Live Update (see the class comment). Guarded here, not left to the compat
+            // builder, so that below 36 the notification carries neither extra.
+            builder.setRequestPromotedOngoing(true)
+            workout.chipText(context)?.let { builder.setShortCriticalText(it) }
+        }
         decorate(builder, workout, open)
         try {
             manager.notify(NOTIFICATION_ID, builder.build())
@@ -138,6 +168,9 @@ class OngoingWorkoutNotifier(
         private const val REQUEST_LOG_SET = 21
         private const val REQUEST_FINISH = 22
         private const val REQUEST_ADD_SET = 23
+
+        /** How long the Live Update waits for the next change before posting, like the watch publisher's. */
+        const val DEBOUNCE_MILLIS = 100L
 
         fun cancel(context: Context) = NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
 

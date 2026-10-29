@@ -109,7 +109,7 @@ databases. The packages are the ones the files had in `app/`:
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
-| `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set and Add set). See "Ongoing workout and push". |
+| `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories, and `chipText`, the Live Update chip's text), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set and Add set). See "Ongoing workout and push". |
 | `push/` | Push: `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`. See "Ongoing workout and push". |
 | `importing/` | Import from other apps: `Importer` (the one bulk write), `ImportService` (`container.imports`), `ImportHistory`. See "Import". |
 | `ui/common/` | `ExerciseNames` and `Exercise.displayName(context)`; the composable `exerciseDisplayName` stays in `app/`. |
@@ -1134,8 +1134,35 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   `container.ongoingWorkout` and started in `TungApp.onCreate`, so it shows
   whoever started the workout: this phone, a companion watch, or a sync that
   brought one from the server. Nothing is posted without `POST_NOTIFICATIONS`.
-  **Android 16 Live Update is not done:** `setRequestPromotedOngoing` is API 36,
-  which compileSdk now is, so it is possible and a follow-up of its own.
+  **On Android 16 (API 36) the phone's notification is a Live Update.** The
+  phone's `TungContainer.ongoingWorkout` builds the notifier with
+  `liveUpdate = true`, and on 36 and above it calls
+  `setRequestPromotedOngoing(true)` and `setShortCriticalText` (androidx.core
+  1.17.0, which needs compileSdk 36). Nothing else changes: the standard
+  template it already uses is one of the promotable styles (standard,
+  BigText, Call, Progress, Metric), it is ongoing, has a title and a channel
+  above `IMPORTANCE_MIN`, so title, body, chronometer and the three actions
+  stay as they are, and the system shows it at the top of the shade and the
+  lock screen and as a chip in the status bar. The chip's text is the current
+  set's numbers, `OngoingWorkout.chipText` ("80×8": `ongoing_chip_set` over
+  `logSetWeightKg` and `logSetReps`, the weight as `formatWeight` writes it,
+  no spaces because the chip is 96 dp and shows a text whole only under seven
+  characters: "100×10" fits, "22,5×12" is cut to what fits), and nothing when
+  that set has no reps or every set is ticked (the chip then shows the icon).
+  While it is on, the notifier debounces its source by `DEBOUNCE_MILLIS`
+  (100 ms, like `WearStatePublisher`), since the chip follows every weight
+  and reps edit of the current set and the system drops posts over its rate
+  limit; below 36 and on the watch the source is collected as before. The phone's manifest
+  declares `POST_PROMOTED_NOTIFICATIONS` (granted by default, revocable in
+  Settings; revoked, the system ignores the request and the notification is
+  the ordinary ongoing one). **Below 36 neither call is made**: the compat
+  builder writes both into the extras on every API level, so the guard is in
+  the notifier, and `OngoingNotificationFlowTest` (SDK 34) asserts the extras
+  carry no request. **The watch never asks**: its chip is its Ongoing
+  Activity, and Wear OS 6 is Android 16, so the API level alone would not keep
+  it out; `liveUpdate` defaults to false and the watch's manifest has no such
+  permission. `OngoingWorkoutTest` (data) covers the chip's text; seeing the
+  chip needs an Android 16 phone with a dogfood build.
 - **Actions.** Tap opens the workout (`TungHost.openWorkoutIntent`). **Log
   set** is a broadcast to `OngoingWorkoutReceiver` (in data's manifest) with
   the set the notification showed; it runs `Command.LogSet` through

@@ -4,7 +4,9 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Intent
+import android.os.Build
 import androidx.compose.ui.test.isDialog
+import androidx.core.app.NotificationCompat
 import io.github.kanylbullen.tung.MainActivity
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.StartedBy
@@ -20,9 +22,11 @@ import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutReceiver
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import org.robolectric.Shadows.shadowOf
@@ -176,6 +180,32 @@ class OngoingNotificationFlowTest : FlowTest() {
 
         runBlocking { app.container.commands.execute(Command.FinishWorkout("w-agent")) }
         waitUntil { ongoing() == null }
+    }
+
+    /**
+     * Below Android 16 nothing asks for a Live Update. The compat builder
+     * writes its request (`android.requestPromotedOngoing`) and the chip's
+     * text into the extras on every API level, so the notifier makes neither
+     * call there; Robolectric runs this at SDK 34, where the notification is
+     * what it was before the Live Update.
+     */
+    @Test
+    fun belowAndroid16NothingAsksForALiveUpdate() {
+        runBlocking {
+            val routineId = app.container.commands.execute(
+                Command.SaveRoutinePlan(
+                    RoutinePlan("Bench", listOf(RoutinePlanExercise(ExerciseRef.ByKey("bench_press"), targetSets = 1, targetReps = 8))),
+                ),
+            ).id(CommandIds.ROUTINE_ID)
+            app.container.commands.execute(Command.StartRoutine(checkNotNull(routineId)))
+        }
+        waitUntil { body(ongoing()) == str(DataR.string.ongoing_at_set, benchPress, 1, 1) }
+        val shown = checkNotNull(ongoing())
+        assumeTrue("this test is about the levels below 36", Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA)
+        assertFalse(shown.extras.containsKey(NotificationCompat.EXTRA_REQUEST_PROMOTED_ONGOING))
+        assertFalse(NotificationCompat.isRequestPromotedOngoing(shown))
+        assertFalse(shown.extras.containsKey(NotificationCompat.EXTRA_SHORT_CRITICAL_TEXT))
+        assertEquals(0, shown.flags and Notification.FLAG_PROMOTED_ONGOING)
     }
 
     /** As the system hands a notification's intent to the running activity (`singleTop`): `onNewIntent`. */
