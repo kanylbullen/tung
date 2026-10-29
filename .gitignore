@@ -9,6 +9,10 @@ local.properties
 # Firebase config of a build with FCM push (app/ or wear/); every instance brings its own, never committed.
 google-services.json
 
+# The release key (deploy/play.md): outside the checkout, never committed.
+*.jks
+*.keystore
+
 # IDE
 .idea/
 *.iml
