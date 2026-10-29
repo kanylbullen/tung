@@ -21,6 +21,10 @@ plugins {
 fun buildInput(name: String): String? =
     (System.getenv(name) ?: findProperty(name) as String?)?.takeIf { it.isNotBlank() }
 
+/** A path from the inputs: `~/` is the home directory, since a `-P` value is not shell-expanded. */
+fun inputPath(value: String): File =
+    rootProject.file(if (value.startsWith("~/")) System.getProperty("user.home") + value.drop(1) else value)
+
 /**
  * The release key for both apps, or null when any of the four inputs is missing.
  *
@@ -59,7 +63,7 @@ val buildNumber: Int = versionCodeInput?.let { raw ->
 /** The version people see (Settings → About). A release build appends its build number, so App info tells two builds apart. */
 val baseVersionName = "0.1.0"
 
-extra["releaseSigning"] = releaseSigning
+extra["releaseSigning"] = releaseSigning?.let { it + ("TUNG_KEYSTORE" to inputPath(it.getValue("TUNG_KEYSTORE")).path) }
 extra["buildNumber"] = buildNumber
 extra["versionName"] = if (versionCodeInput != null) "$baseVersionName.$buildNumber" else baseVersionName
 
@@ -75,7 +79,7 @@ val releaseGate by tasks.registering {
     group = "verification"
     description = "Refuses a release build without the release key and TUNG_VERSION_CODE"
     val signed = releaseSigning != null
-    val store = releaseSigning?.get("TUNG_KEYSTORE")?.let { file(it) }
+    val store = releaseSigning?.get("TUNG_KEYSTORE")?.let { inputPath(it) }
     val numbered = versionCodeInput != null
     doLast {
         val missing = buildList {

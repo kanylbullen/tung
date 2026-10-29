@@ -56,7 +56,9 @@ if [ -n "${TUNG_VERSION_CODE:-}" ]; then
 else
   [ "$(git -C "$REPO" rev-parse --is-shallow-repository)" = "false" ] \
     || fail "the clone is shallow, so the commit count is wrong. Run git fetch --unshallow."
-  git -C "$REPO" fetch -q origin main \
+  # The explicit refspec updates origin/main whatever the clone's fetch refspec says; a
+  # bare `fetch origin main` only does so through Git's opportunistic update.
+  git -C "$REPO" fetch -q origin +refs/heads/main:refs/remotes/origin/main \
     || fail "could not fetch origin/main to derive the build number"
   [ "$(git -C "$REPO" rev-parse HEAD)" = "$(git -C "$REPO" rev-parse origin/main)" ] \
     || fail "HEAD is not origin/main. A release is built from the tip of main: a branch can get a higher build number than the next real release, and an older commit a lower one than what is installed. Set TUNG_VERSION_CODE if you know why."
@@ -72,7 +74,15 @@ echo "versionCode $((TUNG_VERSION_CODE * 10 + 1)) (phone), $((TUNG_VERSION_CODE 
 cd "$REPO"
 ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease :wear:assembleRelease :wear:bundleRelease
 
-# --- Check what was built, not what was asked for.
+# --- Check what was built, not what was asked for: each file is signed by *this* key.
+# The key's fingerprint, from the keystore (the password through the environment, never
+# on the command line), as lower-case hex without colons, which is how apksigner prints it.
+fingerprint() { tr -d ':' | tr 'A-F' 'a-f'; }
+KEY_SHA1="$("$JAVA_HOME/bin/keytool" -list -v -keystore "$TUNG_KEYSTORE" -alias "$TUNG_KEY_ALIAS" \
+  -storepass:env TUNG_KEYSTORE_PASSWORD 2>/dev/null | sed -n 's/^[[:space:]]*SHA1: //p' | head -n1 | fingerprint)"
+[ -n "$KEY_SHA1" ] || fail "could not read the certificate of alias $TUNG_KEY_ALIAS from $TUNG_KEYSTORE"
+echo "release key SHA-1 $KEY_SHA1"
+
 BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n1)"
 for module in app wear; do
   APK="$REPO/$module/build/outputs/apk/release/$module-release.apk"
@@ -82,12 +92,16 @@ for module in app wear; do
   echo
   echo "APK: $APK"
   "$BT/aapt2" dump badging "$APK" | sed -n 1p   # sed reads it all; head would give SIGPIPE
-  "$BT/apksigner" verify --print-certs "$APK" | sed -n '/SHA-1/p'
+  apk_sha1="$("$BT/apksigner" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-1 digest: //p')"
+  [ "$apk_sha1" = "$KEY_SHA1" ] \
+    || fail "the APK is signed by $apk_sha1, not the release key $KEY_SHA1"
+  echo "The APK is signed by the release key."
   echo "AAB: $AAB"
-  # A bundle is signed like a jar, so apksigner does not apply. `jarsigner -verify` exits
-  # 0 for an unsigned file too (it prints "jar is unsigned"), so the output decides.
-  signature="$("$JAVA_HOME/bin/jarsigner" -verify "$AAB")"
-  grep -q '^jar verified' <<<"$signature" \
-    || fail "the bundle is not signed: $(sed -n 1p <<<"$signature")"
-  echo "The bundle is signed."
+  # A bundle is signed like a jar, so apksigner does not apply; keytool prints the
+  # signer's certificate (nothing when the file is unsigned), so the fingerprint decides.
+  aab_sha1="$("$JAVA_HOME/bin/keytool" -printcert -jarfile "$AAB" 2>/dev/null \
+    | sed -n 's/^[[:space:]]*SHA1: //p' | head -n1 | fingerprint)"
+  [ "$aab_sha1" = "$KEY_SHA1" ] \
+    || fail "the bundle is signed by '${aab_sha1:-nobody}', not the release key $KEY_SHA1"
+  echo "The bundle is signed by the release key."
 done
