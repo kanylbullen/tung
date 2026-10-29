@@ -36,8 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.kanylbullen.tung.R
@@ -299,13 +299,21 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(stringResource(R.string.home_this_week), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+                // A week is four digits most of the time; a big one must still fit beside the body
+                // at the owner's font scale, so the hero shrinks with its length rather than ellipsise.
+                val volumeText = localVolume(totals.volumeKg)
+                val heroSize = when {
+                    volumeText.length <= 4 -> 64.sp
+                    volumeText.length <= 6 -> 52.sp
+                    else -> 40.sp
+                }
                 Row {
                     Text(
-                        localVolume(totals.volumeKg),
-                        style = Tung.numbers.hero,
+                        volumeText,
+                        style = Tung.numbers.hero.copy(fontSize = heroSize, lineHeight = heroSize),
                         color = Tung.colors.text,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        softWrap = false,
                         modifier = Modifier.alignByBaseline(),
                     )
                     Spacer(Modifier.width(8.dp))
