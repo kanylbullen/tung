@@ -13,6 +13,7 @@ val GraphiteBorder = Color(0xFF2F343B)
 val Chalk = Color(0xFFECE7DD)          // on Graphite 13.8:1, on Raised 12.2:1
 val ChalkMuted = Color(0xFF9AA0A6)     // on Graphite 6.4:1, on Raised 5.7:1
 val PlateYellow = Color(0xFFF2C230)    // on Graphite 10.1:1; Graphite on it 10.1:1
+val Brick = Color(0xFFC9413A)          // fill only: white on it 4.9:1, vs Graphite 3.5:1
 
 // Light.
 val Paper = Color(0xFFF6F6F4)
@@ -22,6 +23,7 @@ val Ink = Color(0xFF1A1D21)            // on Paper 15.6:1
 val InkMuted = Color(0xFF5F6368)       // on Paper 5.6:1, on white 6.0:1
 val PlateYellowDeep = Color(0xFFB98900) // fill only: Ink on it 5.4:1, vs white 3.2:1 (ok for shapes, not text)
 val PlateYellowText = Color(0xFF8A6500) // accent as text on Paper 4.9:1, on white 5.3:1
+val BrickDeep = Color(0xFFB3261E)       // fill only: white on it 6.5:1, vs Paper 5.0:1
 
 /** Tokens Material's scheme has no good slot for. */
 @Immutable
@@ -37,6 +39,10 @@ data class TungColors(
     val onAccent: Color,
     /** Accent used as text on [background] — darker than [accent] in light mode for contrast. */
     val accentText: Color,
+    /** Fill of a destructive button: the Delete a swipe reveals behind a set row (issue #81). Never text. */
+    val danger: Color,
+    /** Content drawn on [danger]. */
+    val onDanger: Color,
 )
 
 val DarkTungColors = TungColors(
@@ -48,6 +54,8 @@ val DarkTungColors = TungColors(
     accent = PlateYellow,
     onAccent = Graphite,
     accentText = PlateYellow,
+    danger = Brick,
+    onDanger = Color.White,
 )
 
 val LightTungColors = TungColors(
@@ -59,6 +67,8 @@ val LightTungColors = TungColors(
     accent = PlateYellowDeep,
     onAccent = Ink,
     accentText = PlateYellowText,
+    danger = BrickDeep,
+    onDanger = Color.White,
 )
 
 val LocalTungColors = staticCompositionLocalOf { DarkTungColors }

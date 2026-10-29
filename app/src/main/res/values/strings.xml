@@ -14,6 +14,7 @@
     <!-- Home -->
     <string name="home_start_workout">Start workout</string>
     <string name="home_resume_workout">Resume workout</string>
+    <string name="home_workout_menu">Options for the workout in progress</string>
     <string name="home_in_progress_since">In progress for %1$s</string>
     <string name="home_recent">Recent workouts</string>
     <string name="home_empty">No workouts yet. Start your first and it will show up here.</string>
@@ -51,6 +52,13 @@
     <string name="workout_mark_undone">Mark set %1$d as not done</string>
     <string name="workout_delete_set">Delete set</string>
     <string name="workout_delete">Delete</string>
+    <!-- The Delete button a swipe reveals behind a set row (issue #81) -->
+    <string name="workout_delete_set_number">Delete set %1$d</string>
+    <!-- Discard the workout in progress (issue #81): the workout's menu, and the menu on Home's Resume card -->
+    <string name="workout_discard">Discard workout…</string>
+    <string name="workout_discard_title">Discard this workout?</string>
+    <string name="workout_discard_body">The sets you logged are deleted.</string>
+    <string name="workout_discard_confirm">Discard</string>
     <string name="workout_elapsed_description">Time since start %1$s</string>
     <string name="workout_finish_title">Finish workout?</string>
     <string name="workout_finish_body">Sets that are not ticked and exercises without sets will be removed.</string>

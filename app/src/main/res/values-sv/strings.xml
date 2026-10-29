@@ -14,6 +14,7 @@
     <!-- Home -->
     <string name="home_start_workout">Starta pass</string>
     <string name="home_resume_workout">Fortsätt pass</string>
+    <string name="home_workout_menu">Val för pågående pass</string>
     <string name="home_in_progress_since">Pågår sedan %1$s</string>
     <string name="home_recent">Senaste passen</string>
     <string name="home_empty">Inga pass än. Starta ditt första så hamnar det här.</string>
@@ -51,6 +52,11 @@
     <string name="workout_mark_undone">Markera set %1$d som inte klart</string>
     <string name="workout_delete_set">Ta bort set</string>
     <string name="workout_delete">Ta bort</string>
+    <string name="workout_delete_set_number">Ta bort set %1$d</string>
+    <string name="workout_discard">Kasta pass…</string>
+    <string name="workout_discard_title">Kasta det här passet?</string>
+    <string name="workout_discard_body">Seten du loggat tas bort.</string>
+    <string name="workout_discard_confirm">Kasta</string>
     <string name="workout_elapsed_description">Tid sedan start %1$s</string>
     <string name="workout_finish_title">Avsluta pass?</string>
     <string name="workout_finish_body">Set som inte är bockade och övningar utan set tas bort.</string>

@@ -328,6 +328,19 @@ class ActiveWorkoutViewModel(
         eventChannel.send(ActiveWorkoutEvent.Finished(workoutId, saved))
     }
 
+    /**
+     * Discards the workout (issue #81): deleted with its exercises and sets, a
+     * tombstone each, nothing saved; the rest timer and its alarm are cleared
+     * as on finish. The ongoing notification follows the database and goes.
+     */
+    fun discard() = launch {
+        finishing.value = true
+        setRest(null)
+        restTimer.set(workoutId, null)
+        commands.execute(Command.DeleteWorkout(workoutId))
+        eventChannel.send(ActiveWorkoutEvent.Discarded(workoutId))
+    }
+
     private fun startRest(exercise: ActiveExerciseUi) {
         val timer = RestTimer.start(clock(), exercise.restSeconds)
         setRest(timer)

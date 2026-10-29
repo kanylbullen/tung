@@ -133,6 +133,11 @@ class HomeViewModel(
         viewModelScope.launch { start(Command.StartRoutine(day.routineId, programDayId = day.id))?.let(onReady) }
     }
 
+    /** Discards the workout in progress (issue #81): deleted with tombstones, nothing saved. */
+    fun discard(workoutId: String) {
+        viewModelScope.launch { commands.execute(Command.DeleteWorkout(workoutId)) }
+    }
+
     /** The workout a start command started or resumed; null if it did not (a routine that is gone). */
     private suspend fun start(command: Command): String? = commands.execute(command).id(CommandIds.WORKOUT_ID)
 

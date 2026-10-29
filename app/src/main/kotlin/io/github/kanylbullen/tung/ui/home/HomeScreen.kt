@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.ui.home
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +13,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,6 +43,8 @@ import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.routines.RoutineRow
 import io.github.kanylbullen.tung.ui.theme.Tung
+import io.github.kanylbullen.tung.ui.theme.TungCorner
+import io.github.kanylbullen.tung.ui.workout.DiscardWorkoutDialog
 
 @Composable
 fun HomeScreen(
@@ -92,17 +99,49 @@ fun HomeScreen(
                 }
                 val active = state.activeWorkout
                 if (active != null) {
+                    var menuOpen by remember { mutableStateOf(false) }
+                    var confirmDiscard by rememberSaveable { mutableStateOf(false) }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PrimaryButton(
-                            text = stringResource(R.string.home_resume_workout),
-                            onClick = { onOpenWorkout(active.id) },
-                            modifier = Modifier.heightIn(min = 72.dp),
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            PrimaryButton(
+                                text = stringResource(R.string.home_resume_workout),
+                                onClick = { onOpenWorkout(active.id) },
+                                modifier = Modifier.weight(1f).heightIn(min = 72.dp),
+                            )
+                            // The same "Discard workout…" as the workout's own menu (issue #81):
+                            // a workout started by mistake can be abandoned without opening it.
+                            Box {
+                                IconButton(onClick = { menuOpen = true }) {
+                                    Icon(
+                                        Icons.Filled.MoreVert,
+                                        contentDescription = stringResource(R.string.home_workout_menu),
+                                        tint = Tung.colors.muted,
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = menuOpen,
+                                    onDismissRequest = { menuOpen = false },
+                                    containerColor = Tung.colors.raised,
+                                    shape = TungCorner,
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.workout_discard)) },
+                                        onClick = { menuOpen = false; confirmDiscard = true },
+                                    )
+                                }
+                            }
+                        }
                         val now = rememberNow(intervalMillis = 15_000L)
                         Text(
                             stringResource(R.string.home_in_progress_since, durationText(now - active.startedAt)),
                             style = Tung.numbers.inline,
                             color = Tung.colors.muted,
+                        )
+                    }
+                    if (confirmDiscard) {
+                        DiscardWorkoutDialog(
+                            onConfirm = { confirmDiscard = false; vm.discard(active.id) },
+                            onDismiss = { confirmDiscard = false },
                         )
                     }
                 } else {
