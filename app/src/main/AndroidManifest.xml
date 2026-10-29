@@ -8,6 +8,10 @@
     <!-- Rest timer: the buzz and the "Rest over" notification (asked for when the first timer starts). -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 16: the ongoing workout's notification is a Live Update (ongoing/OngoingWorkoutNotifier.kt in data/).
+         Granted by default, revocable in Settings; revoked, it is the ordinary ongoing notification. The phone only:
+         the watch's chip is its Ongoing Activity. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Exact end of a rest in the background when the user allows it; see timer/RestAlarm.kt. Not USE_EXACT_ALARM. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- Voice in the active workout: asked for the first time the mic is tapped. Audio goes to the phone's recogniser only. -->

@@ -27,6 +27,9 @@
     <!-- Every set ticked; the exercise "Add set" adds to: "Bench press · all sets logged" -->
     <string name="ongoing_all_logged">%1$s · all sets logged</string>
     <string name="ongoing_finish">Finish</string>
+    <!-- The Live Update's chip in the status bar on Android 16: the current set's weight and reps, "80×8".
+         No spaces: the chip is 96 dp wide and shows a text whole only under seven characters. -->
+    <string name="ongoing_chip_set">%1$s×%2$d</string>
 
     <!-- The title of a session written to Health Connect when the workout has no routine (health/HealthConnectRecorder.kt) -->
     <string name="health_session_title">Workout</string>

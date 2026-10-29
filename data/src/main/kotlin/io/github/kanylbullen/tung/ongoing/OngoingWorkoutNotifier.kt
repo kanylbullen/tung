@@ -34,6 +34,20 @@ import kotlinx.coroutines.launch
  * finishes silently. [decorate] runs on the builder before it is posted: the
  * watch attaches its Ongoing Activity there.
  *
+ * With [liveUpdate], on Android 16 (API 36) and above, the notification asks to
+ * be a **Live Update**: promoted to the top of the shade and the lock screen,
+ * with a chip in the status bar that shows the current set's numbers
+ * ([chipText], "80×8"). The standard template it already uses is one of the
+ * promotable styles, so title, body, chronometer and actions are the same;
+ * the request is an extra the system honours only with
+ * `POST_PROMOTED_NOTIFICATIONS` (granted by default, revocable in Settings)
+ * and otherwise ignores, so a revoked permission leaves the ordinary ongoing
+ * notification. The phone passes it; the watch never does (its chip is its
+ * Ongoing Activity, and Wear OS 6 is Android 16 too, so the API level alone
+ * would not keep it out). Below API 36 nothing is called, because the compat
+ * builder writes the request and the chip text into the extras on every API
+ * level.
+ *
  * Nothing is posted without the notification permission (Android 13+); the
  * rest timer's one-time request asks for it ([io.github.kanylbullen.tung.timer.RestTimerController.firstTimeAskingForNotifications]).
  */
@@ -42,6 +56,7 @@ class OngoingWorkoutNotifier(
     private val source: Flow<OngoingWorkout?>,
     private val scope: CoroutineScope,
     private val actions: Boolean = true,
+    private val liveUpdate: Boolean = false,
     private val decorate: (builder: NotificationCompat.Builder, workout: OngoingWorkout, open: PendingIntent) -> Unit = { _, _, _ -> },
 ) {
     private val context: Context = context.applicationContext ?: context
@@ -112,6 +127,12 @@ class OngoingWorkoutNotifier(
                 builder.addAction(0, context.getString(R.string.ongoing_add_set), addSet)
             }
             builder.addAction(0, context.getString(R.string.ongoing_finish), activity(REQUEST_FINISH, host.finishWorkoutIntent(workout.workoutId)))
+        }
+        if (liveUpdate && Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            // Android 16's Live Update (see the class comment). Guarded here, not left to the compat
+            // builder, so that below 36 the notification carries neither extra.
+            builder.setRequestPromotedOngoing(true)
+            workout.chipText(context)?.let { builder.setShortCriticalText(it) }
         }
         decorate(builder, workout, open)
         try {
