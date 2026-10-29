@@ -26,6 +26,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import org.robolectric.Shadows.shadowOf
@@ -200,7 +201,7 @@ class OngoingNotificationFlowTest : FlowTest() {
         }
         waitUntil { body(ongoing()) == str(DataR.string.ongoing_at_set, benchPress, 1, 1) }
         val shown = checkNotNull(ongoing())
-        assertTrue("this test is about the levels below 36", Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA)
+        assumeTrue("this test is about the levels below 36", Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA)
         assertFalse(shown.extras.containsKey(NotificationCompat.EXTRA_REQUEST_PROMOTED_ONGOING))
         assertFalse(NotificationCompat.isRequestPromotedOngoing(shown))
         assertFalse(shown.extras.containsKey(NotificationCompat.EXTRA_SHORT_CRITICAL_TEXT))

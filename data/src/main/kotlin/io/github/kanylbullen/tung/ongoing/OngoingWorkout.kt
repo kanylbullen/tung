@@ -62,9 +62,11 @@ data class OngoingWorkout(
  * `OngoingWorkoutNotifier`): the current set's numbers, "80×8", the weight
  * as the app writes it ([formatWeight], the locale's decimal separator) and
  * no spaces, since the chip is 96 dp wide and shows a text whole only under
- * seven characters. Null when that set has no reps yet (0 × 0 says nothing)
- * or when every set is ticked; the chip then shows the icon and, per the
- * Live Updates guide, the chronometer.
+ * seven characters: "80×8" and "100×10" do, "22,5×12" and "102,5×10" are
+ * cut to what fits. A bodyweight set is "0×12", as its row reads. Null when
+ * that set has no reps yet (0 × 0 says nothing) or when every set is ticked;
+ * the chip then shows the icon (the guide's note on a chronometer in the chip
+ * is not verified for a count-up one).
  */
 fun OngoingWorkout.chipText(context: Context): String? {
     val weightKg = logSetWeightKg ?: return null

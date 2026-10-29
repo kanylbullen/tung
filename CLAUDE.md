@@ -1147,8 +1147,12 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   set's numbers, `OngoingWorkout.chipText` ("80×8": `ongoing_chip_set` over
   `logSetWeightKg` and `logSetReps`, the weight as `formatWeight` writes it,
   no spaces because the chip is 96 dp and shows a text whole only under seven
-  characters), and nothing when that set has no reps or every set is ticked
-  (the chip then shows the icon and the chronometer). The phone's manifest
+  characters: "100×10" fits, "22,5×12" is cut to what fits), and nothing when
+  that set has no reps or every set is ticked (the chip then shows the icon).
+  While it is on, the notifier debounces its source by `DEBOUNCE_MILLIS`
+  (100 ms, like `WearStatePublisher`), since the chip follows every weight
+  and reps edit of the current set and the system drops posts over its rate
+  limit; below 36 and on the watch the source is collected as before. The phone's manifest
   declares `POST_PROMOTED_NOTIFICATIONS` (granted by default, revocable in
   Settings; revoked, the system ignores the request and the notification is
   the ordinary ongoing one). **Below 36 neither call is made**: the compat
