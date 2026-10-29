@@ -109,6 +109,14 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    constraints {
+        // play-services-basement brings androidx.fragment 1.1.0, and lintVital refuses a release
+        // with registerForActivityResult on a fragment below 1.3.0 (InvalidFragmentVersionForActivityResult);
+        // the phone app already resolves 1.5.7 through its own dependencies. Not used directly.
+        implementation("androidx.fragment:fragment:1.5.7") {
+            because("lintVitalRelease: the ActivityResult APIs need androidx.fragment 1.3.0 or later")
+        }
+    }
     // The Ongoing Activity of a workout in progress (WatchOngoing.kt), on data's notification.
     implementation("androidx.wear:wear-ongoing:1.0.0")
     implementation("androidx.core:core-ktx:1.15.0")
