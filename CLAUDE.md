@@ -243,6 +243,12 @@ each a command:
 - Move up/down, rename and delete as before. An edit never touches a workout
   already started from the routine, except that Log set there reads the
   target sets live (`WorkoutDao.routineTargetSets`).
+- **Start** (issue #81): a primary Start button at the top of the page, the
+  same `StartRoutine` as the row's Start on Home and the Routines tab, then
+  the workout opens (`popUpTo(HOME)`, so back lands on Home). Disabled while
+  a workout is in progress (`RoutineDetailUiState.canStart`, from
+  `observeActiveWorkout`) or while the routine has no exercise.
+  `RoutineStartFlowTest`.
 
 ### Programs
 
@@ -384,6 +390,28 @@ write (a fresh install, e.g. the first workout's `stored` read next to
 `firstTimeAskingForNotifications`) threw `FileNotFoundException` when the
 write's atomic move landed between the failed open and the `exists` check;
 1.1.3 reads again.
+
+**Deleting a set** (issue #81): a swipe to the left on a set row no longer
+deletes it; the row settles open with a **Delete** button revealed behind it
+(`SwipeableSetRow`, an `AnchoredDraggableState` with `Closed` at 0 and
+`Open` at −96 dp, filled with `Tung.colors.danger`), and a tap on the button
+deletes. A tap on the open row, a swipe back, a scroll, or a tap on anything
+else in the list closes it, and only one row is open at a time
+(`WorkoutList`'s `openSetId`; every row and header callback goes through
+`closing`). The button is composed only while revealed, so a screen reader
+never meets "Delete" on every set; its way to delete is still the custom
+action "Delete set" on each part of the row. `SwipeDeleteFlowTest`,
+`AccessibilityFlowTest`.
+
+**Discard workout** (issue #81): the active workout's top bar has a menu after
+Finish with "Discard workout…", and Home's Resume card the same in a small
+menu, both opening `DiscardWorkoutDialog` ("Discard this workout? The sets
+you logged are deleted."). Confirming runs `Command.DeleteWorkout` (the
+ordinary delete, tombstones included), clears the rest timer and its alarm as
+finish does (`ActiveWorkoutViewModel.discard`, `ActiveWorkoutEvent.Discarded`)
+and returns to Home; the ongoing notification follows the database and goes.
+It is the only way to abandon a workout: Finish keeps the ticked sets or, with
+none, discards with the "not saved" toast. `DiscardWorkoutFlowTest`.
 
 ### Ids and `updatedAt`
 
@@ -1961,6 +1989,7 @@ logged. Weight and reps are applied independently.
 | muted | `#9AA0A6` | `#5F6368` | Muted text, "Last:" |
 | accent | `#F2C230` | `#B98900` | Fill: primary button, ticked set |
 | accentText | `#F2C230` | `#8A6500` | Accent as text: "New record", "Finish workout" |
+| danger | `#C9413A` | `#B3261E` | Fill only, white on it: the Delete a swipe reveals behind a set row |
 
 Contrast (WCAG): chalk/graphite 13.8:1, yellow/graphite 10.1:1, muted/graphite
 6.4:1, muted/raised 5.7:1. In light mode `#B98900` only reaches 3.2:1 against
