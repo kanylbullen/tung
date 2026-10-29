@@ -26,12 +26,17 @@ val buildNumber = rootProject.extra["buildNumber"] as Int
 
 android {
     namespace = "io.github.kanylbullen.tung.wear"
-    compileSdk = 35
+    compileSdk = 36
+    // Pinned like the phone's: AGP's default build-tools is not compileSdk's.
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "io.github.kanylbullen.tung"
         // Wear OS 3 (Galaxy Watch 4 and later).
         minSdk = 30
+        // Stays 35 on purpose: Play's bar for Wear OS apps is Android 15, and Android 16's
+        // behaviour changes for apps targeting 36 are not wanted on the watch yet. The phone
+        // app targets 36 (app/build.gradle.kts); compileSdk follows it so data/ compiles once.
         targetSdk = 35
         // From the root build file: the watch's versionCode ends in 2, the phone's in 1
         // (app/build.gradle.kts), because both apps share this applicationId and Play

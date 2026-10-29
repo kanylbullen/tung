@@ -44,8 +44,9 @@ jobs:
           printf '%s' "$GOOGLE_SERVICES_JSON" > wear/google-services.json
 
       # The hosted runner ships the Android SDK with ANDROID_HOME set, so no
-      # separate SDK setup step is needed. Build-tools and platform 35 are
-      # fetched by AGP on demand if missing.
+      # separate SDK setup step is needed. Build-tools 36.0.0 (pinned in the
+      # three Android modules) and platform 36 are fetched by AGP on demand if
+      # missing.
       # `test` covers both modules: :core:test (the Android-free domain module)
       # and the app's unit tests, including the Robolectric flow tests.
       # The watch app (wear/, with its own unit tests) is in both as well.
