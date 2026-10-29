@@ -286,7 +286,7 @@ abstract class FlowTest {
         clickText(str(R.string.workout_finish))
         waitFor(isDialog())
         screenshotStep?.let { screenshot(it) }
-        clickInDialog(str(R.string.workout_finish))
+        clickInDialog(str(R.string.workout_finish_confirm))
     }
 
     // --- database ---

@@ -112,7 +112,9 @@ fun chartPoints(sessions: List<SessionPoint>, metric: ProgressMetric, range: Pro
 @Composable
 fun chartSummary(metric: ProgressMetric, span: String, values: List<Double>): String {
     val name = metricLongLabel(metric)
-    if (values.size < 2) return stringResource(R.string.progress_chart_summary_empty, name, span)
+    // One value is a dot on a row's sparkline: say the value, not "log two workouts".
+    if (values.size == 1) return stringResource(R.string.progress_chart_summary_one, name, span, metricText(metric, values.first()))
+    if (values.isEmpty()) return stringResource(R.string.progress_chart_summary_empty, name, span)
     return stringResource(
         R.string.progress_chart_summary,
         name,

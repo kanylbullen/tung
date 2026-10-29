@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.progress.TREND_METRICS
+import io.github.kanylbullen.tung.core.progress.beatsRecord
 import io.github.kanylbullen.tung.core.progress.TREND_RANGES
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -62,10 +63,13 @@ fun ProgressSheet(exerciseId: String, exerciseName: String, proposed: LoggedSet?
             }
             proposed?.let { set ->
                 recordLine(set.weightKg, set.reps, state.records)?.let { line ->
+                    // The accent is for good news: a set that beats a record. The reps it would take, or
+                    // "is no new record", are muted like every other neutral line.
+                    val record = beatsRecord(set.weightKg, set.reps, state.records) != null
                     Text(
                         line,
                         style = MaterialTheme.typography.titleMedium,
-                        color = Tung.colors.accentText,
+                        color = if (record) Tung.colors.accentText else Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     )
                 }

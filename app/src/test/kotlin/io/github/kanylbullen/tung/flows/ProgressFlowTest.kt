@@ -110,9 +110,9 @@ class ProgressFlowTest : FlowTest() {
 
     /**
      * The rows' span (issue #78): bench press logged 8 and 2 months ago. At 3M
-     * (the default) its row has one estimate in range, so it shows the session
-     * count and no sparkline; at 12M it gains "+14 kg in 12 months" and the
-     * sparkline from 98 to 112. The choice is stored and survives leaving and
+     * (the default) its row has one estimate in range, so it says "1 session in
+     * 3 months" with a one-point sparkline (no "from … to" summary); at 12M it
+     * gains "+14 kg in 12 months" and the sparkline from 98 to 112. The choice is stored and survives leaving and
      * reopening the tab; the weekly bars stay at 12 weeks.
      */
     @Test
@@ -123,7 +123,7 @@ class ProgressFlowTest : FlowTest() {
         openTab()
 
         val sep = str(R.string.row_separator)
-        val threeMonths = "${str(R.string.progress_e1rm_value, "112")}$sep${plural(R.plurals.progress_sessions, 2, 2)}"
+        val threeMonths = "${str(R.string.progress_e1rm_value, "112")}$sep${plural(R.plurals.progress_sessions_3m, 1, 1)}"
         val twelveMonths = "${str(R.string.progress_e1rm_value, "112")}$sep${str(R.string.progress_change_12m, str(R.string.progress_change_up, "14"))}"
         val sparkline12 = summary(R.string.progress_metric_e1rm_long, R.string.progress_range_12m_long, "98", "112")
         val list = compose.onNode(hasTestTag(PROGRESS_LIST_TAG))

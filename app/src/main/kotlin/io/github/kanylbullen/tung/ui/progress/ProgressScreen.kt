@@ -150,15 +150,19 @@ private fun Overview(state: ProgressUiState) {
 }
 
 /**
- * What a row says about its span: "+7 kg in 3 months", "No change in 12
- * months", or how many sessions there are when the span holds fewer than two
- * values.
+ * What a row says about its span, always about the span: "+7 kg in 3 months",
+ * "No change in 12 months", or "1 session in 3 months" when the span holds
+ * fewer than two values (so every row has the same shape).
  */
 @Composable
-private fun changeText(exercise: ExerciseProgress, trend: RowTrend, metric: ProgressMetric, range: ProgressRange): String {
-    val change = trend.change
-        ?: return pluralStringResource(R.plurals.progress_sessions, exercise.sessions.size, exercise.sessions.size)
+private fun changeText(trend: RowTrend, metric: ProgressMetric, range: ProgressRange): String {
     val twelve = range == ProgressRange.ONE_YEAR
+    val change = trend.change
+        ?: return pluralStringResource(
+            if (twelve) R.plurals.progress_sessions_12m else R.plurals.progress_sessions_3m,
+            trend.values.size,
+            trend.values.size,
+        )
     val signed = signedChange(metric, change)
         ?: return stringResource(if (twelve) R.string.progress_no_change_12m else R.string.progress_no_change_3m)
     return stringResource(if (twelve) R.string.progress_change_12m else R.string.progress_change_3m, signed)
@@ -190,7 +194,7 @@ private fun ExerciseRow(
     val trend = exercise.trend(metric, range, today)
     val details = listOfNotNull(
         trend.latest?.let { latestText(metric, it) },
-        changeText(exercise, trend, metric, range),
+        changeText(trend, metric, range),
     ).joinToString(stringResource(R.string.row_separator))
     val spark = trend.values
     val open = stringResource(R.string.progress_open_exercise, name)
@@ -206,10 +210,9 @@ private fun ExerciseRow(
             Text(name, style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
             Text(details, style = Tung.numbers.inline, color = Tung.colors.muted)
         }
-        if (spark.size >= 2) {
-            Spacer(Modifier.width(12.dp))
-            Sparkline(spark, chartSummary(metric, trendRangeLongLabel(range), spark))
-        }
+        // Always, so the rows line up: one session is a dot, none an empty space the same width.
+        Spacer(Modifier.width(12.dp))
+        Sparkline(spark, chartSummary(metric, trendRangeLongLabel(range), spark))
     }
 }
 

@@ -18,10 +18,13 @@ data class OngoingSet(val completed: Boolean, val reps: Int)
 
 /** What the ongoing notification says about a workout in progress. */
 sealed interface OngoingStatus {
-    /** "Bench press · set 3 of 5": the current set, with the routine's target. */
+    /**
+     * "Bench press · set 3 of 5": the current set, counted against the
+     * routine's target or, without one, the sets the exercise has.
+     */
     data class AtSet(val exercise: String, val set: Int, val of: Int) : OngoingStatus
 
-    /** "4 sets logged": no routine target to count against (or no exercise at all). */
+    /** "0 sets logged": no exercise with a set at all. */
     data class Logged(val count: Int) : OngoingStatus
 
     /**
@@ -35,13 +38,15 @@ sealed interface OngoingStatus {
  * The status line of a workout in progress. The current set is [current] when
  * the caller knows it (the watch's state carries one), else the default rule
  * of [currentSet] with no selection and nothing touched, which is also the
- * set a "Log set" from the notification ticks. With a routine target for that
- * exercise it is [OngoingStatus.AtSet], counting against the larger of
- * the target and the sets the exercise has, so a set added past the target
- * never reads "set 4 of 3"; otherwise the number of logged sets ([isLogged]).
+ * set a "Log set" from the notification ticks. It is [OngoingStatus.AtSet],
+ * counting against the larger of the routine's target and the sets the
+ * exercise has, so a set added past the target never reads "set 4 of 3",
+ * and a free workout counts against the sets there are ("set 1 of 5": the
+ * Live Update's chip shows that set's numbers, so the body names it too).
  * With no un-ticked set left it is [OngoingStatus.AllLogged] for the exercise
  * an Add set would go to ([stickyAction] with [lastTouchedExercise]: the
- * caller's best idea of the exercise just logged, else the last one).
+ * caller's best idea of the exercise just logged, else the last one). Only a
+ * workout with no set at all is [OngoingStatus.Logged], with its count of 0.
  */
 fun ongoingStatus(
     exercises: List<OngoingExercise>,
@@ -55,10 +60,9 @@ fun ongoingStatus(
         val add = stickyAction(completed, lastTouchedExercise = lastTouchedExercise) as? StickyAction.AddSet
         if (add != null) return OngoingStatus.AllLogged(exercises[add.exercise].name)
     }
-    val exercise = index?.let { exercises[it.exercise] }
-    val target = exercise?.targetSets
-    if (index != null && target != null) {
-        return OngoingStatus.AtSet(exercise.name, index.set + 1, maxOf(target, exercise.sets.size))
+    if (index != null) {
+        val exercise = exercises[index.exercise]
+        return OngoingStatus.AtSet(exercise.name, index.set + 1, maxOf(exercise.targetSets ?: 0, exercise.sets.size))
     }
     return OngoingStatus.Logged(exercises.sumOf { e -> e.sets.count { isLogged(it.completed, it.reps) } })
 }

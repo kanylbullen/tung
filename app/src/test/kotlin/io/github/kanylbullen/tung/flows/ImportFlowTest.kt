@@ -156,6 +156,7 @@ class ImportFlowTest : FlowTest() {
         openSettingsGroup(R.string.settings_group_data)
         scrollToInSettings(str(R.string.import_undo_last))
         compose.onNode(hasText(str(R.string.import_undo_last))).performClick()
+        clickInDialog(str(R.string.import_undo_confirm))
         waitUntil { count("SELECT COUNT(*) FROM workout") == 0 }
         waitGone(hasText(str(R.string.import_undo_last)))
         assertEquals(0, count("SELECT COUNT(*) FROM routine"))
@@ -232,6 +233,7 @@ class ImportFlowTest : FlowTest() {
 
         scrollToInSettings(str(R.string.import_undo_last))
         compose.onNode(hasText(str(R.string.import_undo_last))).performClick()
+        clickInDialog(str(R.string.import_undo_confirm))
         waitUntil { count("SELECT COUNT(*) FROM workout WHERE importSource = 'jefit'") == 0 }
         waitGone(hasText(str(R.string.import_undo_last)))
         assertEquals("the person's own workout and routine stay", 1, count("SELECT COUNT(*) FROM workout"))

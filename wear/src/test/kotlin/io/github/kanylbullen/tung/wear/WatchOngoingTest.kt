@@ -54,9 +54,9 @@ class WatchOngoingTest {
     }
 
     @Test
-    fun `outside a routine it counts logged sets`() {
+    fun `outside a routine it counts against the sets there are`() {
         val exercises = state(currentSetId = "b2").exercises.map { it.copy(targetSets = null) }
-        assertEquals(OngoingStatus.Logged(3), watchOngoing(state(currentSetId = "b2").copy(exercises = exercises))?.status)
+        assertEquals(OngoingStatus.AtSet("Bench press", 2, 4), watchOngoing(state(currentSetId = "b2").copy(exercises = exercises))?.status)
     }
 
     @Test

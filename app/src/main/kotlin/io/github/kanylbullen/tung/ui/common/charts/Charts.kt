@@ -138,7 +138,12 @@ fun BarChart(
 fun Sparkline(values: List<Double>, summary: String, modifier: Modifier = Modifier) {
     val accent = Tung.colors.accent
     Canvas(modifier.size(width = 72.dp, height = 28.dp).clearAndSetSemantics { contentDescription = summary }) {
-        if (values.size < 2) return@Canvas
+        if (values.isEmpty()) return@Canvas
+        if (values.size == 1) {
+            // One session in the span: the dot alone, where the line would end.
+            drawCircle(accent, 3.dp.toPx(), Offset(size.width - 3.dp.toPx(), size.height / 2))
+            return@Canvas
+        }
         val lo = values.min()
         val hi = values.max()
         val inset = 3.dp.toPx()

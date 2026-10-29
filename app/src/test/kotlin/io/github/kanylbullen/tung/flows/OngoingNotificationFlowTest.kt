@@ -111,7 +111,7 @@ class OngoingNotificationFlowTest : FlowTest() {
         waitFor(isDialog())
         screenshot("1-finish-dialog-from-the-notification")
         assertEquals(1, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL"))
-        clickInDialog(str(R.string.workout_finish))
+        clickInDialog(str(R.string.workout_finish_confirm))
 
         waitUntil { ongoing() == null }
         assertEquals(0, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL"))
