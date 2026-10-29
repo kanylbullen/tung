@@ -79,7 +79,16 @@ interface WorkoutDao {
             (SELECT COUNT(*) FROM workout_exercise we WHERE we.workoutId = w.id) AS exerciseCount,
             (SELECT COALESCE(SUM(s.weightKg * s.reps), 0.0)
                FROM set_entry s JOIN workout_exercise we ON s.workoutExerciseId = we.id
-              WHERE we.workoutId = w.id AND s.completed = 1) AS volumeKg
+              WHERE we.workoutId = w.id AND s.completed = 1) AS volumeKg,
+            (SELECT r.name FROM routine r WHERE r.id = w.routineId) AS routineName,
+            (SELECT e.name FROM workout_exercise we JOIN exercise e ON e.id = we.exerciseId
+              WHERE we.workoutId = w.id ORDER BY we.position LIMIT 1) AS firstExerciseName,
+            (SELECT e.nameKey FROM workout_exercise we JOIN exercise e ON e.id = we.exerciseId
+              WHERE we.workoutId = w.id ORDER BY we.position LIMIT 1) AS firstExerciseKey,
+            (SELECT e.name FROM workout_exercise we JOIN exercise e ON e.id = we.exerciseId
+              WHERE we.workoutId = w.id ORDER BY we.position LIMIT 1 OFFSET 1) AS secondExerciseName,
+            (SELECT e.nameKey FROM workout_exercise we JOIN exercise e ON e.id = we.exerciseId
+              WHERE we.workoutId = w.id ORDER BY we.position LIMIT 1 OFFSET 1) AS secondExerciseKey
         FROM workout w
         WHERE w.endedAt IS NOT NULL
         ORDER BY w.startedAt DESC

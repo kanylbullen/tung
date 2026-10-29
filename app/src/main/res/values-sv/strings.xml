@@ -19,6 +19,22 @@
     <string name="home_recent">Senaste passen</string>
     <string name="home_empty">Inga pass än. Starta ditt första så hamnar det här.</string>
     <string name="home_show_all">Visa alla</string>
+    <string name="home_this_week">Den här veckan</string>
+    <plurals name="home_week_workouts">
+        <item quantity="one">%d pass</item>
+        <item quantity="other">%d pass</item>
+    </plurals>
+    <plurals name="home_week_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d set</item>
+    </plurals>
+    <string name="home_week_none">Inget pass än den här veckan</string>
+    <string name="home_week_best">Bäst på 12 veckor</string>
+    <string name="home_week_days_description">Volym per dag den här veckan: %1$s</string>
+    <string name="home_week_day_volume">%1$s %2$s kg</string>
+    <string name="home_week_days_none">inget än</string>
+    <string name="home_muscles_description">Muskler tränade den här veckan: %1$s</string>
+    <string name="workout_row_untitled">Pass</string>
 
     <!-- Workout list rows and stats -->
     <string name="duration_hours_minutes">%1$d h %2$d min</string>

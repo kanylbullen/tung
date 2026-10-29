@@ -160,3 +160,10 @@ fun lastUsedText(lastUsedAt: Long?, now: Long): String {
     }
     return stringResource(R.string.routine_last, ago)
 }
+
+/** "50%" as the locale writes it, or "<1%" for a muscle with a sliver of the work (the summary's and Home's muscle lines). */
+@Composable
+fun percentText(percent: Int): String {
+    val format = NumberFormat.getPercentInstance()
+    return if (percent > 0) format.format(percent / 100.0) else stringResource(R.string.summary_muscle_less_than, format.format(0.01))
+}
