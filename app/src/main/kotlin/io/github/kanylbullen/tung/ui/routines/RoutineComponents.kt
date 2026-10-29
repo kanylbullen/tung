@@ -53,6 +53,9 @@ import io.github.kanylbullen.tung.ui.common.styledRoutineName
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
+import io.github.kanylbullen.tung.core.muscles.MuscleBreakdown
+import io.github.kanylbullen.tung.ui.common.muscleLabel
+import io.github.kanylbullen.tung.ui.exercises.MuscleHeatMap
 
 /**
  * A routine as one list row: name on top, exercise count and when it was last
@@ -73,6 +76,8 @@ fun RoutineRow(
     selected: Boolean? = null,
     /** Home's routine group: on the raised surface, with an outlined 40 dp Start instead of the raised one. */
     compact: Boolean = false,
+    /** The muscles the routine works ([io.github.kanylbullen.tung.data.routineMuscles]): drawn as a small body before the name. */
+    muscles: MuscleBreakdown? = null,
 ) {
     val details = listOf(
         pluralStringResource(R.plurals.exercise_count, row.exerciseCount, row.exerciseCount),
@@ -92,6 +97,16 @@ fun RoutineRow(
             .padding(start = if (compact) 16.dp else 20.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (muscles != null && !muscles.isEmpty) {
+            // What kind of day it is, at a glance: the most worked muscles named for a screen reader.
+            val named = muscles.muscles.take(ROW_MUSCLES).map { muscleLabel(it.muscle) }.joinToString(stringResource(R.string.list_separator))
+            MuscleHeatMap(
+                intensity = muscles::intensity,
+                description = stringResource(R.string.routine_muscles_description, named),
+                height = ROW_BODY_HEIGHT,
+            )
+            Spacer(Modifier.width(12.dp))
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(styledRoutineName(row.name), style = MaterialTheme.typography.titleMedium, color = Tung.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(details, style = Tung.numbers.inline, color = Tung.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -151,6 +166,12 @@ fun RoutineRow(
     }
 }
 
+
+/** The small body in a routine row: both figures, as tall as the row's two lines. */
+private val ROW_BODY_HEIGHT = 44.dp
+
+/** How many muscles a row's body names for a screen reader. */
+private const val ROW_MUSCLES = 3
 
 /**
  * The name a routine saved from [report] is offered: the weekday and the first

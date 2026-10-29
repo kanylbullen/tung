@@ -66,6 +66,7 @@ fun RoutinesScreen(
                     container.workoutRepository,
                     container.programRepository,
                     container.commands,
+                    container.catalogueMuscles,
                     createSavedStateHandle(),
                 )
             }
@@ -129,6 +130,7 @@ fun RoutinesScreen(
                     onClick = { if (state.selecting) vm.toggle(row.id) else onOpenRoutine(row.id) },
                     onLongClick = { vm.toggle(row.id) },
                     selected = if (state.selecting) row.id in state.selected else null,
+                    muscles = state.muscles[row.id],
                 )
             }
         }

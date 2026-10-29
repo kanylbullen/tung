@@ -21,6 +21,9 @@ class RoutineRepository(
 
     fun observeRoutine(id: String): Flow<Routine?> = dao.observeRoutine(id)
 
+    /** Every routine's exercises with their target sets, for [routineMuscles]. */
+    fun observeRoutineExerciseLinks(): Flow<List<RoutineExerciseLink>> = dao.observeRoutineExerciseLinks()
+
     suspend fun exists(routineId: String): Boolean = dao.getRoutine(routineId) != null
 
     fun observeRoutineExercises(routineId: String): Flow<List<RoutineExerciseWithExercise>> =

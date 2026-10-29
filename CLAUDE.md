@@ -235,6 +235,18 @@ exists; `RoutineRow`'s Start is also disabled for a routine with no exercises.
 deleting a routine (which cascades to its `RoutineExercise` rows) never
 touches history.
 
+**A routine's muscles.** Every routine row (Home's group, the Routines tab)
+carries a small body (`MuscleHeatMap` at 44 dp, `RoutineRow(muscles = …)`)
+and the routine's page the body at 140 dp with a line of its most worked
+muscles: data's `routineMuscles(exercises, index)` (`data/RoutineMuscles.kt`)
+is core's `muscleBreakdown` over the catalogue with each exercise's
+`targetSets` as its sets, so a routine with 4 × squat and 3 × curl shows
+quads over biceps; `RoutineDao.observeRoutineExerciseLinks` gives every
+routine's exercises in one query for the lists, computed on
+`Dispatchers.Default` in `RoutinesViewModel` and `HomeViewModel`. A screen
+reader hears "Muscles: quads, glutes, chest" (the row's top three; the page
+names them all with percentages). `RoutineMusclesFlowTest`.
+
 **The Routines tab** (`Routes.ROUTINES`, `ui/routines/RoutinesScreen.kt`) is
 the second of the bottom bar's tabs, Home · Routines · Exercises · History ·
 Progress,

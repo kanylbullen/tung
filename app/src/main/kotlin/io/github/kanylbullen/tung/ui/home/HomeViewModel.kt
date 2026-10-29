@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate
+import io.github.kanylbullen.tung.data.routineMuscles
 
 /** One day of the active program, ready to show and to start. */
 data class ProgramDayUi(
@@ -82,6 +83,8 @@ data class HomeUiState(
     val today: TodayUi? = null,
     /** Most recently used first; empty means the section is not shown at all. */
     val routines: List<RoutineSummaryRow> = emptyList(),
+    /** The muscles each routine works, by routine id ([routineMuscles]). */
+    val routineMuscles: Map<String, MuscleBreakdown> = emptyMap(),
     val recent: List<WorkoutSummaryRow> = emptyList(),
     val hasMore: Boolean = false,
 )
@@ -134,6 +137,12 @@ class HomeViewModel(
         WeekUi(week, muscleBreakdown(work))
     }.flowOn(Dispatchers.Default)
 
+    /** The muscles every routine works, for the rows' small bodies. */
+    private val routineMuscles: Flow<Map<String, MuscleBreakdown>> = combine(
+        routines.observeRoutineExerciseLinks(),
+        flow { emit(catalogueMuscles.index()) },
+    ) { links, index -> routineMuscles(links, index) }.flowOn(Dispatchers.Default)
+
     val state: StateFlow<HomeUiState> = combine(
         combine(
             workouts.observeActiveWorkout(),
@@ -155,7 +164,8 @@ class HomeViewModel(
             )
         },
         week,
-    ) { base, week -> base.copy(week = week) }
+        routineMuscles,
+    ) { base, week, muscles -> base.copy(week = week, routineMuscles = muscles) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     /** Starts a workout, or resumes the one in progress, and hands back its id. */

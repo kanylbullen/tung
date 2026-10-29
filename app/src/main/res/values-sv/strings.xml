@@ -310,6 +310,7 @@
     </plurals>
     <string name="routine_start">Starta</string>
     <string name="routine_start_description">Starta %1$s</string>
+    <string name="routine_muscles_description">Muskler: %1$s</string>
     <string name="routine_last">Senast: %1$s</string>
     <string name="routine_never">Aldrig</string>
     <string name="routine_today">i dag</string>

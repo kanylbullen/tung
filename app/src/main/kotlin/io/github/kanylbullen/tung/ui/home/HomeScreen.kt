@@ -219,6 +219,7 @@ fun HomeScreen(
                             // A tap opens the routine, so its exercises can be seen before Start.
                             onClick = { onOpenRoutine(row.id) },
                             compact = true,
+                            muscles = state.routineMuscles[row.id],
                         )
                     }
                 }
