@@ -124,6 +124,9 @@ data class ActiveWorkoutUiState(
 sealed interface ActiveWorkoutEvent {
     data class Finished(val workoutId: String, val saved: Boolean) : ActiveWorkoutEvent
 
+    /** The workout was discarded from its menu (issue #81): deleted, nothing saved; the screen leaves for Home. */
+    data class Discarded(val workoutId: String) : ActiveWorkoutEvent
+
     /** The first rest timer started: ask for the notification permission (Android 13+), once. */
     data object AskForNotifications : ActiveWorkoutEvent
 }

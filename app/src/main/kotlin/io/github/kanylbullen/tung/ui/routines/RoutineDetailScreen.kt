@@ -52,6 +52,7 @@ import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.MAX_TARGET_SETS
 import io.github.kanylbullen.tung.core.MIN_TARGET_SETS
 import io.github.kanylbullen.tung.core.parseReps
+import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
@@ -62,15 +63,23 @@ import io.github.kanylbullen.tung.ui.workout.NumberInputSheet
 import io.github.kanylbullen.tung.ui.workout.repsSpec
 
 /**
- * One routine: rename or delete it; add exercises ([onAddExercise] opens the
- * picker), remove and reorder them, and change each one's target sets and reps.
+ * One routine: start it ([onStart] gets the workout, issue #81), rename or
+ * delete it; add exercises ([onAddExercise] opens the picker), remove and
+ * reorder them, and change each one's target sets and reps.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoutineDetailScreen(routineId: String, onBack: () -> Unit, onAddExercise: () -> Unit) {
+fun RoutineDetailScreen(
+    routineId: String,
+    onBack: () -> Unit,
+    onAddExercise: () -> Unit,
+    onStart: (workoutId: String) -> Unit = {},
+) {
     val container = appContainer()
     val vm: RoutineDetailViewModel = viewModel(
-        factory = factoryOf { RoutineDetailViewModel(routineId, container.routineRepository, container.commands) }
+        factory = factoryOf {
+            RoutineDetailViewModel(routineId, container.routineRepository, container.workoutRepository, container.commands)
+        }
     )
     val state by vm.state.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }
@@ -129,6 +138,21 @@ fun RoutineDetailScreen(routineId: String, onBack: () -> Unit, onAddExercise: ()
                         style = MaterialTheme.typography.bodyLarge,
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
+                    )
+                }
+            }
+            if (!state.loading && !state.missing && !deleting) {
+                item(key = "start") {
+                    // Start, like the row's on Home and the Routines tab: disabled while a
+                    // workout is in progress, and for a routine with nothing to start.
+                    val description = stringResource(R.string.routine_start_description, state.name)
+                    PrimaryButton(
+                        text = stringResource(R.string.routine_start),
+                        onClick = { vm.start(onStart) },
+                        enabled = state.canStart && state.exercises.isNotEmpty(),
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                            .semantics { contentDescription = description },
                     )
                 }
             }

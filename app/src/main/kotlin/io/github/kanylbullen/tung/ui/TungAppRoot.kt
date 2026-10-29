@@ -280,6 +280,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                     routineId = id,
                     onBack = { nav.popBackStack() },
                     onAddExercise = { nav.navigate(Routes.routinePicker(id)) },
+                    onStart = { workoutId -> nav.navigate(Routes.workout(workoutId)) { popUpTo(Routes.HOME) } },
                 )
             }
             composable(
@@ -342,6 +343,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                             nav.popBackStack(Routes.HOME, inclusive = false)
                         }
                     },
+                    onDiscarded = { nav.popBackStack(Routes.HOME, inclusive = false) },
                 )
             }
             composable(Routes.PICKER, arguments = idArgument) { entry ->

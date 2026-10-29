@@ -10,6 +10,20 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.PluralsRes
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,15 +60,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -143,6 +155,8 @@ fun ActiveWorkoutScreen(
     onFinishAsked: () -> Unit = {},
     onAddExercise: () -> Unit,
     onFinished: (workoutId: String, saved: Boolean) -> Unit,
+    /** The workout was discarded from the menu (issue #81): nothing saved, back to Home. */
+    onDiscarded: () -> Unit = {},
     /** "Ask the assistant" on words the voice grammar did not understand: the Assistant screen with them. */
     onAskAssistant: (String) -> Unit = {},
 ) {
@@ -164,6 +178,7 @@ fun ActiveWorkoutScreen(
     val context = LocalContext.current
     val discardedMessage = stringResource(R.string.workout_discarded)
     val currentOnFinished by rememberUpdatedState(onFinished)
+    val currentOnDiscarded by rememberUpdatedState(onDiscarded)
 
     // Between sets the phone lies on a bench; the screen must not sleep.
     val view = LocalView.current
@@ -183,6 +198,7 @@ fun ActiveWorkoutScreen(
                     if (!event.saved) Toast.makeText(context, discardedMessage, Toast.LENGTH_LONG).show()
                     currentOnFinished(event.workoutId, event.saved)
                 }
+                is ActiveWorkoutEvent.Discarded -> currentOnDiscarded()
                 ActiveWorkoutEvent.AskForNotifications -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -197,6 +213,8 @@ fun ActiveWorkoutScreen(
 
     var editing by remember { mutableStateOf<EditTarget?>(null) }
     var confirmFinish by remember { mutableStateOf(false) }
+    var confirmDiscard by rememberSaveable { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
     LaunchedEffect(askToFinish) {
         if (askToFinish) {
             confirmFinish = true
@@ -354,6 +372,24 @@ fun ActiveWorkoutScreen(
                                 style = MaterialTheme.typography.labelLarge,
                                 color = Tung.colors.accentText,
                             )
+                        }
+                        // The way out that keeps nothing (issue #81), behind a menu so a
+                        // thumb aiming at Finish cannot land on it.
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                            }
+                            DropdownMenu(
+                                expanded = menuOpen,
+                                onDismissRequest = { menuOpen = false },
+                                containerColor = Tung.colors.raised,
+                                shape = TungCorner,
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.workout_discard)) },
+                                    onClick = { menuOpen = false; confirmDiscard = true },
+                                )
+                            }
                         }
                     }
                 },
@@ -543,6 +579,13 @@ fun ActiveWorkoutScreen(
             },
         )
     }
+
+    if (confirmDiscard) {
+        DiscardWorkoutDialog(
+            onConfirm = { confirmDiscard = false; vm.discard() },
+            onDismiss = { confirmDiscard = false },
+        )
+    }
 }
 
 /**
@@ -708,6 +751,13 @@ private fun WorkoutList(
     onProgress: (ActiveExerciseUi) -> Unit,
     onAddExercise: () -> Unit,
 ) {
+    // The set row a swipe has opened (its Delete revealed, issue #81): one at a
+    // time, and closed by a scroll or by a tap on anything else in the list.
+    var openSetId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) openSetId = null
+    }
+    fun closing(block: () -> Unit): () -> Unit = { openSetId = null; block() }
     LazyColumn(
         state = listState,
         contentPadding = contentPadding,
@@ -729,24 +779,28 @@ private fun WorkoutList(
                     exerciseDisplayName(exercise.nameKey, exercise.name),
                     // Only an exercise with a set left to log can take the current set.
                     onSelect = if (exercise.sets.any { !it.completed }) {
-                        { onSelectExercise(exercise.workoutExerciseId) }
+                        closing { onSelectExercise(exercise.workoutExerciseId) }
                     } else {
                         null
                     },
-                    onRestTimer = { onRestTimer(exercise) },
-                    onProgress = { onProgress(exercise) },
-                    onRemove = { onRemoveExercise(exercise.workoutExerciseId) },
+                    onRestTimer = closing { onRestTimer(exercise) },
+                    onProgress = closing { onProgress(exercise) },
+                    onRemove = closing { onRemoveExercise(exercise.workoutExerciseId) },
                 )
             }
             items(exercise.sets, key = { setKey(it.id) }) { set ->
                 SwipeableSetRow(
                     set = set,
                     isCurrent = set.id == currentSetId,
-                    onSelect = { onSelectSet(exercise.workoutExerciseId, set.id) },
-                    onEditWeight = { onEdit(set.id, Field.WEIGHT) },
-                    onEditReps = { onEdit(set.id, Field.REPS) },
-                    onToggle = { onToggle(exercise, set) },
-                    onDelete = { onDeleteSet(set.id) },
+                    open = openSetId == set.id,
+                    onOpenChange = { isOpen ->
+                        if (isOpen) openSetId = set.id else if (openSetId == set.id) openSetId = null
+                    },
+                    onSelect = closing { onSelectSet(exercise.workoutExerciseId, set.id) },
+                    onEditWeight = closing { onEdit(set.id, Field.WEIGHT) },
+                    onEditReps = closing { onEdit(set.id, Field.REPS) },
+                    onToggle = closing { onToggle(exercise, set) },
+                    onDelete = closing { onDeleteSet(set.id) },
                 )
             }
             item(key = addSetKey(exercise.workoutExerciseId)) {
@@ -755,7 +809,7 @@ private fun WorkoutList(
                     exerciseDisplayName(exercise.nameKey, exercise.name),
                 )
                 TextButton(
-                    onClick = { onAddSet(exercise.workoutExerciseId) },
+                    onClick = closing { onAddSet(exercise.workoutExerciseId) },
                     modifier = Modifier
                         .padding(start = 8.dp, bottom = 12.dp)
                         .heightIn(min = 48.dp)
@@ -850,11 +904,29 @@ private fun ExerciseHeader(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** A set row's swipe position: closed, or open with Delete revealed behind it. */
+private enum class RowSwipe { Closed, Open }
+
+/** How far the row slides left to reveal the Delete button, which is this wide. */
+private val REVEAL_WIDTH = 96.dp
+
+/**
+ * A set row that a swipe to the left opens, settling with a Delete button
+ * revealed behind it (issue #81); a tap on the button deletes, a tap on the
+ * row or a swipe back closes it. Before, a full swipe deleted the set at
+ * once, which happened by accident. The list keeps one row open at a time
+ * through [open] and [onOpenChange]. The accessible way to delete is still
+ * the "Delete set" action on every part of the row a screen reader focuses;
+ * the button exists only while revealed, so TalkBack never meets "Delete"
+ * on every set.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SwipeableSetRow(
     set: ActiveSetUi,
     isCurrent: Boolean,
+    open: Boolean,
+    onOpenChange: (Boolean) -> Unit,
     onSelect: () -> Unit,
     onEditWeight: () -> Unit,
     onEditReps: () -> Unit,
@@ -862,16 +934,33 @@ private fun SwipeableSetRow(
     onDelete: () -> Unit,
 ) {
     val currentOnDelete by rememberUpdatedState(onDelete)
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                currentOnDelete()
-                true
-            } else {
-                false
-            }
-        },
-    )
+    val currentOnOpenChange by rememberUpdatedState(onOpenChange)
+    val density = LocalDensity.current
+    val revealPx = with(density) { REVEAL_WIDTH.toPx() }
+    val swipe = remember(revealPx) {
+        AnchoredDraggableState(
+            initialValue = RowSwipe.Closed,
+            anchors = DraggableAnchors {
+                RowSwipe.Closed at 0f
+                RowSwipe.Open at -revealPx
+            },
+            positionalThreshold = { distance -> distance * 0.5f },
+            velocityThreshold = { with(density) { 125.dp.toPx() } },
+            snapAnimationSpec = tween(),
+            decayAnimationSpec = exponentialDecay(),
+        )
+    }
+    // The list closes this row when another opens or something else is tapped...
+    LaunchedEffect(open) {
+        // Also a row still animating open: targetValue is Open before currentValue is.
+        if (!open && (swipe.currentValue == RowSwipe.Open || swipe.targetValue == RowSwipe.Open)) {
+            swipe.animateTo(RowSwipe.Closed)
+        }
+    }
+    // ...and hears when a swipe settles it open or closed.
+    LaunchedEffect(swipe) {
+        snapshotFlow { swipe.settledValue }.collect { currentOnOpenChange(it == RowSwipe.Open) }
+    }
     val deleteLabel = stringResource(R.string.workout_delete_set)
     // The accessible way to delete: a custom action on every part of the row a
     // screen reader can focus. The row container itself is never focused, so an
@@ -879,26 +968,46 @@ private fun SwipeableSetRow(
     val deleteAction = remember(deleteLabel) {
         listOf(CustomAccessibilityAction(deleteLabel) { currentOnDelete(); true })
     }
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = {
-            // Always composed under the row; hidden from screen readers until a swipe reveals it,
-            // or TalkBack would read "Delete" on every set.
-            val settled = dismissState.dismissDirection == SwipeToDismissBoxValue.Settled
+    // Only the flip recomposes the row; the offset itself is applied in the layout lambda below.
+    val revealed by remember(swipe) { derivedStateOf { swipe.requireOffset() < 0f } }
+    Box(Modifier.fillMaxWidth()) {
+        if (revealed) {
+            val description = stringResource(R.string.workout_delete_set_number, set.number)
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(if (settled) Modifier.clearAndSetSemantics {} else Modifier)
-                    .background(Tung.colors.border)
-                    .padding(horizontal = 24.dp),
+                modifier = Modifier.matchParentSize().background(Tung.colors.danger),
                 contentAlignment = Alignment.CenterEnd,
             ) {
-                Text(stringResource(R.string.workout_delete), color = Tung.colors.text)
+                TextButton(
+                    onClick = { currentOnDelete() },
+                    shape = TungCorner,
+                    modifier = Modifier
+                        .width(REVEAL_WIDTH)
+                        .fillMaxHeight()
+                        .semantics { contentDescription = description },
+                ) {
+                    Text(
+                        stringResource(R.string.workout_delete),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Tung.colors.onDanger,
+                    )
+                }
             }
-        },
-    ) {
-        SetRow(set, isCurrent, deleteAction, onSelect, onEditWeight, onEditReps, onToggle)
+        }
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(swipe.requireOffset().roundToInt(), 0) }
+                .anchoredDraggable(swipe, Orientation.Horizontal),
+        ) {
+            SetRow(set, isCurrent, deleteAction, onSelect, onEditWeight, onEditReps, onToggle)
+            if (open) {
+                // While open, a tap on the row closes it instead of reaching a cell.
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .pointerInput(Unit) { detectTapGestures { currentOnOpenChange(false) } },
+                )
+            }
+        }
     }
 }
 

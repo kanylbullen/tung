@@ -19,6 +19,7 @@ import io.github.kanylbullen.tung.data.RoutineSummaryRow
 import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.data.WorkoutSummaryRow
+import io.github.kanylbullen.tung.timer.RestTimerController
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -77,6 +78,7 @@ class HomeViewModel(
     programs: ProgramRepository,
     private val commands: CommandHandler,
     private val clock: Clock,
+    private val restTimer: RestTimerController,
 ) : ViewModel() {
 
     private val activeProgram: Flow<ActiveProgram?> = programs.observeActiveProgram().flatMapLatest { program ->
@@ -131,6 +133,19 @@ class HomeViewModel(
     /** Starts a workout from a program day, which the workout records, and hands back its id. */
     fun startDay(day: ProgramDayUi, onReady: (String) -> Unit) {
         viewModelScope.launch { start(Command.StartRoutine(day.routineId, programDayId = day.id))?.let(onReady) }
+    }
+
+    /**
+     * Discards the workout in progress (issue #81): deleted with tombstones,
+     * nothing saved. The rest timer and its alarm go first, as the workout
+     * screen's discard and finish do, or "Rest over" would buzz for a workout
+     * that no longer exists.
+     */
+    fun discard(workoutId: String) {
+        viewModelScope.launch {
+            restTimer.set(workoutId, null)
+            commands.execute(Command.DeleteWorkout(workoutId))
+        }
     }
 
     /** The workout a start command started or resumed; null if it did not (a routine that is gone). */
