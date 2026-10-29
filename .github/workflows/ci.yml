@@ -53,6 +53,14 @@ jobs:
       - name: Build debug APK and run unit tests
         run: ./gradlew assembleDebug :wear:assembleDebug test -x :server:test --no-daemon --stacktrace
 
+      # What Play checks at upload, checked here first: the phone app targets
+      # 36 (Play's requirement since 2026-08-31), the watch app 35 (deploy/play.md).
+      - name: Check the APKs' targetSdk
+        run: |
+          BT="$ANDROID_HOME/build-tools/36.0.0"
+          "$BT/aapt2" dump badging app/build/outputs/apk/debug/app-debug.apk | grep "targetSdkVersion:'36'"
+          "$BT/aapt2" dump badging wear/build/outputs/apk/debug/wear-debug.apk | grep "targetSdkVersion:'35'"
+
       - name: Upload unit test results
         if: always()
         uses: actions/upload-artifact@v4
