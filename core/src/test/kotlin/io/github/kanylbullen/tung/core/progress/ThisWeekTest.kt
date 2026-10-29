@@ -81,6 +81,7 @@ class ThisWeekTest {
             set("now", at(today), 100.0, 10),
         )
         assertFalse("a tie is not best", thisWeek(sets, today, zone).bestOfRecentWeeks)
+        assertEquals(WeekBucket(LocalDate.of(2026, 10, 19), 1, 1000.0), thisWeek(sets, today, zone).lastWeek)
         assertTrue(thisWeek(sets + set("now", at(today), 1.0, 1, position = 1), today, zone).bestOfRecentWeeks)
         assertFalse("an empty week is never best", thisWeek(emptyList(), today, zone).bestOfRecentWeeks)
         assertFalse("the first week ever has nothing to beat", thisWeek(listOf(set("now", at(today), 100.0, 10)), today, zone).bestOfRecentWeeks)
@@ -97,5 +98,6 @@ class ThisWeekTest {
         assertEquals(0, week.sets)
         assertEquals(0.0, week.volumeKg, 0.0)
         assertTrue(week.days.all { it.workouts == 0 && it.sets == 0 && it.volumeKg == 0.0 })
+        assertEquals(WeekBucket(LocalDate.of(2026, 10, 19), 0, 0.0), week.lastWeek)
     }
 }

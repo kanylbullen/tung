@@ -39,13 +39,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import io.github.kanylbullen.tung.R
@@ -54,6 +49,7 @@ import io.github.kanylbullen.tung.ui.common.ExerciseNames
 import io.github.kanylbullen.tung.ui.common.WorkoutReport
 import io.github.kanylbullen.tung.ui.common.lastUsedText
 import io.github.kanylbullen.tung.ui.common.localWeekday
+import io.github.kanylbullen.tung.ui.common.styledRoutineName
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -155,25 +151,6 @@ fun RoutineRow(
     }
 }
 
-/**
- * A routine's name with its group muted: the import names routines
- * "<package> · <day>" ("Skokloster Gym · JT2 dag 1"), so everything up to the
- * last " · " is drawn in the muted colour at normal weight and the day stands
- * out. The text itself is unchanged, so a name is still found as one string.
- */
-@Composable
-fun styledRoutineName(name: String): AnnotatedString {
-    val cut = name.lastIndexOf(ROUTINE_NAME_SEPARATOR)
-    if (cut <= 0) return AnnotatedString(name)
-    return buildAnnotatedString {
-        withStyle(SpanStyle(color = Tung.colors.muted, fontWeight = FontWeight.Normal)) {
-            append(name.substring(0, cut + ROUTINE_NAME_SEPARATOR.length))
-        }
-        append(name.substring(cut + ROUTINE_NAME_SEPARATOR.length))
-    }
-}
-
-private const val ROUTINE_NAME_SEPARATOR = " · "
 
 /**
  * The name a routine saved from [report] is offered: the weekday and the first

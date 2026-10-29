@@ -43,6 +43,20 @@ fun localDate(epochMillis: Long): String {
     return text.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
 }
 
+/**
+ * "Thu 22 Oct" ("tors 22 okt" in Swedish), the year added when it is not this
+ * year: [localDate] for a list row, where the long weekday left no room for
+ * the rest of the line.
+ */
+fun shortLocalDate(epochMillis: Long): String {
+    val locale = Locale.getDefault()
+    val zone = ZoneId.systemDefault()
+    val date = Instant.ofEpochMilli(epochMillis).atZone(zone)
+    val pattern = if (date.year == java.time.ZonedDateTime.now(zone).year) "EEE d MMM" else "EEE d MMM yyyy"
+    val text = DateTimeFormatter.ofPattern(pattern, locale).format(date)
+    return text.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+}
+
 /** "6 March 2023": a date with its year, for ranges such as an import's. */
 fun localDateWithYear(epochMillis: Long): String =
     DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.getDefault()).format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))

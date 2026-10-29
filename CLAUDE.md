@@ -161,8 +161,9 @@ both "Last: 80 × 8" and the pre-fill of new sets.
 and heaviest, `ArchivoWide` in `ui/theme/Type.kt`, which only the wordmark
 and the hero number use), then, once there is a finished workout, **"This
 week"** (`ThisWeekSection`): the week's volume as the hero number
-(`Tung.numbers.hero`, 64 sp), "3 workouts · 41 sets" (or "No workout yet
-this week"), "Best of the last 12 weeks" in the accent when it is, the
+(`Tung.numbers.hero`, 64 sp, smaller for a longer number), "3 workouts ·
+41 sets" (or "No workout yet this week · Last week 2 430 kg", from
+`ThisWeek.lastWeek`), "Best of the last 12 weeks" in the accent when it is, the
 muscles the week's sets worked as the small body (`MuscleHeatMap` at 112 dp
 over core's `muscleBreakdown`, like the summary's), and the seven days as
 bars (`WeekStrip`: Monday first, a trained day in the accent scaled to the
@@ -181,8 +182,8 @@ everything up to the last " · " of a name muted, so an imported
 "Skokloster Gym · JT2 dag 1" reads as its day), Recent workouts, and the
 Assistant's row. A workout's row (`WorkoutRow`, shared with History) is
 titled with the routine it was started from, else its first two exercises,
-else "Workout", with the date, duration and exercise count muted under it
-and the volume on the right; `WorkoutSummaryRow` carries the routine's name
+else "Workout", with the short date (`shortLocalDate`, "Thu 22 Oct"),
+duration and exercise count muted under it and the volume on the right; `WorkoutSummaryRow` carries the routine's name
 and the first two exercises' names and keys as SQL subqueries (a query
 result, not an entity: no schema change). The date stays its own text node,
 which is how the flow tests find a workout.

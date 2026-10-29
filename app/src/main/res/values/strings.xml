@@ -30,6 +30,7 @@
         <item quantity="other">%d sets</item>
     </plurals>
     <string name="home_week_none">No workout yet this week</string>
+    <string name="home_week_last">Last week %1$s kg</string>
     <string name="home_week_best">Best of the last 12 weeks</string>
     <!-- The seven bars, for a screen reader: "Volume per day this week: Monday 3 020 kg, Wednesday 4 420 kg" or "…: nothing yet" -->
     <string name="home_week_days_description">Volume per day this week: %1$s</string>
