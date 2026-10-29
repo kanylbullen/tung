@@ -3,7 +3,8 @@
 // Companion otherwise: mirrors the phone's active workout over the Wearable
 // Data Layer and sends the user's taps back as commands.
 // Same applicationId as the phone app, which the Data Layer requires to pair
-// the two; both use the default debug keystore, so a debug pair is signed alike.
+// the two, and the same signing key: the debug keystore for a debug pair, the one
+// release key (root build.gradle.kts, TUNG_KEYSTORE…) for releases of both.
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -19,6 +20,10 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+@Suppress("UNCHECKED_CAST")
+val releaseSigning = rootProject.extra["releaseSigning"] as Map<String, String>?
+val buildNumber = rootProject.extra["buildNumber"] as Int
+
 android {
     namespace = "io.github.kanylbullen.tung.wear"
     compileSdk = 35
@@ -28,14 +33,31 @@ android {
         // Wear OS 3 (Galaxy Watch 4 and later).
         minSdk = 30
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // From the root build file: the watch's versionCode ends in 2, the phone's in 1
+        // (app/build.gradle.kts), because both apps share this applicationId and Play
+        // wants every artefact of one app to carry its own versionCode.
+        versionCode = buildNumber * 10 + 2
+        versionName = rootProject.extra["versionName"] as String
         resourceConfigurations += listOf("en", "sv")
+    }
+
+    // The release key, when the four TUNG_KEYSTORE… inputs are set (root build.gradle.kts).
+    // Without them the release build type is unsigned, and the root's releaseGate refuses to package it.
+    signingConfigs {
+        releaseSigning?.let { key ->
+            create("release") {
+                storeFile = rootProject.file(key.getValue("TUNG_KEYSTORE"))
+                storePassword = key.getValue("TUNG_KEYSTORE_PASSWORD")
+                keyAlias = key.getValue("TUNG_KEY_ALIAS")
+                keyPassword = key.getValue("TUNG_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
@@ -65,6 +87,10 @@ android {
     }
 }
 
+// A release is packaged only past the root's releaseGate: with the release key and a build number.
+tasks.matching { it.name == "packageRelease" || it.name == "packageReleaseBundle" }
+    .configureEach { dependsOn(rootProject.tasks.named("releaseGate")) }
+
 dependencies {
     implementation(project(":core"))
     // Room, the repositories, the CommandHandler, sync and the rest timer, shared with app/.
@@ -83,6 +109,14 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    constraints {
+        // play-services-basement brings androidx.fragment 1.1.0, and lintVital refuses a release
+        // with registerForActivityResult on a fragment below 1.3.0 (InvalidFragmentVersionForActivityResult);
+        // the phone app already resolves 1.5.7 through its own dependencies. Not used directly.
+        implementation("androidx.fragment:fragment:1.5.7") {
+            because("lintVitalRelease: the ActivityResult APIs need androidx.fragment 1.3.0 or later")
+        }
+    }
     // The Ongoing Activity of a workout in progress (WatchOngoing.kt), on data's notification.
     implementation("androidx.wear:wear-ongoing:1.0.0")
     implementation("androidx.core:core-ktx:1.15.0")

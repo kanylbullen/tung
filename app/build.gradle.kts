@@ -13,6 +13,10 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+@Suppress("UNCHECKED_CAST")
+val releaseSigning = rootProject.extra["releaseSigning"] as Map<String, String>?
+val buildNumber = rootProject.extra["buildNumber"] as Int
+
 android {
     namespace = "io.github.kanylbullen.tung"
     compileSdk = 35
@@ -21,8 +25,11 @@ android {
         applicationId = "io.github.kanylbullen.tung"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // From the root build file: the phone's versionCode ends in 1, the watch's in 2
+        // (wear/build.gradle.kts), because both apps share this applicationId and Play
+        // wants every artefact of one app to carry its own versionCode.
+        versionCode = buildNumber * 10 + 1
+        versionName = rootProject.extra["versionName"] as String
         // The app's languages: English (values/, the default) and Swedish. Libraries bring
         // dozens of locales of their own; only these ship. Same list as res/xml/locales_config.xml.
         resourceConfigurations += listOf("en", "sv")
@@ -31,18 +38,34 @@ android {
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://tung.xuper.fun\"")
     }
 
+    // The release key, when the four TUNG_KEYSTORE… inputs are set (root build.gradle.kts).
+    // Without them the release build type is unsigned, and the root's releaseGate refuses to package it.
+    signingConfigs {
+        releaseSigning?.let { key ->
+            create("release") {
+                storeFile = rootProject.file(key.getValue("TUNG_KEYSTORE"))
+                storePassword = key.getValue("TUNG_KEYSTORE_PASSWORD")
+                keyAlias = key.getValue("TUNG_KEY_ALIAS")
+                keyPassword = key.getValue("TUNG_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
-        // What goes on our own phones: release code (R8, not debuggable), signed with the
-        // debug key so it installs over a debug build and keeps the data. A debug build of a
-        // Compose app is several times slower when scrolling (measured on the Note9, 2026-10-21).
+        // What goes on our own phones: release code (R8, not debuggable). Signed with the
+        // release key when it is in the environment, so it installs over a Play build and
+        // keeps the data (`adb install -r -d`: its versionCode is lower), else with the debug
+        // key, so it installs over a debug build. A debug build of a Compose app is several
+        // times slower when scrolling (measured on the Note9, 2026-10-21).
         create("dogfood") {
             initWith(getByName("release"))
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
         }
     }
@@ -81,6 +104,10 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 }
+
+// A release is packaged only past the root's releaseGate: with the release key and a build number.
+tasks.matching { it.name == "packageRelease" || it.name == "packageReleaseBundle" }
+    .configureEach { dependsOn(rootProject.tasks.named("releaseGate")) }
 
 /**
  * Where the flow tests save their screenshots, handed to the test JVM as a

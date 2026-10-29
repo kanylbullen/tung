@@ -1811,7 +1811,9 @@ Results land in `core/build/test-results/test/` and
 **On a phone, install `dogfood`, not `debug`:** `./gradlew :app:assembleDogfood`
 gives `app/build/outputs/apk/dogfood/app-dogfood.apk`, release code (R8, not
 debuggable) signed with the debug key, so `adb install -r` replaces a debug
-build and keeps the data. A debug build of a Compose app is several times
+build and keeps the data (with the release key in the environment, below, it
+is signed with that instead, so it replaces a Play install; `adb install -r -d`,
+its versionCode is lower). A debug build of a Compose app is several times
 slower: on the Note9, scrolling the Exercises tab had 34 % janky frames and a
 90th percentile of 150 ms as debug, 11 % and 32 ms as dogfood (2026-10-21).
 Release has R8 on (`isMinifyEnabled`, `isShrinkResources`); the app's own
@@ -1822,6 +1824,23 @@ to dependencies or reflection, start the dogfood build once and sync.
 APKs: `app/build/outputs/apk/debug/app-debug.apk` and
 `wear/build/outputs/apk/debug/wear-debug.apk` (`:wear:assembleDebug`). The first build downloads
 dependencies and takes a few minutes.
+
+**A Play build is `scripts/release.sh`** (the console side: `deploy/play.md`).
+The release inputs live in the root `build.gradle.kts` and reach `app/` and
+`wear/` through `rootProject.extra`: the one release key from
+`TUNG_KEYSTORE`, `TUNG_KEYSTORE_PASSWORD`, `TUNG_KEY_ALIAS` and
+`TUNG_KEY_PASSWORD` (environment or `-P`; blank counts as missing; the key
+is outside the checkout, `*.jks` is gitignored), and the build number from
+`TUNG_VERSION_CODE`, which the script derives from the number of commits on
+`main`. The phone's versionCode is `number × 10 + 1`, the watch's
+`number × 10 + 2` (one applicationId, so Play wants distinct codes), and a
+build without a number is number 1. The root's `releaseGate` refuses
+`assembleRelease` and `bundleRelease` without the key or the number before
+anything is packaged; the release variant's unit tests, which CI runs
+without a key, are not affected. The watch is signed with the same key as the
+phone, or the Data Layer will not pair them. **Play requires targetSdk 36
+since 2026-08-31** (Wear OS 35); the phone app's bundle is refused until
+compileSdk and targetSdk are raised, which needs AGP 8.9.1 or later.
 
 ## Flow tests
 
