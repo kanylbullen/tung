@@ -135,7 +135,9 @@ Without the key it is signed with the debug key, as before.
    - **Permissions:** `RECORD_AUDIO` is on-device speech for logging sets,
      nothing recorded or sent; `SCHEDULE_EXACT_ALARM` is the rest timer
      (`USE_EXACT_ALARM`, which Play reserves for alarm apps, is not used);
-     `POST_NOTIFICATIONS` is the rest alert and the ongoing workout.
+     `POST_NOTIFICATIONS` is the rest alert and the ongoing workout;
+     `POST_PROMOTED_NOTIFICATIONS` (Android 16, granted by default) makes the
+     ongoing workout a Live Update.
 3. **Store listing:** screenshots from a real phone (the flow tests' PNGs are
    411 dp Robolectric renders, not store material), the icon, a short and a
    full description in both languages.
