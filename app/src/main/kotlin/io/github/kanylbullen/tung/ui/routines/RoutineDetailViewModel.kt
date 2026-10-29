@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import io.github.kanylbullen.tung.core.muscles.MuscleBreakdown
+import io.github.kanylbullen.tung.data.CatalogueMuscles
+import io.github.kanylbullen.tung.data.routineMuscles
+import kotlinx.coroutines.flow.flow
 
 data class RoutineExerciseUi(
     val id: String,
@@ -30,6 +34,8 @@ data class RoutineDetailUiState(
     val exercises: List<RoutineExerciseUi> = emptyList(),
     /** No workout is in progress (issue #81); Start also needs an exercise. */
     val canStart: Boolean = false,
+    /** The muscles the routine works, by its exercises' target sets; null until read, empty for custom exercises only. */
+    val muscles: MuscleBreakdown? = null,
 )
 
 class RoutineDetailViewModel(
@@ -37,13 +43,15 @@ class RoutineDetailViewModel(
     repo: RoutineRepository,
     workouts: WorkoutRepository,
     private val commands: CommandHandler,
+    catalogueMuscles: CatalogueMuscles,
 ) : ViewModel() {
 
     val state: StateFlow<RoutineDetailUiState> = combine(
         repo.observeRoutine(routineId),
         repo.observeRoutineExercises(routineId),
         workouts.observeActiveWorkout(),
-    ) { routine, exercises, active ->
+        flow { emit(catalogueMuscles.index()) },
+    ) { routine, exercises, active, index ->
         if (routine == null) {
             RoutineDetailUiState(loading = false, missing = true)
         } else {
@@ -51,6 +59,7 @@ class RoutineDetailViewModel(
                 loading = false,
                 name = routine.name,
                 canStart = active == null,
+                muscles = routineMuscles(exercises.map { it.exercise.id to it.routineExercise.targetSets }, index),
                 exercises = exercises.map { e ->
                     RoutineExerciseUi(
                         id = e.routineExercise.id,

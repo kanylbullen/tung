@@ -323,6 +323,9 @@ data class RoutineExerciseWithExercise(
     val exercise: Exercise,
 )
 
+/** A routine's exercise with its target sets, for the muscles a routine works (`routineMuscles`). */
+data class RoutineExerciseLink(val routineId: String, val exerciseId: String, val targetSets: Int)
+
 /** One row in a routine list, aggregated in SQL. */
 data class RoutineSummaryRow(
     val id: String,

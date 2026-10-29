@@ -326,6 +326,8 @@
     </plurals>
     <string name="routine_start">Start</string>
     <string name="routine_start_description">Start %1$s</string>
+    <!-- The body on a routine row and page, for a screen reader: "Muscles: chest, triceps, front delts" -->
+    <string name="routine_muscles_description">Muscles: %1$s</string>
     <string name="routine_last">Last: %1$s</string>
     <string name="routine_never">Never</string>
     <string name="routine_today">today</string>
