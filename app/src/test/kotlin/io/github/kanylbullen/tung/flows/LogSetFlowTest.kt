@@ -120,7 +120,8 @@ class LogSetFlowTest : FlowTest() {
         // +30 s first: the countdown and the alarm both move half a minute.
         clickDescription(str(R.string.rest_add_description))
         waitUntil(5_000) { restSecondsLeft() > 90 }
-        assertTrue(alarmInMillis() in 110_000L..120_000L)
+        // The alarm follows the countdown once the previous rest's DataStore write is done.
+        waitUntil(5_000) { runCatching { alarmInMillis() in 110_000L..120_000L }.getOrDefault(false) }
         screenshot("1-rest-controls")
 
         clickText(str(R.string.rest_skip))
