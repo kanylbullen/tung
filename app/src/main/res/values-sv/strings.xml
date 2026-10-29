@@ -806,6 +806,7 @@
     <string name="progress_show_choices">Visa alla val</string>
     <string name="progress_chart_summary">%1$s, %2$s: från %3$s till %4$s kg</string>
     <string name="progress_chart_summary_empty">%1$s, %2$s: för få pass för ett diagram</string>
+    <string name="progress_chart_summary_one">%1$s, %2$s: ett pass, %3$s kg</string>
     <string name="progress_chart_empty">Logga övningen i två pass så syns ett diagram</string>
     <string name="progress_record_heaviest">Tyngsta vikt</string>
     <string name="progress_record_e1rm">Bästa uppskattade 1RM</string>

@@ -833,6 +833,8 @@
     <!-- A chart or a row's sparkline for a screen reader: "Estimated 1RM, 3 months: from 92 to 101 kg". -->
     <string name="progress_chart_summary">%1$s, %2$s: from %3$s to %4$s kg</string>
     <string name="progress_chart_summary_empty">%1$s, %2$s: not enough sessions for a chart</string>
+    <!-- A row's sparkline with one value in the span: "Estimated 1RM, 3 months: one session, 112 kg" -->
+    <string name="progress_chart_summary_one">%1$s, %2$s: one session, %3$s kg</string>
     <string name="progress_chart_empty">Log this exercise in two workouts to see a chart</string>
     <string name="progress_record_heaviest">Heaviest weight</string>
     <string name="progress_record_e1rm">Best estimated 1RM</string>

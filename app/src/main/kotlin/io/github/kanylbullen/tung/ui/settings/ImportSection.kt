@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -143,6 +144,8 @@ fun ImportSection(onImportFile: (Uri) -> Unit) {
             onConfirm = vm::confirmDeleteRoutines,
         )
     }
+    // The question is about this import: if it goes away while asking, the question goes too.
+    LaunchedEffect(last) { if (last == null) vm.dismissUndo() }
     val undoing = last?.takeIf { confirmUndo }
     if (undoing != null) {
         AlertDialog(
