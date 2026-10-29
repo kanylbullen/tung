@@ -1,6 +1,10 @@
 plugins {
-    id("com.android.application") version "8.7.3" apply false
-    id("com.android.library") version "8.7.3" apply false
+    // 8.9.1 is the lowest AGP that officially supports compileSdk 36, which Play's
+    // targetSdk 36 requirement (since 2026-08-31) needs; 8.7.3 only warned that it was
+    // untested against it. 8.9 needs Gradle 8.11.1, which the wrapper already is, and
+    // keeps Kotlin 2.0.21 and KSP 2.0.21-1.0.28 as they are.
+    id("com.android.application") version "8.9.1" apply false
+    id("com.android.library") version "8.9.1" apply false
     id("org.jetbrains.kotlin.android") version "2.0.21" apply false
     id("org.jetbrains.kotlin.jvm") version "2.0.21" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false

@@ -19,12 +19,17 @@ val buildNumber = rootProject.extra["buildNumber"] as Int
 
 android {
     namespace = "io.github.kanylbullen.tung"
-    compileSdk = 35
+    compileSdk = 36
+    // Pinned, because AGP's default build-tools is not compileSdk's (8.9 defaults to 35.0.0):
+    // without the pin a runner that only has 36.0.0 tries to download 35.0.0 into its SDK.
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "io.github.kanylbullen.tung"
         minSdk = 26
-        targetSdk = 35
+        // 36 since Play requires it (2026-08-31). What Android 16 changes for an app targeting
+        // 36, and how each item was checked against this app, is in deploy/play.md, "targetSdk".
+        targetSdk = 36
         // From the root build file: the phone's versionCode ends in 1, the watch's in 2
         // (wear/build.gradle.kts), because both apps share this applicationId and Play
         // wants every artefact of one app to carry its own versionCode.

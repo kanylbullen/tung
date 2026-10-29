@@ -11,7 +11,9 @@ plugins {
 
 android {
     namespace = "io.github.kanylbullen.tung.data"
-    compileSdk = 35
+    compileSdk = 36
+    // Pinned like the apps': AGP's default build-tools is not compileSdk's.
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         minSdk = 26
@@ -93,9 +95,10 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.unifiedpush.android:connector:2.5.0")
 
-    // Health Connect (issue #45): write finished workouts, read heart rate and calories. 1.1.0-beta01 is
-    // the newest that builds with compileSdk 35 and AGP 8.7 (rc01 and 1.1.0 need compileSdk 36, AGP 8.9.1).
-    // Only the phone builds the real gateway; the watch carries the library unused.
+    // Health Connect (issue #45): write finished workouts, read heart rate and calories. 1.1.0-beta01 was
+    // the newest that built with compileSdk 35 and AGP 8.7; with compileSdk 36 and AGP 8.9.1 the stable
+    // 1.1.0 is now possible and is a follow-up of its own. Only the phone builds the real gateway; the
+    // watch carries the library unused.
     implementation("androidx.health.connect:connect-client:1.1.0-beta01")
 
     testImplementation("junit:junit:4.13.2")

@@ -30,8 +30,12 @@ Adding an app language:
 
 Kotlin 2.0.21, Jetpack Compose (BOM 2024.12.01), Material 3, Room 2.6.1 via
 KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
-DataStore 1.1.7 (small state outside Room). AGP 8.7.3,
-Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26. For sync only:
+DataStore 1.1.7 (small state outside Room). AGP 8.9.1,
+Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the three Android
+modules: AGP's default is not compileSdk's). compileSdk 36; targetSdk 36 on
+the phone (Play's requirement since 2026-08-31) and 35 on the watch (Play's
+Wear OS bar; Android 16's behaviour changes are not wanted there yet);
+minSdk 26. For sync only:
 Ktor client 3.0.3 (OkHttp engine, kotlinx JSON), WorkManager 2.10.0,
 androidx.security-crypto 1.0.0 (the stable release) and lifecycle-process;
 for Sign in with Google, Credential Manager (`androidx.credentials` 1.3.0
@@ -1130,8 +1134,8 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   `container.ongoingWorkout` and started in `TungApp.onCreate`, so it shows
   whoever started the workout: this phone, a companion watch, or a sync that
   brought one from the server. Nothing is posted without `POST_NOTIFICATIONS`.
-  **Android 16 Live Update is not done:** `setRequestPromotedOngoing` is API 36
-  and compileSdk stays 35.
+  **Android 16 Live Update is not done:** `setRequestPromotedOngoing` is API 36,
+  which compileSdk now is, so it is possible and a follow-up of its own.
 - **Actions.** Tap opens the workout (`TungHost.openWorkoutIntent`). **Log
   set** is a broadcast to `OngoingWorkoutReceiver` (in data's manifest) with
   the set the notification showed; it runs `Command.LogSet` through
@@ -1211,8 +1215,9 @@ to Health Connect, it stores what the phone syncs.
   `availability`, `permissions(access)`, `hasPermissions(access)`, the
   permission sheet's `ActivityResultContract`, `writeSession`, `readVitals`),
   `AndroidHealthConnectGateway` (the real one, over
-  `androidx.health.connect:connect-client:1.1.0-beta01`, the newest that builds
-  with compileSdk 35 and AGP 8.7; 1.1.0 needs compileSdk 36), and
+  `androidx.health.connect:connect-client:1.1.0-beta01`; the stable 1.1.0
+  needs compileSdk 36, which the build now has, so moving to it is possible
+  and a follow-up of its own), and
   `HealthConnectRecorder`, which does the work. `FakeHealthConnect` is in
   data's test fixtures. `TungContainer(createHealthConnect = …)` is the seam:
   `TungApp` passes `::AndroidHealthConnectGateway`, the watch nothing (null),
@@ -1867,8 +1872,14 @@ build without a number is number 1. The root's `releaseGate` refuses
 anything is packaged; the release variant's unit tests, which CI runs
 without a key, are not affected. The watch is signed with the same key as the
 phone, or the Data Layer will not pair them. **Play requires targetSdk 36
-since 2026-08-31** (Wear OS 35); the phone app's bundle is refused until
-compileSdk and targetSdk are raised, which needs AGP 8.9.1 or later.
+since 2026-08-31** (Wear OS 35), and the phone app meets it: AGP 8.9.1,
+compileSdk 36 and build-tools 36.0.0 in every Android module, targetSdk 36 in
+`app/` and, on purpose, 35 in `wear/`; CI reads both numbers back from the
+built APKs. What Android 16 changes for an app targeting 36, and how each
+item was checked against this app, is in `deploy/play.md`, "targetSdk": in
+short, edge-to-edge was already on and predictive back needs nothing. **The
+flow tests run under Robolectric SDK 34 and see neither**, so a change to
+insets or to back handling is checked on a phone.
 
 ## Flow tests
 
