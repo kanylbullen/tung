@@ -61,9 +61,27 @@
     <string name="workout_discard_confirm">Discard</string>
     <string name="workout_elapsed_description">Time since start %1$s</string>
     <string name="workout_finish_title">Finish workout?</string>
-    <string name="workout_finish_body">Sets that are not ticked and exercises without sets will be removed.</string>
+    <!-- The finish dialog says what goes: the sets that are not ticked (or ticked with no reps), and exercises with no set. -->
+    <plurals name="workout_finish_unlogged">
+        <item quantity="one">%d set that is not ticked will be removed.</item>
+        <item quantity="other">%d sets that are not ticked will be removed.</item>
+    </plurals>
+    <plurals name="workout_finish_empty_exercises">
+        <item quantity="one">%d exercise without sets goes too.</item>
+        <item quantity="other">%d exercises without sets go too.</item>
+    </plurals>
+    <string name="workout_finish_body_clean">Every set is logged.</string>
     <string name="workout_finish_body_empty">No sets are ticked, so the workout will not be saved.</string>
+    <!-- The dialog's buttons: short, so they sit side by side. -->
+    <string name="workout_finish_confirm">Finish</string>
     <string name="workout_keep_training">Keep training</string>
+    <!-- "Remove exercise" asks when the exercise has logged sets: "Remove Bench press and its 3 logged sets?" -->
+    <plurals name="workout_remove_exercise_title">
+        <item quantity="one">Remove %1$s and its logged set?</item>
+        <item quantity="other">Remove %1$s and its %2$d logged sets?</item>
+    </plurals>
+    <string name="workout_remove_exercise_body">The sets are deleted from this workout.</string>
+    <string name="workout_remove_exercise_confirm">Remove</string>
     <string name="workout_discarded">The workout was not saved because no sets were ticked.</string>
     <string name="workout_not_found">This workout no longer exists. Go back and start a new one.</string>
     <string name="workout_log_set">Log set · %1$s · %2$s × %3$s</string>
@@ -145,7 +163,7 @@
     <string name="exercise_add_to_routine">Add to routine</string>
     <string name="exercise_add_to_workout">Add to workout</string>
     <string name="exercise_choose_routine">Add to which routine?</string>
-    <string name="exercise_no_routines">No routines yet. Save a finished workout as a routine first.</string>
+    <string name="exercise_no_routines">No routines yet. Create one in the Routines tab with “+ New routine”, or save a finished workout as one.</string>
     <!-- Confirmation after "Add to routine"; %1$s is the routine's name. -->
     <string name="exercise_added_to_routine">Added to %1$s</string>
     <string name="exercise_history">History</string>
@@ -360,7 +378,7 @@
     <string name="program_days_empty">No days yet. Add your routines in the order you train them.</string>
     <string name="program_add_day">Add day</string>
     <string name="program_pick_routine">Choose a routine</string>
-    <string name="program_no_routines">No routines yet. Save a finished workout as a routine first.</string>
+    <string name="program_no_routines">No routines yet. Create one in the Routines tab with “+ New routine”, or save a finished workout as one.</string>
     <string name="program_day_menu">Options for %1$s</string>
     <string name="program_remove_day">Remove day</string>
     <string name="program_rename_title">Rename program</string>
@@ -406,7 +424,8 @@
     <string name="settings_rest_default">Default rest</string>
     <string name="settings_rest_default_hint">The rest timer between sets, for exercises without their own. An exercise\'s own is set from its menu in a workout.</string>
     <string name="settings_units">Units</string>
-    <string name="settings_units_kg">Kilograms (kg)</string>
+    <!-- Only kilograms exist today; the row says so rather than looking like a choice. -->
+    <string name="settings_units_kg">Kilograms (pounds are not supported yet)</string>
     <string name="about_version">Version</string>
     <string name="about_licence">Licence</string>
     <string name="about_licence_text">Free software under the GNU AGPL-3.0.</string>
@@ -740,6 +759,13 @@
         <item quantity="other">Last import: %1$d workouts, %2$s</item>
     </plurals>
     <string name="import_undo_last">Undo last import</string>
+    <!-- Undo asks first: it deletes every workout the import added. -->
+    <plurals name="import_undo_title">
+        <item quantity="one">Remove %d imported workout?</item>
+        <item quantity="other">Remove %d imported workouts?</item>
+    </plurals>
+    <string name="import_undo_body">Workouts you logged in Tung are kept.</string>
+    <string name="import_undo_confirm">Remove</string>
     <string name="import_delete_routines">Delete routines from the last import (%1$d)</string>
     <string name="import_delete_routines_body">The import\'s workouts are kept.</string>
 
@@ -769,9 +795,14 @@
     <string name="progress_no_change_3m">No change in 3 months</string>
     <string name="progress_change_12m">%1$s in 12 months</string>
     <string name="progress_no_change_12m">No change in 12 months</string>
-    <plurals name="progress_sessions">
-        <item quantity="one">%d session</item>
-        <item quantity="other">%d sessions</item>
+    <!-- A row with fewer than two values in its span says how many sessions the span holds, in the span's own words. -->
+    <plurals name="progress_sessions_3m">
+        <item quantity="one">%d session in 3 months</item>
+        <item quantity="other">%d sessions in 3 months</item>
+    </plurals>
+    <plurals name="progress_sessions_12m">
+        <item quantity="one">%d session in 12 months</item>
+        <item quantity="other">%d sessions in 12 months</item>
     </plurals>
     <!-- An exercise row's latest value: "Est. 1RM 101 kg", the last session's volume, the last trained week's volume. -->
     <string name="progress_e1rm_value">Est. 1RM %1$s kg</string>

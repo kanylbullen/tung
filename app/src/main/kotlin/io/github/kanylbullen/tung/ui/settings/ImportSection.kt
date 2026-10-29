@@ -3,12 +3,15 @@ package io.github.kanylbullen.tung.ui.settings
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -56,7 +59,21 @@ class ImportSectionViewModel(
     /** Non-null while "Delete routines from the last import" asks. */
     val confirm: StateFlow<DeleteRoutinesConfirm?> = _confirm.asStateFlow()
 
-    fun undoLast() {
+    private val _confirmUndo = MutableStateFlow(false)
+
+    /** True while "Undo last import" asks: it deletes every workout the import added. */
+    val confirmUndo: StateFlow<Boolean> = _confirmUndo.asStateFlow()
+
+    fun askUndo() {
+        if (last.value != null) _confirmUndo.value = true
+    }
+
+    fun dismissUndo() {
+        _confirmUndo.value = false
+    }
+
+    fun confirmUndo() {
+        _confirmUndo.value = false
         val last = last.value ?: return
         viewModelScope.launch { imports.undo(last) }
     }
@@ -96,6 +113,7 @@ fun ImportSection(onImportFile: (Uri) -> Unit) {
     val last by vm.last.collectAsStateWithLifecycle()
     val importedRoutines by vm.importedRoutines.collectAsStateWithLifecycle()
     val confirm by vm.confirm.collectAsStateWithLifecycle()
+    val confirmUndo by vm.confirmUndo.collectAsStateWithLifecycle()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) onImportFile(uri)
     }
@@ -108,7 +126,7 @@ fun ImportSection(onImportFile: (Uri) -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             color = Tung.colors.muted,
         )
-        SecondaryButton(text = stringResource(R.string.import_undo_last), onClick = vm::undoLast)
+        SecondaryButton(text = stringResource(R.string.import_undo_last), onClick = vm::askUndo)
         if (importedRoutines.isNotEmpty()) {
             SecondaryButton(
                 text = stringResource(R.string.import_delete_routines, importedRoutines.size),
@@ -123,6 +141,26 @@ fun ImportSection(onImportFile: (Uri) -> Unit) {
             body = stringResource(R.string.import_delete_routines_body),
             onDismiss = vm::dismissDeleteRoutines,
             onConfirm = vm::confirmDeleteRoutines,
+        )
+    }
+    val undoing = last?.takeIf { confirmUndo }
+    if (undoing != null) {
+        AlertDialog(
+            onDismissRequest = vm::dismissUndo,
+            containerColor = Tung.colors.raised,
+            tonalElevation = 0.dp,
+            title = { Text(pluralStringResource(R.plurals.import_undo_title, undoing.workouts, undoing.workouts)) },
+            text = { Text(stringResource(R.string.import_undo_body), color = Tung.colors.muted) },
+            confirmButton = {
+                TextButton(onClick = vm::confirmUndo) {
+                    Text(stringResource(R.string.import_undo_confirm), color = Tung.colors.accentText)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = vm::dismissUndo) {
+                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                }
+            },
         )
     }
 }

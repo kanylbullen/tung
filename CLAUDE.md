@@ -292,9 +292,10 @@ at the top of the Routines tab (`ui/routines/Program*`).
 
 The active workout has a sticky **Log set · Bench press · 80 × 8** button
 above the system navigation (always under the thumb, wherever the list is
-scrolled). It acts on the **current set** (`core.currentSet`), marked by a 3dp
-accent bar at the left edge of its row (`Tung.colors.accent`; "Current set"
-as its number's state description). The rule, in order: an explicit selection
+scrolled). It acts on the **current set** (`core.currentSet`), marked by the
+`raised` background on its row, a 3dp accent bar at the row's left edge and
+its number in `accentText` (`Tung.colors.accent`; "Current set" as its
+number's state description). The rule, in order: an explicit selection
 while that set still exists and is un-ticked; else the first un-ticked set of
 the exercise the user last touched (ticked, edited, added a set to, or just
 added); else the first un-ticked set of the first exercise that has one; no
@@ -368,7 +369,9 @@ and drops one that already ended. The rest per exercise is
 `Exercise.restSeconds` (null = default, 0 = off), set from the exercise's menu
 ("Rest timer…", 0–300 s in 30 s steps) as an ordinary update with
 `updatedAt`. The countdown sits next to the elapsed time; tapping it shows
-Skip and +30 s.
+Skip and +30 s. The menu's other item, "Remove exercise", asks first when
+the exercise has a logged set ("Remove Bench press and its 3 logged sets?")
+and removes at once when it has none.
 
 **When it ends:** `RestAlarm` sets a one-shot `RTC_WAKEUP` alarm, exact
 (`setExactAndAllowWhileIdle`) below Android 12 or when "Alarms & reminders"
@@ -415,7 +418,10 @@ ordinary delete, tombstones included), clears the rest timer and its alarm as
 finish does (`ActiveWorkoutViewModel.discard`, `ActiveWorkoutEvent.Discarded`)
 and returns to Home; the ongoing notification follows the database and goes.
 It is the only way to abandon a workout: Finish keeps the ticked sets or, with
-none, discards with the "not saved" toast. `DiscardWorkoutFlowTest`.
+none, discards with the "not saved" toast. `DiscardWorkoutFlowTest`. The
+finish dialog says what goes ("3 sets that are not ticked will be removed.",
+"1 exercise without sets goes too.", or "Every set is logged.") and its
+buttons are short, "Finish" and "Keep training", so they sit side by side.
 
 ### Ids and `updatedAt`
 
@@ -711,9 +717,10 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
 - **The Progress tab** (`Routes.PROGRESS`, `ProgressScreen`, icon
   `ic_trending_up`): "Last 12 weeks" with workouts and weeks in a row, bars
   for workouts and volume per week; **Exercises**, most recently trained
-  first, each row "Est. 1RM 112 kg · +14 kg in 3 months" (or "No change", or
-  the session count when the span holds fewer than two values) with a
-  sparkline of the span's values; **Recent records**. A row opens the
+  first, each row "Est. 1RM 112 kg · +14 kg in 3 months" (or "No change in
+  3 months", or "1 session in 3 months" when the span holds fewer than two
+  values), always with a sparkline of the span's values (one session is a
+  dot, so the rows line up); **Recent records**. A row opens the
   exercise's progress. **The compact trends' choices** (issue #78), two
   rows of chips under the Exercises heading (`ChoiceChips`, the exercise
   screen's style; see below when they do not fit): the metric **Est. 1RM ·
@@ -739,7 +746,8 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
   screen's current set if it is this exercise's, else its first open set):
   "96 × 7 would be a new best estimated 1RM", "… would be your heaviest
   weight", "… your most reps at 96 kg or more", else the reps at that weight
-  that would beat the estimate, else "is no new record"; then a compact
+  that would beat the estimate, else "is no new record" (only a set that
+  beats a record is in the accent; the rest is muted); then a compact
   chart between the tab's two chip rows (Est. 1RM · Volume · Weekly volume
   above, 3M · 12M below, the same remembered choice as the rows) and the
   last three sessions. It writes no training data; the open sheet is
@@ -1126,8 +1134,10 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   "Workout in progress"; body from core's `ongoingStatus`: "Bench press · set
   3 of 5" for the current set by the default rule of `core.currentSet`
   (no selection: the notification cannot see the screen's), counted against
-  the routine's target sets (or the sets there are, if more), else "4 sets
-  logged", and with every set ticked "Bench press · all sets logged"
+  the routine's target sets or, without a routine, the sets there are (the
+  Live Update's chip shows that set's numbers, so the body names it too);
+  only a workout with no set at all says "0 sets logged"; and with every set
+  ticked "Bench press · all sets logged"
   (`OngoingStatus.AllLogged`, for the exercise Add set goes to: the one whose
   sets changed last, `lastTouchedByTime`, else the last); elapsed time by `setUsesChronometer` + `setWhen(startedAt)`. The
   phone's source is `ongoingWorkouts(...)` over the repositories, built as
@@ -1395,7 +1405,9 @@ Jefit is done; Strong and Hevy follow in the same frame.
   remembers the last import in the `settings` DataStore (`ImportHistory`).
 - **app.** Settings → Data (`ui/settings/ImportSection.kt`, in `DataSettingsScreen`):
   "Import from Jefit" opens the system file picker (`ACTION_OPEN_DOCUMENT`,
-  `text/*` and `*/*`), and "Undo last import" while one is remembered.
+  `text/*` and `*/*`), and "Undo last import" while one is remembered; it
+  asks first ("Remove 138 imported workouts?", "Workouts you logged in Tung
+  are kept."), since it deletes every workout the import added.
   **"Delete routines from the last import (N)"** (issue #79) shows while
   routines that import created (`LastImport.routineIds`) still exist, N
   counting those that do (live, over the routines Flow); it asks with

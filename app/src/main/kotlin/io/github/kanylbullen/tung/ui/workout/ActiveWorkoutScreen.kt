@@ -86,6 +86,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -116,6 +117,7 @@ import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.core.REPS_RULER
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.WEIGHT_RULER
+import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepReps
@@ -214,6 +216,8 @@ fun ActiveWorkoutScreen(
     var editing by remember { mutableStateOf<EditTarget?>(null) }
     var confirmFinish by remember { mutableStateOf(false) }
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
+    /** The workout exercise "Remove exercise" asks about, because it has logged sets; null when not asking. */
+    var confirmRemoveId by rememberSaveable { mutableStateOf<String?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     LaunchedEffect(askToFinish) {
         if (askToFinish) {
@@ -467,7 +471,12 @@ fun ActiveWorkoutScreen(
                 },
                 onDeleteSet = vm::deleteSet,
                 onAddSet = vm::addSet,
-                onRemoveExercise = vm::removeExercise,
+                onRemoveExercise = { id ->
+                    // Logged sets are training data: ask before they go. An exercise with none goes at once.
+                    val exercise = state.exercises.firstOrNull { it.workoutExerciseId == id }
+                    if (exercise != null && exercise.sets.any { isLogged(it.completed, it.reps) }) confirmRemoveId = id
+                    else vm.removeExercise(id)
+                },
                 onRestTimer = { restSheetFor = it },
                 onProgress = { progressFor = it.workoutExerciseId },
                 onAddExercise = onAddExercise,
@@ -556,20 +565,28 @@ fun ActiveWorkoutScreen(
 
     if (confirmFinish) {
         val empty = state.loggedSetCount == 0
+        // What Finish removes: the sets that are not logged, and exercises with no set at all.
+        val unlogged = state.exercises.sumOf { e -> e.sets.count { !isLogged(it.completed, it.reps) } }
+        val emptyExercises = state.exercises.count { it.sets.isEmpty() }
         AlertDialog(
             onDismissRequest = { confirmFinish = false },
             containerColor = Tung.colors.raised,
             tonalElevation = 0.dp,
             title = { Text(stringResource(R.string.workout_finish_title)) },
             text = {
-                Text(
-                    stringResource(if (empty) R.string.workout_finish_body_empty else R.string.workout_finish_body),
-                    color = Tung.colors.muted,
-                )
+                val body = when {
+                    empty -> stringResource(R.string.workout_finish_body_empty)
+                    unlogged == 0 && emptyExercises == 0 -> stringResource(R.string.workout_finish_body_clean)
+                    else -> listOfNotNull(
+                        unlogged.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.workout_finish_unlogged, it, it) },
+                        emptyExercises.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.workout_finish_empty_exercises, it, it) },
+                    ).joinToString(" ")
+                }
+                Text(body, color = Tung.colors.muted)
             },
             confirmButton = {
                 TextButton(onClick = { confirmFinish = false; vm.finish() }) {
-                    Text(stringResource(R.string.workout_finish), color = Tung.colors.accentText)
+                    Text(stringResource(R.string.workout_finish_confirm), color = Tung.colors.accentText)
                 }
             },
             dismissButton = {
@@ -584,6 +601,31 @@ fun ActiveWorkoutScreen(
         DiscardWorkoutDialog(
             onConfirm = { confirmDiscard = false; vm.discard() },
             onDismiss = { confirmDiscard = false },
+        )
+    }
+
+    val removing = confirmRemoveId?.let { id -> state.exercises.firstOrNull { it.workoutExerciseId == id } }
+    if (removing != null) {
+        val exercise = removing
+        val logged = exercise.sets.count { isLogged(it.completed, it.reps) }
+        AlertDialog(
+            onDismissRequest = { confirmRemoveId = null },
+            containerColor = Tung.colors.raised,
+            tonalElevation = 0.dp,
+            title = {
+                Text(pluralStringResource(R.plurals.workout_remove_exercise_title, logged, exerciseDisplayName(exercise.nameKey, exercise.name), logged))
+            },
+            text = { Text(stringResource(R.string.workout_remove_exercise_body), color = Tung.colors.muted) },
+            confirmButton = {
+                TextButton(onClick = { confirmRemoveId = null; vm.removeExercise(exercise.workoutExerciseId) }) {
+                    Text(stringResource(R.string.workout_remove_exercise_confirm), color = Tung.colors.accentText)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemoveId = null }) {
+                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                }
+            },
         )
     }
 }
@@ -1032,8 +1074,9 @@ private fun SetRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Tung.colors.background)
-            // The current set, the one "Log set" acts on: an accent bar at the row's left edge.
+            // The current set, the one "Log set" acts on: the raised background, an accent bar at the row's
+            // left edge and its number in the accent, so it reads in poor light and under a case's lip.
+            .background(if (isCurrent) Tung.colors.raised else Tung.colors.background)
             .drawBehind { if (isCurrent) drawRect(accent, size = Size(CURRENT_BAR_WIDTH.toPx(), size.height)) }
             .heightIn(min = 72.dp)
             .padding(end = 8.dp, top = 4.dp, bottom = 4.dp),
@@ -1056,7 +1099,7 @@ private fun SetRow(
             Text(
                 set.number.toString(),
                 style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.7f),
-                color = Tung.colors.muted,
+                color = if (isCurrent) Tung.colors.accentText else Tung.colors.muted,
             )
         }
         Column(Modifier.weight(1f)) {

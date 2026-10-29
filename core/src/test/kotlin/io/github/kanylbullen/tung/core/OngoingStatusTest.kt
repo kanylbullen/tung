@@ -18,15 +18,16 @@ class OngoingStatusTest {
     }
 
     @Test
-    fun `without a routine target it counts logged sets`() {
+    fun `without a routine target it counts against the sets there are`() {
+        // A free workout: the chip shows set 3's numbers, so the body says "set 3 of 3" rather than "2 sets logged".
         val status = ongoingStatus(listOf(OngoingExercise("Bench press", sets(true, true, false))))
-        assertEquals(OngoingStatus.Logged(2), status)
+        assertEquals(OngoingStatus.AtSet("Bench press", 3, 3), status)
     }
 
     @Test
-    fun `a ticked set with no reps is not logged`() {
+    fun `a ticked set with no reps is still ticked, so the next open set is current`() {
         val status = ongoingStatus(listOf(OngoingExercise("Plank", listOf(OngoingSet(true, 0), OngoingSet(true, 5), OngoingSet(false, 5)))))
-        assertEquals(OngoingStatus.Logged(1), status)
+        assertEquals(OngoingStatus.AtSet("Plank", 3, 3), status)
     }
 
     @Test
@@ -46,7 +47,7 @@ class OngoingStatusTest {
         assertEquals(OngoingStatus.AllLogged("Bench press"), ongoingStatus(exercises))
         // With a set open the touched exercise changes nothing: that set is the notification's.
         val open = exercises + OngoingExercise("Row", sets(false))
-        assertEquals(OngoingStatus.Logged(3), ongoingStatus(open, lastTouchedExercise = 0))
+        assertEquals(OngoingStatus.AtSet("Row", 1, 1), ongoingStatus(open, lastTouchedExercise = 0))
     }
 
     @Test
