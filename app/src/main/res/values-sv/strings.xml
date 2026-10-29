@@ -29,6 +29,7 @@
         <item quantity="other">%d set</item>
     </plurals>
     <string name="home_week_none">Inget pass än den här veckan</string>
+    <string name="home_week_last">Förra veckan %1$s kg</string>
     <string name="home_week_best">Bäst på 12 veckor</string>
     <string name="home_week_days_description">Volym per dag den här veckan: %1$s</string>
     <string name="home_week_day_volume">%1$s %2$s kg</string>

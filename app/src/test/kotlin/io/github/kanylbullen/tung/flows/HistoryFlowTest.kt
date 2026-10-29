@@ -3,7 +3,7 @@ package io.github.kanylbullen.tung.flows
 import androidx.compose.ui.test.hasText
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.catalogExerciseId
-import io.github.kanylbullen.tung.ui.common.localDate
+import io.github.kanylbullen.tung.ui.common.shortLocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,8 +19,8 @@ class HistoryFlowTest : FlowTest() {
     fun listOpenAndDelete() {
         val older = seedFinishedWorkout(OLDER, catalogExerciseId("back_squat"), weightKg = 100.0, reps = 5)
         val newer = seedFinishedWorkout(NEWER, bench(), weightKg = 80.0, reps = 8)
-        val olderDate = localDate(OLDER)
-        val newerDate = localDate(NEWER)
+        val olderDate = shortLocalDate(OLDER)
+        val newerDate = shortLocalDate(NEWER)
 
         waitForText(str(R.string.home_recent))
         clickText(str(R.string.nav_history))

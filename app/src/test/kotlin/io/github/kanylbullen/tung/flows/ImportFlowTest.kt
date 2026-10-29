@@ -34,7 +34,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import io.github.kanylbullen.tung.ui.common.localDate
+import io.github.kanylbullen.tung.ui.common.shortLocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.robolectric.Shadows.shadowOf
@@ -53,7 +53,7 @@ class ImportFlowTest : FlowTest() {
 
     /** The workouts' dates as History shows them, read from the same file in the app's zone. */
     private val dates: List<String> by lazy {
-        JefitImport.parse(fixture.readText(), ZoneId.systemDefault()).workouts.map { localDate(it.startedAt) }
+        JefitImport.parse(fixture.readText(), ZoneId.systemDefault()).workouts.map { shortLocalDate(it.startedAt) }
     }
 
     private fun counts(workouts: Int, sets: Int, routines: Int) = listOf(

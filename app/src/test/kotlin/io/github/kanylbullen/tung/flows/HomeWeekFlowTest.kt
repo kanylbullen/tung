@@ -3,7 +3,7 @@ package io.github.kanylbullen.tung.flows
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import io.github.kanylbullen.tung.R
-import io.github.kanylbullen.tung.ui.common.localDate
+import io.github.kanylbullen.tung.ui.common.shortLocalDate
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -41,6 +41,6 @@ class HomeWeekFlowTest : FlowTest() {
 
         // The row of a workout without a routine is titled with its exercise; its date is still its own text.
         assertShown(hasText(benchPress))
-        assertShown(hasText(localDate(startedAt)))
+        assertShown(hasText(shortLocalDate(startedAt)))
     }
 }

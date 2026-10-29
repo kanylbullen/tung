@@ -329,6 +329,16 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                     style = MaterialTheme.typography.bodyLarge,
                     color = Tung.colors.muted,
                 )
+                // An empty week says what last week was, so "0 kg" has something to stand next to; its own
+                // line, since with the counts' line it wrapped at a large font scale.
+                val lastWeek = totals.lastWeek.takeIf { totals.workouts == 0 && it.workouts > 0 }
+                if (lastWeek != null) {
+                    Text(
+                        stringResource(R.string.home_week_last, localVolume(lastWeek.volumeKg)),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Tung.colors.muted,
+                    )
+                }
                 if (totals.bestOfRecentWeeks) {
                     Text(stringResource(R.string.home_week_best), style = MaterialTheme.typography.labelLarge, color = Tung.colors.accentText)
                 }

@@ -12,7 +12,8 @@ data class WeekDay(val date: LocalDate, val workouts: Int, val sets: Int, val vo
  * the last [OVERVIEW_WEEKS] weeks by volume ([bestOfRecentWeeks]: strictly
  * more than every earlier week in that span, and at least one of them had
  * a workout, so an empty week is never best, a tie is not news, and the
- * first week ever has nothing to beat).
+ * first week ever has nothing to beat). [lastWeek] is the week before, for
+ * "last week 2 430 kg" under a week with nothing in it yet.
  */
 data class ThisWeek(
     val start: LocalDate,
@@ -21,6 +22,7 @@ data class ThisWeek(
     val sets: Int,
     val volumeKg: Double,
     val bestOfRecentWeeks: Boolean,
+    val lastWeek: WeekBucket,
 )
 
 /** [ThisWeek] of [today] from every counted set ([ProgressSet.isLogged]) of finished workouts; dates in [zone]. */
@@ -46,5 +48,6 @@ fun thisWeek(sets: List<ProgressSet>, today: LocalDate, zone: ZoneId): ThisWeek 
         sets = week.size,
         volumeKg = volume,
         bestOfRecentWeeks = volume > 0.0 && earlier.any { it.volumeKg > 0.0 } && earlier.all { it.volumeKg < volume },
+        lastWeek = earlier.lastOrNull() ?: WeekBucket(start.minusWeeks(1), 0, 0.0),
     )
 }
