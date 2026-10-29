@@ -50,9 +50,11 @@ and **Sign out**, which forgets the token and keeps the watch's data.
 The Wearable Data Layer only connects apps that have the **same application
 id and the same signing key**. Both `app/` and `wear/` use
 `applicationId = "io.github.kanylbullen.tung"` and, for debug builds, the
-default debug keystore (`~/.android/debug.keystore`). So install a phone APK
-and a watch APK built on the same machine (or taken from the same CI run);
-two debug builds from different machines will not see each other.
+default debug keystore (`~/.android/debug.keystore`); release builds of both
+are signed with the one release key (`deploy/play.md`). So install a phone APK
+and a watch APK built on the same machine (or taken from the same CI run), and
+of the same kind: two debug builds from different machines, or a debug phone
+app and a release watch app, will not see each other.
 
 The phone app is optional (`com.google.android.wearable.standalone = true`):
 a linked watch needs no phone. For companion mode the watch must be paired
