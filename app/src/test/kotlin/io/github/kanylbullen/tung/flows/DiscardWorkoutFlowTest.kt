@@ -3,8 +3,11 @@ package io.github.kanylbullen.tung.flows
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.sync.SyncTable
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -43,10 +46,12 @@ class DiscardWorkoutFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM tombstones WHERE tableName = '${SyncTable.SETS.key}'"))
     }
 
-    /** From Home's Resume card, without opening the workout. */
+    /** From Home's Resume card, without opening the workout; a running rest timer goes with it. */
     @Test
     fun discardFromHomesResumeCard() {
         startWorkoutFromHome()
+        val workoutId = string("SELECT id FROM workout WHERE endedAt IS NULL")
+        runBlocking { app.container.restTimer.set(workoutId, RestTimer.start(System.currentTimeMillis(), 90)) }
         clickDescription(str(R.string.action_back))
         waitForText(str(R.string.home_resume_workout))
         screenshot("1-home")
@@ -58,5 +63,9 @@ class DiscardWorkoutFlowTest : FlowTest() {
         waitForText(str(R.string.home_start_workout))
         assertEquals(0, count("SELECT COUNT(*) FROM workout"))
         assertEquals(1, count("SELECT COUNT(*) FROM tombstones WHERE tableName = '${SyncTable.WORKOUTS.key}'"))
+        assertNull("the rest timer outlived the workout", runBlocking { app.container.restTimer.stored(workoutId) })
     }
+
+    private fun string(sql: String): String =
+        db.openHelper.readableDatabase.query(sql).use { c -> c.moveToFirst(); c.getString(0) }
 }

@@ -25,8 +25,8 @@ class SwipeDeleteFlowTest : FlowTest() {
         waitFor(weightCell)
         val deleteButton = hasContentDescription(str(R.string.workout_delete_set_number, 1))
 
-        // Past the row's threshold and fast, as a thumb does it.
-        fun swipeTheRow() = compose.onNode(weightCell).performTouchInput {
+        // Past the row's threshold and fast, as a thumb does it; [index] among the rows with 0 kg.
+        fun swipeTheRow(index: Int = 0) = compose.onAllNodes(weightCell)[index].performTouchInput {
             swipeLeft(startX = right - 10f, endX = right - 410f, durationMillis = 300)
         }
 
@@ -44,11 +44,24 @@ class SwipeDeleteFlowTest : FlowTest() {
             compose.onAllNodes(hasContentDescription(str(R.string.input_field_weight))).fetchSemanticsNodes().isEmpty(),
         )
 
+        // One row open at a time: opening set 2 closes set 1.
+        clickDescription(str(R.string.workout_add_set_description, str(R.string.ex_bench_press)))
+        val deleteButton2 = hasContentDescription(str(R.string.workout_delete_set_number, 2))
+        waitUntil { compose.onAllNodes(weightCell).fetchSemanticsNodes().size == 2 }
+        swipeTheRow()
+        waitFor(deleteButton)
+        swipeTheRow(index = 1)
+        waitFor(deleteButton2)
+        waitGone(deleteButton)
+        screenshot("2-second-row")
+        compose.onNode(deleteButton2).performClick()
+        waitUntil { count("SELECT COUNT(*) FROM set_entry") == 1 }
+
         swipeTheRow()
         waitFor(deleteButton)
         compose.onNode(deleteButton).performClick()
         waitGone(weightCell)
-        screenshot("2-deleted")
+        screenshot("3-deleted")
         assertEquals(0, count("SELECT COUNT(*) FROM set_entry"))
     }
 }

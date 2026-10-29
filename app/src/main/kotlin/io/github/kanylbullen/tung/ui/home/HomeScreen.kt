@@ -65,6 +65,7 @@ fun HomeScreen(
                 container.programRepository,
                 container.commands,
                 container.clock,
+                container.restTimer,
             )
         }
     )

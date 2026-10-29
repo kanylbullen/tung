@@ -66,6 +66,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -951,7 +952,10 @@ private fun SwipeableSetRow(
     }
     // The list closes this row when another opens or something else is tapped...
     LaunchedEffect(open) {
-        if (!open && swipe.currentValue == RowSwipe.Open) swipe.animateTo(RowSwipe.Closed)
+        // Also a row still animating open: targetValue is Open before currentValue is.
+        if (!open && (swipe.currentValue == RowSwipe.Open || swipe.targetValue == RowSwipe.Open)) {
+            swipe.animateTo(RowSwipe.Closed)
+        }
     }
     // ...and hears when a swipe settles it open or closed.
     LaunchedEffect(swipe) {
@@ -964,7 +968,8 @@ private fun SwipeableSetRow(
     val deleteAction = remember(deleteLabel) {
         listOf(CustomAccessibilityAction(deleteLabel) { currentOnDelete(); true })
     }
-    val revealed = swipe.requireOffset() < 0f
+    // Only the flip recomposes the row; the offset itself is applied in the layout lambda below.
+    val revealed by remember(swipe) { derivedStateOf { swipe.requireOffset() < 0f } }
     Box(Modifier.fillMaxWidth()) {
         if (revealed) {
             val description = stringResource(R.string.workout_delete_set_number, set.number)
