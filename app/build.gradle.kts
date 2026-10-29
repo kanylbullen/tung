@@ -27,10 +27,8 @@ android {
     defaultConfig {
         applicationId = "io.github.kanylbullen.tung"
         minSdk = 26
-        // 36 since Play requires it (2026-08-31). Android 16's behaviour changes for apps
-        // targeting 36 were checked against this app when it moved: edge-to-edge (already on,
-        // MainActivity's enableEdgeToEdge; the screens pad for the bars themselves) and
-        // predictive back (Compose Navigation and BackHandler, no onBackPressed override).
+        // 36 since Play requires it (2026-08-31). What Android 16 changes for an app targeting
+        // 36, and how each item was checked against this app, is in deploy/play.md, "targetSdk".
         targetSdk = 36
         // From the root build file: the phone's versionCode ends in 1, the watch's in 2
         // (wear/build.gradle.kts), because both apps share this applicationId and Play

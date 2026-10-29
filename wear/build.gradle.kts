@@ -36,7 +36,9 @@ android {
         minSdk = 30
         // Stays 35 on purpose: Play's bar for Wear OS apps is Android 15, and Android 16's
         // behaviour changes for apps targeting 36 are not wanted on the watch yet. The phone
-        // app targets 36 (app/build.gradle.kts); compileSdk follows it so data/ compiles once.
+        // app targets 36 (app/build.gradle.kts). compileSdk is the API a module compiles
+        // against, not what it targets, and follows the phone's so the three Android modules
+        // build against one platform.
         targetSdk = 35
         // From the root build file: the watch's versionCode ends in 2, the phone's in 1
         // (app/build.gradle.kts), because both apps share this applicationId and Play

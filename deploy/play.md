@@ -52,15 +52,28 @@ under Setup → App signing too.
 ## targetSdk
 
 Since 2026-08-31 Play requires new apps and updates to target Android 16
-(API 36); Wear OS apps Android 15 (API 35). Both are met: the phone app
-targets 36 (AGP 8.9.1, compileSdk 36, since 2026-10-29) and the watch app 35,
-where it stays on purpose until Play raises the Wear OS bar (Android 16's
-behaviour changes are not wanted on the watch yet; `wear/build.gradle.kts`).
-What Android 16 changes for an app targeting 36, and how each item was
-checked, is in CLAUDE.md, "Building". Play's 16 KB page-size requirement is
-met too: the app ships no native code of its own, and
-`build-tools/36.0.0/zipalign -c -P 16 -v 4 app/build/outputs/apk/release/app-release.apk`
-confirms the libraries its dependencies bring are aligned.
+(API 36); Wear OS apps Android 15 (API 35). Both are met (PR #95): the phone
+app targets 36 (AGP 8.9.1, compileSdk 36) and the watch app 35, where it
+stays on purpose until Play raises the Wear OS bar (Android 16's behaviour
+changes are not wanted on the watch yet; `wear/build.gradle.kts`). CI reads
+both numbers back from the built APKs with `aapt2 dump badging`.
+
+What Android 16 changes for an app targeting 36 (its behaviour-changes page,
+and the page for all apps), checked against the code when it moved:
+
+| Change | Tung |
+|---|---|
+| Edge-to-edge enforced; the opt-out attribute disabled | Already on: `enableEdgeToEdge()` in both activities, the root `Scaffold` has no content insets, and every screen pads for the bars itself (Material 3 top and navigation bars, `statusBarsPadding` on Home, `navigationBarsPadding` on the sticky Log set bar and the sheets). The attribute was never set. Live on Android 15 phones since targetSdk 35. |
+| Predictive back on by default; `onBackPressed` and `KEYCODE_BACK` no longer delivered | Nothing to do: back is Compose Navigation and one `BackHandler`, both on `OnBackPressedDispatcher`; no `onBackPressed` override, no `KEYCODE_BACK`, `enableOnBackInvokedCallback` not set. |
+| Orientation, resizability and aspect-ratio restrictions ignored on large screens | None declared, no `setRequestedOrientation`. |
+| `BODY_SENSORS` replaced by `android.permission.health.*` | Not used; heart rate comes through Health Connect's `READ_HEART_RATE`, and the privacy-policy activity it requires exists (`HealthPermissionsActivity`). |
+| Elegant font APIs disabled; `scheduleAtFixedRate` missed runs coalesced | Neither used. |
+| Intent redirection hardening (all apps) | No nested Intents in extras: the notification actions are immutable `PendingIntent`s and the receivers read string extras only. |
+| Safer Intents, local network permission, photo picker, Bluetooth, MediaStore | Opt-in or not applicable. The local network permission, once a later release enforces it, will touch sync to a private-IP server. |
+| 16 KB page size (a Play rule) | No native code of our own. The two AndroidX libraries that ship one (`graphics-path`, `datastore-core`) pass `build-tools/36.0.0/zipalign -c -P 16 -v 4 app/build/outputs/apk/release/app-release.apk`, and their load segments are 16 KB (`llvm-readelf -lW`). |
+
+The flow tests run under Robolectric SDK 34 and see none of this; insets and
+back are checked on a phone.
 
 ## The build
 

@@ -1846,17 +1846,12 @@ without a key, are not affected. The watch is signed with the same key as the
 phone, or the Data Layer will not pair them. **Play requires targetSdk 36
 since 2026-08-31** (Wear OS 35), and the phone app meets it: AGP 8.9.1,
 compileSdk 36 and build-tools 36.0.0 in every Android module, targetSdk 36 in
-`app/` and, on purpose, 35 in `wear/`. Android 16's behaviour changes for
-apps targeting 36 were checked against the code when it moved: edge-to-edge
-was already on (`enableEdgeToEdge` in both activities, the screens pad for
-the bars themselves, no opt-out attribute to lose), predictive back needs
-nothing (Compose Navigation and `BackHandler`, no `onBackPressed` override,
-no `KEYCODE_BACK`), and the rest (orientation locks, `BODY_SENSORS`, elegant
-fonts, nested intents, `scheduleAtFixedRate`) is not used. **The flow tests
-run under Robolectric SDK 34 and see none of it**, so a change to insets or
-to back handling is checked on a phone. Play's 16 KB page-size rule is met:
-the app has no native code of its own, and `zipalign -c -P 16 -v 4` on the
-release APK checks the two AndroidX libraries that ship one.
+`app/` and, on purpose, 35 in `wear/`; CI reads both numbers back from the
+built APKs. What Android 16 changes for an app targeting 36, and how each
+item was checked against this app, is in `deploy/play.md`, "targetSdk": in
+short, edge-to-edge was already on and predictive back needs nothing. **The
+flow tests run under Robolectric SDK 34 and see neither**, so a change to
+insets or to back handling is checked on a phone.
 
 ## Flow tests
 
