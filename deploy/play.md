@@ -52,10 +52,15 @@ under Setup → App signing too.
 ## targetSdk
 
 Since 2026-08-31 Play requires new apps and updates to target Android 16
-(API 36); Wear OS apps Android 15 (API 35). The phone app targets 35 today,
-so the console refuses its bundle until compileSdk and targetSdk are 36,
-which needs AGP 8.9.1 or later (CLAUDE.md, "Building"). The watch app's 35 is
-fine until next year's step.
+(API 36); Wear OS apps Android 15 (API 35). Both are met: the phone app
+targets 36 (AGP 8.9.1, compileSdk 36, since 2026-10-29) and the watch app 35,
+where it stays on purpose until Play raises the Wear OS bar (Android 16's
+behaviour changes are not wanted on the watch yet; `wear/build.gradle.kts`).
+What Android 16 changes for an app targeting 36, and how each item was
+checked, is in CLAUDE.md, "Building". Play's 16 KB page-size requirement is
+met too: the app ships no native code of its own, and
+`build-tools/36.0.0/zipalign -c -P 16 -v 4 app/build/outputs/apk/release/app-release.apk`
+confirms the libraries its dependencies bring are aligned.
 
 ## The build
 
