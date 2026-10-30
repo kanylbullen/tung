@@ -73,7 +73,11 @@ tasks.named<ProcessResources>("jsProcessResources") {
         include("archivo-OFL.txt")
         into("fonts")
     }
-    filesMatching("sw.js") {
+    // The build's id goes into the worker's cache name and into the shell's
+    // URLs (tung.js?v=…, styles.css?v=…): a CDN in front of the server (the
+    // instance's Cloudflare keeps static files for hours) then never hands a
+    // new index.html an old bundle, since every build asks for new URLs.
+    filesMatching(listOf("sw.js", "index.html")) {
         filter(ReplaceTokens::class, "tokens" to mapOf("buildId" to buildId))
     }
     inputs.property("buildId", buildId)

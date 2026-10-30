@@ -12,6 +12,7 @@ import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import java.security.MessageDigest
 
 /** Anchors the class loader the landing page is read with. */
 private object SiteRoutes
@@ -46,11 +47,25 @@ fun Route.siteRoutes(config: ServerConfig) {
     }
 }
 
-/** One page of the site at [path], read from the classpath's `site/[file]`. */
+/**
+ * A short hash of the stylesheet and script every page links, put into their
+ * URLs (`site.css?v=…`): a CDN in front of the server (the instance's
+ * Cloudflare keeps static files for hours) then never pairs a new page with
+ * an old stylesheet, since a change to either file changes the URLs.
+ */
+private val assetVersion: String by lazy {
+    val digest = MessageDigest.getInstance("SHA-256")
+    listOf("site.css", "site.js").forEach { name ->
+        SiteRoutes::class.java.getResourceAsStream("/site/$name")?.use { digest.update(it.readBytes()) }
+    }
+    digest.digest().joinToString("") { "%02x".format(it) }.take(12)
+}
+
+/** One page of the site at [path], read from the classpath's `site/[file]`, with `@assets@` as [assetVersion]. */
 private fun Route.page(path: String, file: String) {
+    val page by lazy { SiteRoutes::class.java.getResource("/site/$file")?.readText()?.replace("@assets@", assetVersion) }
     get(path) {
-        val page = SiteRoutes::class.java.getResource("/site/$file")?.readText()
-            ?: return@get call.respond(HttpStatusCode.NotFound)
-        call.respondText(page, ContentType.Text.Html)
+        val html = page ?: return@get call.respond(HttpStatusCode.NotFound)
+        call.respondText(html, ContentType.Text.Html)
     }
 }

@@ -9,8 +9,8 @@ const CACHE = 'tung-' + VERSION;
 const SHELL = [
   './',
   'index.html',
-  'tung.js',
-  'styles.css',
+  'tung.js?v=' + VERSION,
+  'styles.css?v=' + VERSION,
   'manifest.webmanifest',
   'fonts/archivo_latin.woff2',
   'catalog/core.json',
