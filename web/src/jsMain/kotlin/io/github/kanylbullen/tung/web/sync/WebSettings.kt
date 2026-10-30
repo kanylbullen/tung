@@ -64,17 +64,18 @@ class WebSettings(private val db: IndexedDbStore) {
         return id
     }
 
-    /** A new session: the token is kept, the cursor starts at 0 so the account's whole log comes down. */
+    /** A new session: the token is kept, the cursor starts at 0 so the account's whole log comes down, and the last result is this account's, i.e. none yet. */
     suspend fun signedIn(serverUrl: String, email: String, token: String) {
         db.putMeta(SERVER, serverUrl)
         db.putMeta(EMAIL, email)
         db.putMeta(TOKEN, token)
         db.putMeta(CURSOR, "0")
+        db.putMeta(LAST_SYNC_AT, null)
         db.putMeta(LAST_ERROR, null)
         this.token = token
         lastServerUrl = serverUrl
         lastEmail = email
-        _syncState.value = _syncState.value.copy(cursor = 0, lastError = null)
+        _syncState.value = SyncState()
         _account.value = Account(serverUrl, email)
     }
 

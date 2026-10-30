@@ -34,12 +34,12 @@ sealed interface AuthResult {
 }
 
 /** Sign in and out against tung-server over `fetch`. Stores nothing; the container does. */
-class WebAuth(private val json: Json = AuthJson) {
+class WebAuth(private val json: Json = AuthJson, private val post: PostJson = ::postJson) {
 
     /** `POST /api/v1/auth/login` at [baseUrl]. */
     suspend fun signIn(baseUrl: String, email: String, password: String): AuthResult {
         val reply = try {
-            postJson(baseUrl + LOGIN_PATH, json.encodeToString(Credentials.serializer(), Credentials(email, password)))
+            post(baseUrl + LOGIN_PATH, json.encodeToString(Credentials.serializer(), Credentials(email, password)), emptyMap())
         } catch (e: HttpUnreachable) {
             return AuthResult.Failed(AuthFailure.NETWORK)
         }
@@ -57,7 +57,7 @@ class WebAuth(private val json: Json = AuthJson) {
     /** `POST /api/v1/auth/logout`: the server forgets the token. Best effort; the browser forgets it either way. */
     suspend fun signOut(baseUrl: String, token: String) {
         try {
-            postJson(baseUrl + LOGOUT_PATH, "{}", mapOf("Authorization" to "Bearer $token"))
+            post(baseUrl + LOGOUT_PATH, "{}", mapOf("Authorization" to "Bearer $token"))
         } catch (e: HttpUnreachable) {
             // Offline: the token expires on the server by itself.
         }

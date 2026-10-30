@@ -66,14 +66,7 @@ class WebContainer(
             db = IndexedDbStore.open()
             settings = WebSettings(db).also { it.load() }
             db.loadInto(store)
-            val catalogue = CoreCatalog.parse(window.fetch("catalog/core.json").await().text().await())
-            catalogueNames = catalogue.associate { it.key to it.name }
-            val journal = ArrayList<Write>()
-            store.seedCatalogue(catalogue, journal)
-            db.write(journal)
-            store.bump()
             sync = WebSync(store, db, settings)
-            _phase.value = Phase.Ready
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -81,6 +74,23 @@ class WebContainer(
             _phase.value = Phase.Failed(e.message ?: e.toString())
             return
         }
+        // The catalogue is a resource the service worker caches; should it
+        // still be missing (its cache evicted, no network), the log already
+        // loaded is shown with the stored English names and the seed waits
+        // for the next start.
+        try {
+            val catalogue = CoreCatalog.parse(window.fetch("catalog/core.json").await().text().await())
+            catalogueNames = catalogue.associate { it.key to it.name }
+            val journal = ArrayList<Write>()
+            store.seedCatalogue(catalogue, journal)
+            db.write(journal)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            console.warn("The catalogue could not be read; exercise names are the stored ones", e)
+        }
+        store.bump()
+        _phase.value = Phase.Ready
         if (settings.account.value != null) syncInBackground()
         // The phone syncs when it comes to the foreground; the browser when
         // the page is shown again or the connection comes back.

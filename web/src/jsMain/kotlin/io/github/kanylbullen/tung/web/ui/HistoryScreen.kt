@@ -63,9 +63,7 @@ fun HistoryScreen(container: WebContainer, account: Account) {
             }
         }
         Div({ classes("status"); attr("role", "status") }) {
-            Text(strings.signedInAs(account.email))
-            Text(" · ")
-            Text(status)
+            Text(strings.signedInAs(account.email) + strings.separator + status)
         }
         if (rows.isEmpty()) {
             Div({ classes("empty") }) { Text(strings.historyEmpty) }
@@ -93,7 +91,7 @@ private fun WorkoutRow(row: HistoryRow, container: WebContainer, now: Long) {
                     shortDate(row.startedAt, container.locale, now),
                     durationText(row.durationMillis, strings),
                     strings.exerciseCount(row.exerciseCount),
-                ).joinToString(" · "),
+                ).joinToString(strings.separator),
             )
         }
     }

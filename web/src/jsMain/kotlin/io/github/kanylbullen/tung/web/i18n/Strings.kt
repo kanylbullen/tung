@@ -14,6 +14,9 @@ interface Strings {
     val tag: String
 
     val appName: String
+
+    /** Between the parts of one line ("Thu 22 Oct · 47 min"), the phone's `row_separator`. */
+    val separator: String
     val loading: String
     val storageUnavailable: String
 
@@ -55,6 +58,7 @@ interface Strings {
 object English : Strings {
     override val tag = "en"
     override val appName = "Tung"
+    override val separator = " · "
     override val loading = "Loading…"
     override val storageUnavailable = "This browser does not let Tung store anything, so it cannot run here. Try another browser, or leave private browsing."
 
@@ -105,6 +109,7 @@ object English : Strings {
 object Swedish : Strings {
     override val tag = "sv"
     override val appName = "Tung"
+    override val separator = " · "
     override val loading = "Laddar…"
     override val storageUnavailable = "Den här webbläsaren låter inte Tung spara något, så appen kan inte köra här. Prova en annan webbläsare, eller lämna privat läge."
 

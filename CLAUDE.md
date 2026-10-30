@@ -2047,8 +2047,15 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   they went with. The loop is the one piece the phone has in `data/` and
   the web here; it moves into core behind a transport interface once
   `data/` is multiplatform (agreed with that work, a follow-up).
+  **The server must list `X-Tung-Device` in its CORS headers** (it does
+  since this module: `Application.kt`, `allowHeader(DEVICE_HEADER)`); against
+  an older server the browser's preflight is refused and every sync reads
+  "could not reach the server" while sign-in works, which the phone never
+  sees because it sends no preflight. Deploy the server before the web.
   Triggers: app start when signed in, after sign-in, "Sync now", the
-  `online` event and the page becoming visible. No periodic sync yet.
+  `online` event and the page becoming visible. No periodic sync yet. One
+  request may take `REQUEST_TIMEOUT_MILLIS` (120 s, the phone's), then it
+  is aborted and counts as unreachable (`Http.kt`).
 - **Account** (`sync/WebAuth.kt`, `sync/WebSettings.kt`): email and
   password against `/api/v1/auth/login`, the default server
   `DEFAULT_SERVER_URL` in `WebContainer.kt` (the phone's
@@ -2089,8 +2096,10 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   `kotlin-js-store/yarn.lock`, which is committed.
 - **Tests** (`web/src/jsTest`, Karma in headless Chrome, `:web:jsBrowserTest`):
   `TungStoreTest` (the merge rules), `HistoryRowsTest`, `IndexedDbStoreTest`
-  (the real IndexedDB: written, reopened, read back) and `StringsTest`
-  (the tag mapping and the browser's formats). No screen test yet.
+  (the real IndexedDB: written, reopened, read back), `WebSyncTest` (the
+  loop and sign-in against a scripted transport: `WebSync` and `WebAuth`
+  take a `PostJson`, `fetch` by default) and `StringsTest` (the tag mapping
+  and the browser's formats). No screen test yet.
 - **Not there yet:** every other screen, commands, a periodic sync, a
   second tab (two tabs each hold the log in memory; the last write per row
   wins at the next load), Sign in with Google, hosting (static files; GitHub

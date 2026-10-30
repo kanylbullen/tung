@@ -48,6 +48,7 @@ sealed interface SyncResult {
  *
  * @param retryDelaysMillis the waits between attempts of one request that
  *   failed with a 5xx or could not reach the server; a 4xx is never retried.
+ * @param onSignedOut called after a 401 has cleared the token.
  */
 class WebSync(
     private val store: TungStore,
@@ -56,6 +57,8 @@ class WebSync(
     private val clock: () -> Long = { Date.now().toLong() },
     private val retryDelaysMillis: List<Long> = listOf(2_000L, 8_000L),
     private val onSignedOut: suspend () -> Unit = {},
+    /** The transport, the browser's `fetch` by default; a test hands in its own. */
+    private val post: PostJson = ::postJson,
 ) {
     private val mutex = Mutex()
     private val _running = MutableStateFlow(false)
@@ -113,7 +116,7 @@ class WebSync(
         var attempt = 0
         while (true) {
             val failure = try {
-                val reply = postJson(
+                val reply = post(
                     baseUrl + SYNC_PATH,
                     body,
                     mapOf("Authorization" to "Bearer $token", DEVICE_HEADER to deviceId),
