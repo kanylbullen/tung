@@ -60,7 +60,7 @@ jobs:
       # The watch app (wear/, with its own unit tests) is in both as well.
       # core's and data's iOS klibs are compiled too (cross-compiled, no Mac):
       # that is what proves their commonMain has no JVM-only code (CLAUDE.md,
-      # "core/" and "data/").
+      # "core/" and "data/"). The web app has its own job below.
       - name: Build debug APK, compile core and data for iOS and run unit tests
         run: ./gradlew assembleDebug :wear:assembleDebug :core:compileKotlinIosArm64 :core:compileKotlinIosSimulatorArm64 :data:compileKotlinIosArm64 :data:compileKotlinIosSimulatorArm64 test -x :server:test --no-daemon --stacktrace
 
@@ -103,6 +103,43 @@ jobs:
         with:
           name: tung-wear-debug-apk
           path: wear/build/outputs/apk/debug/wear-debug.apk
+          retention-days: 14
+
+  web:
+    name: Web app build and browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # The PWA's static site, and its tests in the runner's Chrome (Karma).
+      # Kotlin/JS downloads Node.js and Yarn into ~/.gradle (cached above).
+      - name: Build the web app and run its tests
+        run: ./gradlew :web:jsBrowserDistribution :web:jsBrowserTest --no-daemon --stacktrace
+
+      - name: Upload web test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-test-results
+          path: web/build/test-results/
+          if-no-files-found: ignore
+
+      # The site as it would be deployed: open index.html from a static host.
+      - name: Upload the web app
+        uses: actions/upload-artifact@v4
+        with:
+          name: tung-web
+          path: web/build/dist/js/productionExecutable/
           retention-days: 14
 
   server:

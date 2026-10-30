@@ -64,6 +64,13 @@ the app:
 Stack: Kotlin, Ktor, Exposed, Postgres, sharing the domain code with the app
 through `core/`.
 
+### Web
+
+A web app in [`web/`](web/README.md), early: sign in to your server, and
+History. It is a PWA (install it, it opens offline) that keeps your log in
+the browser and syncs it with the same protocol as the phone, over the same
+`core/`. Kotlin/JS with Compose HTML.
+
 ## Direction
 
 - **The whole app as an API.** Every command the app's buttons use

@@ -1,0 +1,126 @@
+package io.github.kanylbullen.tung.web.ui
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import io.github.kanylbullen.tung.core.ROUTINE_NAME_SEPARATOR
+import io.github.kanylbullen.tung.core.sync.SyncFailure
+import io.github.kanylbullen.tung.web.WebContainer
+import io.github.kanylbullen.tung.web.history.HistoryRow
+import io.github.kanylbullen.tung.web.history.exerciseDisplayName
+import io.github.kanylbullen.tung.web.history.historyRows
+import io.github.kanylbullen.tung.web.sync.Account
+import kotlin.js.Date
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.web.attributes.disabled
+import org.jetbrains.compose.web.dom.Button
+import org.jetbrains.compose.web.dom.Div
+import org.jetbrains.compose.web.dom.H1
+import org.jetbrains.compose.web.dom.Li
+import org.jetbrains.compose.web.dom.Span
+import org.jetbrains.compose.web.dom.Text
+import org.jetbrains.compose.web.dom.Ul
+
+/**
+ * Every finished workout, newest first, as the phone's History lists them,
+ * with the account and the sync's status above. The rows come from the
+ * store in memory and are recomputed when it ticks (a sync applied
+ * something), so the list is right after a reload without a network too.
+ */
+@Composable
+fun HistoryScreen(container: WebContainer, account: Account) {
+    val strings = container.strings
+    val version = container.store.version.collectAsState().value
+    val rows = remember(version) {
+        historyRows(container.store) { exerciseDisplayName(it, container.catalogueNames, strings.tag) }
+    }
+    val running = container.sync.running.collectAsState().value
+    val syncState = container.settings.syncState.collectAsState().value
+    val scope = rememberCoroutineScope()
+    val now = Date.now().toLong()
+    val status = when {
+        running -> strings.syncing
+        syncState.lastError != null -> SyncFailure.fromKey(syncState.lastError)?.let(strings::syncFailure)
+            ?: lastSyncText(syncState.lastSyncAt, now, container.locale, strings)
+        else -> lastSyncText(syncState.lastSyncAt, now, container.locale, strings)
+    }
+
+    Div({ classes("screen") }) {
+        Div({ classes("topbar") }) {
+            H1 { Text(strings.history) }
+            Div({ classes("actions") }) {
+                Button({
+                    classes("text-button")
+                    if (running) disabled()
+                    onClick { container.syncInBackground() }
+                }) { Text(strings.syncNow) }
+                Button({
+                    classes("text-button")
+                    onClick { scope.launch { container.signOut() } }
+                }) { Text(strings.signOut) }
+            }
+        }
+        Div({ classes("status"); attr("role", "status") }) {
+            Text(strings.signedInAs(account.email) + strings.separator + status)
+        }
+        if (rows.isEmpty()) {
+            Div({ classes("empty") }) { Text(strings.historyEmpty) }
+        } else {
+            Ul({ classes("rows") }) {
+                rows.forEach { row ->
+                    key(row.id) {
+                        Li({ classes("row") }) { WorkoutRow(row, container, now) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A workout's row: its title, "Thu 22 Oct · 47 min · 5 exercises" muted under it, and the volume on the right. */
+@Composable
+private fun WorkoutRow(row: HistoryRow, container: WebContainer, now: Long) {
+    val strings = container.strings
+    Div({ classes("main") }) {
+        Div({ classes("title") }) { WorkoutTitle(row, container) }
+        Div({ classes("details", "numbers") }) {
+            Text(
+                listOf(
+                    shortDate(row.startedAt, container.locale, now),
+                    durationText(row.durationMillis, strings),
+                    strings.exerciseCount(row.exerciseCount),
+                ).joinToString(strings.separator),
+            )
+        }
+    }
+    Div({ classes("volume", "numbers") }) {
+        Text(wholeNumber(row.volumeKg, container.locale))
+        Span({ classes("unit") }) { Text(strings.kg) }
+    }
+}
+
+/**
+ * The title: the routine's name with everything up to the last
+ * [ROUTINE_NAME_SEPARATOR] muted (the phone's `RoutineName`: an imported
+ * "Skokloster Gym · JT2 dag 1" reads as its day, and the group is what gets
+ * cut), else the first two exercises, else "Workout".
+ */
+@Composable
+private fun WorkoutTitle(row: HistoryRow, container: WebContainer) {
+    val routineName = row.routineName
+    if (routineName != null) {
+        val cut = routineName.lastIndexOf(ROUTINE_NAME_SEPARATOR)
+        if (cut > 0) {
+            Span({ classes("group") }) { Text(routineName.substring(0, cut + ROUTINE_NAME_SEPARATOR.length)) }
+            Span({ classes("day") }) { Text(routineName.substring(cut + ROUTINE_NAME_SEPARATOR.length)) }
+        } else {
+            Span({ classes("plain") }) { Text(routineName) }
+        }
+        return
+    }
+    Span({ classes("plain") }) {
+        Text(if (row.exerciseNames.isEmpty()) container.strings.workoutUntitled else row.exerciseNames.joinToString(", "))
+    }
+}

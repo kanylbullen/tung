@@ -6,6 +6,7 @@ import io.github.kanylbullen.tung.server.command.CommandService
 import io.github.kanylbullen.tung.server.command.ServerCatalogue
 import io.github.kanylbullen.tung.server.mcp.McpReads
 import io.github.kanylbullen.tung.server.mcp.TungMcp
+import io.github.kanylbullen.tung.core.sync.DEVICE_HEADER
 import io.github.kanylbullen.tung.core.sync.PushTransport
 import io.github.kanylbullen.tung.server.oauth.OAuthStore
 import io.github.kanylbullen.tung.server.push.DisabledPushSender
@@ -146,6 +147,10 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
         anyHost()
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)
+        // The device id every sync and push registration carries. A browser
+        // client (web/) sends it too, and the preflight refuses a header that
+        // is not listed, which the phone never notices.
+        allowHeader(DEVICE_HEADER)
         // Streamable HTTP, for MCP clients that run in a browser.
         allowHeader("Mcp-Session-Id")
         allowHeader("MCP-Protocol-Version")

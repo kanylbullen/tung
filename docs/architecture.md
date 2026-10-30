@@ -349,7 +349,18 @@ do on the device.
   turns out that people want to run on a Raspberry Pi without Postgres, SQLite
   can be added behind the same repository interface; that is decided when
   someone asks.
-- **Web client.** Not planned. The API makes it possible for someone else.
+- **Web client.** Decided 2026-10-30: Kotlin/JS with its own DOM UI
+  (Compose HTML) over the same `core`, local first in the browser (the log
+  in memory, persisted to IndexedDB, synced with the same protocol as the
+  phone), installable as a PWA. Not Compose Multiplatform for web: that is
+  a canvas app in the browser (no DOM for inputs or a screen reader, a
+  large first download, a beta toolchain) and would have tied the web to
+  the iPhone track's shared UI module from day one. Not a TypeScript client
+  against the REST API: it would need an account and a network for every
+  write, and everything a screen computes (This week, estimated 1RM) would
+  be a second implementation of a core rule. The price is a second UI, in
+  DOM, for every screen; the rules, the sync and the progress maths are
+  written once. `web/`, see `CLAUDE.md`, "Web".
 
 ## Order of work
 

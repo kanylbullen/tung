@@ -1,0 +1,178 @@
+/* The numbers are the content (CLAUDE.md, "Design"): one typeface, the
+   colour tokens of the phone, one corner radius, nothing that does not
+   carry weight or reps. Dark and light follow the system. */
+
+@font-face {
+  font-family: "Archivo";
+  src: url("fonts/archivo_variable.ttf") format("truetype");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark light;
+  --background: #1A1D21;
+  --raised: #23272D;
+  --border: #2F343B;
+  --text: #ECE7DD;
+  --muted: #9AA0A6;
+  --accent: #F2C230;
+  --on-accent: #1A1D21;
+  --accent-text: #F2C230;
+  --danger: #C9413A;
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #F6F6F4;
+    --raised: #FFFFFF;
+    --border: #E2E1DC;
+    --text: #1A1D21;
+    --muted: #5F6368;
+    --accent: #B98900;
+    --on-accent: #1A1D21;
+    --accent-text: #8A6500;
+    --danger: #B3261E;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: "Archivo", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.35;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.screen {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 0 24px;
+}
+
+/* --- Top bar --- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 8px 20px;
+}
+.topbar h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.topbar .actions { display: flex; gap: 4px; }
+
+/* --- The wordmark: Archivo at its widest and heaviest --- */
+.wordmark {
+  font-weight: 900;
+  font-stretch: 125%;
+  font-size: 40px;
+  letter-spacing: -0.02em;
+  margin: 48px 20px 8px;
+}
+
+/* --- Text --- */
+.muted { color: var(--muted); }
+.accent { color: var(--accent-text); }
+.numbers { font-variant-numeric: tabular-nums; }
+.intro { margin: 0 20px 24px; color: var(--muted); }
+.hint { margin: 8px 20px 0; font-size: 14px; color: var(--muted); }
+.error { margin: 12px 20px 0; color: var(--danger); font-size: 14px; }
+.empty { padding: 48px 20px; color: var(--muted); text-align: center; }
+.status { padding: 4px 20px 12px; font-size: 14px; color: var(--muted); }
+
+/* --- Buttons: 48 px tall, one radius, no icons that do nothing --- */
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--radius);
+  min-height: 48px;
+  padding: 0 20px;
+  color: var(--text);
+  background: transparent;
+}
+button:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 24px 20px 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  font-size: 17px;
+}
+.secondary { background: var(--raised); border: 1px solid var(--border); }
+.text-button { color: var(--accent-text); font-weight: 600; padding: 0 12px; }
+
+/* --- Fields --- */
+.field { margin: 0 20px 12px; }
+.field label {
+  display: block;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.field input {
+  font: inherit;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--raised);
+  color: var(--text);
+}
+.field input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.field .readonly { padding: 12px 0 0; color: var(--muted); }
+
+/* --- Workout rows (History): title, muted details, the volume on the right --- */
+.rows { list-style: none; margin: 0; padding: 0; }
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 20px;
+}
+.row .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row .title {
+  display: flex;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* A routine's group is muted and is what gets cut, never the day. */
+.row .title .group { color: var(--muted); overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 3em; }
+.row .title .day { flex: 0 0 auto; overflow: hidden; text-overflow: ellipsis; }
+.row .title .plain { overflow: hidden; text-overflow: ellipsis; }
+.row .details {
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row .volume { font-size: 20px; font-weight: 700; white-space: nowrap; }
+.row .volume .unit { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+
+/* --- Loading --- */
+.loading { padding: 96px 20px; text-align: center; color: var(--muted); }

@@ -1,12 +1,13 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 // Domain logic without Android or the JVM: Kotlin Multiplatform, so the phone,
-// the watch, the server and, later, an iOS app and a web client share one
-// implementation. Only the JVM target is built today; an iOS target is added
-// with the iOS app, and then commonMain compiles unchanged. Nothing in
-// commonMain may import android.*, androidx.*, java.* or javax.*;
-// NoJvmImportsTest enforces that. What needs the JVM (the locale's collator)
-// lives in jvmMain.
+// the watch, the server, the web app and, later, an iOS app share one
+// implementation. The JVM target serves the Android modules and the server,
+// the JS target the web app, and the iOS targets are compiled (not linked)
+// here so commonMain stays iOS-clean. Nothing in commonMain may import
+// android.*, androidx.*, java.* or javax.*; NoJvmImportsTest enforces that.
+// What needs the JVM (the locale's collator) lives in jvmMain, and the
+// browser's equivalent in jsMain.
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
     id("org.jetbrains.kotlin.plugin.serialization")
@@ -18,6 +19,13 @@ kotlin {
     // need a Mac.
     iosArm64()
     iosSimulatorArm64()
+
+    // The web app's target (web/): the browser's own JavaScript. Only the
+    // library is built here (no executable), and its collation is jsMain's
+    // Intl.Collator (BrowseJs.kt).
+    js {
+        browser()
+    }
 
     jvm {
         // Bytecode 17, the same target as the app (app/build.gradle.kts), compiled by
