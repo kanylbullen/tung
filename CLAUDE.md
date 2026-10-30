@@ -1368,7 +1368,7 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   `EXTRA_FINISH_WORKOUT`, and `TungAppRoot` hands the workout screen a
   one-shot request that opens its finish dialog; it never finishes silently.
 - **`Workout.startedBy`** (`core.StartedBy`: `phone`, `watch`, `server`,
-  `agent`). Each command path stamps its own when it creates a workout:
+  `agent`, `web`). Each command path stamps its own when it creates a workout:
   `AppCommandHandler` gets it from `TungContainer(startedBy = …)` (`phone`,
   `watch` on the watch), the phone's `WearCommandHandler` stamps `watch`, the
   server's command handler `agent` (REST commands and MCP tools); `server`
@@ -2108,10 +2108,20 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   whether a shared computer should rather clear it is an open question.
   Sign in marks everything dirty except the untouched catalogue rows
   (`nameKey` set and `updatedAt` 0), as `SyncDao.markExercisesDirty` does.
-- **No commands yet.** Nothing on the web writes training data; the first
-  write screen brings a `CommandTx` over `TungStore` for core's
-  `CommandExecutor` (one transaction = mutate memory, then one journal
-  write), never a path of its own.
+- **Commands** (`store/WebCommandStore.kt`): every change to training data
+  is core's `CommandExecutor` (`container.commands`, `startedBy = web`) over
+  `WebCommandStore`, the browser's `CommandStore`: one command at a time
+  over `TungStore`, every write stamped `updatedAt` and dirty and every
+  delete a dirty tombstone (`WebCommandTx`, as `RoomCommandTx`), then the
+  command's journal in one IndexedDB transaction. A result that is not
+  `Done`, or a throw, is undone in memory from the transaction's inverse
+  log and writes nothing, as the server's store rolls back. A `Done` asks
+  for a sync. The resolver (`WebExerciseResolver`) is the store's exercises
+  with the core catalogue's names in every language; the extended
+  catalogue is not shipped to the web, so an extended entry without a row
+  does not resolve. **`started_by = "web"` needs a server that knows it**
+  (`StartedBy.WEB`, `SyncValidation`): an older one refuses the sync with a
+  4xx until it is redeployed. `WebCommandsTest`.
 - **Strings** are Kotlin (`i18n/Strings.kt`: `English`, `Swedish`,
   `stringsFor(navigator.language)`), the phone's wording where the screen is
   the same; a new language is a new object. Exercise names come from the
