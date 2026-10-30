@@ -16,7 +16,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -100,13 +99,7 @@ fun WorkoutRow(row: WorkoutSummaryRow, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                workoutRowTitle(row),
-                style = MaterialTheme.typography.titleMedium,
-                color = Tung.colors.text,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            WorkoutRowTitle(row)
             Row {
                 Text(shortLocalDate(row.startedAt), style = Tung.numbers.inline, color = Tung.colors.muted, maxLines = 1)
                 Text(sep + details, style = Tung.numbers.inline, color = Tung.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -117,15 +110,25 @@ fun WorkoutRow(row: WorkoutSummaryRow, onClick: () -> Unit) {
     }
 }
 
-/** The row's title: the routine's name (its group muted, [styledRoutineName]), else the first two exercises as displayed, else "Workout". */
+/** The row's title: the routine's name ([RoutineName], its group muted and cut first), else the first two exercises as displayed, else "Workout". */
 @Composable
-fun workoutRowTitle(row: WorkoutSummaryRow): AnnotatedString {
-    row.routineName?.let { return styledRoutineName(it) }
+private fun WorkoutRowTitle(row: WorkoutSummaryRow) {
+    val routineName = row.routineName
+    if (routineName != null) {
+        RoutineName(routineName)
+        return
+    }
     val names = listOfNotNull(
         row.firstExerciseName?.let { exerciseDisplayName(row.firstExerciseKey, it) },
         row.secondExerciseName?.let { exerciseDisplayName(row.secondExerciseKey, it) },
     )
-    return AnnotatedString(if (names.isEmpty()) stringResource(R.string.workout_row_untitled) else names.joinToString(stringResource(R.string.list_separator)))
+    Text(
+        if (names.isEmpty()) stringResource(R.string.workout_row_untitled) else names.joinToString(stringResource(R.string.list_separator)),
+        style = MaterialTheme.typography.titleMedium,
+        color = Tung.colors.text,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 /**
@@ -168,23 +171,3 @@ fun tungFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedLabelColor = Tung.colors.muted,
     unfocusedLabelColor = Tung.colors.muted,
 )
-
-/**
- * A routine's name with its group muted: the import names routines
- * "<package> · <day>" ("Skokloster Gym · JT2 dag 1"), so everything up to the
- * last " · " is drawn in the muted colour at normal weight and the day stands
- * out. The text itself is unchanged, so a name is still found as one string.
- */
-@Composable
-fun styledRoutineName(name: String): AnnotatedString {
-    val cut = name.lastIndexOf(ROUTINE_NAME_SEPARATOR)
-    if (cut <= 0) return AnnotatedString(name)
-    return buildAnnotatedString {
-        withStyle(SpanStyle(color = Tung.colors.muted, fontWeight = FontWeight.Normal)) {
-            append(name.substring(0, cut + ROUTINE_NAME_SEPARATOR.length))
-        }
-        append(name.substring(cut + ROUTINE_NAME_SEPARATOR.length))
-    }
-}
-
-private const val ROUTINE_NAME_SEPARATOR = " · "

@@ -49,7 +49,7 @@ import io.github.kanylbullen.tung.ui.common.ExerciseNames
 import io.github.kanylbullen.tung.ui.common.WorkoutReport
 import io.github.kanylbullen.tung.ui.common.lastUsedText
 import io.github.kanylbullen.tung.ui.common.localWeekday
-import io.github.kanylbullen.tung.ui.common.styledRoutineName
+import io.github.kanylbullen.tung.ui.common.RoutineName
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -108,7 +108,7 @@ fun RoutineRow(
             Spacer(Modifier.width(12.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(styledRoutineName(row.name), style = MaterialTheme.typography.titleMedium, color = Tung.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            RoutineName(row.name)
             Text(details, style = Tung.numbers.inline, color = Tung.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(12.dp))
