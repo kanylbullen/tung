@@ -76,3 +76,19 @@ then open `http://localhost:8000/`. Install it from the browser's menu
 | `ui/` | The screens (Compose HTML) and the browser's formatters |
 | `i18n/` | The strings, English and Swedish |
 | `../resources/` | `index.html`, `styles.css`, `sw.js`, `manifest.webmanifest`, `icons/` |
+
+## The typeface
+
+`src/jsMain/resources/fonts/archivo_latin.woff2` is the app's
+`app/src/main/res/font/archivo_variable.ttf` cut to Latin (Basic, Latin-1,
+Latin Extended-A, general punctuation, €, ™, −, ×) with both axes, weight
+and width, kept: about 116 kB instead of 659 kB. The landing page uses the
+same file. After a change to the app's font, make it again with fontTools
+(`pip install fonttools brotli`):
+
+```sh
+pyftsubset app/src/main/res/font/archivo_variable.ttf \
+  --unicodes="U+0000-00FF,U+0100-017F,U+2010-2027,U+2030-203A,U+20AC,U+2122,U+2212,U+00D7" \
+  --layout-features='*' --flavor=woff2 \
+  --output-file=web/src/jsMain/resources/fonts/archivo_latin.woff2
+```

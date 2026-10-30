@@ -17,7 +17,8 @@ import io.ktor.server.routing.get
 private object SiteRoutes
 
 /**
- * What a browser sees outside the API: the landing page at `/` (with its
+ * What a browser sees outside the API: the landing page at `/` and the
+ * privacy page at `/privacy` (with their
  * font and icon under `/site/`, classpath resources from `site/`), and the
  * web app at `/app/` when [ServerConfig.webDir] is set. The app is one
  * page: every path under `/app/` that is not a file is its `index.html`, and
@@ -27,11 +28,9 @@ private object SiteRoutes
 fun Route.siteRoutes(config: ServerConfig) {
     // The page itself by a route of its own: a static tree at "/" would also
     // claim every unknown API path and turn its 404 into another answer.
-    get("/") {
-        val page = SiteRoutes::class.java.getResource("/site/index.html")?.readText()
-            ?: return@get call.respond(HttpStatusCode.NotFound)
-        call.respondText(page, ContentType.Text.Html)
-    }
+    page("/", "index.html")
+    // What the site and the apps store; also the privacy policy Google Play asks for.
+    page("/privacy", "privacy.html")
     staticResources("/site", "site")
 
     val webDir = config.webDir ?: return
@@ -44,5 +43,14 @@ fun Route.siteRoutes(config: ServerConfig) {
         modify { file, call ->
             if (file.name == "sw.js" || file.name == "index.html") call.response.header(HttpHeaders.CacheControl, "no-cache")
         }
+    }
+}
+
+/** One page of the site at [path], read from the classpath's `site/[file]`. */
+private fun Route.page(path: String, file: String) {
+    get(path) {
+        val page = SiteRoutes::class.java.getResource("/site/$file")?.readText()
+            ?: return@get call.respond(HttpStatusCode.NotFound)
+        call.respondText(page, ContentType.Text.Html)
     }
 }

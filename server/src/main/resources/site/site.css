@@ -1,0 +1,291 @@
+/* The app's own tokens (CLAUDE.md, "Design: the numbers are the content"):
+       graphite and chalk, yellow only as a fill, Archivo as the one family. */
+    @font-face {
+      font-family: "Archivo";
+      src: url("/site/archivo_latin.woff2") format("woff2");
+      font-weight: 100 900;
+      font-stretch: 62% 125%;
+      font-display: swap;
+    }
+    :root {
+      color-scheme: dark light;
+      --background: #1A1D21;
+      --raised: #23272D;
+      --border: #2F343B;
+      --text: #ECE7DD;
+      --muted: #9AA0A6;
+      --accent: #F2C230;
+      --accent-text: #F2C230;
+      --on-accent: #1A1D21;
+      --radius: 12px;
+      --measure: 36rem;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --background: #F6F6F4;
+        --raised: #FFFFFF;
+        --border: #E2E1DC;
+        --text: #1A1D21;
+        --muted: #5F6368;
+        --accent: #B98900;
+        --accent-text: #8A6500;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family: "Archivo", system-ui, sans-serif;
+      font-size: 18px;
+      line-height: 1.5;
+    }
+    a { color: inherit; }
+    a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .page { max-width: 60rem; margin: 0 auto; padding: 0 24px; }
+
+    header.top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: max(20px, env(safe-area-inset-top)) 0 20px;
+    }
+    .wordmark {
+      font-weight: 900;
+      font-stretch: 125%;
+      font-size: 30px;
+      letter-spacing: -0.02em;
+      text-decoration: none;
+    }
+    .top-link { color: var(--accent-text); font-weight: 600; text-decoration: none; padding: 12px 0; }
+    .top-link:hover { text-decoration: underline; }
+
+    /* --- The hero is a set: the number the app is built around --- */
+    .set {
+      margin: 8vh 0 0;
+      font-weight: 900;
+      font-stretch: 125%;
+      font-variant-numeric: tabular-nums;
+      line-height: 0.9;
+      letter-spacing: -0.03em;
+      font-size: clamp(76px, 21vw, 184px);
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      column-gap: 0.18em;
+    }
+    .set .times { color: var(--muted); font-weight: 400; font-stretch: 100%; font-size: 0.45em; }
+    .set .unit {
+      font-size: max(14px, 0.12em);
+      font-weight: 500;
+      font-stretch: 100%;
+      letter-spacing: 0;
+      color: var(--muted);
+      margin-left: 0.2em;
+    }
+    .set .weight { display: inline-flex; align-items: baseline; }
+    .set .reps { display: inline-flex; align-items: baseline; }
+
+    /* The ruler under the number, as in the app's input sheet: 1 kg ticks up to 30, then 2.5 kg. */
+    .ruler { position: relative; margin: 20px 0 0; max-width: 40rem; height: 56px; }
+    .ruler .ticks {
+      position: absolute;
+      inset: 8px 0 0 0;
+      background: repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px 10px);
+      -webkit-mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+              mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+    .ruler input {
+      -webkit-appearance: none;
+      appearance: none;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      cursor: ew-resize;
+    }
+    .ruler input::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+    .ruler input::-moz-range-track { height: 100%; background: transparent; }
+    .ruler input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 4px;
+      height: 56px;
+      border-radius: 2px;
+      background: var(--accent);
+      border: 0;
+    }
+    .ruler input::-moz-range-thumb { width: 4px; height: 56px; border-radius: 2px; background: var(--accent); border: 0; }
+    .ruler-hint { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+
+    .lede { max-width: var(--measure); }
+    h1 {
+      font-size: clamp(28px, 4.4vw, 40px);
+      line-height: 1.15;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 48px 0 12px;
+    }
+    .lede p { margin: 0 0 12px; color: var(--muted); }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 0; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      min-height: 52px;
+      padding: 0 24px;
+      border-radius: var(--radius);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .button.primary { background: var(--accent); color: var(--on-accent); }
+    .button.secondary { border: 1px solid var(--border); background: var(--raised); }
+    .button:hover { filter: brightness(1.06); }
+
+    /* --- What it does: a plain list, term and sentence --- */
+    .what { margin: 14vh 0 0; }
+    h2 { font-size: 22px; font-weight: 700; margin: 0 0 20px; }
+    dl { margin: 0; display: grid; grid-template-columns: minmax(10rem, 15rem) 1fr; column-gap: 32px; }
+    dt, dd { padding: 18px 0; border-top: 1px solid var(--border); margin: 0; }
+    dt { font-weight: 700; }
+    dd { color: var(--muted); max-width: var(--measure); }
+
+    .own { margin: 14vh 0 0; max-width: var(--measure); }
+    .own p { color: var(--muted); margin: 0 0 16px; }
+    pre {
+      margin: 0;
+      padding: 16px 20px;
+      background: var(--raised);
+      border-radius: var(--radius);
+      overflow-x: auto;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+
+    /* --- Sign up to test the Android app --- */
+    .test { margin: 14vh 0 0; max-width: var(--measure); }
+    .test p { color: var(--muted); margin: 0 0 20px; }
+    .test form { display: grid; gap: 16px; }
+    .test label.field { display: grid; gap: 6px; font-size: 15px; color: var(--muted); }
+    .test input[type=email] {
+      font: inherit;
+      color: var(--text);
+      background: var(--raised);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      min-height: 52px;
+      padding: 0 16px;
+    }
+    .test input[type=email]:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+    .test label.consent { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; color: var(--muted); cursor: pointer; }
+    .test label.consent input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+    .test button {
+      justify-self: start;
+      font: inherit;
+      font-weight: 700;
+      min-height: 52px;
+      padding: 0 24px;
+      border: 0;
+      border-radius: var(--radius);
+      background: var(--accent);
+      color: var(--on-accent);
+      cursor: pointer;
+    }
+    .test button:disabled { opacity: 0.6; cursor: default; }
+    .test .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+    .test .result { min-height: 1.5em; margin: 0; font-size: 15px; }
+    .test .result.ok { color: var(--text); }
+    .test .result.error { color: #E5736C; }
+    @media (prefers-color-scheme: light) { .test .result.error { color: #B3261E; } }
+
+    footer {
+      margin: 14vh 0 0;
+      padding: 28px 0 max(28px, env(safe-area-inset-bottom));
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 28px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+    footer a { color: var(--muted); }
+
+    @media (max-width: 640px) {
+      body { font-size: 17px; }
+      dl { grid-template-columns: 1fr; }
+      dd { border-top: 0; padding-top: 0; }
+      .set { margin-top: 5vh; }
+    }
+
+/* --- The hero's pre-fill line: where the numbers came from --- */
+.last { margin: 14px 0 0; font-size: 17px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* --- Screens from the app --- */
+.screens { margin: 14vh 0 0; }
+.screens .row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.screens figure { margin: 0; }
+.screens img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: #F6F6F4;
+}
+.screens figcaption { margin: 12px 0 0; font-size: 15px; color: var(--muted); max-width: 22rem; }
+
+/* --- Where it runs --- */
+.platforms { margin: 14vh 0 0; }
+.platforms ul { list-style: none; margin: 0; padding: 0; max-width: var(--measure); }
+.platforms li { display: grid; grid-template-columns: 7rem 1fr; gap: 16px; padding: 14px 0; border-top: 1px solid var(--border); }
+.platforms .name { font-weight: 700; }
+.platforms .state { color: var(--muted); }
+.platforms .state a { color: var(--accent-text); font-weight: 600; }
+
+/* --- Code to copy --- */
+.copyable { display: flex; flex-direction: column; gap: 8px; }
+.copy {
+  align-self: flex-end;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--raised);
+  color: var(--text);
+  cursor: pointer;
+}
+.copyable .copy { order: -1; }
+.assistant { margin: 14vh 0 0; max-width: var(--measure); }
+.assistant p { color: var(--muted); margin: 0 0 16px; }
+.own pre + p { margin-top: 12px; font-size: 15px; }
+
+/* --- The privacy page --- */
+.prose { max-width: var(--measure); margin: 6vh 0 0; }
+.prose h1 { margin-top: 0; }
+.prose h2 { margin: 40px 0 8px; }
+.prose p, .prose li { color: var(--muted); }
+.prose strong { color: var(--text); font-weight: 600; }
+.prose ul { padding-left: 1.2em; }
+.updated { font-size: 15px; }
+
+footer .lang { margin-left: auto; }
+
+@media (max-width: 640px) {
+  .screens .row { grid-template-columns: 1fr 1fr; }
+  .screens figure:last-child { display: none; }
+  .platforms li { grid-template-columns: 1fr; gap: 2px; }
+}
