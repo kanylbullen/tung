@@ -8,7 +8,17 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.renderComposable
 
+/** The time-zone database kotlinx-datetime needs in the browser, so "this week" is the browser's local week. */
+@JsModule("@js-joda/timezone/dist/js-joda-timezone-10-year-range")
+@JsNonModule
+external object JsJodaTimeZoneModule
+
+@Suppress("unused")
+private val jsJodaTz = JsJodaTimeZoneModule
+
 fun main() {
+    // Touch the module so the bundler keeps it.
+    jsJodaTz.hashCode()
     val language = window.navigator.language
     val strings = stringsFor(language)
     document.documentElement?.setAttribute("lang", strings.tag)

@@ -36,6 +36,9 @@ kotlin {
             implementation(project(":core"))
             implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
             implementation("org.jetbrains.compose.html:html-core:$composeVersion")
+            // kotlinx-datetime knows only UTC and fixed offsets in the browser without
+            // a time-zone database; this one covers ten years around today (Main.kt loads it).
+            implementation(npm("@js-joda/timezone", "2.3.0"))
         }
         jsTest.dependencies {
             implementation(kotlin("test"))
