@@ -58,6 +58,8 @@ tags:
     description: Where the server wakes a device with an empty "sync now" when another client changes the data.
   - name: export
     description: All of the user's data in one document.
+  - name: testers
+    description: Sign-ups to test the Android app on Google Play, from the landing page; listed for the server's owner.
   - name: meta
     description: This specification.
   - name: commands
@@ -288,6 +290,74 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/testers:
+    post:
+      tags: [testers]
+      summary: Sign up to test the Android app
+      description: >-
+        Stores the address once, for the owner to invite in the Play Console. The answer is the same whether the
+        address is new or already there, so it tells nobody who else signed up. Rate-limited per client address
+        like login. A filled-in `website` (a field people never see) is answered the same and stored as nothing.
+      operationId: signUpTester
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TesterSignup" }
+      responses:
+        "202":
+          description: Signed up (or already were).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: signed_up }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503":
+          description: The list is full (`list_full`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    get:
+      tags: [testers]
+      summary: The sign-ups, oldest first
+      description: Only for an account whose email is in `TUNG_ADMIN_EMAILS`; anyone else gets 403 `not_admin`.
+      operationId: listTesters
+      responses:
+        "200":
+          description: Every sign-up.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [testers]
+                properties:
+                  testers:
+                    type: array
+                    items: { $ref: "#/components/schemas/Tester" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/testers/{email}:
+    delete:
+      tags: [testers]
+      summary: Remove a sign-up
+      description: Once the address is invited in the Play Console. Owner only, as listing; a missing address is no error.
+      operationId: deleteTester
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Removed. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/v1/tokens:
     get:
@@ -1420,6 +1490,25 @@ components:
       properties:
         token: { type: string, examples: ["tung_3q2-…"] }
         user: { $ref: "#/components/schemas/User" }
+
+    TesterSignup:
+      type: object
+      required: [email, consent]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        consent:
+          type: boolean
+          description: The person agreed that the address is used only to invite them to the test; false is 400 `consent_required`.
+        language: { type: [string, "null"], enum: [en, sv, null], description: "The page's language, for the invitation." }
+        website: { type: [string, "null"], description: A field people never see; leave it out. }
+
+    Tester:
+      type: object
+      required: [email, created_at, language]
+      properties:
+        email: { type: string }
+        created_at: { $ref: "#/components/schemas/Millis" }
+        language: { type: [string, "null"] }
 
     LinkCode:
       type: object
