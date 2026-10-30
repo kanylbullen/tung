@@ -1,15 +1,23 @@
 package io.github.kanylbullen.tung.web
 
 import io.github.kanylbullen.tung.core.CoreCatalog
+import io.github.kanylbullen.tung.core.StartedBy
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandExecutor
+import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.i18n.Strings
 import io.github.kanylbullen.tung.web.store.IndexedDbStore
 import io.github.kanylbullen.tung.web.store.TungStore
+import io.github.kanylbullen.tung.web.store.WebCommandStore
+import io.github.kanylbullen.tung.web.store.WebExerciseResolver
 import io.github.kanylbullen.tung.web.store.Write
 import io.github.kanylbullen.tung.web.sync.AuthResult
 import io.github.kanylbullen.tung.web.sync.WebAuth
 import io.github.kanylbullen.tung.web.sync.WebSettings
 import io.github.kanylbullen.tung.web.sync.WebSync
+import kotlin.js.Date
 import kotlinx.browser.window
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -56,6 +64,14 @@ class WebContainer(
     lateinit var sync: WebSync
         private set
 
+    /**
+     * Every change to training data, core's [CommandExecutor] over the
+     * browser's store ([WebCommandStore]), as on the phone and the server;
+     * a `Done` asks for a sync.
+     */
+    lateinit var commands: CommandHandler
+        private set
+
     /** The core catalogue's names by key and language, for the exercise names on screen. */
     var catalogueNames: Map<String, Map<String, String>> = emptyMap()
         private set
@@ -67,6 +83,15 @@ class WebContainer(
             settings = WebSettings(db).also { it.load() }
             db.loadInto(store)
             sync = WebSync(store, db, settings)
+            val executor = CommandExecutor(
+                WebCommandStore(store, persist = { db.write(it) }, clock = { Date.now().toLong() }),
+                WebExerciseResolver(store) { catalogueNames },
+                startedBy = StartedBy.WEB,
+            )
+            commands = object : CommandHandler {
+                override suspend fun execute(command: Command): CommandResult =
+                    executor.execute(command).also { if (it is CommandResult.Done) syncInBackground() }
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

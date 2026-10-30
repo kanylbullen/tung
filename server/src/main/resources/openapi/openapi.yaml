@@ -1651,7 +1651,7 @@ components:
 
     StartedBy:
       type: string
-      enum: [phone, watch, server, agent]
+      enum: [phone, watch, server, agent, web]
       description: |
         Who started a workout: the phone app, the watch, the server on its
         own (reserved), or the server's command handler, i.e. a REST command

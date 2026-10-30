@@ -19,5 +19,12 @@ object StartedBy {
     /** The server's command handler: REST commands and MCP tools, i.e. an assistant or a script. */
     const val AGENT = "agent"
 
-    val ALL: Set<String> = setOf(PHONE, WATCH, SERVER, AGENT)
+    /**
+     * The web app (`web/`). A server older than this value refuses a synced
+     * workout that carries it (`SyncValidation`), so the server is deployed
+     * before the web starts workouts.
+     */
+    const val WEB = "web"
+
+    val ALL: Set<String> = setOf(PHONE, WATCH, SERVER, AGENT, WEB)
 }
