@@ -65,6 +65,16 @@ python3 -m http.server 8000 -d web/build/dist/js/productionExecutable
 then open `http://localhost:8000/`. Install it from the browser's menu
 ("Install app" / "Add to Home Screen"); once it has loaded, it opens offline.
 
+## Sign in with Google
+
+When the app is served by the tung-server it signs in to (`https://tung.xuper.fun/app/`, or a
+self-hosted instance's `/app/`), the sign-in screen shows Google's own button above the email
+form. The client id comes from the server (`GET /api/v1/auth/methods`), Google Identity Services
+runs as a popup, and its ID token goes to `POST /api/v1/auth/google`, which answers a session as a
+password sign-in does (the phone's flow, `server/README.md`, "Sign in with Google"). Elsewhere
+(GitHub Pages, a dev server) there is no button: Google only runs it on origins the client id
+authorises, and that is the server's own, which the consent page already uses.
+
 ## Layout
 
 | Path (`web/src/jsMain/kotlin/io/github/kanylbullen/tung/web/`) | What |
