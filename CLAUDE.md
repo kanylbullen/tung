@@ -2,7 +2,8 @@
 
 Strength training log for Android. Local first: everything lives in Room on
 the phone and the app works fully without a network or an account. Sync with
-an optional tung-server is opt-in, from Settings → Account.
+an optional tung-server is opt-in, from Settings → Account. A web app
+(`web/`, see "Web") runs the same `core` in the browser as a PWA.
 
 ## Language
 
@@ -49,7 +50,7 @@ the active workout's factory also passes `createSavedStateHandle()`, for the res
 
 ## Layers
 
-Five Gradle modules:
+Six Gradle modules:
 
 | Module | Kind | Depends on | Holds |
 |---|---|---|---|
@@ -58,23 +59,25 @@ Five Gradle modules:
 | `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
 | `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
 | `server/` | Ktor server | `core` | tung-server |
+| `web/` | Kotlin/JS app (browser) | `core` | The web app: the log in the browser, its sync, the PWA shell |
 
-Sections "Wear" and "Server" cover the last two.
+Sections "Wear", "Server" and "Web" cover the last three.
 
 ### `core/` — domain logic without Android or the JVM
 
 `core/src/commonMain/kotlin/io/github/kanylbullen/tung/core/`, package
 `io.github.kanylbullen.tung.core`. A Kotlin Multiplatform module
 (`org.jetbrains.kotlin.multiplatform`), so that the phone, the watch, the
-server and, later, an iOS app and a web client use the same code. Targets:
-`jvm()` (bytecode 17 like the app) and the iOS app's `iosArm64()` and
-`iosSimulatorArm64()`. The iOS klibs compile on Linux too
+server, the web app and, later, an iOS app use the same code. Targets:
+`jvm()` (bytecode 17 like the app), `js()` (the browser, for `web/`) and
+the iOS app's `iosArm64()` and `iosSimulatorArm64()`. The iOS klibs compile on Linux too
 (`kotlin.native.enableKlibsCrossCompilation` in `gradle.properties`; the
 Kotlin/Native compiler lands in `~/.konan`), so
 `./gradlew :core:compileKotlinIosArm64` here, and CI, prove that
 `commonMain` is iOS-clean before there is a Mac; linking a binary or running
 a test on iOS needs one. `src/jvmMain` holds the one thing that is
-JVM-specific (`browseNameOrder`, the locale's `Collator`), `src/jvmTest`
+JVM-specific (`browseNameOrder`, the locale's `Collator`), `src/jsMain` the
+browser's version of it (`Intl.Collator`, `BrowseJs.kt`), `src/jvmTest`
 the tests (JUnit 4, run by `:core:jvmTest`; `:core:test` is an alias so
 `./gradlew test` still covers them).
 
@@ -2003,6 +2006,96 @@ fallback, and only on a tap.
   Docker Engine 29 rejects the older API version Testcontainers 1.20 asks for.
   Each test registers its own users instead of cleaning the database.
 
+## Web
+
+`web/` is the web app (the path was decided 2026-10-30, recorded in
+`docs/architecture.md`, "Open decisions"): Kotlin/JS in the browser,
+installable as a PWA and working without a network, over the same `core` as
+everything else. Package `io.github.kanylbullen.tung.web`, UI in Compose
+HTML (DOM elements as composables with the Compose runtime; the
+`org.jetbrains.compose.runtime:runtime` and `org.jetbrains.compose.html:html-core`
+libraries, no `org.jetbrains.compose` plugin). Build and layout:
+`web/README.md`. What runs today: sign in, the first sync, History.
+
+- **The log lives in memory and is persisted to IndexedDB**
+  (`store/TungStore.kt`, `store/IndexedDb.kt`). The eight tables hold the
+  **wire rows themselves** (`SyncExercise`, `SyncSet`, …, core's protocol
+  types) with a dirty flag, so there are no entity classes of their own and
+  nothing to map at sync; a tombstone is a (table, id, deletedAt, dirty).
+  At start everything is read once (`IndexedDbStore.loadInto`); every
+  change goes to memory first and appends `Write`s to a journal that is
+  written in **one IndexedDB transaction issued whole** (`write`). The
+  reason: an IndexedDB transaction closes as soon as control returns to the
+  event loop with no request pending, and a coroutine resumed through
+  Kotlin/JS's dispatcher does exactly that, so a rule that read IndexedDB
+  row by row between suspensions would lose its transaction. `version`
+  ticks after each batch (`bump`) and a screen recomputes what it shows
+  (`remember(version)`). The catalogue's seventy are seeded at start from
+  `catalog/core.json` (shipped as a resource) with the phone's ids and
+  `updatedAt` 0, not dirty (`seedCatalogue`).
+- **Sync is the phone's** (`sync/WebSync.kt`): core's `SyncPlanner` and
+  `SyncApplier` with `fetch` against `POST /api/v1/sync`, the same loop as
+  `data/sync/SyncClient.kt` (chunks, the cursor after each response,
+  pulling again while a response is full, two retries on 5xx and network, a
+  401 signs out), and `TungStore.apply` is `SyncStore.apply` over memory:
+  parents first, a row completed from the local one when the wire row
+  leaves a required field null (`TableSpecs`, the phone's `SyncMapping`),
+  the null-keeps fields (`started_by`, Health Connect, the import), a
+  parent that is missing skips the row, an exercise in use is not deleted,
+  a deleted parent takes its children (Room's cascades, by hand), and the
+  dirty flags of a request's rows are cleared only with the `updatedAt`
+  they went with. The loop is the one piece the phone has in `data/` and
+  the web here; it moves into core behind a transport interface once
+  `data/` is multiplatform (agreed with that work, a follow-up).
+  Triggers: app start when signed in, after sign-in, "Sync now", the
+  `online` event and the page becoming visible. No periodic sync yet.
+- **Account** (`sync/WebAuth.kt`, `sync/WebSettings.kt`): email and
+  password against `/api/v1/auth/login`, the default server
+  `DEFAULT_SERVER_URL` in `WebContainer.kt` (the phone's
+  `BuildConfig.DEFAULT_SERVER_URL`), `checkServerUrl` as the gate. The
+  server, email, token, cursor, last result and device id (`X-Tung-Device`)
+  are strings in IndexedDB's `meta` store. **The token is in IndexedDB like
+  everything else**: a browser has no Keystore, and any script of the
+  origin could read it wherever it was. Signing out forgets the token here
+  and on the server and keeps the log in the browser, as the phone does;
+  whether a shared computer should rather clear it is an open question.
+  Sign in marks everything dirty except the untouched catalogue rows
+  (`nameKey` set and `updatedAt` 0), as `SyncDao.markExercisesDirty` does.
+- **No commands yet.** Nothing on the web writes training data; the first
+  write screen brings a `CommandTx` over `TungStore` for core's
+  `CommandExecutor` (one transaction = mutate memory, then one journal
+  write), never a path of its own.
+- **Strings** are Kotlin (`i18n/Strings.kt`: `English`, `Swedish`,
+  `stringsFor(navigator.language)`), the phone's wording where the screen is
+  the same; a new language is a new object. Exercise names come from the
+  catalogue's `name.<lang>` in `core.json` (`exerciseDisplayName`), so the
+  `ex_*` resources are not generated for the web. Dates and numbers are the
+  browser's `Intl` (`ui/Format.kt`).
+- **PWA** (`src/jsMain/resources/`): `index.html` loads `tung.js` (the
+  webpack output name) and `styles.css` (the colour tokens as CSS
+  variables, dark and light by `prefers-color-scheme`, Archivo from the
+  phone's one `archivo_variable.ttf`, copied at build with its OFL);
+  `manifest.webmanifest` (relative `start_url`, so a subpath works) and
+  the icons (the launcher's plate as PNG, generated once with Pillow);
+  `sw.js` precaches the shell and serves it cache-first, never touching
+  another origin or anything but GET, and its cache name carries
+  `@buildId@` (the commit and the build time, replaced by
+  `jsProcessResources`), so a new build drops the old cache. The
+  catalogue, the typeface and the licence are copied into the site from the
+  repository's one copy of each by the build, never duplicated in `web/`.
+- **Versions.** Compose Multiplatform **1.10.x is the last line built with
+  Kotlin 2.2** (1.11 needs 2.3); raise it with Kotlin. Kotlin/JS downloads
+  Node.js and Yarn into `~/.gradle` and pins npm packages in the root's
+  `kotlin-js-store/yarn.lock`, which is committed.
+- **Tests** (`web/src/jsTest`, Karma in headless Chrome, `:web:jsBrowserTest`):
+  `TungStoreTest` (the merge rules), `HistoryRowsTest`, `IndexedDbStoreTest`
+  (the real IndexedDB: written, reopened, read back) and `StringsTest`
+  (the tag mapping and the browser's formats). No screen test yet.
+- **Not there yet:** every other screen, commands, a periodic sync, a
+  second tab (two tabs each hold the log in memory; the last write per row
+  wins at the next load), Sign in with Google, hosting (static files; GitHub
+  Pages from CI, Vercel, or the server's own origin are the candidates).
+
 ## Building
 
 ```sh
@@ -2017,7 +2110,10 @@ export PATH=$JAVA_HOME/bin:$PATH
 variant) and `:server:test`. Only the core tests, fast and without AGP:
 `./gradlew :core:jvmTest --no-daemon`. Results land in
 `core/build/test-results/jvmTest/` and
-`<module>/build/test-results/testDebugUnitTest/`.
+`<module>/build/test-results/testDebugUnitTest/`. The web app is not in
+`test`: `./gradlew :web:jsBrowserDistribution :web:jsBrowserTest
+--no-daemon` builds its site and runs its tests in headless Chrome (CI's
+`web` job; see "Web").
 
 **On a phone, install `dogfood`, not `debug`:** `./gradlew :app:assembleDogfood`
 gives `app/build/outputs/apk/dogfood/app-dogfood.apk`, release code (R8, not

@@ -101,3 +101,27 @@ val releaseGate by tasks.registering {
         }
     }
 }
+
+// ---- Kotlin/JS (core's js target and web/): where Node.js and Yarn come from. ----
+// The plugin downloads both (pinned versions, the same on every machine and in
+// CI), but it must not declare its distribution repositories itself: it adds
+// them to the root project while the setup task resolves
+// (AbstractSetupTask.withUrlRepo), which settings.gradle.kts forbids
+// (FAIL_ON_PROJECT_REPOS), and it does so as long as downloadBaseUrl has a
+// value. The two repositories are declared in settings.gradle.kts instead, and
+// every spec (the root's, Yarn's, and each project's: Kotlin 2.2 has both
+// levels) is told to leave the URL out.
+fun org.jetbrains.kotlin.gradle.targets.js.EnvSpec<*>.repositoryIsInSettings() {
+    downloadBaseUrl.set(null as String?)
+}
+plugins.withType<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin> {
+    the<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec>().repositoryIsInSettings()
+}
+plugins.withType<org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin> {
+    the<org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootEnvSpec>().repositoryIsInSettings()
+}
+allprojects {
+    plugins.withType<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin> {
+        the<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec>().repositoryIsInSettings()
+    }
+}
