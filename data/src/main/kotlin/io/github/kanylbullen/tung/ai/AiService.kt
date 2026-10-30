@@ -46,6 +46,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.time.Clock
+import kotlinx.datetime.toKotlinTimeZone
 
 /**
  * One request, built and ready: what [AiService.send] sends, byte for byte,
@@ -254,6 +255,6 @@ class AiService(
             )
         }
 
-        buildAiContext(now, clock.zone, history, routineList, programList, keys, equipment())
+        buildAiContext(now.toEpochMilli(), clock.zone.toKotlinTimeZone(), history, routineList, programList, keys, equipment())
     }
 }

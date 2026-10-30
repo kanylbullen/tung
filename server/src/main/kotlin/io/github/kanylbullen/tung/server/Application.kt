@@ -110,7 +110,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
 
     // Commands, OAuth and MCP (issue #29): every change an assistant or a script makes goes through the one command handler.
     val serverCatalogue = ServerCatalogue.fromClasspath()
-    val commands = CommandService(db, serverCatalogue, exercises, workouts, notifier = push)
+    val commands = CommandService(db, serverCatalogue, workouts, notifier = push)
     val oauth = OAuthStore(db)
     // Registration is open, so unused clients are deleted: once at start, then daily (OAuthStore.sweepUnusedClients).
     val oauthSweep = launch(Dispatchers.IO) {

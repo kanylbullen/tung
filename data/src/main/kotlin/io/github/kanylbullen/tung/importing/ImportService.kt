@@ -18,7 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
 
 /** A parsed export with what each of its exercise names is in Tung, for the preview. */
 data class ImportPreview(val bundle: ImportBundle, val matches: Map<String, ImportMatch>) {
@@ -56,7 +56,7 @@ class ImportService(
     private val resolver: ExerciseResolver,
     /** The alias table of a source, `catalog/aliases/<source>.json`; empty when there is none. */
     private val aliases: suspend (source: String) -> ImportAliases,
-    private val zone: () -> ZoneId,
+    private val zone: () -> TimeZone,
     /** Remembers the last import for "Undo last import" in Settings; null keeps nothing (tests). */
     private val history: ImportHistory? = null,
     private val clock: () -> Long = System::currentTimeMillis,

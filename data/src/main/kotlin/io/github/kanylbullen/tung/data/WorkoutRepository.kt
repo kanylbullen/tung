@@ -4,17 +4,21 @@ import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.ExerciseHistory
 import io.github.kanylbullen.tung.core.HistorySet
 import io.github.kanylbullen.tung.core.LoggedSet
-import io.github.kanylbullen.tung.core.addedExerciseSets
 import io.github.kanylbullen.tung.core.exerciseHistory
-import io.github.kanylbullen.tung.core.addsNextSet
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandRules
+import io.github.kanylbullen.tung.core.command.CommandStore
+import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
+import io.github.kanylbullen.tung.core.command.CommandResult
+import io.github.kanylbullen.tung.core.command.CommandTx
 import io.github.kanylbullen.tung.core.command.PlannedSet
-import io.github.kanylbullen.tung.core.command.plannedSetValues
-import io.github.kanylbullen.tung.core.newId
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.picker.HistoricWorkout
 import io.github.kanylbullen.tung.core.picker.SUGGESTION_HISTORY_LIMIT
-import io.github.kanylbullen.tung.core.prefillSet
 import io.github.kanylbullen.tung.core.progress.ProgressSet
-import io.github.kanylbullen.tung.core.sync.SyncTable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -44,140 +48,91 @@ class WorkoutRepository(
     fun observeExercises(workoutId: String): Flow<List<WorkoutExerciseWithSets>> =
         dao.observeExercisesWithSets(workoutId)
 
-    /** Returns the workout in progress, creating one if there is none, started by [startedBy] (`core.StartedBy`). */
+    /** Returns the workout in progress, creating one if there is none, started by [startedBy] (`core.StartedBy`): [CommandRules.startWorkout]. */
     suspend fun startOrResumeWorkout(startedBy: String? = null): String = db.withTransaction {
-        dao.getActiveWorkout()?.id ?: run {
-            val now = clock()
-            val workout = Workout(id = newId(), startedAt = now, updatedAt = now, startedBy = startedBy)
-            dao.insertWorkout(workout)
-            workout.id
-        }
+        checkNotNull(executor.startWorkout(commandTx(), startedBy).id(WORKOUT_ID))
     }
+
+    /** Core's store over this database for the [CommandRules], inside a `db.withTransaction` the caller opened (issue #87). */
+    internal fun commandTx(): CommandTx = RoomCommandTx(db, clock)
+
+    /** Core's [CommandStore] over this database, with this repository's clock: what `AppCommandHandler`'s executor runs in. */
+    internal fun commandStore(): CommandStore = RoomCommandStore(db, clock)
+
+    private val executor = CommandRules()
 
     /**
      * Adds an exercise at the end with [sets] sets, or, when null, as many as
      * it had last session (one with no history), each filled in from last time
-     * at its own position ([addedExerciseSets]).
+     * at its own position: [CommandRules.addExercise]'s rule, for callers
+     * that are not commands (the companion watch's handler, tests). The
+     * workout must exist.
      */
     suspend fun addExercise(workoutId: String, exerciseId: String, sets: Int? = null): String = db.withTransaction {
-        val now = clock()
-        val position = dao.maxExercisePosition(workoutId) + 1
-        val workoutExercise = WorkoutExercise(
-            id = newId(),
-            workoutId = workoutId,
-            exerciseId = exerciseId,
-            position = position,
-            updatedAt = now,
-        )
-        dao.insertWorkoutExercise(workoutExercise)
-        val previous = dao.previousSessionSets(exerciseId, workoutId).map { it.toLogged() }
-        addedExerciseSets(sets, previous).forEachIndexed { setPosition, values ->
-            dao.insertSet(
-                SetEntry(
-                    id = newId(),
-                    workoutExerciseId = workoutExercise.id,
-                    position = setPosition,
-                    weightKg = values.weightKg,
-                    reps = values.reps,
-                    completed = false,
-                    updatedAt = now,
-                ),
-            )
+        when (val result = executor.addExercise(commandTx(), workoutId, exerciseId, sets)) {
+            is CommandResult.Done -> result.ids.getValue(WORKOUT_EXERCISE_ID)
+            else -> error("add_exercise refused: $result")
         }
-        workoutExercise.id
     }
 
-    /** Removes an exercise and its sets, with a tombstone for each. */
-    suspend fun removeExercise(workoutExerciseId: String) = db.withTransaction {
-        val now = clock()
-        db.recordDeletes(SyncTable.SETS, dao.setIds(workoutExerciseId), now)
-        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, listOf(workoutExerciseId), now)
-        dao.deleteWorkoutExercise(workoutExerciseId)
+    /** Removes an exercise and its sets, with a tombstone for each; nothing for one that is gone. */
+    suspend fun removeExercise(workoutExerciseId: String) {
+        db.withTransaction { executor.removeExercise(commandTx(), workoutExerciseId) }
     }
 
     /**
      * Adds [count] sets after the last one, each pre-filled by the usual rule
-     * (a copy of the set before it). One transaction.
+     * (a copy of the set before it): [CommandRules.addSet]'s rule. One transaction.
      *
      * @return the id of the first added set, or null when there is no such exercise.
      */
     suspend fun addSet(workoutExerciseId: String, count: Int = 1): String? = db.withTransaction {
-        val we = dao.getWorkoutExercise(workoutExerciseId) ?: return@withTransaction null
-        List(count.coerceAtLeast(1)) { insertPrefilledSet(we.id, we.workoutId, we.exerciseId) }.first()
+        executor.addSet(commandTx(), workoutExerciseId, count).id(SET_ID)
     }
 
-    private suspend fun insertPrefilledSet(workoutExerciseId: String, workoutId: String, exerciseId: String): String {
-        val existing = dao.getSets(workoutExerciseId)
-        val previous = dao.previousSessionSets(exerciseId, workoutId).map { it.toLogged() }
-        val values = prefillSet(existing.lastOrNull()?.toLogged(), previous, existing.size)
-            ?: LoggedSet(weightKg = 0.0, reps = 0)
-        val set = SetEntry(
-            id = newId(),
-            workoutExerciseId = workoutExerciseId,
-            position = (existing.maxOfOrNull { it.position } ?: -1) + 1,
-            weightKg = values.weightKg,
-            reps = values.reps,
-            completed = false,
-            updatedAt = clock(),
-        )
-        dao.insertSet(set)
-        return set.id
+    suspend fun updateWeight(setId: String, weightKg: Double) {
+        db.withTransaction { executor.setWeight(commandTx(), setId, weightKg, applyToOpenSets = false) }
     }
 
-    suspend fun updateWeight(setId: String, weightKg: Double) = dao.updateWeight(setId, weightKg, clock())
-
-    suspend fun updateReps(setId: String, reps: Int) = dao.updateReps(setId, reps, clock())
+    suspend fun updateReps(setId: String, reps: Int) {
+        db.withTransaction { executor.setReps(commandTx(), setId, reps, applyToOpenSets = false) }
+    }
 
     /**
      * "Apply to all sets" for weight: writes [weightKg] to [setId] and to every
      * set of its workout exercise that is not ticked. Ticked sets stay as logged;
      * the set being edited gets the value even if it is ticked.
      */
-    suspend fun updateWeightForOpenSets(setId: String, weightKg: Double) =
-        db.withTransaction {
-            val now = clock()
-            openSetIds(setId).forEach { dao.updateWeight(it, weightKg, now) }
-        }
+    suspend fun updateWeightForOpenSets(setId: String, weightKg: Double) {
+        db.withTransaction { executor.setWeight(commandTx(), setId, weightKg, applyToOpenSets = true) }
+    }
 
     /** "Apply to all sets" for reps; see [updateWeightForOpenSets]. */
-    suspend fun updateRepsForOpenSets(setId: String, reps: Int) =
-        db.withTransaction {
-            val now = clock()
-            openSetIds(setId).forEach { dao.updateReps(it, reps, now) }
-        }
-
-    private suspend fun openSetIds(setId: String): List<String> {
-        val set = dao.getSet(setId) ?: return emptyList()
-        return dao.getSets(set.workoutExerciseId).filter { it.id == setId || !it.completed }.map { it.id }
+    suspend fun updateRepsForOpenSets(setId: String, reps: Int) {
+        db.withTransaction { executor.setReps(commandTx(), setId, reps, applyToOpenSets = true) }
     }
 
-    suspend fun setCompleted(setId: String, completed: Boolean) = dao.setCompleted(setId, completed, clock())
+    suspend fun setCompleted(setId: String, completed: Boolean) {
+        db.withTransaction { executor.tickSet(commandTx(), setId, completed) }
+    }
 
     /**
-     * "Log set": ticks [setId]. Only with [addNext] (the wire's `log_set.add_next`,
+     * "Log set": ticks [setId], [CommandRules.logSet]'s rule (a set with 0
+     * reps is not logged). Only with [addNext] (the wire's `log_set.add_next`,
      * the behaviour before issue #64) does it also add the next set when this
-     * was the last set of its exercise, pre-filled by the usual rule (a copy of
-     * the set just logged), and an exercise from a routine is not padded past
-     * the routine's target sets ([addsNextSet]). One transaction, so the screen
-     * sees the tick and the new set together.
+     * was the last set of its exercise, never past a routine's target sets.
+     * One transaction, so the screen sees the tick and the new set together.
      *
-     * @return the id of the added set, or null if none was added.
+     * @return the id of the added set, or null if none was added (or the set could not be logged).
      */
     suspend fun logSet(setId: String, addNext: Boolean = false): String? = db.withTransaction {
-        val set = dao.getSet(setId) ?: return@withTransaction null
-        dao.setCompleted(setId, true, clock())
-        if (!addNext) return@withTransaction null
-        val we = dao.getWorkoutExercise(set.workoutExerciseId) ?: return@withTransaction null
-        val sets = dao.getSets(we.id)
-        val wasLast = sets.maxOf { it.position } == set.position
-        val target = if (wasLast) dao.routineTargetSets(we.workoutId, we.exerciseId) else null
-        if (addsNextSet(wasLast, sets.size, target)) insertPrefilledSet(we.id, we.workoutId, we.exerciseId) else null
+        val workoutId = dao.getSet(setId)?.let { dao.getWorkoutExercise(it.workoutExerciseId) }?.workoutId
+            ?: return@withTransaction null
+        executor.logSet(commandTx(), Command.LogSet(workoutId, setId, addNext)).id(ADDED_SET_ID)
     }
 
-    suspend fun deleteSet(setId: String) = db.withTransaction {
-        dao.getSet(setId) ?: return@withTransaction
-        db.recordDeletes(SyncTable.SETS, listOf(setId), clock())
-        dao.deleteSet(setId)
+    suspend fun deleteSet(setId: String) {
+        db.withTransaction { executor.removeSet(commandTx(), setId) }
     }
 
     suspend fun getSet(setId: String): SetEntry? = dao.getSet(setId)
@@ -191,39 +146,12 @@ class WorkoutRepository(
     /**
      * A whole planned workout in one transaction: the workout in progress, or
      * a new one, gets each of [exercises] appended in order with its planned
-     * sets, none ticked. A number the plan leaves out comes from the pre-fill
-     * rule ([plannedSetValues]). The exercise rows must exist.
+     * sets, none ticked ([CommandRules.applyPlan]). The exercise rows must exist.
      *
      * @return the workout's id.
      */
     suspend fun applyPlan(exercises: List<Pair<String, List<PlannedSet>>>, startedBy: String? = null): String = db.withTransaction {
-        val workoutId = startOrResumeWorkout(startedBy)
-        exercises.forEach { (exerciseId, planned) ->
-            val now = clock()
-            val workoutExercise = WorkoutExercise(
-                id = newId(),
-                workoutId = workoutId,
-                exerciseId = exerciseId,
-                position = dao.maxExercisePosition(workoutId) + 1,
-                updatedAt = now,
-            )
-            dao.insertWorkoutExercise(workoutExercise)
-            val previous = dao.previousSessionSets(exerciseId, workoutId).map { it.toLogged() }
-            plannedSetValues(planned, previous).forEachIndexed { position, values ->
-                dao.insertSet(
-                    SetEntry(
-                        id = newId(),
-                        workoutExerciseId = workoutExercise.id,
-                        position = position,
-                        weightKg = values.weightKg,
-                        reps = values.reps,
-                        completed = false,
-                        updatedAt = now,
-                    ),
-                )
-            }
-        }
-        workoutId
+        checkNotNull(executor.applyPlan(commandTx(), exercises, startedBy).id(WORKOUT_ID))
     }
 
     /** The user's history of [exerciseId] (sessions, last session, best set), live; core's [exerciseHistory] does the sums. */
@@ -255,23 +183,12 @@ class WorkoutRepository(
     /**
      * Ends the workout: drops unticked or empty sets, then exercises left with
      * no sets. A workout with nothing logged is deleted rather than kept as an
-     * empty row in the history.
+     * empty row in the history ([CommandRules.finishWorkout]).
      *
-     * @return true if the workout was saved, false if it was discarded.
+     * @return true if the workout was saved, false if it was discarded (or does not exist).
      */
     suspend fun finishWorkout(workoutId: String): Boolean = db.withTransaction {
-        val now = clock()
-        db.recordDeletes(SyncTable.SETS, dao.unloggedSetIds(workoutId), now)
-        dao.deleteUnloggedSets(workoutId)
-        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, dao.emptyExerciseIds(workoutId), now)
-        dao.deleteEmptyExercises(workoutId)
-        if (dao.countLoggedSets(workoutId) == 0) {
-            deleteWorkoutAt(workoutId, now)
-            false
-        } else {
-            dao.setEndedAt(workoutId, endedAt = now, updatedAt = now)
-            true
-        }
+        executor.finishWorkout(commandTx(), workoutId).id(WORKOUT_ID) != null
     }
 
     /**
@@ -288,8 +205,10 @@ class WorkoutRepository(
         dao.setVitals(workoutId, avgHeartRate, maxHeartRate, activeCalories, clock())
     }
 
-    /** Deletes the workout with its exercises and sets, with a tombstone for each. */
-    suspend fun deleteWorkout(workoutId: String) = db.withTransaction { deleteWorkoutAt(workoutId, clock()) }
+    /** Deletes the workout with its exercises and sets, with a tombstone for each; nothing for one that is gone. */
+    suspend fun deleteWorkout(workoutId: String) {
+        db.withTransaction { executor.deleteWorkout(commandTx(), workoutId) }
+    }
 
     /**
      * Deletes every workout one import wrote ([Workout.importBatchId]) through
@@ -298,17 +217,9 @@ class WorkoutRepository(
      * @return how many workouts were deleted.
      */
     suspend fun deleteImportBatch(batchId: String): Int = db.withTransaction {
-        val now = clock()
         val ids = dao.importBatchWorkoutIds(batchId)
-        ids.forEach { deleteWorkoutAt(it, now) }
+        val tx = commandTx()
+        ids.forEach { executor.deleteWorkout(tx, it) }
         ids.size
-    }
-
-    private suspend fun deleteWorkoutAt(workoutId: String, now: Long) {
-        dao.getWorkout(workoutId) ?: return
-        db.recordDeletes(SyncTable.SETS, dao.setIdsOfWorkout(workoutId), now)
-        db.recordDeletes(SyncTable.WORKOUT_EXERCISES, dao.workoutExerciseIds(workoutId), now)
-        db.recordDeletes(SyncTable.WORKOUTS, listOf(workoutId), now)
-        dao.deleteWorkout(workoutId)
     }
 }

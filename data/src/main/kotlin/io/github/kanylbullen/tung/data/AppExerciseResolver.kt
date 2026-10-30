@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.data
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.ExtendedExercise
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.core.command.ExerciseCandidate
 import io.github.kanylbullen.tung.core.command.ExerciseResolver
@@ -51,6 +52,7 @@ class AppExerciseResolver(
         names = (listOf(row.name) + row.nameKey?.let { names[it] }.orEmpty()).distinct(),
         nameKey = row.nameKey,
         equipment = Equipment.fromKey(row.equipment),
+        muscleGroup = MuscleGroup.fromKey(row.muscleGroup),
     )
 
     private fun candidate(entry: ExtendedExercise) = ExerciseCandidate(
@@ -58,5 +60,6 @@ class AppExerciseResolver(
         names = listOf(entry.displayName),
         extendedId = entry.id,
         equipment = Equipment.fromKey(entry.equipment),
+        muscleGroup = MuscleGroup.fromKey(entry.muscleGroup),
     )
 }

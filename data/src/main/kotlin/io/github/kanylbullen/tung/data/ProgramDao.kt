@@ -33,24 +33,21 @@ interface ProgramDao {
     @Query("SELECT * FROM program WHERE isActive = 1 LIMIT 1")
     fun observeActiveProgram(): Flow<Program?>
 
+    /** Every active program: at most one by the rule, but a sync can bring a second, and activating one switches the rest off. */
+    @Query("SELECT * FROM program WHERE isActive = 1")
+    suspend fun getActivePrograms(): List<Program>
+
     @Query("UPDATE program SET name = :name, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun rename(id: String, name: String, updatedAt: Long)
 
     @Query("UPDATE program SET mode = :mode, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setMode(id: String, mode: String, updatedAt: Long)
 
-    /** Deactivates every active program other than [exceptId]. */
-    @Query("UPDATE program SET isActive = 0, updatedAt = :updatedAt, dirty = 1 WHERE isActive = 1 AND id != :exceptId")
-    suspend fun deactivateOthers(exceptId: String, updatedAt: Long)
-
     @Query("UPDATE program SET isActive = :isActive, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setActive(id: String, isActive: Boolean, updatedAt: Long)
 
     @Query("DELETE FROM program WHERE id = :id")
     suspend fun deleteProgram(id: String)
-
-    @Query("SELECT id FROM program_day WHERE programId = :programId")
-    suspend fun dayIds(programId: String): List<String>
 
     // --- days ---
 
@@ -73,8 +70,9 @@ interface ProgramDao {
     @Query("SELECT * FROM program_day WHERE id = :id")
     suspend fun getDay(id: String): ProgramDay?
 
-    @Query("SELECT COALESCE(MAX(position), -1) FROM program_day WHERE programId = :programId")
-    suspend fun maxPosition(programId: String): Int
+    /** The days of every program that start [routineId]; deleting the routine takes them along. */
+    @Query("SELECT * FROM program_day WHERE routineId = :routineId ORDER BY position")
+    suspend fun getDaysUsing(routineId: String): List<ProgramDay>
 
     @Query("UPDATE program_day SET position = :position, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setPosition(id: String, position: Int, updatedAt: Long)

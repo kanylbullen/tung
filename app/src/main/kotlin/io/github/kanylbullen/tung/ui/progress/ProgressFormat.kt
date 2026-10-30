@@ -17,7 +17,8 @@ import io.github.kanylbullen.tung.core.progress.trendPoints
 import io.github.kanylbullen.tung.ui.common.charts.ChartPoint
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.localWeight
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toJavaLocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
@@ -43,11 +44,11 @@ fun signedChange(metric: ProgressMetric, change: Change): String? {
 
 /** A short month and day as the locale writes it: "Oct 21", "21 okt.". */
 fun shortDate(date: LocalDate, locale: Locale = Locale.getDefault()): String =
-    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMd"), locale).format(date)
+    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMd"), locale).format(date.toJavaLocalDate())
 
 /** Day, month and year as the locale writes them: "Oct 21, 2026". */
 fun mediumDate(date: LocalDate, locale: Locale = Locale.getDefault()): String =
-    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "yMMMd"), locale).format(date)
+    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "yMMMd"), locale).format(date.toJavaLocalDate())
 
 @Composable
 fun metricLabel(metric: ProgressMetric): String = stringResource(
@@ -103,7 +104,7 @@ fun trendRangeLongLabel(range: ProgressRange): String =
  * the epoch day.
  */
 fun chartPoints(sessions: List<SessionPoint>, metric: ProgressMetric, range: ProgressRange, today: LocalDate): List<ChartPoint> =
-    trendPoints(sessions, metric, range, today).map { ChartPoint(it.date.toEpochDay(), it.value) }
+    trendPoints(sessions, metric, range, today).map { ChartPoint(it.date.toEpochDays().toLong(), it.value) }
 
 /**
  * A chart's or a sparkline's summary over [span] ("3 months"): "Estimated

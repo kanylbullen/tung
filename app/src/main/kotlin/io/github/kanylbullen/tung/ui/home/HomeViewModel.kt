@@ -44,6 +44,10 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate
 import io.github.kanylbullen.tung.data.routineMuscles
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.plus
+import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.toKotlinTimeZone
 
 /** One day of the active program, ready to show and to start. */
 data class ProgramDayUi(
@@ -127,11 +131,11 @@ class HomeViewModel(
         flow { emit(catalogueMuscles.index()) },
         today,
     ) { sets, index, date ->
-        val zone = clock.zone
-        val week = thisWeek(sets, date, zone)
-        val end = week.start.plusDays(6)
+        val zone = clock.zone.toKotlinTimeZone()
+        val week = thisWeek(sets, date.toKotlinLocalDate(), zone)
+        val end = week.start.plus(6, DateTimeUnit.DAY)
         val inWeek = sets.filter { set ->
-            set.isLogged && dateOf(set.startedAt, zone).let { !it.isBefore(week.start) && !it.isAfter(end) }
+            set.isLogged && dateOf(set.startedAt, zone).let { it >= week.start && it <= end }
         }
         val work = inWeek.groupBy { it.exerciseId }.map { (exerciseId, rows) -> ExerciseWork(index.musclesOf(exerciseId), rows.size) }
         WeekUi(week, muscleBreakdown(work))
@@ -220,7 +224,7 @@ class HomeViewModel(
                 )
             }
             val plan = days.mapIndexed { index, day -> PlanDay(day.id, index, day.weekdays) }
-            val suggested = suggestedDay(mode, plan, date, active.lastCompletedDayId)
+            val suggested = suggestedDay(mode, plan, date.toKotlinLocalDate(), active.lastCompletedDayId)
             return TodayUi(
                 programName = active.program.name,
                 mode = mode,

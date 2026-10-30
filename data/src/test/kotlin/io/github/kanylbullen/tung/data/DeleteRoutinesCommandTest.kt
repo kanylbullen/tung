@@ -24,7 +24,8 @@ import java.io.File
 /**
  * `delete_routines` (issue #79) through the app's [AppCommandHandler]: one
  * transaction, the same cascade and tombstones as `delete_routine` for every
- * routine, history untouched, and ids that are gone ignored.
+ * routine, history untouched, ids that are gone skipped, and a list of only
+ * gone ids refused (one rule on every platform, issue #87).
  */
 @RunWith(RobolectricTestRunner::class)
 class DeleteRoutinesCommandTest {
@@ -33,17 +34,12 @@ class DeleteRoutinesCommandTest {
     private val db = TungDatabase.buildInMemory(context)
     private val now = 1_000L
 
-    /** Every time the routine repository reads its clock: whether it was inside a transaction. */
-    private val routineClockReads = mutableListOf<Boolean>()
-    private val extended = ExtendedCatalog({ File("../catalog/extended.json").inputStream() })
+    /** Every time the store reads its clock (a stamp): whether it was inside a transaction. */
+    private val clockReads = mutableListOf<Boolean>()
+    private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val commands = AppCommandHandler(
-        db = db,
-        workouts = WorkoutRepository(db, clock = { now }),
-        exercises = ExerciseRepository(db.exerciseDao(), clock = { now }),
-        routines = RoutineRepository(db, clock = { routineClockReads += db.inTransaction(); now }),
-        programs = ProgramRepository(db, clock = { now }),
+        workouts = WorkoutRepository(db, clock = { clockReads += db.inTransaction(); now }),
         resolver = AppExerciseResolver(db.exerciseDao(), { emptyMap() }, extended),
-        extendedCatalog = extended,
     )
 
     @After
@@ -93,12 +89,12 @@ class DeleteRoutinesCommandTest {
         done(Command.FinishWorkout(workoutId))
 
         val exercisesOfAB = column("SELECT id FROM routine_exercise WHERE routineId IN ('$a', '$b')").toSet()
-        routineClockReads.clear()
+        clockReads.clear()
 
         val result = done(Command.DeleteRoutines(listOf(a, b, a)))
 
         assertEquals("a duplicate counts once", "2", result.id(CommandIds.DELETED_COUNT))
-        assertEquals("one stamp, taken inside the transaction", listOf(true), routineClockReads)
+        assertTrue("every stamp is taken inside the transaction", clockReads.isNotEmpty() && clockReads.all { it })
         assertEquals(listOf(kept), column("SELECT id FROM routine"))
         assertEquals(setOf(a, b), tombstones(SyncTable.ROUTINES))
         assertEquals(4, exercisesOfAB.size)
@@ -110,11 +106,12 @@ class DeleteRoutinesCommandTest {
     }
 
     @Test
-    fun idsThatAreGoneAreIgnored() {
+    fun idsThatAreGoneAreSkippedAndAListOfOnlyGoneOnesIsRefused() {
         val a = routine("A")
         assertEquals("1", done(Command.DeleteRoutines(listOf("not-a-routine", a))).id(CommandIds.DELETED_COUNT))
-        assertEquals("nothing left to delete is still done, like delete_routine", "0", done(Command.DeleteRoutines(listOf(a))).id(CommandIds.DELETED_COUNT))
         assertEquals(0, count("SELECT COUNT(*) FROM routine"))
+        // Like delete_routine on an id that is gone: the one rule refuses, naming it.
+        assertEquals(CommandResult.Rejected(listOf("no routine $a")), runBlocking { commands.execute(Command.DeleteRoutines(listOf(a))) })
     }
 
     @Test
