@@ -103,7 +103,7 @@ echo "sdk.dir=$ANDROID_HOME" > local.properties   # once, gitignored
 The APK ends up in `app/build/outputs/apk/debug/app-debug.apk`. The domain
 logic (volume, best set, records, pre-fill, weight parsing, search) lives in
 the Android-free `core/` module, and `test` runs its plain JVM tests together
-with the app's; reports land under `core/build/reports/tests/test/` and
+with the app's; reports land under `core/build/reports/tests/jvmTest/` and
 `app/build/reports/tests/`. CI runs the same command on every pull request.
 
 `test` also runs the server's tests, which start Postgres in Docker

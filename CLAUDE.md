@@ -238,7 +238,7 @@ order, each with `targetSets` and a nullable `targetReps`. "Save as routine"
 (summary, and the workout detail's menu) takes the logged sets per exercise:
 `targetSets` is how many there were, `targetReps` the most common rep count
 (`core.routineTarget`). Saving the same workout twice makes two routines.
-**Starting** a routine (`RoutineRepository.start`) creates a workout with
+**Starting** a routine (`StartRoutine`, core's `CommandRules.startRoutine`) creates a workout with
 `routineId` set, the routine's exercises in order and `targetSets` unticked
 sets each, filled by `core.routineStartSets`: the existing pre-fill rule at
 each set's own position, so set 1 gets last session's set 1, set 2 last
@@ -276,7 +276,7 @@ tab, so back returns to it. Home keeps its Routines section, the three most rece
 (`HomeViewModel.HOME_ROUTINES`), and "Today"; its
 "All" switches to the tab, and so does the Assistant's "Save program".
 **"+ New routine"** in the tab's top bar opens `RoutineNameDialog` and runs
-`CreateRoutine(name)` (`RoutineRepository.create`: an empty routine, stamped
+`CreateRoutine(name)` (`CommandRules.createRoutine`: an empty routine, stamped
 and dirty), then opens the routine's detail, which says "Add exercises with
 + Exercise" until it has one.
 
@@ -330,7 +330,7 @@ of `ProgramDay` cascade: deleting a program deletes its days, and deleting a
 routine removes the days that used it, because a day without a routine has
 nothing to start. `ProgramRepository` closes the position gap when a day is
 removed, so rotating days keep counting 1, 2, 3. At most one program is
-`isActive`: `ProgramRepository.activate` deactivates every other program in
+`isActive`: `ActivateProgram` (`CommandRules.activateProgram`) deactivates every other program in
 the same transaction. The mode is chosen at creation and switched on the
 program's screen ("Mode", the same two radio rows as the new-program
 dialog, `ProgramModeChoice`) with `SetProgramMode`; days, their order and
@@ -344,8 +344,8 @@ the first, and the first when nothing is completed or the completed day is
 gone. "Last completed" is the latest *finished* workout whose
 `Workout.programDayId` is a day of this program
 (`ProgramDao.observeLastCompletedDayId`). Starting from Today, or from the
-"Choose another" sheet that overrides the suggestion, calls
-`RoutineRepository.start(routineId, programDayId)`, so the workout records
+"Choose another" sheet that overrides the suggestion, runs
+`StartRoutine(routineId, programDayId)`, so the workout records
 both ids. `programDayId` is indexed and, like `routineId`, **not** a foreign
 key: removing a day or deleting a program never touches history. "Today" is
 `LocalDate.now(container.clock)`: the system clock in the app, a settable
@@ -404,7 +404,7 @@ sheet was confirmed). The sheet is keyed on its `EditTarget`, so the second
 sheet starts fresh. + Set is unchanged. A plan (`ApplyPlan`) that adds
 several exercises at once never opens it.
 Tapping the button executes `Command.LogSet(workoutId, setId)` with the set
-the screen shows as current, which calls `WorkoutRepository.logSet`: **it ticks
+the screen shows as current, which runs `CommandRules.logSet`: **it ticks
 the set and nothing more** (issue #64; before, logging an exercise's last set
 silently added another). With reps 0 it opens the reps sheet instead, like the
 tick. The tick on the row is the secondary way: it ticks only, and also starts
@@ -561,9 +561,11 @@ under the Unlicense, built by `catalog/tools/import_free_exercise_db.py`) is
 picker searches it from two characters and shows the matches under the
 heading "More exercises", with the same `filterByDisplayName`; the Exercises
 tab lists all of it among the user's exercises, by muscle group (see
-"Exercises tab and exercise page"). When such an exercise is picked,
-`ExerciseRepository.getOrCreateExtended` does a get-or-create (insert with
-`OnConflictStrategy.IGNORE`) with the deterministic id
+"Exercises tab and exercise page"). When such an exercise is picked, the
+command names it `ExerciseRef.Extended` and the executor makes its row
+(`CommandTx.ensureExerciseRow`: insert with `OnConflictStrategy.IGNORE` on
+the phone; the import's `ExerciseRepository.getOrCreateExtended` is the same
+rule) with the deterministic id
 `extendedExerciseId(fedId)` = `catalogExerciseId("ext:" + fedId)`,
 `nameKey = null`, the English name in `name` and `isCustom = false`. The same
 exercise thus gets the same row on every device, and after that it is an
@@ -980,7 +982,7 @@ its signal to commands, never a new path into the database
   suggestions, never a guess.
 - **`ApplyPlan(WorkoutPlan)`** applies a whole dictated or recognised workout:
   every exercise is resolved first, and if any is unknown nothing is written.
-  Then one Room transaction (`WorkoutRepository.applyPlan`): the workout in
+  Then one transaction (`CommandRules.applyPlan`): the workout in
   progress or a new one, the exercises appended in order, the planned sets,
   nothing ticked. A number the plan leaves out comes from the pre-fill rule
   (`plannedSetValues`). `SaveRoutinePlan(RoutinePlan)` does the same for a
@@ -1048,7 +1050,8 @@ first), `SyncApplier` (how a response merges), `checkServerUrl` (https, or
 http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
 
 - **Dirty.** All eight entities have `dirty` (default `true`). The one place
-  per repository that stamps `updatedAt` stamps `dirty` with it: inserts get
+  that stamps `updatedAt` (`RoomCommandTx`, which the repositories' wrappers
+  go through too) stamps `dirty` with it: inserts get
   the entity default, and every DAO `UPDATE … SET … updatedAt = :updatedAt`
   also says `dirty = 1` (`DirtyTrackingTest` scans the DAO sources for it).
   The seeded catalogue rows are inserted with `dirty = 0` and never pushed;

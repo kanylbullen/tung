@@ -11,7 +11,7 @@ import kotlinx.datetime.TimeZone
  * A local end-to-end check against a real Jefit export, which is personal
  * data and never in the repository: skipped unless `TUNG_JEFIT_EXPORT` names
  * the file. Run it with
- * `TUNG_JEFIT_EXPORT=/path/to/export.csv ./gradlew :core:test --tests '*JefitRealExportTest' --rerun --no-daemon`;
+ * `TUNG_JEFIT_EXPORT=/path/to/export.csv ./gradlew :core:jvmTest --tests '*JefitRealExportTest' --rerun --no-daemon`;
  * it prints the counts.
  */
 class JefitRealExportTest {

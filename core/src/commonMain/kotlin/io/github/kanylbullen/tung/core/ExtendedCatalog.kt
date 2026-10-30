@@ -37,7 +37,7 @@ data class ExtendedExercise(
  * (`ExtendedCatalog.fromAssets` in the app's `data` package), the server its
  * classpath. It is not in Room: the picker searches it and the Exercises tab
  * lists it, and an entry becomes a Room row only when added somewhere
- * (`ExerciseRepository.getOrCreateExtended` in the app). Read once, on
+ * (the executor's `CommandTx.ensureExerciseRow`, named by `ExerciseRef.Extended`). Read once, on
  * [io] (the caller's IO dispatcher where it has one; the default suits a
  * classpath read), the first time [all] is called, then kept in memory.
  */
