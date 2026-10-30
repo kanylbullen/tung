@@ -1,6 +1,9 @@
 package io.github.kanylbullen.tung.web.workout
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.catalog.EquipmentFilter
+import io.github.kanylbullen.tung.core.catalog.passes
 import io.github.kanylbullen.tung.core.matchesSearch
 import io.github.kanylbullen.tung.core.sync.SyncExercise
 import io.github.kanylbullen.tung.web.store.TungStore
@@ -75,12 +78,20 @@ fun activeWorkout(store: TungStore, displayName: (SyncExercise) -> String): Work
 data class PickerRow(val id: String, val name: String)
 
 /**
- * Every exercise in the store whose displayed name matches [query] (core's
+ * Every exercise in the store that can be done with [available] ("My
+ * equipment", core's [passes]) and whose displayed name matches [query] (core's
  * diacritic-insensitive search, so "bank" finds "Bänkpress"), by name in the
  * locale's order; an empty query lists them all.
  */
-fun pickerRows(store: TungStore, query: String, displayName: (SyncExercise) -> String, order: Comparator<String>): List<PickerRow> =
+fun pickerRows(
+    store: TungStore,
+    query: String,
+    displayName: (SyncExercise) -> String,
+    order: Comparator<String>,
+    available: Set<Equipment> = EquipmentFilter.ALL,
+): List<PickerRow> =
     store.exercises.rows.values.map { it.row }
+        .filter { passes(it.equipment, available) }
         .map { PickerRow(it.id, displayName(it)) }
         .filter { matchesSearch(it.name, query) }
         .sortedWith(compareBy(order) { it.name })

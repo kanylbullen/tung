@@ -8,6 +8,7 @@ import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.i18n.Strings
+import io.github.kanylbullen.tung.web.settings.WebPreferences
 import io.github.kanylbullen.tung.web.store.IndexedDbStore
 import io.github.kanylbullen.tung.web.store.TungStore
 import io.github.kanylbullen.tung.web.store.WebCommandStore
@@ -63,6 +64,9 @@ class WebContainer(
 
     val store = TungStore()
     val auth = WebAuth()
+
+    /** The browser's own settings: the default rest and "My equipment". */
+    val preferences = WebPreferences()
 
     private val _phase = MutableStateFlow<Phase>(Phase.Loading)
     val phase: StateFlow<Phase> = _phase.asStateFlow()

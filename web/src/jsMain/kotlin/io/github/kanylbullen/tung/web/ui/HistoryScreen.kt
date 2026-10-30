@@ -56,7 +56,7 @@ fun HistoryScreen(container: WebContainer, account: Account) {
 }
 
 /**
- * Every screen's top: its [title], Sync now and Sign out, and under them
+ * Every screen's top: its [title], Sync now and Settings (where Sign out is), and under them
  * the account and how sync stands ("Last sync just now", or why it failed).
  */
 @Composable
@@ -80,10 +80,7 @@ fun TopBar(container: WebContainer, account: Account, title: @Composable () -> U
                 if (running) disabled()
                 onClick { container.syncInBackground() }
             }) { Text(strings.syncNow) }
-            Button({
-                classes("text-button")
-                onClick { scope.launch { container.signOut() } }
-            }) { Text(strings.signOut) }
+            A(href = Route.SETTINGS.hash, attrs = { classes("text-button") }) { Text(strings.settings) }
         }
     }
     Div({ classes("status"); attr("role", "status") }) {

@@ -152,6 +152,24 @@ interface Strings {
     fun chartSummary(metric: String, range: String, from: String, to: String): String
     fun weeksSummary(volumes: String): String
 
+    // Settings
+    val settings: String
+    val training: String
+    val defaultRest: String
+    val restOff: String
+    val myEquipment: String
+    val equipmentHint: String
+    val everything: String
+    val bodyweightOnly: String
+    fun equipmentLabel(kind: io.github.kanylbullen.tung.core.Equipment): String
+    val account: String
+    val about: String
+    val version: String
+    val licenceText: String
+    val sourceCode: String
+    val catalogueText: String
+    val privacy: String
+
     // History
     val history: String
     val historyEmpty: String
@@ -337,6 +355,34 @@ object English : Strings {
     override fun sessionsIn(count: Int, range: String): String = if (count == 1) "1 session in $range" else "$count sessions in $range"
     override fun chartSummary(metric: String, range: String, from: String, to: String): String = "$metric, $range: from $from to $to kg"
     override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
+    override val settings = "Settings"
+    override val training = "Training"
+    override val defaultRest = "Default rest"
+    override val restOff = "Off"
+    override val myEquipment = "My equipment"
+    override val equipmentHint = "The exercise picker shows what you can do with these."
+    override val everything = "Everything"
+    override val bodyweightOnly = "Bodyweight only"
+    override fun equipmentLabel(kind: io.github.kanylbullen.tung.core.Equipment): String = when (kind) {
+        io.github.kanylbullen.tung.core.Equipment.BARBELL -> "Barbell"
+        io.github.kanylbullen.tung.core.Equipment.EZ_BAR -> "EZ bar"
+        io.github.kanylbullen.tung.core.Equipment.DUMBBELL -> "Dumbbells"
+        io.github.kanylbullen.tung.core.Equipment.KETTLEBELL -> "Kettlebell"
+        io.github.kanylbullen.tung.core.Equipment.MACHINE -> "Machine"
+        io.github.kanylbullen.tung.core.Equipment.CABLE -> "Cable"
+        io.github.kanylbullen.tung.core.Equipment.BAND -> "Band"
+        io.github.kanylbullen.tung.core.Equipment.BODYWEIGHT -> "Bodyweight"
+        io.github.kanylbullen.tung.core.Equipment.MEDICINE_BALL -> "Medicine ball"
+        io.github.kanylbullen.tung.core.Equipment.EXERCISE_BALL -> "Exercise ball"
+        io.github.kanylbullen.tung.core.Equipment.OTHER -> "Other"
+    }
+    override val account = "Account"
+    override val about = "About"
+    override val version = "Version"
+    override val licenceText = "Free software under the GNU AGPL-3.0."
+    override val sourceCode = "Source code"
+    override val catalogueText = "Open data: Tung's own exercise catalogue is CC0 1.0."
+    override val privacy = "Privacy"
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -525,6 +571,34 @@ object Swedish : Strings {
     override fun sessionsIn(count: Int, range: String): String = if (count == 1) "1 pass på $range" else "$count pass på $range"
     override fun chartSummary(metric: String, range: String, from: String, to: String): String = "$metric, $range: från $from till $to kg"
     override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
+    override val settings = "Inställningar"
+    override val training = "Träning"
+    override val defaultRest = "Standardvila"
+    override val restOff = "Av"
+    override val myEquipment = "Min utrustning"
+    override val equipmentHint = "Övningsväljaren visar det du kan göra med dessa."
+    override val everything = "Allt"
+    override val bodyweightOnly = "Bara kroppsvikt"
+    override fun equipmentLabel(kind: io.github.kanylbullen.tung.core.Equipment): String = when (kind) {
+        io.github.kanylbullen.tung.core.Equipment.BARBELL -> "Skivstång"
+        io.github.kanylbullen.tung.core.Equipment.EZ_BAR -> "EZ-stång"
+        io.github.kanylbullen.tung.core.Equipment.DUMBBELL -> "Hantlar"
+        io.github.kanylbullen.tung.core.Equipment.KETTLEBELL -> "Kettlebell"
+        io.github.kanylbullen.tung.core.Equipment.MACHINE -> "Maskin"
+        io.github.kanylbullen.tung.core.Equipment.CABLE -> "Kabel"
+        io.github.kanylbullen.tung.core.Equipment.BAND -> "Gummiband"
+        io.github.kanylbullen.tung.core.Equipment.BODYWEIGHT -> "Kroppsvikt"
+        io.github.kanylbullen.tung.core.Equipment.MEDICINE_BALL -> "Medicinboll"
+        io.github.kanylbullen.tung.core.Equipment.EXERCISE_BALL -> "Pilatesboll"
+        io.github.kanylbullen.tung.core.Equipment.OTHER -> "Övrigt"
+    }
+    override val account = "Konto"
+    override val about = "Om"
+    override val version = "Version"
+    override val licenceText = "Fri programvara under GNU AGPL-3.0."
+    override val sourceCode = "Källkod"
+    override val catalogueText = "Öppna data: Tungs egen övningskatalog är CC0 1.0."
+    override val privacy = "Integritet"
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"
