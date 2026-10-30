@@ -28,7 +28,7 @@ Adding an app language:
 
 ## Stack (decided)
 
-Kotlin 2.2.21 (KSP 2.2.21-2.0.5, KSP2), Jetpack Compose (BOM 2024.12.01),
+Kotlin 2.2.21 (KSP 2.2.21-2.0.5, KSP2), Jetpack Compose (BOM 2026.05.01: Compose 1.11, the line Compose Multiplatform 1.11 runs on Android; lifecycle 2.9.2),
 Material 3, Room 2.8.5 via KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
 DataStore 1.1.7 (small state outside Room). AGP 8.9.1,
 Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the four Android
