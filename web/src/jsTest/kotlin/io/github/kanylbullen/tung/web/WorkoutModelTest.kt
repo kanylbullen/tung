@@ -6,6 +6,7 @@ import io.github.kanylbullen.tung.core.sync.SyncRoutine
 import io.github.kanylbullen.tung.core.sync.SyncSet
 import io.github.kanylbullen.tung.core.sync.SyncWorkout
 import io.github.kanylbullen.tung.core.sync.SyncWorkoutExercise
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.web.store.TungStore
 import io.github.kanylbullen.tung.web.workout.activeWorkout
 import io.github.kanylbullen.tung.web.workout.pickerRows
@@ -56,5 +57,11 @@ class WorkoutModelTest {
         assertEquals(listOf("Bänkpress", "Cable row"), all.map { it.name })
         assertEquals(listOf("ex-bench"), pickerRows(store(), "bank", ::display, naturalOrder()).map { it.id }, "without the diacritic")
         assertEquals(emptyList(), pickerRows(store(), "squat", ::display, naturalOrder()))
+    }
+
+    @Test
+    fun thePickerOffersOnlyMyEquipment() {
+        assertEquals(listOf("Cable row"), pickerRows(store(), "", ::display, naturalOrder(), setOf(Equipment.CABLE)).map { it.name })
+        assertEquals(emptyList(), pickerRows(store(), "", ::display, naturalOrder(), setOf(Equipment.BODYWEIGHT)))
     }
 }
