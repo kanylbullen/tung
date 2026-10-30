@@ -140,8 +140,14 @@ class WebContainer(
     }
 
     /** Signs in and, on success, pulls the account's log. */
-    suspend fun signIn(serverUrl: String, email: String, password: String): AuthResult {
-        val result = auth.signIn(serverUrl, email, password)
+    suspend fun signIn(serverUrl: String, email: String, password: String): AuthResult =
+        signedIn(serverUrl, auth.signIn(serverUrl, email, password))
+
+    /** Signs in with Google's ID token for [serverUrl]'s client and, on success, pulls the account's log. */
+    suspend fun signInWithGoogle(serverUrl: String, idToken: String): AuthResult =
+        signedIn(serverUrl, auth.signInWithGoogle(serverUrl, idToken))
+
+    private suspend fun signedIn(serverUrl: String, result: AuthResult): AuthResult {
         if (result is AuthResult.Success) {
             settings.signedIn(serverUrl, result.email, result.token)
             val journal = ArrayList<Write>()

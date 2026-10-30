@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.web.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -11,7 +12,9 @@ import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.checkServerUrl
 import io.github.kanylbullen.tung.web.defaultServerUrl
 import io.github.kanylbullen.tung.web.WebContainer
+import io.github.kanylbullen.tung.web.sync.AuthFailure
 import io.github.kanylbullen.tung.web.sync.AuthResult
+import kotlinx.browser.window
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AutoComplete
 import org.jetbrains.compose.web.attributes.InputType
@@ -46,6 +49,27 @@ fun SignInScreen(container: WebContainer) {
     }
     val scope = rememberCoroutineScope()
 
+    // Sign in with Google, when the page is served by the server it signs in
+    // to: Google only runs its button on origins the server's client id has
+    // authorised, and that is the server's own. The client id comes from the
+    // server (`/auth/methods`), never from the app.
+    val sameOrigin = (checkServerUrl(server) as? ServerUrlCheck.Valid)?.url?.takeIf { it == window.location.origin }
+    var googleClientId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(sameOrigin) {
+        googleClientId = sameOrigin?.let { container.auth.googleClientId(it) }
+    }
+
+    fun signInWithGoogle(url: String, idToken: String) {
+        if (busy) return
+        busy = true
+        error = null
+        scope.launch {
+            val result = container.signInWithGoogle(url, idToken)
+            busy = false
+            if (result is AuthResult.Failed) error = strings.authFailure(result.failure)
+        }
+    }
+
     fun submit() {
         if (busy) return
         if (email.isBlank() || password.isEmpty()) {
@@ -75,6 +99,23 @@ fun SignInScreen(container: WebContainer) {
     Div({ classes("screen") }) {
         Div({ classes("wordmark") }) { Text(strings.appName) }
         P({ classes("intro") }) { Text(strings.signInIntro) }
+        val clientId = googleClientId
+        val googleUrl = sameOrigin
+        if (clientId != null && googleUrl != null) {
+            Div({
+                classes("google")
+                ref { element ->
+                    loadGoogleIdentity(
+                        ready = {
+                            renderGoogleButton(element, clientId, strings.tag, prefersDark()) { token -> signInWithGoogle(googleUrl, token) }
+                        },
+                        failed = { error = strings.authFailure(AuthFailure.GOOGLE_FAILED) },
+                    )
+                    onDispose { }
+                }
+            })
+            P({ classes("or") }) { Text(strings.orWithEmail) }
+        }
         Form(attrs = {
             addEventListener("submit") {
                 it.preventDefault()

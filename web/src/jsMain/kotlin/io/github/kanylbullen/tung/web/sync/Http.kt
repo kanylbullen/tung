@@ -20,6 +20,34 @@ const val REQUEST_TIMEOUT_MILLIS = 120_000
 /** The one way the web talks to a server: a `POST` with a JSON body, so a test can hand in its own. */
 typealias PostJson = suspend (url: String, body: String, headers: Map<String, String>) -> HttpReply
 
+/** A `GET`, for the few reads before signing in (`/api/v1/auth/methods`); a test hands in its own. */
+typealias GetJson = suspend (url: String) -> HttpReply
+
+/** One `GET` through `fetch`, with [postJson]'s timeout; no answer at all is [HttpUnreachable]. */
+suspend fun getJson(url: String): HttpReply {
+    val controller = AbortController()
+    val timeout = window.setTimeout({ controller.abort() }, REQUEST_TIMEOUT_MILLIS)
+    try {
+        val response = try {
+            window.fetch(url, RequestInit(method = "GET").also { it.asDynamic().signal = controller.signal }).await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            throw HttpUnreachable(e)
+        }
+        val text = try {
+            response.text().await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            throw HttpUnreachable(e)
+        }
+        return HttpReply(response.status.toInt(), text)
+    } finally {
+        window.clearTimeout(timeout)
+    }
+}
+
 /** The browser's `AbortController`, as far as [postJson] needs it. */
 private external class AbortController {
     val signal: dynamic

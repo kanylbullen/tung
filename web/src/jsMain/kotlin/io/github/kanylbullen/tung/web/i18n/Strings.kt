@@ -28,6 +28,9 @@ interface Strings {
     val useAnotherServer: String
     val signIn: String
     val signingIn: String
+
+    /** Under the Google button, above the email form. */
+    val orWithEmail: String
     val errorFields: String
     val errorUrl: String
     val errorUrlHttps: String
@@ -87,6 +90,7 @@ object English : Strings {
     override val useAnotherServer = "Use another server"
     override val signIn = "Sign in"
     override val signingIn = "Signing in…"
+    override val orWithEmail = "Or with email and password"
     override val errorFields = "Enter your email and password."
     override val errorUrl = "Enter the server address, for example https://tung.example.org."
     override val errorUrlHttps = "Use https://. Plain http only works for localhost and addresses on your own network."
@@ -97,6 +101,11 @@ object English : Strings {
         AuthFailure.NOT_A_SERVER -> "No Tung server answers at that address. Check it and try again."
         AuthFailure.NETWORK -> "Could not reach the server. Check the address and your connection."
         AuthFailure.SERVER -> "The server had a problem. Try again in a while."
+        AuthFailure.GOOGLE_REJECTED -> "The server did not accept the Google sign-in. Try again."
+        AuthFailure.GOOGLE_EMAIL_UNVERIFIED -> "Google has not verified this account's email address. Use a password, or another Google account."
+        AuthFailure.GOOGLE_ACCOUNT_MISMATCH -> "This email belongs to an account linked to another Google account. Sign in with that one or with your password."
+        AuthFailure.GOOGLE_NOT_OFFERED -> "This server does not offer Sign in with Google. Use your email and password."
+        AuthFailure.GOOGLE_FAILED -> "Google sign-in did not work. Try again, or use your email and password."
     }
 
     override val home = "Home"
@@ -154,6 +163,7 @@ object Swedish : Strings {
     override val useAnotherServer = "Använd en annan server"
     override val signIn = "Logga in"
     override val signingIn = "Loggar in…"
+    override val orWithEmail = "Eller med e-post och lösenord"
     override val errorFields = "Ange e-post och lösenord."
     override val errorUrl = "Ange serverns adress, till exempel https://tung.example.org."
     override val errorUrlHttps = "Använd https://. Okrypterad http fungerar bara mot localhost och adresser i ditt eget nätverk."
@@ -164,6 +174,11 @@ object Swedish : Strings {
         AuthFailure.NOT_A_SERVER -> "Ingen Tung-server svarar på den adressen. Kontrollera den och försök igen."
         AuthFailure.NETWORK -> "Kunde inte nå servern. Kontrollera adressen och din uppkoppling."
         AuthFailure.SERVER -> "Servern fick ett fel. Försök igen om en stund."
+        AuthFailure.GOOGLE_REJECTED -> "Servern godtog inte Google-inloggningen. Försök igen."
+        AuthFailure.GOOGLE_EMAIL_UNVERIFIED -> "Google har inte verifierat kontots e-postadress. Använd ett lösenord eller ett annat Google-konto."
+        AuthFailure.GOOGLE_ACCOUNT_MISMATCH -> "E-postadressen hör till ett konto som är kopplat till ett annat Google-konto. Logga in med det eller med ditt lösenord."
+        AuthFailure.GOOGLE_NOT_OFFERED -> "Den här servern erbjuder inte inloggning med Google. Använd e-post och lösenord."
+        AuthFailure.GOOGLE_FAILED -> "Google-inloggningen fungerade inte. Försök igen, eller använd e-post och lösenord."
     }
 
     override val home = "Hem"
