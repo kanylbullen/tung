@@ -23,6 +23,7 @@ enum class Route(val hash: String) {
     HISTORY("#/history"),
     WORKOUT("#/workout"),
     ROUTINES("#/routines"),
+    PROGRESS("#/progress"),
     ;
 
     companion object {
@@ -61,7 +62,10 @@ private fun SignedIn(container: WebContainer, account: Account) {
     }
     val detailId = hash.removePrefix("#/history/").takeIf { hash.startsWith("#/history/") && it.isNotEmpty() }
     val routineId = hash.removePrefix("#/routines/").takeIf { hash.startsWith("#/routines/") && it.isNotEmpty() }
+    val progressId = hash.removePrefix("#/progress/").takeIf { hash.startsWith("#/progress/") && it.isNotEmpty() }
     when {
+        progressId != null -> ExerciseProgressScreen(container, progressId)
+        route == Route.PROGRESS -> ProgressScreen(container, account)
         detailId != null -> WorkoutDetailScreen(container, detailId)
         routineId != null -> RoutineScreen(container, routineId)
         route == Route.ROUTINES -> RoutinesScreen(container, account)
@@ -73,6 +77,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
     val tab = when {
         detailId != null -> Route.HISTORY
         routineId != null -> Route.ROUTINES
+        progressId != null -> Route.PROGRESS
         else -> route
     }
     if (route != Route.WORKOUT) BottomBar(tab, container)
@@ -83,7 +88,12 @@ private fun SignedIn(container: WebContainer, account: Account) {
 private fun BottomBar(current: Route, container: WebContainer) {
     val strings = container.strings
     Nav({ classes("bottom-bar") }) {
-        listOf(Route.HOME to strings.home, Route.ROUTINES to strings.routines, Route.HISTORY to strings.history).forEach { (route, label) ->
+        listOf(
+            Route.HOME to strings.home,
+            Route.ROUTINES to strings.routines,
+            Route.HISTORY to strings.history,
+            Route.PROGRESS to strings.progress,
+        ).forEach { (route, label) ->
             A(href = route.hash, attrs = {
                 classes("tab")
                 if (route == current) {

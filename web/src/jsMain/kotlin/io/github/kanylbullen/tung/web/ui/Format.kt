@@ -113,3 +113,22 @@ fun longDate(epochMillis: Long, locale: String): String {
     if (date.getFullYear() != Date().getFullYear()) options.year = "numeric"
     return Intl.DateTimeFormat(locale, options).format(date).replaceFirstChar { it.uppercase() }
 }
+
+/** "Oct 22" ("22 okt."): a chart's dates, as the locale writes a short month and day. */
+fun shortMonthDay(date: kotlinx.datetime.LocalDate, locale: String): String {
+    val options: dynamic = js("({})")
+    options.month = "short"
+    options.day = "numeric"
+    options.timeZone = "UTC"
+    return Intl.DateTimeFormat(locale, options).format(Date(Date.UTC(date.year, date.monthNumber - 1, date.dayOfMonth, 12, 0, 0, 0)))
+}
+
+/** A change with its sign: "+14", "−3" (the minus sign), as kilos in whole numbers. */
+fun signedWhole(delta: Double, locale: String): String {
+    val whole = kotlin.math.round(delta)
+    return when {
+        whole > 0 -> "+" + wholeNumber(whole, locale)
+        whole < 0 -> "−" + wholeNumber(-whole, locale)
+        else -> "0"
+    }
+}

@@ -373,3 +373,21 @@ a.text-button { text-decoration: none; display: inline-flex; align-items: center
 .stepper-small { min-width: 44px; min-height: 44px; padding: 0; font-size: 22px; background: var(--raised); border: 1px solid var(--border); }
 .target-sets { min-width: 4.5em; text-align: center; font-weight: 700; }
 .routine-actions { display: flex; justify-content: space-between; margin: 16px 8px 0; }
+
+/* --- Progress and charts --- */
+.pad { padding: 0 20px; }
+.chart svg { display: block; }
+.chart .grid { stroke: var(--border); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; font-family: inherit; }
+.chart .line { stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.chart .dot { fill: var(--accent); }
+.chart .bar { fill: var(--accent); }
+.chart .bar.empty { fill: var(--border); }
+.bar-chart { margin: 8px 0 4px; }
+.line-chart { margin: 8px 0; }
+.sparkline { flex: none; }
+.chips { display: flex; gap: 8px; padding: 8px 20px; overflow-x: auto; }
+.chip { min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised); white-space: nowrap; font-size: 15px; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+.bottom-bar .tab { flex-basis: 140px; font-size: 15px; }
+.chips { scrollbar-width: none; } .chips::-webkit-scrollbar { display: none; }
