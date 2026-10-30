@@ -9,232 +9,20 @@
   <meta name="description" content="Tung is a strength training log for one hand, between sets: weight and reps first, everything else later. Phone, watch and web; open source; your own server if you want one.">
   <title>Tung, a strength training log</title>
   <link rel="icon" href="/site/icon.svg" type="image/svg+xml">
-  <style>
-    /* The app's own tokens (CLAUDE.md, "Design: the numbers are the content"):
-       graphite and chalk, yellow only as a fill, Archivo as the one family. */
-    @font-face {
-      font-family: "Archivo";
-      src: url("/site/archivo_variable.ttf") format("truetype");
-      font-weight: 100 900;
-      font-stretch: 62% 125%;
-      font-display: swap;
-    }
-    :root {
-      color-scheme: dark light;
-      --background: #1A1D21;
-      --raised: #23272D;
-      --border: #2F343B;
-      --text: #ECE7DD;
-      --muted: #9AA0A6;
-      --accent: #F2C230;
-      --accent-text: #F2C230;
-      --on-accent: #1A1D21;
-      --radius: 12px;
-      --measure: 36rem;
-    }
-    @media (prefers-color-scheme: light) {
-      :root {
-        --background: #F6F6F4;
-        --raised: #FFFFFF;
-        --border: #E2E1DC;
-        --text: #1A1D21;
-        --muted: #5F6368;
-        --accent: #B98900;
-        --accent-text: #8A6500;
-      }
-    }
-    * { box-sizing: border-box; }
-    html { -webkit-text-size-adjust: 100%; }
-    body {
-      margin: 0;
-      background: var(--background);
-      color: var(--text);
-      font-family: "Archivo", system-ui, sans-serif;
-      font-size: 18px;
-      line-height: 1.5;
-    }
-    a { color: inherit; }
-    a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-    .page { max-width: 60rem; margin: 0 auto; padding: 0 24px; }
-
-    header.top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: max(20px, env(safe-area-inset-top)) 0 20px;
-    }
-    .wordmark {
-      font-weight: 900;
-      font-stretch: 125%;
-      font-size: 30px;
-      letter-spacing: -0.02em;
-      text-decoration: none;
-    }
-    .top-link { color: var(--accent-text); font-weight: 600; text-decoration: none; padding: 12px 0; }
-    .top-link:hover { text-decoration: underline; }
-
-    /* --- The hero is a set: the number the app is built around --- */
-    .set {
-      margin: 8vh 0 0;
-      font-weight: 900;
-      font-stretch: 125%;
-      font-variant-numeric: tabular-nums;
-      line-height: 0.9;
-      letter-spacing: -0.03em;
-      font-size: clamp(76px, 21vw, 184px);
-      display: flex;
-      align-items: baseline;
-      flex-wrap: wrap;
-      column-gap: 0.18em;
-    }
-    .set .times { color: var(--muted); font-weight: 400; font-stretch: 100%; font-size: 0.45em; }
-    .set .unit {
-      font-size: max(14px, 0.12em);
-      font-weight: 500;
-      font-stretch: 100%;
-      letter-spacing: 0;
-      color: var(--muted);
-      margin-left: 0.2em;
-    }
-    .set .weight { display: inline-flex; align-items: baseline; }
-    .set .reps { display: inline-flex; align-items: baseline; }
-
-    /* The ruler under the number, as in the app's input sheet: 1 kg ticks up to 30, then 2.5 kg. */
-    .ruler { position: relative; margin: 20px 0 0; max-width: 40rem; height: 56px; }
-    .ruler .ticks {
-      position: absolute;
-      inset: 8px 0 0 0;
-      background: repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px 10px);
-      -webkit-mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-              mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-      opacity: 0.9;
-      pointer-events: none;
-    }
-    .ruler input {
-      -webkit-appearance: none;
-      appearance: none;
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      background: transparent;
-      cursor: ew-resize;
-    }
-    .ruler input::-webkit-slider-runnable-track { height: 100%; background: transparent; }
-    .ruler input::-moz-range-track { height: 100%; background: transparent; }
-    .ruler input::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 4px;
-      height: 56px;
-      border-radius: 2px;
-      background: var(--accent);
-      border: 0;
-    }
-    .ruler input::-moz-range-thumb { width: 4px; height: 56px; border-radius: 2px; background: var(--accent); border: 0; }
-    .ruler-hint { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
-
-    .lede { max-width: var(--measure); }
-    h1 {
-      font-size: clamp(28px, 4.4vw, 40px);
-      line-height: 1.15;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      margin: 48px 0 12px;
-    }
-    .lede p { margin: 0 0 12px; color: var(--muted); }
-    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 0; }
-    .button {
-      display: inline-flex;
-      align-items: center;
-      min-height: 52px;
-      padding: 0 24px;
-      border-radius: var(--radius);
-      font-weight: 700;
-      text-decoration: none;
-    }
-    .button.primary { background: var(--accent); color: var(--on-accent); }
-    .button.secondary { border: 1px solid var(--border); background: var(--raised); }
-    .button:hover { filter: brightness(1.06); }
-
-    /* --- What it does: a plain list, term and sentence --- */
-    .what { margin: 14vh 0 0; }
-    h2 { font-size: 22px; font-weight: 700; margin: 0 0 20px; }
-    dl { margin: 0; display: grid; grid-template-columns: minmax(10rem, 15rem) 1fr; column-gap: 32px; }
-    dt, dd { padding: 18px 0; border-top: 1px solid var(--border); margin: 0; }
-    dt { font-weight: 700; }
-    dd { color: var(--muted); max-width: var(--measure); }
-
-    .own { margin: 14vh 0 0; max-width: var(--measure); }
-    .own p { color: var(--muted); margin: 0 0 16px; }
-    pre {
-      margin: 0;
-      padding: 16px 20px;
-      background: var(--raised);
-      border-radius: var(--radius);
-      overflow-x: auto;
-      font-size: 15px;
-      line-height: 1.6;
-    }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-
-
-    /* --- Sign up to test the Android app --- */
-    .test { margin: 14vh 0 0; max-width: var(--measure); }
-    .test p { color: var(--muted); margin: 0 0 20px; }
-    .test form { display: grid; gap: 16px; }
-    .test label.field { display: grid; gap: 6px; font-size: 15px; color: var(--muted); }
-    .test input[type=email] {
-      font: inherit;
-      color: var(--text);
-      background: var(--raised);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      min-height: 52px;
-      padding: 0 16px;
-    }
-    .test input[type=email]:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
-    .test label.consent { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; color: var(--muted); cursor: pointer; }
-    .test label.consent input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
-    .test button {
-      justify-self: start;
-      font: inherit;
-      font-weight: 700;
-      min-height: 52px;
-      padding: 0 24px;
-      border: 0;
-      border-radius: var(--radius);
-      background: var(--accent);
-      color: var(--on-accent);
-      cursor: pointer;
-    }
-    .test button:disabled { opacity: 0.6; cursor: default; }
-    .test .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
-    .test .result { min-height: 1.5em; margin: 0; font-size: 15px; }
-    .test .result.ok { color: var(--text); }
-    .test .result.error { color: #E5736C; }
-    @media (prefers-color-scheme: light) { .test .result.error { color: #B3261E; } }
-
-    footer {
-      margin: 14vh 0 0;
-      padding: 28px 0 max(28px, env(safe-area-inset-bottom));
-      border-top: 1px solid var(--border);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 28px;
-      font-size: 15px;
-      color: var(--muted);
-    }
-    footer a { color: var(--muted); }
-
-    @media (max-width: 640px) {
-      body { font-size: 17px; }
-      dl { grid-template-columns: 1fr; }
-      dd { border-top: 0; padding-top: 0; }
-      .set { margin-top: 5vh; }
-    }
-  </style>
+  <meta name="title-sv" content="Tung, en träningslogg">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Tung">
+  <meta property="og:title" content="Tung, a strength training log">
+  <meta property="og:description" content="Weight and reps first, everything else later. Phone, watch and web; open source; your own server if you want one.">
+  <meta property="og:url" content="https://tung.xuper.fun/">
+  <meta property="og:image" content="https://tung.xuper.fun/site/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="80 kg × 8 reps over a ruler, the way Tung shows a set.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://tung.xuper.fun/site/og.png">
+  <link rel="preload" href="/site/archivo_latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/site/site.css">
 </head>
 <body>
   <div class="page">
@@ -250,6 +38,7 @@
           <span class="times" aria-hidden="true">×</span>
           <span class="reps"><span>8</span><span class="unit" data-sv="reps">reps</span></span>
         </div>
+        <p class="last" id="last" data-sv="Förra gången: 77,5 × 8">Last time: 77.5 × 8</p>
         <div class="ruler">
           <div class="ticks" aria-hidden="true"></div>
           <input id="ruler" type="range" min="0" max="138" value="50" step="1"
@@ -267,6 +56,30 @@
         </div>
       </section>
 
+      <section class="screens" aria-labelledby="screens">
+        <h2 id="screens" data-sv="I appen">In the app</h2>
+        <div class="row">
+          <figure>
+            <img src="/site/screens/workout.webp" width="640" height="1387" loading="lazy"
+                 alt="A workout: bench press, set one logged at 80 kg for 8 reps with last time's numbers under it, set two current, a rest timer at 1:30 and the Log set button at the bottom."
+                 data-sv-alt="Ett pass: bänkpress, set ett loggat med 80 kg och 8 reps och förra gångens siffror under, set två aktuellt, vilotimer på 1:30 och knappen Logga set längst ner.">
+            <figcaption data-sv="Logga set ligger alltid under tummen, med förra gången under varje set.">Log set is always under your thumb, with last time under every set.</figcaption>
+          </figure>
+          <figure>
+            <img src="/site/screens/weight.webp" width="640" height="812" loading="lazy"
+                 alt="The weight sheet: 62.5 kg in large numbers above the ruler, minus and plus buttons, and Done."
+                 data-sv-alt="Viktarket: 62,5 kg i stora siffror ovanför linjalen, minus- och plusknappar och Klar.">
+            <figcaption data-sv="Linjalen tar steg om en kilo upp till 30, sedan 2,5.">The ruler moves in steps of one kilo up to 30, then 2.5.</figcaption>
+          </figure>
+          <figure>
+            <img src="/site/screens/summary.webp" width="640" height="1387" loading="lazy"
+                 alt="The summary after a workout: duration, sets and volume, the best set, and a body map with the muscles worked and their share."
+                 data-sv-alt="Sammanfattningen efter ett pass: tid, set och volym, bästa setet, och en kroppskarta med musklerna som tränats och deras andel.">
+            <figcaption data-sv="Efter passet: vad du gjorde och vilka muskler det tog.">After the workout: what you did and which muscles it worked.</figcaption>
+          </figure>
+        </div>
+      </section>
+
       <section class="what" aria-labelledby="what">
         <h2 id="what" data-sv="Vad den gör">What it does</h2>
         <dl>
@@ -277,7 +90,7 @@
           <dd data-sv="Varje set fylls i från förra passet, position för position. Rekord och uppskattad 1RM räknas fram medan du tränar.">Every set is filled in from your last session, set by set. Records and estimated 1RM are worked out while you train.</dd>
 
           <dt data-sv="Telefon, klocka och webb">Phone, watch and web</dt>
-          <dd data-sv="En Android-app, en Wear OS-app som klarar sig utan telefonen, och den här webbappen som går att installera. De synkar via din server.">An Android app, a Wear OS app that works without the phone, and this web app, which you can install. They sync through your server.</dd>
+          <dd data-sv="En Android-app, en Wear OS-app som klarar sig utan telefonen, och en webbapp som går att installera. De synkar via din server.">An Android app, a Wear OS app that works without the phone, and a web app you can install. They sync through your server.</dd>
 
           <dt data-sv="Din egen server">Your own server</dt>
           <dd data-sv="Synk är valfri. Använd den här servern, eller kör din egen med en Docker-image och Postgres.">Sync is optional. Use this server, or run your own with one Docker image and Postgres.</dd>
@@ -288,6 +101,16 @@
           <dt data-sv="Öppen källkod">Open source</dt>
           <dd data-sv="Appen och servern är AGPL-3.0. Övningskatalogen är öppen data under CC0.">The app and the server are AGPL-3.0. The exercise catalogue is open data under CC0.</dd>
         </dl>
+      </section>
+
+      <section class="platforms" aria-labelledby="platforms">
+        <h2 id="platforms" data-sv="Var den finns">Where it runs</h2>
+        <ul>
+          <li><span class="name">Android</span><span class="state" data-sv="I test på Google Play. Anmäl dig nedan.">In a test on Google Play. Sign up below.</span></li>
+          <li><span class="name">Wear OS</span><span class="state" data-sv="Klar, men väntar på layouter för runda skärmar innan den släpps.">Ready, waiting for layouts for round screens before release.</span></li>
+          <li><span class="name" data-sv="Webb">Web</span><span class="state"><a href="/app/" data-sv="Öppen nu">Open now</a></span></li>
+          <li><span class="name">iPhone</span><span class="state" data-sv="På gång.">In the works.</span></li>
+        </ul>
       </section>
 
       <section class="test" aria-labelledby="test">
@@ -307,35 +130,66 @@
           </div>
           <button id="signup-button" type="submit" data-sv="Anmäl mig">Sign me up</button>
           <p id="signup-result" class="result" role="status" aria-live="polite"></p>
+          <p class="hint"><a href="/privacy" data-sv="Så hanterar vi adressen">How we handle the address</a></p>
         </form>
+      </section>
+
+      <section class="assistant" aria-labelledby="assistant">
+        <h2 id="assistant" data-sv="Koppla din assistent">Connect your assistant</h2>
+        <p data-sv="I Claude Code lägger du till servern med en rad och loggar in när den frågar:">In Claude Code you add the server with one line, then sign in when it asks:</p>
+        <div class="copyable">
+          <pre><code id="mcp-line">claude mcp add --transport http tung https://tung.xuper.fun/mcp</code></pre>
+          <button class="copy" type="button" data-copy="mcp-line" data-sv="Kopiera">Copy</button>
+        </div>
       </section>
 
       <section class="own" aria-labelledby="own">
         <h2 id="own" data-sv="Kör din egen">Run your own</h2>
-        <p data-sv="Klona repot, sätt ett lösenord för databasen i deploy/.env och starta:">Clone the repository, set a database password in deploy/.env and start it:</p>
-        <pre><code>cd tung/deploy
+        <p data-sv="Klona repot, fyll i POSTGRES_PASSWORD och TUNG_PUBLIC_URL i .env och starta:">Clone the repository, fill in POSTGRES_PASSWORD and TUNG_PUBLIC_URL in .env, and start it:</p>
+        <div class="copyable">
+          <pre><code id="own-lines">git clone https://github.com/kanylbullen/tung.git
+cd tung/deploy
+cp .env.example .env
 docker compose up -d</code></pre>
+          <button class="copy" type="button" data-copy="own-lines" data-sv="Kopiera">Copy</button>
+        </div>
+        <p><a href="https://github.com/kanylbullen/tung/blob/main/deploy/README.md" data-sv="Backup, uppgraderingar och en omvänd proxy">Backups, upgrades and a reverse proxy</a></p>
       </section>
     </main>
 
     <footer>
       <a href="https://github.com/kanylbullen/tung" data-sv="Källkod">Source</a>
       <a href="/docs" data-sv="API-dokumentation">API documentation</a>
+      <a href="/privacy" data-sv="Integritet">Privacy</a>
       <a href="https://github.com/kanylbullen/tung/blob/main/LICENSE" data-sv="Licens: AGPL-3.0">Licence: AGPL-3.0</a>
+      <a class="lang" href="?lang=sv" lang="sv">Svenska</a>
     </footer>
   </div>
 
+  <script src="/site/site.js"></script>
   <script>
-    // Swedish when the browser asks for it; English otherwise, as in the app.
     (function () {
-      var swedish = (navigator.languages && navigator.languages[0] || navigator.language || "").toLowerCase();
-      swedish = swedish === "sv" || swedish.indexOf("sv-") === 0;
+      var swedish = window.tungLang === "sv";
       if (swedish) {
-        document.documentElement.lang = "sv";
-        document.title = "Tung, en träningslogg";
-        document.querySelectorAll("[data-sv]").forEach(function (el) { el.textContent = el.getAttribute("data-sv"); });
-        document.querySelectorAll("[data-sv-aria]").forEach(function (el) { el.setAttribute("aria-label", el.getAttribute("data-sv-aria")); });
+        document.querySelectorAll("[data-sv-alt]").forEach(function (el) { el.alt = el.getAttribute("data-sv-alt"); });
       }
+
+      // A server of one's own shows its own address in the MCP line.
+      if (location.protocol === "https:" && location.host !== "tung.xuper.fun") {
+        document.getElementById("mcp-line").textContent = "claude mcp add --transport http tung " + location.origin + "/mcp";
+      }
+
+      // Copy buttons: the text of the code block they name.
+      document.querySelectorAll("button.copy").forEach(function (copy) {
+        var label = copy.textContent;
+        copy.addEventListener("click", function () {
+          var code = document.getElementById(copy.getAttribute("data-copy")).textContent;
+          navigator.clipboard.writeText(code).then(function () {
+            copy.textContent = swedish ? "Kopierad" : "Copied";
+            setTimeout(function () { copy.textContent = label; }, 2000);
+          });
+        });
+      });
 
       // The app's weight scale (core/Ruler.kt): 1 kg ticks from 0 to 30, then 2.5 kg, here up to 300.
       var values = [];

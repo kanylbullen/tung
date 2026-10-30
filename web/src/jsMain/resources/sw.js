@@ -12,7 +12,7 @@ const SHELL = [
   'tung.js',
   'styles.css',
   'manifest.webmanifest',
-  'fonts/archivo_variable.ttf',
+  'fonts/archivo_latin.woff2',
   'catalog/core.json',
   'icons/icon.svg',
   'icons/icon-192.png',

@@ -11,7 +11,6 @@
 !web/
 !kotlin-js-store/
 !catalog/*.json
-!app/src/main/res/font/archivo_variable.ttf
 !app/src/main/assets/licenses/archivo-OFL.txt
 **/build/
 **/.gradle/

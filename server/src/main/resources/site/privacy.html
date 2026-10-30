@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#1A1D21" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F6F6F4" media="(prefers-color-scheme: light)">
+  <meta name="description" content="What Tung and tung.xuper.fun store about you, why, for how long, and how to have it removed.">
+  <meta name="title-sv" content="Integritet, Tung">
+  <title>Privacy, Tung</title>
+  <link rel="icon" href="/site/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="/site/archivo_latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/site/site.css">
+</head>
+<body>
+  <div class="page">
+    <header class="top">
+      <a class="wordmark" href="/">Tung</a>
+      <a class="top-link" href="/app/" data-sv="Öppna webbappen">Open the web app</a>
+    </header>
+
+    <main class="prose">
+      <article data-lang="en" lang="en">
+        <h1>Privacy</h1>
+        <p class="updated">Updated 30 October 2026. This covers the Tung apps (Android, Wear OS, web) and the server at tung.xuper.fun.</p>
+
+        <h2>In short</h2>
+        <p>Your training stays on your device. Nothing leaves it unless you sign in to a server, and then only to the server you chose. There are no ads, no analytics and no tracking in the apps or on this site.</p>
+
+        <h2>Who is responsible</h2>
+        <p>Tung and tung.xuper.fun are run by one person, the developer, who is the controller of the data on this server. Write to <a href="mailto:tung@xuper.fun">tung@xuper.fun</a> with any question or request about your data.</p>
+
+        <h2>The apps</h2>
+        <ul>
+          <li><strong>Without an account</strong> everything you log (workouts, sets, routines, programs, your own exercises, settings) is stored only on your device. The web app keeps it in your browser.</li>
+          <li><strong>The network</strong> is used only for the server you sign in to. Nothing is sent to us or anyone else otherwise.</li>
+          <li><strong>Health Connect</strong> (Android, off until you turn it on): after a workout the app writes it as an exercise session, and can read the heart rate and active calories recorded during it. These are stored with the workout and synced only if you use a server. They are not shared with anyone else.</li>
+          <li><strong>The assistant</strong> (off until you set it up with your own key): a request goes straight from your phone to the AI provider you chose, with your key. We never see the request, the answer or the key. The app shows what is sent before the first request.</li>
+          <li><strong>Notifications</strong>: with an account, the phone may register a push address (Firebase Cloud Messaging or UnifiedPush) with the server, so another device's change can wake it to sync. The push itself carries no data.</li>
+        </ul>
+
+        <h2>An account on tung.xuper.fun</h2>
+        <p>If you sign in, the server stores:</p>
+        <ul>
+          <li>your email address, and your password as a one-way hash (Argon2id), or the identifier of your Google account if you sign in with Google;</li>
+          <li>the training data your devices sync: workouts, sets, routines, programs, your exercises, and the Health Connect values above;</li>
+          <li>the sign-in tokens of your devices and of assistants you allow (MCP), and push addresses;</li>
+          <li>technical records needed to run the service, such as which requests were made and when.</li>
+        </ul>
+        <p>We use this only to store and sync your training and to let you sign in. It is kept until you delete it or ask us to delete your account. The server runs in Sweden, with nightly backups stored in the EU.</p>
+
+        <h2>Signing up to test the Android app</h2>
+        <p>The form on the front page stores the email address you give, when you sent it and the page's language. It is used only to invite you to the test on Google Play, which needs the address of your Google account, and it is not linked to an account. We delete it once you are invited, or earlier if you ask. Google's own terms apply to the test on Google Play.</p>
+
+        <h2>Assistants (MCP)</h2>
+        <p>An assistant such as Claude can read and change your training data only after you allow it by signing in. You can withdraw that by removing its token from your account's token list (the API's <code>/api/v1/tokens</code>), or by asking us.</p>
+
+        <h2>Your rights</h2>
+        <p>You may ask for a copy of your data, have it corrected or deleted, and object to how it is used. Write to <a href="mailto:tung@xuper.fun">tung@xuper.fun</a>. The server's API also gives a full export of your account. If you think we handle your data wrongly, you may complain to the Swedish Authority for Privacy Protection (IMY).</p>
+
+        <h2>Run your own</h2>
+        <p>Tung is open source. On a server you run yourself, you are the one responsible for the data on it, and this page does not apply to it.</p>
+      </article>
+
+      <article data-lang="sv" lang="sv" hidden>
+        <h1>Integritet</h1>
+        <p class="updated">Uppdaterad 30 oktober 2026. Gäller Tung-apparna (Android, Wear OS, webb) och servern på tung.xuper.fun.</p>
+
+        <h2>Kort sagt</h2>
+        <p>Din träning stannar på din enhet. Inget lämnar den om du inte loggar in på en server, och då bara till den server du valde. Det finns inga annonser, ingen analys och ingen spårning i apparna eller på den här sidan.</p>
+
+        <h2>Vem som ansvarar</h2>
+        <p>Tung och tung.xuper.fun drivs av en person, utvecklaren, som är personuppgiftsansvarig för uppgifterna på den här servern. Skriv till <a href="mailto:tung@xuper.fun">tung@xuper.fun</a> med frågor eller önskemål om dina uppgifter.</p>
+
+        <h2>Apparna</h2>
+        <ul>
+          <li><strong>Utan konto</strong> sparas allt du loggar (pass, set, rutiner, program, egna övningar, inställningar) bara på din enhet. Webbappen sparar det i din webbläsare.</li>
+          <li><strong>Nätet</strong> används bara för den server du loggar in på. I övrigt skickas inget till oss eller någon annan.</li>
+          <li><strong>Health Connect</strong> (Android, av tills du slår på det): efter ett pass skriver appen det som ett träningspass och kan läsa pulsen och de aktiva kalorierna som registrerades under det. De sparas med passet och synkas bara om du använder en server. De delas inte med någon annan.</li>
+          <li><strong>Assistenten</strong> (av tills du ställer in den med en egen nyckel): en förfrågan går direkt från din telefon till den AI-leverantör du valt, med din nyckel. Vi ser aldrig förfrågan, svaret eller nyckeln. Appen visar vad som skickas före den första förfrågan.</li>
+          <li><strong>Notiser</strong>: med ett konto kan telefonen registrera en push-adress (Firebase Cloud Messaging eller UnifiedPush) hos servern, så att en ändring på en annan enhet kan väcka den för att synka. Själva pushen innehåller inga uppgifter.</li>
+        </ul>
+
+        <h2>Ett konto på tung.xuper.fun</h2>
+        <p>Om du loggar in sparar servern:</p>
+        <ul>
+          <li>din e-postadress, och ditt lösenord som en envägshash (Argon2id), eller identiteten för ditt Google-konto om du loggar in med Google;</li>
+          <li>träningsdatan dina enheter synkar: pass, set, rutiner, program, dina övningar och Health Connect-värdena ovan;</li>
+          <li>inloggningsnycklarna för dina enheter och för assistenter du tillåter (MCP), samt push-adresser;</li>
+          <li>tekniska uppgifter som behövs för att driva tjänsten, som vilka anrop som gjorts och när.</li>
+        </ul>
+        <p>Vi använder detta bara för att spara och synka din träning och låta dig logga in. Det sparas tills du tar bort det eller ber oss ta bort ditt konto. Servern körs i Sverige, med nattliga säkerhetskopior inom EU.</p>
+
+        <h2>Anmälan till test av Android-appen</h2>
+        <p>Formuläret på startsidan sparar e-postadressen du anger, när du skickade den och sidans språk. Den används bara för att bjuda in dig till testet på Google Play, som kräver adressen till ditt Google-konto, och kopplas inte till något konto. Vi tar bort den när du är inbjuden, eller tidigare om du ber om det. Googles egna villkor gäller för testet på Google Play.</p>
+
+        <h2>Assistenter (MCP)</h2>
+        <p>En assistent som Claude kan läsa och ändra din träningsdata först när du tillåtit det genom att logga in. Du drar tillbaka det genom att ta bort dess nyckel ur kontots nyckellista (API:ets <code>/api/v1/tokens</code>), eller genom att be oss.</p>
+
+        <h2>Dina rättigheter</h2>
+        <p>Du kan begära en kopia av dina uppgifter, få dem rättade eller borttagna, och invända mot hur de används. Skriv till <a href="mailto:tung@xuper.fun">tung@xuper.fun</a>. Serverns API ger också en fullständig export av ditt konto. Om du tycker att vi hanterar dina uppgifter fel kan du klaga hos Integritetsskyddsmyndigheten (IMY).</p>
+
+        <h2>Kör din egen</h2>
+        <p>Tung är öppen källkod. På en server du kör själv är det du som ansvarar för uppgifterna på den, och den här sidan gäller inte den.</p>
+      </article>
+    </main>
+
+    <footer>
+      <a href="/" data-sv="Startsidan">Front page</a>
+      <a href="https://github.com/kanylbullen/tung" data-sv="Källkod">Source</a>
+      <a href="https://github.com/kanylbullen/tung/blob/main/LICENSE" data-sv="Licens: AGPL-3.0">Licence: AGPL-3.0</a>
+      <a class="lang" href="?lang=sv" lang="sv">Svenska</a>
+    </footer>
+  </div>
+  <script src="/site/site.js"></script>
+</body>
+</html>

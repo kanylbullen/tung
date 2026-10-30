@@ -62,14 +62,12 @@ val buildId: String = run {
 
 tasks.named<ProcessResources>("jsProcessResources") {
     // The shell's static files are the module's resources; the catalogue and
-    // the typeface are the repository's one copy of each, not copies.
+    // the typeface's licence are the repository's one copy of each, not copies.
+    // The typeface itself is fonts/archivo_latin.woff2, a Latin subset of the
+    // app's archivo_variable.ttf (web/README.md, "The typeface").
     from(rootProject.file("catalog")) {
         include("core.json")
         into("catalog")
-    }
-    from(rootProject.file("app/src/main/res/font")) {
-        include("archivo_variable.ttf")
-        into("fonts")
     }
     from(rootProject.file("app/src/main/assets/licenses")) {
         include("archivo-OFL.txt")

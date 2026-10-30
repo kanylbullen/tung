@@ -2156,7 +2156,9 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
 - **PWA** (`src/jsMain/resources/`): `index.html` loads `tung.js` (the
   webpack output name) and `styles.css` (the colour tokens as CSS
   variables, dark and light by `prefers-color-scheme`, Archivo from the
-  phone's one `archivo_variable.ttf`, copied at build with its OFL);
+  phone's `archivo_variable.ttf` cut to Latin as `fonts/archivo_latin.woff2`,
+  116 kB, both axes kept, made with fontTools as `web/README.md` says, and
+  shared with the landing page; its OFL is copied at build);
   `manifest.webmanifest` (relative `start_url`, so a subpath works) and
   the icons (the launcher's plate as PNG, generated once with Pillow);
   `sw.js` precaches the shell and serves it cache-first, never touching
@@ -2182,7 +2184,11 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   `:web:jsBrowserDistribution` and sets `TUNG_WEB_DIR=/app/web`;
   `routes/SiteRoutes.kt` serves that directory at `/app/` (every path under
   it that is not a file is the shell, `sw.js` and `index.html` revalidated)
-  and the landing page at `/` (`server/src/main/resources/site/index.html`,
+  and the landing page at `/` and the privacy page at `/privacy` (also the
+  policy link Play asks for; `server/src/main/resources/site/`, one
+  `site.css` and `site.js` (the language: `?lang=`, remembered, else the
+  browser's) for both, the share image `og.png` and the app's screens drawn
+  from the flow tests' screenshots; `index.html`,
   English with Swedish swapped in by the browser's language, its font and
   icon copied from the repository's one copy into `site/` by the server's
   `processResources`). The service worker is served from `/app/`, so it
@@ -2191,7 +2197,7 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   (`defaultServerUrl()`); elsewhere `DEFAULT_SERVER_URL`. GitHub Pages
   (`.github/workflows/web-pages.yml`, `https://kanylbullen.github.io/tung/`)
   publishes the same site from `main` as well. `OpenApiCoverageTest` leaves
-  `/`, `/site` and `/app` out: pages, not API. The site has no server of its
+  `/`, `/privacy`, `/site` and `/app` out: pages, not API. The site has no server of its
   own: everything relative, so it works under any path.
 - **Wait with `FlowTest.waitUntil`, never `compose.waitUntil`** (issue #28).
   Under Robolectric the test thread is the main thread and the main looper
