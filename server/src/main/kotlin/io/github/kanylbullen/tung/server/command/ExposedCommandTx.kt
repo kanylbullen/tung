@@ -447,7 +447,11 @@ internal class ExposedCommandTx(
     }
 
     override suspend fun deleteWorkout(id: String) {
-        val exerciseIds = workoutExercises(id).map { it.id }
+        // Every exercise row of the workout, tombstoned ones too: the row rule can leave a newer live set
+        // under an exercise that is already gone, and it must not outlive the workout.
+        val exerciseIds = WorkoutExercises.selectAll()
+            .where { (WorkoutExercises.userId eq userId) and (WorkoutExercises.workoutId eq id) }
+            .map { it[WorkoutExercises.id] }
         if (exerciseIds.isNotEmpty()) {
             tombstone(Sets, Sets.updatedAt, Sets.deletedAt, now) { (Sets.userId eq userId) and (Sets.workoutExerciseId inList exerciseIds) }
         }
