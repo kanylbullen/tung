@@ -24,9 +24,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 
     sourceSets.getByName("main") {
         java.srcDir("src/main/kotlin")
@@ -74,9 +71,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.17.0")
 
     // Room: the apps read the repositories' Flows of entities, so the entity types are API.
-    api("androidx.room:room-runtime:2.6.1")
-    api("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    api("androidx.room:room-runtime:2.8.5")
+    api("androidx.room:room-ktx:2.8.5")
+    ksp("androidx.room:room-compiler:2.8.5")
 
     // Small state outside Room (the rest timer, sync's settings). At least 1.1.3: before it a read
     // that raced the file's very first write (a fresh install) threw FileNotFoundException.
@@ -108,7 +105,7 @@ dependencies {
     testImplementation("androidx.test:core-ktx:1.6.1")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     // MigrationTest: opens version 1 from data/schemas and runs the migrations to the current one.
-    testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.room:room-testing:2.8.5")
     testImplementation("androidx.test:runner:1.6.2")
 
     testFixturesImplementation(project(":core"))
@@ -116,4 +113,10 @@ dependencies {
     testFixturesImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     // FakeHealthConnect answers the permission sheet with an ActivityResultContract.
     testFixturesImplementation("androidx.activity:activity:1.9.3")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }

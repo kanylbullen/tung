@@ -80,9 +80,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 
     buildFeatures {
         compose = true
@@ -190,4 +187,10 @@ dependencies {
     testImplementation("org.unifiedpush.android:connector:2.5.0")
     // Registers the empty activity that createComposeRule() hosts content in.
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }

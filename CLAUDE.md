@@ -28,8 +28,8 @@ Adding an app language:
 
 ## Stack (decided)
 
-Kotlin 2.0.21, Jetpack Compose (BOM 2024.12.01), Material 3, Room 2.6.1 via
-KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
+Kotlin 2.2.21 (KSP 2.2.21-2.0.5, KSP2), Jetpack Compose (BOM 2024.12.01),
+Material 3, Room 2.8.5 via KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
 DataStore 1.1.7 (small state outside Room). AGP 8.9.1,
 Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the three Android
 modules: AGP's default is not compileSdk's). compileSdk 36; targetSdk 36 on
@@ -66,13 +66,17 @@ Sections "Wear" and "Server" cover the last two.
 `core/src/commonMain/kotlin/io/github/kanylbullen/tung/core/`, package
 `io.github.kanylbullen.tung.core`. A Kotlin Multiplatform module
 (`org.jetbrains.kotlin.multiplatform`), so that the phone, the watch, the
-server and, later, an iOS app and a web client use the same code. Only the
-`jvm()` target is built today (bytecode 17 like the app); an iOS target is
-added with the iOS app, and `commonMain` then compiles unchanged, because
-nothing in it is JVM-specific. `src/jvmMain` holds the one thing that is
-(`browseNameOrder`, the locale's `Collator`), `src/jvmTest` the tests (JUnit
-4, run by `:core:jvmTest`; `:core:test` is an alias so `./gradlew test` still
-covers them).
+server and, later, an iOS app and a web client use the same code. Targets:
+`jvm()` (bytecode 17 like the app) and the iOS app's `iosArm64()` and
+`iosSimulatorArm64()`. The iOS klibs compile on Linux too
+(`kotlin.native.enableKlibsCrossCompilation` in `gradle.properties`; the
+Kotlin/Native compiler lands in `~/.konan`), so
+`./gradlew :core:compileKotlinIosArm64` here, and CI, prove that
+`commonMain` is iOS-clean before there is a Mac; linking a binary or running
+a test on iOS needs one. `src/jvmMain` holds the one thing that is
+JVM-specific (`browseNameOrder`, the locale's `Collator`), `src/jvmTest`
+the tests (JUnit 4, run by `:core:jvmTest`; `:core:test` is an alias so
+`./gradlew test` still covers them).
 
 What belongs there: pure functions and plain data shapes that are calculated
 the same on every client — volume, best set, records, pre-fill (`LoggedSet`,
@@ -99,8 +103,10 @@ business. Room entities live in `data/` and map to core's shapes
 dispatcher in).** Anything that needs a `Context`, resources or Room goes in
 `data/`, Compose in the apps, and what needs the JVM in `core/src/jvmMain`;
 if a function is mixed, split it and move the pure part. `NoJvmImportsTest`
-(in `core/src/jvmTest`) scans `commonMain` and fails on such an import; the
-compiler alone would not, while the JVM is the only target. Core's only
+(in `core/src/jvmTest`) scans `commonMain` and fails on such an import, and
+the iOS compile catches what an import scan cannot: a JVM member reached
+without one, such as `java.util.Map.merge` on a `MutableMap` (what
+`Suggestions.kt` used until the targets came). Core's only
 dependencies are `kotlinx-serialization-json`, `kotlinx-coroutines-core` and
 `kotlinx-datetime`, all `api`. Dates and zones in core's API are
 kotlinx-datetime's `LocalDate` and `TimeZone` (instants travel as epoch
@@ -2183,6 +2189,11 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
 - **One gradle process at a time.** The machine is shared; never run parallel
   builds, and use `--no-daemon` so that no daemon is left behind. `/tmp` is
   tmpfs — put nothing large there.
+- **`kotlinOptions {}` is gone.** The Android modules set their bytecode
+  target in a top-level `kotlin { compilerOptions { jvmTarget } }` block,
+  the DSL Kotlin 2.2 keeps; the old block inside `android {}` is an error.
+  KSP runs as KSP2 (the default since KSP 2.0): Room 2.6.x's generator
+  crashed under it (`unexpected jvm signature V`), which is why Room is 2.8.
 - **The wrapper is 8.11.1** and already downloaded. Do not run `gradle wrapper`
   with another version.
 - **Strings only in resources.** No hard-coded strings in composables;

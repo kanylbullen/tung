@@ -32,6 +32,14 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      # The Kotlin/Native compiler that core's iOS klibs need (a few hundred
+      # MB), kept between runs; the key follows the Kotlin version in the
+      # root build file.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('build.gradle.kts') }}
+
       # FCM: the Firebase config is a repository secret, written into both app
       # modules before the build so the CI APKs can register for push. Forks
       # without the secret build with push off, exactly like a local checkout.
@@ -50,8 +58,10 @@ jobs:
       # `test` covers both modules: :core:test (the Android-free domain module)
       # and the app's unit tests, including the Robolectric flow tests.
       # The watch app (wear/, with its own unit tests) is in both as well.
-      - name: Build debug APK and run unit tests
-        run: ./gradlew assembleDebug :wear:assembleDebug test -x :server:test --no-daemon --stacktrace
+      # core's iOS klibs are compiled too (cross-compiled, no Mac): that is
+      # what proves commonMain has no JVM-only code (CLAUDE.md, "core/").
+      - name: Build debug APK, compile core for iOS and run unit tests
+        run: ./gradlew assembleDebug :wear:assembleDebug :core:compileKotlinIosArm64 :core:compileKotlinIosSimulatorArm64 test -x :server:test --no-daemon --stacktrace
 
       # What Play checks at upload, checked here first: the phone app targets
       # 36 (Play's requirement since 2026-08-31), the watch app 35 (deploy/play.md).
