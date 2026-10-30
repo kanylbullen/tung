@@ -17,10 +17,11 @@ import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.events.Event
 
-/** The screens behind the bottom bar, by the location's hash: `#/` is Home, `#/history` History; back and forward work. */
+/** The screens by the location's hash: `#/` Home, `#/history` History, `#/workout` the workout in progress; back and forward work. */
 enum class Route(val hash: String) {
     HOME("#/"),
     HISTORY("#/history"),
+    WORKOUT("#/workout"),
     ;
 
     companion object {
@@ -57,8 +58,10 @@ private fun SignedIn(container: WebContainer, account: Account) {
     when (route) {
         Route.HOME -> HomeScreen(container, account)
         Route.HISTORY -> HistoryScreen(container, account)
+        Route.WORKOUT -> WorkoutScreen(container)
     }
-    BottomBar(route, container)
+    // The workout has its own top and bottom, as on the phone.
+    if (route != Route.WORKOUT) BottomBar(route, container)
 }
 
 /** Home · History, the phone's bottom bar; the current one in the accent, announced as the current page. */

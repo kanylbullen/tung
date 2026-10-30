@@ -77,3 +77,28 @@ fun weekdayName(date: kotlinx.datetime.LocalDate, locale: String): String {
     val utcNoon = Date(Date.UTC(date.year, date.monthNumber - 1, date.dayOfMonth, 12, 0, 0, 0))
     return Intl.DateTimeFormat(locale, options).format(utcNoon)
 }
+
+/** A weight as the app writes it: "80", "82.5" ("82,5" where the locale writes a decimal comma). */
+fun weightText(kg: Double, locale: String): String =
+    io.github.kanylbullen.tung.core.formatWeight(kg, if (decimalComma(locale)) ',' else '.')
+
+/** Whether [locale] writes a decimal comma, by the browser's own number format. */
+fun decimalComma(locale: String): Boolean {
+    val options: dynamic = js("({})")
+    options.minimumFractionDigits = 1
+    return Intl.NumberFormat(locale, options).format(1.5).contains(',')
+}
+
+/** "80 × 8, 80 × 8, 82.5 × 6": sets as a muted line. */
+fun setsText(sets: List<io.github.kanylbullen.tung.core.LoggedSet>, locale: String): String =
+    sets.joinToString(", ") { weightText(it.weightKg, locale) + " × " + it.reps }
+
+/** "4:07" or "1:12:30", a running clock. */
+fun clockText(millis: Long): String {
+    val total = (millis.coerceAtLeast(0L) / 1000L).toInt()
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val s = total % 60
+    fun two(n: Int) = n.toString().padStart(2, '0')
+    return if (h > 0) "$h:${two(m)}:${two(s)}" else "$m:${two(s)}"
+}

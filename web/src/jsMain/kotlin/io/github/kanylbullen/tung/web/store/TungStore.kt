@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.web.store
 
 import io.github.kanylbullen.tung.core.CoreExercise
+import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.core.sync.LocalChanges
 import io.github.kanylbullen.tung.core.sync.LocalVersion
@@ -10,6 +11,7 @@ import io.github.kanylbullen.tung.core.sync.SyncChanges
 import io.github.kanylbullen.tung.core.sync.SyncExercise
 import io.github.kanylbullen.tung.core.sync.SyncResponse
 import io.github.kanylbullen.tung.core.sync.SyncTable
+import io.github.kanylbullen.tung.core.sync.SyncWorkoutExercise
 import io.github.kanylbullen.tung.core.sync.entries
 import io.github.kanylbullen.tung.core.sync.toChanges
 import io.github.kanylbullen.tung.core.sync.tombstoneEntry
@@ -139,6 +141,26 @@ class TungStore {
     /** A catalogue exercise as seeded (`updatedAt` 0): the phone's `markExercisesDirty` leaves it out too. */
     private fun isUntouchedCatalogueRow(id: String): Boolean =
         exercises.get(id)?.let { it.nameKey != null && it.updatedAt == 0L } == true
+
+    /**
+     * The phone's `previousSessionSets`: the ticked sets of the first time
+     * [exerciseId] appears in the latest finished workout other than
+     * [excludeWorkoutId], in order. Empty with no history. The pre-fill and
+     * "Last: 80 × 8" both read it.
+     */
+    fun previousSession(exerciseId: String, excludeWorkoutId: String?): List<LoggedSet> {
+        val finished = workouts.rows.values.map { it.row }
+            .filter { it.endedAt != null && it.id != excludeWorkoutId }
+            .associateBy { it.id }
+        val latest = workoutExercises.rows.values.map { it.row }
+            .filter { it.exerciseId == exerciseId && it.workoutId in finished }
+            .sortedWith(compareByDescending<SyncWorkoutExercise> { finished[it.workoutId]?.startedAt ?: 0L }.thenBy { it.position ?: 0 })
+            .firstOrNull() ?: return emptyList()
+        return sets.rows.values.map { it.row }
+            .filter { it.workoutExerciseId == latest.id && it.completed == true }
+            .sortedBy { it.position ?: 0 }
+            .map { LoggedSet(it.weightKg ?: 0.0, it.reps ?: 0) }
+    }
 
     /** True when a workout or a routine still refers to the exercise. */
     fun exerciseInUse(id: String): Boolean =
