@@ -2093,7 +2093,10 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   "could not reach the server" while sign-in works, which the phone never
   sees because it sends no preflight. Deploy the server before the web.
   Triggers: app start when signed in, after sign-in, "Sync now", the
-  `online` event and the page becoming visible. No periodic sync yet. One
+  `online` event, the page becoming visible, and every
+  `WEB_SYNC_INTERVAL_MILLIS` (5 min) while the page is shown and signed in
+  (`PeriodicSync`; a page gets no push, so it asks more often than the
+  phone's 15 min, and never while hidden). One
   request may take `REQUEST_TIMEOUT_MILLIS` (120 s, the phone's), then it
   is aborted and counts as unreachable (`Http.kt`).
 - **Account** (`sync/WebAuth.kt`, `sync/WebSettings.kt`): email and
@@ -2161,7 +2164,7 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   loop and sign-in against a scripted transport: `WebSync` and `WebAuth`
   take a `PostJson`, `fetch` by default) and `StringsTest` (the tag mapping
   and the browser's formats). No screen test yet.
-- **Not there yet:** every other screen, commands, a periodic sync, a
+- **Not there yet:** the workout screen (logging sets), every other screen, a
   second tab (two tabs each hold the log in memory; the last write per row
   wins at the next load), Sign in with Google.
 - **Hosting**: GitHub Pages, `https://kanylbullen.github.io/tung/`,
