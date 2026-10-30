@@ -41,6 +41,7 @@ from [`catalog/core.json`](../catalog/core.json) on every start.
 | `TUNG_FCM_SERVICE_ACCOUNT_JSON` | | A Firebase service-account key for FCM push: the path to the JSON file (inside the container) or the JSON itself (starting with `{`). Empty: FCM push is off. An unreadable or invalid key stops the server at start. See "Push". |
 | `TUNG_PUSH_ALLOW_PRIVATE` | `false` | `true` lets UnifiedPush endpoints be plain `http://` and private, loopback or link-local addresses: for a self-hosted instance whose push distributor (ntfy) is on the same LAN. Leave `false` on any instance others can register on: the server would then POST to addresses inside your network. See "Push". |
 | `TUNG_GOOGLE_CLIENT_ID` | | The Google OAuth client id (a Web application client, `….apps.googleusercontent.com`) whose ID tokens sign users in; several comma-separated are accepted, and the first is the one clients are told to use. Empty: nothing Google-related is shown or served. See "Sign in with Google". |
+| `TUNG_WEB_DIR` | `/app/web` in the image | The web app's built site (`web/`, `:web:jsBrowserDistribution`), served at `/app/`; the landing page at `/` is built in. Unset (outside the image): no app, `/app` is a 404. A directory without `index.html` stops the server at start. |
 | `TUNG_TRUST_PROXY` | `false` | `true` behind a reverse proxy that sets `X-Forwarded-For`/`Forwarded`, so the rate limit and the log see the client. Leave `false` when clients reach the server directly, or they can spoof their address. |
 
 ## API

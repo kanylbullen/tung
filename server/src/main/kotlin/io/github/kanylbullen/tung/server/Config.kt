@@ -21,6 +21,12 @@ data class ServerConfig(
     val port: Int = DEFAULT_PORT,
     /** The public base URL (`https://tung.example.org`); the served OpenAPI spec names it as its server. */
     val publicUrl: String? = null,
+    /**
+     * The web app's built site (`web/`'s `jsBrowserDistribution`), served at
+     * `/app/`; null serves no app (`/app` is then a 404, as in the tests).
+     * The Docker image sets `TUNG_WEB_DIR=/app/web`.
+     */
+    val webDir: File? = null,
     /** Behind a reverse proxy: take the client address from X-Forwarded-For / Forwarded, for the rate limit and the log. */
     val trustProxy: Boolean = false,
     /** Requests per minute and client address to register and login. */
@@ -88,6 +94,9 @@ data class ServerConfig(
                 trustProxy = trustProxy,
                 fcmServiceAccount = value(FCM_ENV)?.let(::fcmServiceAccount),
                 pushAllowPrivate = pushAllowPrivate,
+                webDir = value("TUNG_WEB_DIR")?.let(::File)?.also {
+                    if (!it.resolve("index.html").isFile) throw ConfigException("TUNG_WEB_DIR has no index.html: ${it.path}")
+                },
                 googleClientIds = value("TUNG_GOOGLE_CLIENT_ID")
                     ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty(),
             )

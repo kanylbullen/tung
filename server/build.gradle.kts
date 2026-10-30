@@ -88,6 +88,19 @@ tasks.processResources {
         include("*.json")
         into("catalog")
     }
+    // The landing page's typeface and icon: the repository's one copy of each.
+    from("../app/src/main/res/font") {
+        include("archivo_variable.ttf")
+        into("site")
+    }
+    from("../app/src/main/assets/licenses") {
+        include("archivo-OFL.txt")
+        into("site")
+    }
+    from("../web/src/jsMain/resources/icons") {
+        include("icon.svg")
+        into("site")
+    }
 }
 
 tasks.test {
