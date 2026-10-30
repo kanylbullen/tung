@@ -65,6 +65,16 @@ python3 -m http.server 8000 -d web/build/dist/js/productionExecutable
 then open `http://localhost:8000/`. Install it from the browser's menu
 ("Install app" / "Add to Home Screen"); once it has loaded, it opens offline.
 
+## Behind a CDN
+
+`index.html` asks for `tung.js?v=<build>` and `styles.css?v=<build>` (the build's id, as in the
+service worker's cache name), so a CDN that keeps static files for hours, such as the instance's
+Cloudflare, never pairs a new page with an old bundle. The landing pages do the same with a hash of
+`site.css` and `site.js`. What a CDN can still hold is `sw.js` itself: the server sends it with
+`Cache-Control: no-cache`, so set the CDN to respect the origin's headers for `/app/sw.js` (on
+Cloudflare: Browser Cache TTL "Respect Existing Headers", or a cache rule that bypasses it), or a
+new build reaches installed apps only when the CDN's copy expires.
+
 ## Sign in with Google
 
 When the app is served by the tung-server it signs in to (`https://tung.xuper.fun/app/`, or a
