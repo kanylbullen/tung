@@ -111,6 +111,27 @@ interface Strings {
     val delete: String
     val notFound: String
 
+    // Routines
+    val newRoutine: String
+    val newRoutineTitle: String
+    val routinesAllEmpty: String
+    val rename: String
+    val renameRoutine: String
+    val deleteRoutine: String
+    val deleteRoutineTitle: String
+    val deleteRoutineBody: String
+    val addRoutineExercise: String
+    val routineEmptyHint: String
+    val setsShort: String
+    fun targetReps(reps: Int?): String
+    fun targetRepsTitle(name: String): String
+    val clearTargetReps: String
+    val moveUp: String
+    val moveDown: String
+    fun fewerSets(name: String): String
+    fun moreSets(name: String): String
+    val lastUsedNever: String
+
     // History
     val history: String
     val historyEmpty: String
@@ -237,6 +258,29 @@ object English : Strings {
     override val deleteWorkoutBody = "The workout and all its sets will be deleted. This cannot be undone."
     override val delete = "Delete"
     override val notFound = "This workout is not here. It may have been deleted on another device."
+    override val newRoutine = "+ New routine"
+    override val newRoutineTitle = "New routine"
+    override val routinesAllEmpty = "No routines. Create one with + New routine, or save a finished workout as a routine from its page."
+    override val rename = "Rename"
+    override val renameRoutine = "Rename routine"
+    override val deleteRoutine = "Delete routine"
+    override val deleteRoutineTitle = "Delete routine?"
+    override val deleteRoutineBody = "The routine will be deleted. Workouts you did from it stay in your history."
+    override val addRoutineExercise = "+ Exercise"
+    override val routineEmptyHint = "Add exercises with + Exercise"
+    override val setsShort = "sets"
+    override fun targetReps(reps: Int?): String = when (reps) {
+        null -> "No target reps"
+        1 -> "1 rep per set"
+        else -> "$reps reps per set"
+    }
+    override fun targetRepsTitle(name: String): String = "Target reps · $name"
+    override val clearTargetReps = "Clear target reps"
+    override val moveUp = "Move up"
+    override val moveDown = "Move down"
+    override fun fewerSets(name: String): String = "Fewer sets of $name"
+    override fun moreSets(name: String): String = "More sets of $name"
+    override val lastUsedNever = "Never"
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -366,6 +410,29 @@ object Swedish : Strings {
     override val deleteWorkoutBody = "Passet och alla dess set raderas. Det går inte att ångra."
     override val delete = "Radera"
     override val notFound = "Passet finns inte här. Det kan ha raderats på en annan enhet."
+    override val newRoutine = "+ Ny rutin"
+    override val newRoutineTitle = "Ny rutin"
+    override val routinesAllEmpty = "Inga rutiner. Skapa en med + Ny rutin, eller spara ett avslutat pass som rutin från dess sida."
+    override val rename = "Byt namn"
+    override val renameRoutine = "Byt namn på rutin"
+    override val deleteRoutine = "Radera rutin"
+    override val deleteRoutineTitle = "Radera rutin?"
+    override val deleteRoutineBody = "Rutinen raderas. Pass du har gjort från den finns kvar i historiken."
+    override val addRoutineExercise = "+ Övning"
+    override val routineEmptyHint = "Lägg till övningar med + Övning"
+    override val setsShort = "set"
+    override fun targetReps(reps: Int?): String = when (reps) {
+        null -> "Inget mål för reps"
+        1 -> "1 rep per set"
+        else -> "$reps reps per set"
+    }
+    override fun targetRepsTitle(name: String): String = "Mål för reps · $name"
+    override val clearTargetReps = "Ta bort målet för reps"
+    override val moveUp = "Flytta upp"
+    override val moveDown = "Flytta ner"
+    override fun fewerSets(name: String): String = "Färre set av $name"
+    override fun moreSets(name: String): String = "Fler set av $name"
+    override val lastUsedNever = "Aldrig"
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"

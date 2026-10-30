@@ -22,10 +22,13 @@ enum class Route(val hash: String) {
     HOME("#/"),
     HISTORY("#/history"),
     WORKOUT("#/workout"),
+    ROUTINES("#/routines"),
     ;
 
     companion object {
-        fun of(hash: String): Route = entries.firstOrNull { it.hash == hash } ?: HOME
+        fun of(hash: String): Route = entries.firstOrNull { it.hash == hash }
+            ?: entries.firstOrNull { it != HOME && hash.startsWith(it.hash + "/") }
+            ?: HOME
     }
 }
 
@@ -57,14 +60,22 @@ private fun SignedIn(container: WebContainer, account: Account) {
         onDispose { window.removeEventListener("hashchange", listener) }
     }
     val detailId = hash.removePrefix("#/history/").takeIf { hash.startsWith("#/history/") && it.isNotEmpty() }
+    val routineId = hash.removePrefix("#/routines/").takeIf { hash.startsWith("#/routines/") && it.isNotEmpty() }
     when {
         detailId != null -> WorkoutDetailScreen(container, detailId)
+        routineId != null -> RoutineScreen(container, routineId)
+        route == Route.ROUTINES -> RoutinesScreen(container, account)
         route == Route.HOME -> HomeScreen(container, account)
         route == Route.HISTORY -> HistoryScreen(container, account)
         route == Route.WORKOUT -> WorkoutScreen(container)
     }
     // The workout has its own top and bottom, as on the phone.
-    if (route != Route.WORKOUT) BottomBar(if (detailId != null) Route.HISTORY else route, container)
+    val tab = when {
+        detailId != null -> Route.HISTORY
+        routineId != null -> Route.ROUTINES
+        else -> route
+    }
+    if (route != Route.WORKOUT) BottomBar(tab, container)
 }
 
 /** Home · History, the phone's bottom bar; the current one in the accent, announced as the current page. */
@@ -72,7 +83,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
 private fun BottomBar(current: Route, container: WebContainer) {
     val strings = container.strings
     Nav({ classes("bottom-bar") }) {
-        listOf(Route.HOME to strings.home, Route.HISTORY to strings.history).forEach { (route, label) ->
+        listOf(Route.HOME to strings.home, Route.ROUTINES to strings.routines, Route.HISTORY to strings.history).forEach { (route, label) ->
             A(href = route.hash, attrs = {
                 classes("tab")
                 if (route == current) {
