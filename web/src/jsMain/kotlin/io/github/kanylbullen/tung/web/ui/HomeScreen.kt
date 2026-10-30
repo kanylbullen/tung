@@ -93,7 +93,9 @@ fun HomeScreen(container: WebContainer, account: Account) {
             P({ classes("hint") }) { Text(strings.homeEmpty) }
         } else {
             Ul({ classes("rows") }) {
-                model.recent.forEach { row -> key(row.id) { Li({ classes("row") }) { WorkoutRow(row, container, now) } } }
+                model.recent.forEach { row ->
+                    key(row.id) { Li { A(href = workoutDetailHash(row.id), attrs = { classes("row", "row-link") }) { WorkoutRow(row, container, now) } } }
+                }
             }
             A(href = "#/history", attrs = { classes("text-button", "show-all") }) { Text(strings.showAll) }
         }

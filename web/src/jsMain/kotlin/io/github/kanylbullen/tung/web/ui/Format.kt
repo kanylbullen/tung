@@ -102,3 +102,14 @@ fun clockText(millis: Long): String {
     fun two(n: Int) = n.toString().padStart(2, '0')
     return if (h > 0) "$h:${two(m)}:${two(s)}" else "$m:${two(s)}"
 }
+
+/** "Thursday 22 October" (the year added when it is not this year), first letter capitalised: the phone's `localDate`. */
+fun longDate(epochMillis: Long, locale: String): String {
+    val date = Date(epochMillis.toDouble())
+    val options: dynamic = js("({})")
+    options.weekday = "long"
+    options.day = "numeric"
+    options.month = "long"
+    if (date.getFullYear() != Date().getFullYear()) options.year = "numeric"
+    return Intl.DateTimeFormat(locale, options).format(date).replaceFirstChar { it.uppercase() }
+}

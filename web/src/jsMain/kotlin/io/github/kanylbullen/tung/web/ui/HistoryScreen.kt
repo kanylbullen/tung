@@ -15,6 +15,7 @@ import io.github.kanylbullen.tung.web.sync.Account
 import kotlin.js.Date
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.disabled
+import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
@@ -46,7 +47,7 @@ fun HistoryScreen(container: WebContainer, account: Account) {
             Ul({ classes("rows") }) {
                 rows.forEach { row ->
                     key(row.id) {
-                        Li({ classes("row") }) { WorkoutRow(row, container, now) }
+                        Li { A(href = workoutDetailHash(row.id), attrs = { classes("row", "row-link") }) { WorkoutRow(row, container, now) } }
                     }
                 }
             }

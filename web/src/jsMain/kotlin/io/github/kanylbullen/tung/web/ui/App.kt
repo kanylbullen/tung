@@ -49,19 +49,22 @@ fun App(container: WebContainer) {
 
 @Composable
 private fun SignedIn(container: WebContainer, account: Account) {
-    var route by remember { mutableStateOf(Route.of(window.location.hash)) }
+    var hash by remember { mutableStateOf(window.location.hash) }
+    val route = Route.of(hash)
     DisposableEffect(Unit) {
-        val listener: (Event) -> Unit = { route = Route.of(window.location.hash) }
+        val listener: (Event) -> Unit = { hash = window.location.hash }
         window.addEventListener("hashchange", listener)
         onDispose { window.removeEventListener("hashchange", listener) }
     }
-    when (route) {
-        Route.HOME -> HomeScreen(container, account)
-        Route.HISTORY -> HistoryScreen(container, account)
-        Route.WORKOUT -> WorkoutScreen(container)
+    val detailId = hash.removePrefix("#/history/").takeIf { hash.startsWith("#/history/") && it.isNotEmpty() }
+    when {
+        detailId != null -> WorkoutDetailScreen(container, detailId)
+        route == Route.HOME -> HomeScreen(container, account)
+        route == Route.HISTORY -> HistoryScreen(container, account)
+        route == Route.WORKOUT -> WorkoutScreen(container)
     }
     // The workout has its own top and bottom, as on the phone.
-    if (route != Route.WORKOUT) BottomBar(route, container)
+    if (route != Route.WORKOUT) BottomBar(if (detailId != null) Route.HISTORY else route, container)
 }
 
 /** Home · History, the phone's bottom bar; the current one in the accent, announced as the current page. */

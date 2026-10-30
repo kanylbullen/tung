@@ -93,6 +93,24 @@ interface Strings {
     fun removeExerciseTitle(name: String, logged: Int): String
     val remove: String
 
+    // Workout detail
+    val duration: String
+    val setsLabel: String
+    val volumeKg: String
+    fun bestSetLine(sets: Int, volume: String, e1rm: String?): String
+    fun heartRate(avg: Int, max: Int?): String
+    fun calories(kcal: Int): String
+    val saveAsRoutine: String
+    val routineName: String
+    val save: String
+    val cancel: String
+    fun savedAsRoutine(name: String): String
+    val deleteWorkout: String
+    val deleteWorkoutTitle: String
+    val deleteWorkoutBody: String
+    val delete: String
+    val notFound: String
+
     // History
     val history: String
     val historyEmpty: String
@@ -202,6 +220,23 @@ object English : Strings {
     override fun removeExerciseTitle(name: String, logged: Int): String =
         if (logged == 1) "Remove $name and its logged set?" else "Remove $name and its $logged logged sets?"
     override val remove = "Remove"
+    override val duration = "Duration"
+    override val setsLabel = "Sets"
+    override val volumeKg = "Volume, kg"
+    override fun bestSetLine(sets: Int, volume: String, e1rm: String?): String =
+        (if (sets == 1) "1 set" else "$sets sets") + " · $volume kg" + (e1rm?.let { " · Est. 1RM $it kg" } ?: "")
+    override fun heartRate(avg: Int, max: Int?): String = if (max != null) "Heart rate $avg avg · $max max" else "Heart rate $avg"
+    override fun calories(kcal: Int): String = "$kcal kcal"
+    override val saveAsRoutine = "Save as routine"
+    override val routineName = "Name"
+    override val save = "Save"
+    override val cancel = "Cancel"
+    override fun savedAsRoutine(name: String): String = "Saved as $name"
+    override val deleteWorkout = "Delete workout"
+    override val deleteWorkoutTitle = "Delete workout?"
+    override val deleteWorkoutBody = "The workout and all its sets will be deleted. This cannot be undone."
+    override val delete = "Delete"
+    override val notFound = "This workout is not here. It may have been deleted on another device."
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -314,6 +349,23 @@ object Swedish : Strings {
     override fun removeExerciseTitle(name: String, logged: Int): String =
         if (logged == 1) "Ta bort $name och dess loggade set?" else "Ta bort $name och dess $logged loggade set?"
     override val remove = "Ta bort"
+    override val duration = "Varaktighet"
+    override val setsLabel = "Set"
+    override val volumeKg = "Volym, kg"
+    override fun bestSetLine(sets: Int, volume: String, e1rm: String?): String =
+        "$sets set · $volume kg" + (e1rm?.let { " · Uppsk. 1RM $it kg" } ?: "")
+    override fun heartRate(avg: Int, max: Int?): String = if (max != null) "Puls $avg snitt · $max max" else "Puls $avg"
+    override fun calories(kcal: Int): String = "$kcal kcal"
+    override val saveAsRoutine = "Spara som rutin"
+    override val routineName = "Namn"
+    override val save = "Spara"
+    override val cancel = "Avbryt"
+    override fun savedAsRoutine(name: String): String = "Sparad som $name"
+    override val deleteWorkout = "Radera pass"
+    override val deleteWorkoutTitle = "Radera pass?"
+    override val deleteWorkoutBody = "Passet och alla dess set raderas. Det går inte att ångra."
+    override val delete = "Radera"
+    override val notFound = "Passet finns inte här. Det kan ha raderats på en annan enhet."
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"
