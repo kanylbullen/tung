@@ -44,7 +44,7 @@ import io.github.kanylbullen.tung.ui.common.charts.LineChart
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.theme.Tung
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /** The semantics tag of the exercise progress list, which the flow tests scroll. */
 const val EXERCISE_PROGRESS_TAG = "exercise-progress"
@@ -160,7 +160,7 @@ internal fun ProgressChart(
     LineChart(
         points = points,
         summary = summary,
-        xLabel = { shortDate(LocalDate.ofEpochDay(it)) },
+        xLabel = { shortDate(LocalDate.fromEpochDays(it.toInt())) },
         yLabel = { metricText(metric, it) },
         modifier = Modifier.padding(start = 12.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
         height = height,

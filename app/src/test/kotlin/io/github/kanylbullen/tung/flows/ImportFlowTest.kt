@@ -39,21 +39,21 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.robolectric.Shadows.shadowOf
 import java.io.File
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
 
 /**
  * Import from Jefit (issue #5) from Settings to History and back: the system
  * file picker is answered with the synthetic export
- * (`core/src/test/resources/import/jefit/`) through Robolectric's recorded
+ * (`core/src/jvmTest/resources/import/jefit/`) through Robolectric's recorded
  * activity result, so no test seam is needed in the app.
  */
 class ImportFlowTest : FlowTest() {
 
-    private val fixture = File("../core/src/test/resources/import/jefit/export-synthetic.csv")
+    private val fixture = File("../core/src/jvmTest/resources/import/jefit/export-synthetic.csv")
 
     /** The workouts' dates as History shows them, read from the same file in the app's zone. */
     private val dates: List<String> by lazy {
-        JefitImport.parse(fixture.readText(), ZoneId.systemDefault()).workouts.map { shortLocalDate(it.startedAt) }
+        JefitImport.parse(fixture.readText(), TimeZone.currentSystemDefault()).workouts.map { shortLocalDate(it.startedAt) }
     }
 
     private fun counts(workouts: Int, sets: Int, routines: Int) = listOf(
@@ -265,7 +265,7 @@ class ImportFlowTest : FlowTest() {
     @Test
     fun aSuggestionChipChoosesAndSkipAllRemainingDecidesTheRest() {
         openImport(threeNames)
-        val usage = JefitImport.parse(threeNames, ZoneId.systemDefault()).nameUsage()
+        val usage = JefitImport.parse(threeNames, TimeZone.currentSystemDefault()).nameUsage()
         val hammer = usage.getValue("Dumbbell Hammer Curl to Press").workouts
         scrollToInList("Dumbbell Hammer Curl to Press")
         waitFor(hasText(plural(R.plurals.import_used_in_workouts, hammer, hammer)))

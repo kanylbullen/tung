@@ -71,19 +71,14 @@ class AiServiceTest {
     private var clockMillis = now.toEpochMilli()
 
     private val catalogue = CoreCatalog.parse(File("../catalog/core.json").readText())
-    private val extended = ExtendedCatalog({ File("../catalog/extended.json").inputStream() })
+    private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val workouts = WorkoutRepository(db, clock = { clockMillis })
     private val routines = RoutineRepository(db, clock = { clockMillis })
     private val programs = ProgramRepository(db, clock = { clockMillis })
     private val resolver = AppExerciseResolver(db.exerciseDao(), { catalogue.associate { it.key to it.name.values.toList() } }, extended)
     private val commands = AppCommandHandler(
-        db = db,
         workouts = workouts,
-        exercises = ExerciseRepository(db.exerciseDao(), clock = { clockMillis }),
-        routines = routines,
-        programs = programs,
         resolver = resolver,
-        extendedCatalog = extended,
     )
     private val settings by lazy { AiSettings(store, keys) }
     private val service by lazy {
@@ -259,7 +254,7 @@ class AiServiceTest {
     fun matchingSendsOnlyTheNamesAndTheCatalogue() = runBlocking {
         seedHistory()
         routines.createFromPlan("Push day secret", emptyList())
-        val ownId = ExerciseRepository(db.exerciseDao(), clock = { clockMillis })
+        val ownId = ExerciseRepository(db, clock = { clockMillis })
             .createExercise("Lat pulldown at my gym", io.github.kanylbullen.tung.core.MuscleGroup.BACK, io.github.kanylbullen.tung.core.Equipment.MACHINE)
         SyncSettings(store).signedIn("https://tung.example.org", "lifter@example.org")
         settings.save(AiProviderKind.ANTHROPIC, server.url("/").toString().trimEnd('/'), "claude-test-model", jsonMode = true)

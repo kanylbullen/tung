@@ -28,7 +28,7 @@ class DirtyTrackingTest {
     private val workouts = WorkoutRepository(db, clock = { now })
     private val routines = RoutineRepository(db, clock = { now })
     private val programs = ProgramRepository(db, clock = { now })
-    private val exercises = ExerciseRepository(db.exerciseDao(), clock = { now })
+    private val exercises = ExerciseRepository(db, clock = { now })
     private val bench = catalogExerciseId("bench_press")
 
     @After

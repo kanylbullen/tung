@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.toKotlinTimeZone
 import java.time.Clock
-import java.time.LocalDate
 
 /** One exercise of the workout with every session of it, this workout's included, for its progress chart. */
 data class ExerciseSessions(
@@ -46,7 +48,7 @@ data class SummaryUiState(
     val report: WorkoutReport? = null,
     /** The workout's sets per muscle (core's [muscleBreakdown]). */
     val muscles: MuscleBreakdown = MuscleBreakdown.EMPTY,
-    val today: LocalDate = LocalDate.MIN,
+    val today: LocalDate = LocalDate.fromEpochDays(0),
     /** Each exercise of the workout once, in workout order. */
     val progress: List<ExerciseSessions> = emptyList(),
     /** The charts' metric and span: the Progress tab's remembered choice ([ProgressSettings]). */
@@ -84,9 +86,9 @@ class SummaryViewModel(
                 loading = false,
                 report = report,
                 muscles = muscleBreakdown(exercises.map { ExerciseWork(index.musclesOf(it.exerciseId), it.sets.size) }),
-                today = LocalDate.now(clock),
+                today = java.time.LocalDate.now(clock).toKotlinLocalDate(),
                 progress = exercises.distinctBy { it.exerciseId }.map { e ->
-                    ExerciseSessions(e.exerciseId, e.name, e.nameKey, sessionPoints(byExercise[e.exerciseId].orEmpty(), clock.zone))
+                    ExerciseSessions(e.exerciseId, e.name, e.nameKey, sessionPoints(byExercise[e.exerciseId].orEmpty(), clock.zone.toKotlinTimeZone()))
                 },
             )
         }.flowOn(Dispatchers.Default)

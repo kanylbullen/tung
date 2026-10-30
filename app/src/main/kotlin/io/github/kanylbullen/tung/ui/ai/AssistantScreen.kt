@@ -53,6 +53,7 @@ import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
+import kotlinx.datetime.toJavaLocalDate
 import java.net.URI
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -258,7 +259,7 @@ private fun PlateausAnswer(proposal: AiProposal.Plateaus) {
     proposal.plateaus.forEach { p ->
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(name(p.exercise), style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
-            p.since?.let { Text(stringResource(R.string.ai_plateau_since, dates.format(it)), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted) }
+            p.since?.let { Text(stringResource(R.string.ai_plateau_since, dates.format(it.toJavaLocalDate())), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted) }
             if (p.observation.isNotBlank()) Text(p.observation, style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
             if (p.suggestion.isNotBlank()) Text(p.suggestion, style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
         }

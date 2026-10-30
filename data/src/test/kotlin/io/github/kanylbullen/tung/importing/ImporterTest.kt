@@ -16,7 +16,6 @@ import io.github.kanylbullen.tung.core.sync.SyncTable
 import io.github.kanylbullen.tung.data.AppCommandHandler
 import io.github.kanylbullen.tung.data.AppExerciseResolver
 import io.github.kanylbullen.tung.data.ExerciseRepository
-import io.github.kanylbullen.tung.data.ProgramRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.WorkoutRepository
@@ -30,11 +29,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
 
 /**
  * The [Importer] over a real Room database with the synthetic Jefit export
- * (`core/src/test/resources/import/jefit/`): one transaction, idempotent on
+ * (`core/src/jvmTest/resources/import/jefit/`): one transaction, idempotent on
  * the deterministic ids, stamped and dirty like every write, and undone one
  * batch at a time through the ordinary deletes.
  */
@@ -44,20 +43,20 @@ class ImporterTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val db = TungDatabase.buildInMemory(context)
     private var now = 5_000_000L
-    private val extended = ExtendedCatalog({ File("../catalog/extended.json").inputStream() })
+    private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val names = CoreCatalog.parse(File("../catalog/core.json").readText()).associate { it.key to it.name.values.toList() }
     private val workouts = WorkoutRepository(db, clock = { now })
-    private val exercises = ExerciseRepository(db.exerciseDao(), clock = { now })
+    private val exercises = ExerciseRepository(db, clock = { now })
     private val routines = RoutineRepository(db, clock = { now })
     private val resolver = AppExerciseResolver(db.exerciseDao(), { names }, extended)
     private val service = ImportService(
         importer = Importer(db, workouts, exercises, routines, extended, clock = { now }),
         resolver = resolver,
         aliases = { ImportAliases.parse(File("../catalog/aliases/jefit.json").readText()) },
-        zone = { ZoneId.of("Europe/Stockholm") },
+        zone = { TimeZone.of("Europe/Stockholm") },
     )
-    private val commands = AppCommandHandler(db, workouts, exercises, routines, ProgramRepository(db, clock = { now }), resolver, extended)
-    private val text = File("../core/src/test/resources/import/jefit/export-synthetic.csv").readText()
+    private val commands = AppCommandHandler(workouts, resolver)
+    private val text = File("../core/src/jvmTest/resources/import/jefit/export-synthetic.csv").readText()
 
     @After
     fun closeDatabase() = db.close()

@@ -1,31 +1,34 @@
 package io.github.kanylbullen.tung.data
 
+import androidx.room.withTransaction
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.command.CommandRules
+import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.extendedExerciseId
-import io.github.kanylbullen.tung.core.newId
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Exercise reads, the get-or-create of an extended-catalogue entry's row,
+ * and the Room-side entry to the exercise writes for callers that are not
+ * commands (tests): each runs core's rule ([CommandRules], issue #87)
+ * over this database, as `AppCommandHandler` does for the commands.
+ */
 class ExerciseRepository(
-    private val dao: ExerciseDao,
+    private val db: TungDatabase,
+    private val dao: ExerciseDao = db.exerciseDao(),
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
 
+    private val executor = CommandRules()
+
     fun observeExercises(): Flow<List<Exercise>> = dao.observeAll()
 
-    /** Creates a custom exercise and returns its id. */
-    suspend fun createExercise(name: String, muscleGroup: MuscleGroup, equipment: Equipment): String {
-        val exercise = Exercise(
-            id = newId(),
-            name = name.trim(),
-            muscleGroup = muscleGroup.key,
-            equipment = equipment.key,
-            isCustom = true,
-            updatedAt = clock(),
-        )
-        dao.insert(exercise)
-        return exercise.id
+    /** Creates a custom exercise ([CommandRules.createExercise]) and returns its id. */
+    suspend fun createExercise(name: String, muscleGroup: MuscleGroup, equipment: Equipment): String = db.withTransaction {
+        checkNotNull(executor.createExercise(RoomCommandTx(db, clock), name, muscleGroup, equipment).id(EXERCISE_ID))
     }
 
     /**
@@ -50,10 +53,13 @@ class ExerciseRepository(
     }
 
     /**
-     * The rest timer for [exerciseId]: seconds between sets, 0 for none, null to
-     * follow the default. An ordinary update, catalogue rows included, so
-     * `updatedAt` moves.
+     * The rest timer for [exerciseId] ([CommandRules.setRest]): seconds
+     * between sets, 0 for none, null to follow the default. An ordinary update,
+     * catalogue rows included, so `updatedAt` moves; the same value again
+     * writes nothing.
      */
-    suspend fun setRestSeconds(exerciseId: String, restSeconds: Int?) =
-        dao.updateRestSeconds(exerciseId, restSeconds, clock())
+    suspend fun setRestSeconds(exerciseId: String, restSeconds: Int?) = db.withTransaction {
+        executor.setRest(RoomCommandTx(db, clock), exerciseId, restSeconds)
+        Unit
+    }
 }

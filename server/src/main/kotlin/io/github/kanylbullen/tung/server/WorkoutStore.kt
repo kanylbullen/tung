@@ -2,7 +2,10 @@ package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.Command
-import io.github.kanylbullen.tung.core.isLogged
+import io.github.kanylbullen.tung.core.command.CommandRules
+import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
+import io.github.kanylbullen.tung.core.command.CommandResult
+import io.github.kanylbullen.tung.server.command.ExposedCommandTx
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
@@ -29,6 +32,8 @@ private const val MAX_NOTE = 10_000
  * sync sees these writes like its own.
  */
 class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
+
+    private val executor = CommandRules()
 
     /** Newest first; [finishedOnly] leaves out the workout in progress (the MCP history tool). */
     suspend fun page(userId: String, limit: Int, before: Long?, finishedOnly: Boolean = false): WorkoutPage = db.tx {
@@ -153,69 +158,36 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
         }
     }
 
-    /** Tombstones the workout with its exercises and sets. */
-    suspend fun delete(userId: String, id: String) = db.tx {
+    /** Tombstones the workout with its exercises and sets: core's `delete_workout` ([CommandRules.deleteWorkout]). */
+    suspend fun delete(userId: String, id: String) = db.suspendingTx {
         lockUser(userId)
-        if (!deleteIn(userId, id)) throw notFound("Workout")
-    }
-
-    /** Tombstones the live workout [id] in the current transaction (the caller holds the user's lock); false when there is none. */
-    fun Transaction.deleteIn(userId: String, id: String): Boolean {
-        val row = liveRow(userId, id) ?: return false
-        tombstone(userId, id, maxOf(System.currentTimeMillis(), row[Workouts.updatedAt] + 1))
-        return true
+        val result = executor.deleteWorkout(ExposedCommandTx(this, userId, this@WorkoutStore, System.currentTimeMillis()), id)
+        if (result !is CommandResult.Done) throw notFound("Workout")
     }
 
     /**
-     * Finishes the workout as the app does: sets that are not logged (ticked
-     * with reps > 0) are dropped, then exercises left without sets, and a
-     * workout without one logged set is discarded instead of saved empty.
-     * Finishing a finished workout returns it unchanged.
+     * Finishes the workout as the app does, core's `finish_workout`
+     * ([CommandRules.finishWorkout]): sets that are not logged (ticked with
+     * reps > 0) are dropped, then exercises left without sets, and a workout
+     * without one logged set is discarded instead of saved empty. Finishing a
+     * finished workout returns it unchanged. Without `ended_at` the workout
+     * ends now, or at its start if that lies ahead (a device clock that runs
+     * fast).
      */
     suspend fun finish(userId: String, id: String, input: FinishInput): FinishResult {
         input.endedAt?.let { validTimestamp(it, "ended_at") }
-        return db.tx {
+        return db.suspendingTx {
             lockUser(userId)
-            finishIn(userId, id, input.endedAt) ?: throw notFound("Workout")
-        }
-    }
-
-    /**
-     * [finish] in the current transaction (the caller holds the user's lock),
-     * shared with the command handler; null when there is no such workout.
-     * Without [requestedEndedAt] the workout ends now, or at its start if
-     * that lies ahead (a device clock that runs fast).
-     */
-    fun Transaction.finishIn(userId: String, id: String, requestedEndedAt: Long?): FinishResult? {
-        val row = liveRow(userId, id) ?: return null
-        if (row[Workouts.endedAt] != null) return FinishResult(liveWorkout(userId, id), discarded = false)
-        val now = System.currentTimeMillis()
-        val endedAt = requestedEndedAt ?: maxOf(now, row[Workouts.startedAt])
-        if (endedAt < row[Workouts.startedAt]) throw badRequest("ended_at is before started_at.")
-        val stamp = maxOf(now, row[Workouts.updatedAt] + 1)
-
-        val workout = nested(userId, listOf(row)).single()
-        var logged = 0
-        for (exercise in workout.exercises) {
-            val (keep, drop) = exercise.sets.partition { isLogged(it.completed, it.reps) }
-            logged += keep.size
-            tombstoneSets(userId, drop.map { it.id }, stamp)
-            if (keep.isEmpty()) {
-                WorkoutExercises.update({ (WorkoutExercises.userId eq userId) and (WorkoutExercises.id eq exercise.id) }) {
-                    it[deletedAt] = stamp
-                    it[updatedAt] = stamp
-                }
+            val tx = ExposedCommandTx(this, userId, this@WorkoutStore, System.currentTimeMillis())
+            when (val result = executor.finishWorkout(tx, id, input.endedAt)) {
+                is CommandResult.Done ->
+                    if (result.ids.containsKey(WORKOUT_ID)) FinishResult(liveWorkout(userId, id), discarded = false) else FinishResult(null, discarded = true)
+                // The executor refuses only a missing workout and an end before the start.
+                is CommandResult.Rejected ->
+                    if (liveRow(userId, id) == null) throw notFound("Workout") else throw badRequest("ended_at is before started_at.")
+                is CommandResult.NeedsAnswers -> error("finish_workout resolves no names")
             }
         }
-        if (logged == 0) {
-            tombstone(userId, id, stamp)
-            return FinishResult(null, discarded = true)
-        }
-        Workouts.update({ (Workouts.userId eq userId) and (Workouts.id eq id) }) {
-            it[Workouts.endedAt] = endedAt
-            it[updatedAt] = stamp
-        }
-        return FinishResult(liveWorkout(userId, id), discarded = false)
     }
 
     /**
@@ -302,36 +274,6 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
 
     fun Transaction.liveWorkout(userId: String, id: String): WorkoutDto? =
         liveRow(userId, id)?.let { nested(userId, listOf(it)).single() }
-
-    private fun Transaction.tombstone(userId: String, id: String, stamp: Long) {
-        Workouts.update({ (Workouts.userId eq userId) and (Workouts.id eq id) }) {
-            it[deletedAt] = stamp
-            it[updatedAt] = stamp
-        }
-        val exerciseIds = WorkoutExercises.selectAll()
-            .where { (WorkoutExercises.userId eq userId) and (WorkoutExercises.workoutId eq id) }
-            .map { it[WorkoutExercises.id] }
-        WorkoutExercises.update({
-            (WorkoutExercises.userId eq userId) and (WorkoutExercises.workoutId eq id) and WorkoutExercises.deletedAt.isNull()
-        }) {
-            it[deletedAt] = stamp
-            it[updatedAt] = stamp
-        }
-        if (exerciseIds.isNotEmpty()) {
-            Sets.update({ (Sets.userId eq userId) and (Sets.workoutExerciseId inList exerciseIds) and Sets.deletedAt.isNull() }) {
-                it[deletedAt] = stamp
-                it[updatedAt] = stamp
-            }
-        }
-    }
-
-    private fun Transaction.tombstoneSets(userId: String, ids: List<String>, stamp: Long) {
-        if (ids.isEmpty()) return
-        Sets.update({ (Sets.userId eq userId) and (Sets.id inList ids) }) {
-            it[deletedAt] = stamp
-            it[updatedAt] = stamp
-        }
-    }
 
     /** The live exercises and sets of [rows], nested and in position order, in three queries. */
     private fun Transaction.nested(userId: String, rows: List<ResultRow>): List<WorkoutDto> {

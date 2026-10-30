@@ -60,7 +60,7 @@ class SyncClientTest {
         val workouts = WorkoutRepository(db, clock = { now })
         val routines = RoutineRepository(db, clock = { now })
         val programs = ProgramRepository(db, clock = { now })
-        val exercises = ExerciseRepository(db.exerciseDao(), clock = { now })
+        val exercises = ExerciseRepository(db, clock = { now })
         val settings = SyncSettings(
             PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "device${devices++}.preferences_pb") },
         )

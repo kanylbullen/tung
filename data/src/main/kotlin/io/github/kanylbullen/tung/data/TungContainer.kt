@@ -44,6 +44,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.Clock
+import kotlinx.datetime.toKotlinTimeZone
 
 /**
  * Hand-rolled dependency container, shared by the phone app and the watch app.
@@ -85,7 +86,7 @@ class TungContainer(
     val workoutRepository: WorkoutRepository by lazy { WorkoutRepository(database) }
     val routineRepository: RoutineRepository by lazy { RoutineRepository(database) }
     val programRepository: ProgramRepository by lazy { ProgramRepository(database) }
-    val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database.exerciseDao()) }
+    val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database) }
     val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog.fromAssets(this.context) }
 
     /** `core.json` from the assets, read the first time a name is resolved or the muscles are needed. */
@@ -119,7 +120,7 @@ class TungContainer(
                     }.getOrDefault(ImportAliases.EMPTY)
                 }
             },
-            zone = { clock.zone },
+            zone = { clock.zone.toKotlinTimeZone() },
             history = ImportHistory(settings),
         )
     }
@@ -137,13 +138,8 @@ class TungContainer(
      */
     val commands: CommandHandler by lazy {
         AppCommandHandler(
-            db = database,
             workouts = workoutRepository,
-            exercises = exerciseRepository,
-            routines = routineRepository,
-            programs = programRepository,
             resolver = exerciseResolver,
-            extendedCatalog = extendedCatalog,
             onWorkoutFinished = ::workoutFinished,
             startedBy = startedBy,
         )

@@ -2,8 +2,10 @@ package io.github.kanylbullen.tung.server.command
 
 import io.github.kanylbullen.tung.core.CoreCatalog
 import io.github.kanylbullen.tung.core.CoreExercise
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.ExtendedExercise
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.core.command.ExerciseCandidate
 import io.github.kanylbullen.tung.core.command.ExerciseResolver
@@ -36,7 +38,7 @@ class ServerCatalogue(val core: List<CoreExercise>, val extended: List<ExtendedE
             fun read(path: String) = ServerCatalogue::class.java.getResourceAsStream(path)
                 ?: error("$path is missing from the classpath")
             val core = read("/catalog/core.json").use { CoreCatalog.parse(it.readBytes().toString(Charsets.UTF_8)) }
-            val extended = read("/catalog/extended.json").use(ExtendedCatalog::parse)
+            val extended = read("/catalog/extended.json").use { ExtendedCatalog.parse(it.readBytes().toString(Charsets.UTF_8)) }
             return ServerCatalogue(core, extended)
         }
     }
@@ -94,11 +96,15 @@ class ServerExerciseResolver(private val userId: String, private val catalogue: 
         id = row[Exercises.id],
         names = names(row),
         nameKey = row[Exercises.nameKey],
+        equipment = Equipment.fromKey(row[Exercises.equipment]),
+        muscleGroup = MuscleGroup.fromKey(row[Exercises.muscleGroup]),
     )
 
     private fun candidate(entry: ExtendedExercise) = ExerciseCandidate(
         id = extendedExerciseId(entry.id),
         names = listOf(entry.displayName),
         extendedId = entry.id,
+        equipment = Equipment.fromKey(entry.equipment),
+        muscleGroup = MuscleGroup.fromKey(entry.muscleGroup),
     )
 }

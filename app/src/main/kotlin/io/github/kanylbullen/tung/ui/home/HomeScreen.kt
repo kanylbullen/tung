@@ -56,6 +56,7 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 import io.github.kanylbullen.tung.ui.workout.DiscardWorkoutDialog
 import java.time.LocalDate
+import kotlinx.datetime.toKotlinLocalDate
 
 @Composable
 fun HomeScreen(
@@ -357,7 +358,7 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                 )
             }
         }
-        WeekStrip(totals.days, today)
+        WeekStrip(totals.days, today.toKotlinLocalDate())
     }
 }
 

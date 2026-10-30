@@ -27,7 +27,7 @@ import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.progress.WeekDay
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.theme.Tung
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import java.time.format.TextStyle
 
 /**

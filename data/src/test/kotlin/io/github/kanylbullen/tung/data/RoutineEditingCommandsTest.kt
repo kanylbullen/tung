@@ -35,15 +35,10 @@ class RoutineEditingCommandsTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val db = TungDatabase.buildInMemory(context)
     private var now = 1_000L
-    private val extended = ExtendedCatalog({ File("../catalog/extended.json").inputStream() })
+    private val extended = ExtendedCatalog({ File("../catalog/extended.json").readText() })
     private val commands = AppCommandHandler(
-        db = db,
         workouts = WorkoutRepository(db, clock = { now }),
-        exercises = ExerciseRepository(db.exerciseDao(), clock = { now }),
-        routines = RoutineRepository(db, clock = { now }),
-        programs = ProgramRepository(db, clock = { now }),
         resolver = AppExerciseResolver(db.exerciseDao(), { mapOf("bench_press" to listOf("Bench press", "Bänkpress")) }, extended),
-        extendedCatalog = extended,
     )
     private val bench = catalogExerciseId("bench_press")
 
@@ -176,8 +171,9 @@ class RoutineEditingCommandsTest {
             count("SELECT COUNT(*) FROM tombstones WHERE tableName = '${SyncTable.ROUTINE_EXERCISES.key}' AND id = '$first' AND deletedAt = 3000 AND dirty = 1"),
         )
 
-        // Gone already: nothing happens, nothing more is recorded.
-        done(Command.RemoveRoutineExercise(first))
+        // Gone already: refused by name, and nothing more is recorded.
+        val gone = run(Command.RemoveRoutineExercise(first))
+        assertEquals(CommandResult.Rejected(listOf("no exercise in a routine $first")), gone)
         assertEquals(1, count("SELECT COUNT(*) FROM tombstones"))
     }
 
