@@ -13,6 +13,12 @@ plugins {
 }
 
 kotlin {
+    // The iOS app's targets: their klibs compile on any host (no Xcode needed
+    // for that), so CI proves commonMain is iOS-clean; linking and running
+    // need a Mac.
+    iosArm64()
+    iosSimulatorArm64()
+
     jvm {
         // Bytecode 17, the same target as the app (app/build.gradle.kts), compiled by
         // whatever JDK runs Gradle. jvmToolchain(17) would require a JDK 17 install

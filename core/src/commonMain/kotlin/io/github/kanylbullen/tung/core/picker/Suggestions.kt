@@ -127,9 +127,9 @@ fun suggest(
             val distinct = ids.toSet()
             if (last in distinct && distinct.size > 1) observations++
             ids.zipWithNext().filter { (a, b) -> a == last && b != last }.mapTo(HashSet()) { it.second }
-                .forEach { transitions.merge(it, recency, Double::plus) }
+                .forEach { transitions[it] = (transitions[it] ?: 0.0) + recency }
             if (distinct.any { it in inWorkout }) {
-                distinct.filter { it !in inWorkout }.forEach { together.merge(it, recency, Double::plus) }
+                distinct.filter { it !in inWorkout }.forEach { together[it] = (together[it] ?: 0.0) + recency }
             }
         }
     val scale = if (observations >= HANDOVER_OBSERVATIONS) HANDOVER_SCALE else 1.0
