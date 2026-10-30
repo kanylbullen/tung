@@ -53,16 +53,16 @@ jobs:
 
       # The hosted runner ships the Android SDK with ANDROID_HOME set, so no
       # separate SDK setup step is needed. Build-tools 36.0.0 (pinned in the
-      # four Android modules) and platform 36 are fetched by AGP on demand if
+      # five Android modules) and platform 36 are fetched by AGP on demand if
       # missing.
       # `test` covers both modules: :core:test (the Android-free domain module)
       # and the app's unit tests, including the Robolectric flow tests.
       # The watch app (wear/, with its own unit tests) is in both as well.
-      # core's and data's iOS klibs are compiled too (cross-compiled, no Mac):
+      # core's, data's and ui's iOS klibs are compiled too (cross-compiled, no Mac):
       # that is what proves their commonMain has no JVM-only code (CLAUDE.md,
       # "core/" and "data/"). The web app has its own job below.
-      - name: Build debug APK, compile core and data for iOS and run unit tests
-        run: ./gradlew assembleDebug :wear:assembleDebug :core:compileKotlinIosArm64 :core:compileKotlinIosSimulatorArm64 :data:compileKotlinIosArm64 :data:compileKotlinIosSimulatorArm64 test -x :server:test --no-daemon --stacktrace
+      - name: Build debug APK, compile core, data and ui for iOS and run unit tests
+        run: ./gradlew assembleDebug :wear:assembleDebug :core:compileKotlinIosArm64 :core:compileKotlinIosSimulatorArm64 :data:compileKotlinIosArm64 :data:compileKotlinIosSimulatorArm64 :ui:compileKotlinIosArm64 :ui:compileKotlinIosSimulatorArm64 test -x :server:test --no-daemon --stacktrace
 
       # What Play checks at upload, checked here first: the phone app targets
       # 36 (Play's requirement since 2026-08-31), the watch app 35 (deploy/play.md).

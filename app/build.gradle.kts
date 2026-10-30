@@ -136,6 +136,8 @@ dependencies {
     implementation(project(":core"))
     // Room, the repositories, the CommandHandler, sync and the rest timer, shared with wear/.
     implementation(project(":data"))
+    // The shared screens in Compose Multiplatform (the theme so far), the iOS app's too.
+    implementation(project(":ui"))
 
     val composeBom = platform("androidx.compose:compose-bom:2026.05.01")
     implementation(composeBom)

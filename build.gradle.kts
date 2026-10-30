@@ -13,6 +13,10 @@ plugins {
     id("com.google.devtools.ksp") version "2.2.21-2.0.5" apply false
     // Room's schema export for a multiplatform module (data/).
     id("androidx.room") version "2.8.5" apply false
+    // Compose Multiplatform for the shared screens (ui/). 1.10.3 is the last line whose iOS klibs are
+    // compiled with Kotlin 2.2 (1.11's need 2.3); on Android its artifacts are Jetpack Compose's, and
+    // the BOM app/ and wear/ use (Compose 1.11) wins the resolution there.
+    id("org.jetbrains.compose") version "1.10.3" apply false
     // FCM push: applied by app/ and wear/ only when they have a google-services.json (see their build files).
     id("com.google.gms.google-services") version "4.4.2" apply false
 }
