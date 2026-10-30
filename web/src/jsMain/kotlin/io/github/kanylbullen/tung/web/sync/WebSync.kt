@@ -42,9 +42,9 @@ sealed interface SyncResult {
  * again. Success and failure are recorded in [WebSettings]; a 401 signs the
  * browser out.
  *
- * This loop is the one piece the phone has in `data/` and the web has here;
- * it moves into core behind a transport interface once `data/` is
- * multiplatform (a follow-up agreed with that work).
+ * This loop is the one piece the phone has in `data/` (`SyncClient`) and the
+ * web has here; it moves into core behind a transport interface, a
+ * follow-up now that `data/` is multiplatform.
  *
  * @param retryDelaysMillis the waits between attempts of one request that
  *   failed with a 5xx or could not reach the server; a 4xx is never retried.

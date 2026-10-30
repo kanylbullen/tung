@@ -93,6 +93,32 @@ class VoiceFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))
     }
 
+    /**
+     * "Klar" on a set the screen shows as 80 × 8 that has lost its reps since
+     * (a sync's write landing before the tap; here written behind Room's back):
+     * `log_set` refuses it, nothing is ticked, no rest starts, and the echo says
+     * the set was not logged rather than "80 × 8 logged".
+     */
+    @Test
+    @Config(qualifiers = "sv-w411dp-h891dp-xhdpi")
+    fun klarOnASetTheCommandRefusesIsNotEchoedAsLogged() {
+        benchWorkout()
+        tapMic()
+        app.speech.say("åttio kilo åtta reps")
+        waitForText(logSet("80", "8"))
+        waitUntil { !app.speech.listening }
+        db.openHelper.writableDatabase.execSQL("UPDATE set_entry SET reps = 0")
+
+        tapMic()
+        app.speech.say("klar")
+        waitForText(str(R.string.voice_echo_not_logged))
+        waitForText(logSet("80", str(R.string.workout_reps_empty)))
+        screenshot("1-not-logged")
+        compose.onNode(hasText(str(R.string.voice_echo_logged, "80", "8"))).assertDoesNotExist()
+        compose.onNode(hasContentDescription(str(R.string.rest_title))).assertDoesNotExist()
+        assertEquals(0, count("SELECT COUNT(*) FROM set_entry WHERE completed = 1"))
+    }
+
     /** A long press keeps listening: two utterances, one set logged, and the chip turns it off. */
     @Test
     @Config(qualifiers = "sv-w411dp-h891dp-xhdpi")

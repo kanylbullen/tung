@@ -100,7 +100,7 @@ dependencies {
     // Room, the repositories, the CommandHandler, sync and the rest timer, shared with app/.
     implementation(project(":data"))
 
-    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+    val composeBom = platform("androidx.compose:compose-bom:2026.05.01")
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
@@ -110,8 +110,8 @@ dependencies {
     implementation("androidx.wear:wear-tooling-preview:1.0.0")
 
     implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
     constraints {
         // play-services-basement brings androidx.fragment 1.1.0, and lintVital refuses a release
@@ -128,14 +128,14 @@ dependencies {
     // TungWearApp is WorkManager's Configuration.Provider (sync in the background), and
     // syncs when the app comes to the foreground, as the phone does.
     implementation("androidx.work:work-runtime-ktx:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-process:2.9.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core-ktx:1.6.1")
-    testImplementation(testFixtures(project(":data")))
+    testImplementation(project(":data-fixtures"))
 }
 
 kotlin {

@@ -3,10 +3,14 @@ package io.github.kanylbullen.tung.core
 /**
  * Diacritic folding and composition without `java.text.Normalizer`, which
  * Kotlin Multiplatform does not have, from the tables `GenDiacritics.java`
- * writes out of the JDK's Unicode data (`DiacriticTables.kt`). They cover
- * the Basic Multilingual Plane except Hangul syllables and the CJK
- * compatibility ideographs, which are not diacritics; `DiacriticsTest`
- * compares both functions with the JDK over that range.
+ * writes out of the JDK's Unicode data (`DiacriticTables.kt`), plus the
+ * Hangul syllables, whose decomposition is a formula rather than a table
+ * ([appendHangulJamo]). Together they fold every character of the Basic
+ * Multilingual Plane as NFD minus the marks would, which `DiacriticsTest`
+ * checks against the JDK over the whole plane. Outside the plane nothing
+ * folds: a surrogate pair is kept as it is (the few canonical decompositions
+ * there, some Brahmic vowel signs, the musical symbols and the CJK
+ * Compatibility Ideographs Supplement, do not occur in exercise names).
  */
 
 private val folds: Map<Char, String> by lazy {
@@ -27,7 +31,8 @@ private const val ENTRY_SEPARATOR = '\u0001'
 /**
  * [text] canonically decomposed with every non-spacing mark removed, which is
  * NFD minus `\p{Mn}`: "Bänkpress" → "Bankpress", the ohm sign → omega, a lone
- * combining mark → nothing. Case is kept.
+ * combining mark → nothing, a Hangul syllable → its jamo (so "벤치프레스"
+ * contains "베", as the picker's search needs). Case is kept.
  */
 fun foldDiacritics(text: String): String {
     val out = StringBuilder(text.length)
@@ -35,10 +40,34 @@ fun foldDiacritics(text: String): String {
         val folded = folds[c]
         when {
             folded != null -> out.append(folded)
+            c in HANGUL_SYLLABLES -> out.appendHangulJamo(c)
             c.category != CharCategory.NON_SPACING_MARK -> out.append(c)
         }
     }
     return out.toString()
+}
+
+/** The precomposed Hangul syllables, U+AC00–U+D7A3, every one a leading consonant, a vowel and an optional trailing consonant. */
+private val HANGUL_SYLLABLES = '\uAC00'..'\uD7A3'
+private const val HANGUL_LEADING_BASE = 0x1100
+private const val HANGUL_VOWEL_BASE = 0x1161
+private const val HANGUL_TRAILING_BASE = 0x11A7
+private const val HANGUL_VOWEL_COUNT = 21
+private const val HANGUL_TRAILING_COUNT = 28
+
+/**
+ * [syllable]'s conjoining jamo, as NFD writes them (the Unicode Standard,
+ * "Hangul Syllable Decomposition"): the leading consonant, the vowel, and
+ * the trailing consonant when the syllable has one. Jamo are letters, not
+ * marks, so all of them are kept.
+ */
+private fun StringBuilder.appendHangulJamo(syllable: Char) {
+    val index = syllable.code - HANGUL_SYLLABLES.first.code
+    val perLeading = HANGUL_VOWEL_COUNT * HANGUL_TRAILING_COUNT
+    append((HANGUL_LEADING_BASE + index / perLeading).toChar())
+    append((HANGUL_VOWEL_BASE + index % perLeading / HANGUL_TRAILING_COUNT).toChar())
+    val trailing = index % HANGUL_TRAILING_COUNT
+    if (trailing > 0) append((HANGUL_TRAILING_BASE + trailing).toChar())
 }
 
 /**
