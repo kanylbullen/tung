@@ -68,3 +68,12 @@ fun lastSyncText(lastSyncAt: Long?, nowMillis: Long, locale: String, strings: St
         else -> strings.lastSyncOn(dateTime(lastSyncAt, locale))
     }
 }
+
+/** The weekday of [date] as the locale writes it short ("Mon", "mån"). */
+fun weekdayName(date: kotlinx.datetime.LocalDate, locale: String): String {
+    val options: dynamic = js("({})")
+    options.weekday = "short"
+    options.timeZone = "UTC"
+    val utcNoon = Date(Date.UTC(date.year, date.monthNumber - 1, date.dayOfMonth, 12, 0, 0, 0))
+    return Intl.DateTimeFormat(locale, options).format(utcNoon)
+}

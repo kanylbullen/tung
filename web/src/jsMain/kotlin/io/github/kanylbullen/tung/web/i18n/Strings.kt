@@ -33,6 +33,24 @@ interface Strings {
     val errorUrlHttps: String
     fun authFailure(failure: AuthFailure): String
 
+    // Home
+    val home: String
+    val thisWeek: String
+    fun weekWorkouts(count: Int): String
+    fun weekSets(count: Int): String
+    val weekNone: String
+    fun weekLast(volume: String): String
+    val weekBest: String
+    fun weekDaysDescription(days: String): String
+    val weekDaysNone: String
+    fun inProgressFor(duration: String): String
+    val inProgressHint: String
+    val routines: String
+    val routinesEmpty: String
+    val recent: String
+    val homeEmpty: String
+    val showAll: String
+
     // History
     val history: String
     val historyEmpty: String
@@ -81,6 +99,22 @@ object English : Strings {
         AuthFailure.SERVER -> "The server had a problem. Try again in a while."
     }
 
+    override val home = "Home"
+    override val thisWeek = "This week"
+    override fun weekWorkouts(count: Int): String = if (count == 1) "1 workout" else "$count workouts"
+    override fun weekSets(count: Int): String = if (count == 1) "1 set" else "$count sets"
+    override val weekNone = "No workout yet this week"
+    override fun weekLast(volume: String): String = "Last week $volume kg"
+    override val weekBest = "Best of the last 12 weeks"
+    override fun weekDaysDescription(days: String): String = "Volume per day this week: $days"
+    override val weekDaysNone = "nothing yet"
+    override fun inProgressFor(duration: String): String = "In progress for $duration"
+    override val inProgressHint = "Log it on your phone or watch; it shows up here when it is finished."
+    override val routines = "Routines"
+    override val routinesEmpty = "Routines you make on your phone show up here."
+    override val recent = "Recent workouts"
+    override val homeEmpty = "No workouts yet. Finished workouts show up here."
+    override val showAll = "Show all"
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -132,6 +166,22 @@ object Swedish : Strings {
         AuthFailure.SERVER -> "Servern fick ett fel. Försök igen om en stund."
     }
 
+    override val home = "Hem"
+    override val thisWeek = "Den här veckan"
+    override fun weekWorkouts(count: Int): String = "$count pass"
+    override fun weekSets(count: Int): String = "$count set"
+    override val weekNone = "Inget pass än den här veckan"
+    override fun weekLast(volume: String): String = "Förra veckan $volume kg"
+    override val weekBest = "Bäst på 12 veckor"
+    override fun weekDaysDescription(days: String): String = "Volym per dag den här veckan: $days"
+    override val weekDaysNone = "inget än"
+    override fun inProgressFor(duration: String): String = "Pågår sedan $duration"
+    override val inProgressHint = "Logga det på telefonen eller klockan; det hamnar här när det är avslutat."
+    override val routines = "Rutiner"
+    override val routinesEmpty = "Rutiner du gör på telefonen hamnar här."
+    override val recent = "Senaste passen"
+    override val homeEmpty = "Inga pass än. Avslutade pass hamnar här."
+    override val showAll = "Visa alla"
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"

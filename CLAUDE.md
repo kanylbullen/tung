@@ -2059,7 +2059,7 @@ everything else. Package `io.github.kanylbullen.tung.web`, UI in Compose
 HTML (DOM elements as composables with the Compose runtime; the
 `org.jetbrains.compose.runtime:runtime` and `org.jetbrains.compose.html:html-core`
 libraries, no `org.jetbrains.compose` plugin). Build and layout:
-`web/README.md`. What runs today: sign in, the first sync, History.
+`web/README.md`. What runs today: sign in, sync, Home and History.
 
 - **The log lives in memory and is persisted to IndexedDB**
   (`store/TungStore.kt`, `store/IndexedDb.kt`). The eight tables hold the
@@ -2108,6 +2108,17 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   whether a shared computer should rather clear it is an open question.
   Sign in marks everything dirty except the untouched catalogue rows
   (`nameKey` set and `updatedAt` 0), as `SyncDao.markExercisesDirty` does.
+- **Home and History** (`ui/HomeScreen.kt`, `home/HomeModel.kt`,
+  `ui/HistoryScreen.kt`): a bottom bar switches them by the location's
+  hash (`#/`, `#/history`), so back and forward work and a link opens a
+  tab. Home is the phone's: "This week" from core's `thisWeek` over
+  `progressSets(store)` (the hero number, workouts and sets or last week,
+  "Best of the last 12 weeks", the seven days as bars), the workout in
+  progress (read-only until the web has a workout screen), the three most
+  recently used routines and the three latest workouts. "This week" is the
+  browser's local week: kotlinx-datetime needs a time-zone database in
+  the browser, `@js-joda/timezone`'s ten-year range, loaded in `Main.kt`.
+  `HomeModelTest`.
 - **Commands** (`store/WebCommandStore.kt`): every change to training data
   is core's `CommandExecutor` (`container.commands`, `startedBy = web`) over
   `WebCommandStore`, the browser's `CommandStore`: one command at a time

@@ -36,35 +36,10 @@ fun HistoryScreen(container: WebContainer, account: Account) {
     val rows = remember(version) {
         historyRows(container.store) { exerciseDisplayName(it, container.catalogueNames, strings.tag) }
     }
-    val running = container.sync.running.collectAsState().value
-    val syncState = container.settings.syncState.collectAsState().value
-    val scope = rememberCoroutineScope()
     val now = Date.now().toLong()
-    val status = when {
-        running -> strings.syncing
-        syncState.lastError != null -> SyncFailure.fromKey(syncState.lastError)?.let(strings::syncFailure)
-            ?: lastSyncText(syncState.lastSyncAt, now, container.locale, strings)
-        else -> lastSyncText(syncState.lastSyncAt, now, container.locale, strings)
-    }
 
     Div({ classes("screen") }) {
-        Div({ classes("topbar") }) {
-            H1 { Text(strings.history) }
-            Div({ classes("actions") }) {
-                Button({
-                    classes("text-button")
-                    if (running) disabled()
-                    onClick { container.syncInBackground() }
-                }) { Text(strings.syncNow) }
-                Button({
-                    classes("text-button")
-                    onClick { scope.launch { container.signOut() } }
-                }) { Text(strings.signOut) }
-            }
-        }
-        Div({ classes("status"); attr("role", "status") }) {
-            Text(strings.signedInAs(account.email) + strings.separator + status)
-        }
+        TopBar(container, account) { H1 { Text(strings.history) } }
         if (rows.isEmpty()) {
             Div({ classes("empty") }) { Text(strings.historyEmpty) }
         } else {
@@ -79,9 +54,45 @@ fun HistoryScreen(container: WebContainer, account: Account) {
     }
 }
 
+/**
+ * Every screen's top: its [title], Sync now and Sign out, and under them
+ * the account and how sync stands ("Last sync just now", or why it failed).
+ */
+@Composable
+fun TopBar(container: WebContainer, account: Account, title: @Composable () -> Unit) {
+    val strings = container.strings
+    val running = container.sync.running.collectAsState().value
+    val syncState = container.settings.syncState.collectAsState().value
+    val scope = rememberCoroutineScope()
+    val now = Date.now().toLong()
+    val status = when {
+        running -> strings.syncing
+        syncState.lastError != null -> SyncFailure.fromKey(syncState.lastError)?.let(strings::syncFailure)
+            ?: lastSyncText(syncState.lastSyncAt, now, container.locale, strings)
+        else -> lastSyncText(syncState.lastSyncAt, now, container.locale, strings)
+    }
+    Div({ classes("topbar") }) {
+        title()
+        Div({ classes("actions") }) {
+            Button({
+                classes("text-button")
+                if (running) disabled()
+                onClick { container.syncInBackground() }
+            }) { Text(strings.syncNow) }
+            Button({
+                classes("text-button")
+                onClick { scope.launch { container.signOut() } }
+            }) { Text(strings.signOut) }
+        }
+    }
+    Div({ classes("status"); attr("role", "status") }) {
+        Text(strings.signedInAs(account.email) + strings.separator + status)
+    }
+}
+
 /** A workout's row: its title, "Thu 22 Oct · 47 min · 5 exercises" muted under it, and the volume on the right. */
 @Composable
-private fun WorkoutRow(row: HistoryRow, container: WebContainer, now: Long) {
+fun WorkoutRow(row: HistoryRow, container: WebContainer, now: Long) {
     val strings = container.strings
     Div({ classes("main") }) {
         Div({ classes("title") }) { WorkoutTitle(row, container) }
@@ -111,16 +122,22 @@ private fun WorkoutRow(row: HistoryRow, container: WebContainer, now: Long) {
 private fun WorkoutTitle(row: HistoryRow, container: WebContainer) {
     val routineName = row.routineName
     if (routineName != null) {
-        val cut = routineName.lastIndexOf(ROUTINE_NAME_SEPARATOR)
-        if (cut > 0) {
-            Span({ classes("group") }) { Text(routineName.substring(0, cut + ROUTINE_NAME_SEPARATOR.length)) }
-            Span({ classes("day") }) { Text(routineName.substring(cut + ROUTINE_NAME_SEPARATOR.length)) }
-        } else {
-            Span({ classes("plain") }) { Text(routineName) }
-        }
+        RoutineTitle(routineName)
         return
     }
     Span({ classes("plain") }) {
         Text(if (row.exerciseNames.isEmpty()) container.strings.workoutUntitled else row.exerciseNames.joinToString(", "))
+    }
+}
+
+/** A routine's name with everything up to the last [ROUTINE_NAME_SEPARATOR] muted, the group cut before the day. */
+@Composable
+fun RoutineTitle(name: String) {
+    val cut = name.lastIndexOf(ROUTINE_NAME_SEPARATOR)
+    if (cut > 0) {
+        Span({ classes("group") }) { Text(name.substring(0, cut + ROUTINE_NAME_SEPARATOR.length)) }
+        Span({ classes("day") }) { Text(name.substring(cut + ROUTINE_NAME_SEPARATOR.length)) }
+    } else {
+        Span({ classes("plain") }) { Text(name) }
     }
 }
