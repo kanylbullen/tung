@@ -77,6 +77,8 @@ interface Strings {
     val emptyWorkout: String
     fun setDone(number: Int): String
     fun removeExercise(name: String): String
+    fun removeExerciseTitle(name: String, logged: Int): String
+    val remove: String
 
     // History
     val history: String
@@ -171,6 +173,9 @@ object English : Strings {
     override val emptyWorkout = "Add an exercise to start."
     override fun setDone(number: Int): String = "Set $number done"
     override fun removeExercise(name: String): String = "Remove $name"
+    override fun removeExerciseTitle(name: String, logged: Int): String =
+        if (logged == 1) "Remove $name and its logged set?" else "Remove $name and its $logged logged sets?"
+    override val remove = "Remove"
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -267,6 +272,9 @@ object Swedish : Strings {
     override val emptyWorkout = "Lägg till en övning för att börja."
     override fun setDone(number: Int): String = "Set $number klart"
     override fun removeExercise(name: String): String = "Ta bort $name"
+    override fun removeExerciseTitle(name: String, logged: Int): String =
+        if (logged == 1) "Ta bort $name och dess loggade set?" else "Ta bort $name och dess $logged loggade set?"
+    override val remove = "Ta bort"
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"

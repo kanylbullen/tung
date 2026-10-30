@@ -161,13 +161,16 @@ private fun finishBody(workout: WorkoutView, container: WebContainer): String = 
 private fun ExerciseBlock(exercise: ExerciseView, container: WebContainer, run: (Command) -> Unit) {
     val strings = container.strings
     val locale = container.locale
+    var askingToRemove by remember { mutableStateOf(false) }
+    val logged = exercise.sets.count { it.completed && it.reps > 0 }
     Div({ classes("exercise") }) {
         Div({ classes("exercise-head") }) {
             H2 { Text(exercise.name) }
             Button({
                 classes("icon-button")
                 attr("aria-label", strings.removeExercise(exercise.name))
-                onClick { run(Command.RemoveExercise(exercise.workoutExerciseId)) }
+                // As on the phone: at once without a logged set, else asked first.
+                onClick { if (logged == 0) run(Command.RemoveExercise(exercise.workoutExerciseId)) else askingToRemove = true }
             }) { Text("×") }
         }
         if (exercise.last.isNotEmpty()) {
@@ -180,6 +183,18 @@ private fun ExerciseBlock(exercise: ExerciseView, container: WebContainer, run: 
             classes("text-button")
             onClick { run(Command.AddSet(exercise.workoutExerciseId)) }
         }) { Text(strings.addSet) }
+    }
+    if (askingToRemove) {
+        Dialog(
+            title = strings.removeExerciseTitle(exercise.name, logged),
+            body = "",
+            confirm = strings.remove,
+            cancel = strings.keepTraining,
+            onCancel = { askingToRemove = false },
+        ) {
+            askingToRemove = false
+            run(Command.RemoveExercise(exercise.workoutExerciseId))
+        }
     }
 }
 
@@ -250,7 +265,7 @@ fun Dialog(title: String, body: String, confirm: String, cancel: String, onCance
     Div({ classes("sheet-backdrop"); onClick { onCancel() } })
     Div({ classes("dialog"); attr("role", "alertdialog"); attr("aria-modal", "true"); attr("aria-label", title) }) {
         H2 { Text(title) }
-        P { Text(body) }
+        if (body.isNotEmpty()) P { Text(body) }
         Div({ classes("dialog-actions") }) {
             Button({ classes("secondary"); onClick { onCancel() } }) { Text(cancel) }
             Button({ classes("accent-button"); onClick { onConfirm() } }) { Text(confirm) }
