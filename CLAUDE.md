@@ -2102,8 +2102,13 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   and the browser's formats). No screen test yet.
 - **Not there yet:** every other screen, commands, a periodic sync, a
   second tab (two tabs each hold the log in memory; the last write per row
-  wins at the next load), Sign in with Google, hosting (static files; GitHub
-  Pages from CI, Vercel, or the server's own origin are the candidates).
+  wins at the next load), Sign in with Google.
+- **Hosting**: GitHub Pages, `https://kanylbullen.github.io/tung/`,
+  published from `main` by `.github/workflows/web-pages.yml` (its own
+  workflow so only its deploy job gets `pages: write`; Pages' source is
+  "GitHub Actions"). Every path falls back to the shell (`404.html` is a
+  copy of `index.html`). The site has no server of its own: everything
+  relative, so it works under `/tung/` or any other path.
 
 ## Building
 

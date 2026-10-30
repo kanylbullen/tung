@@ -1,0 +1,72 @@
+name: Web app on GitHub Pages
+
+# The web app (web/, a PWA) published at https://kanylbullen.github.io/tung/
+# from main. Static files only: the site talks to whatever tung-server the
+# user signs in to (https://tung.xuper.fun by default), whose CORS allows any
+# origin with a bearer token.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "core/**"
+      - "catalog/core.json"
+      - "app/src/main/res/font/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "kotlin-js-store/**"
+      - ".github/workflows/web-pages.yml"
+  workflow_dispatch:
+
+# Nothing by default; the deploy job alone may publish to Pages.
+permissions:
+  contents: read
+
+# One deployment at a time, and a running one is never cancelled halfway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+
+      - name: Build the web app
+        run: ./gradlew :web:jsBrowserDistribution --no-daemon --stacktrace
+
+      # Pages serves 404.html for an unknown path; the app is one page, so
+      # the shell answers every path under the site.
+      - name: Add the fallback page
+        run: cp web/build/dist/js/productionExecutable/index.html web/build/dist/js/productionExecutable/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/build/dist/js/productionExecutable/
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

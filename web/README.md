@@ -41,6 +41,15 @@ the path):
 ./gradlew :web:jsBrowserTest --no-daemon
 ```
 
+## Where it runs
+
+`main` is published to **https://kanylbullen.github.io/tung/** by
+`.github/workflows/web-pages.yml` (on a push that touches the web, core or
+the catalogue, or by hand from the Actions tab). Open it on a phone and
+"Add to Home Screen" / "Install app"; it signs in to `https://tung.xuper.fun`
+by default. The server must be a version that allows `X-Tung-Device` in CORS,
+or sign-in works and every sync says the server cannot be reached.
+
 ## Try it against a server
 
 The sign-in form offers `https://tung.xuper.fun` (`DEFAULT_SERVER_URL` in
