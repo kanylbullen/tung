@@ -10,8 +10,8 @@ import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncPlanner
 import io.github.kanylbullen.tung.core.sync.SyncRequest
 import io.github.kanylbullen.tung.core.sync.SyncResponse
-import io.github.kanylbullen.tung.data.systemMillis
 import io.github.kanylbullen.tung.data.ioDispatcher
+import io.github.kanylbullen.tung.data.systemMillis
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
@@ -25,7 +25,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,10 +33,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.io.IOException
 
 /** The JSON of the wire: full rows (nulls and defaults written), unknown keys from a newer server ignored. */
 val SyncJson = Json {

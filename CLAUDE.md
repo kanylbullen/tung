@@ -31,7 +31,7 @@ Adding an app language:
 Kotlin 2.2.21 (KSP 2.2.21-2.0.5, KSP2), Jetpack Compose (BOM 2024.12.01),
 Material 3, Room 2.8.5 via KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
 DataStore 1.1.7 (small state outside Room). AGP 8.9.1,
-Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the three Android
+Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the four Android
 modules: AGP's default is not compileSdk's). compileSdk 36; targetSdk 36 on
 the phone (Play's requirement since 2026-08-31) and 35 on the watch (Play's
 Wear OS bar; Android 16's behaviour changes are not wanted there yet);
@@ -49,12 +49,13 @@ the active workout's factory also passes `createSavedStateHandle()`, for the res
 
 ## Layers
 
-Five Gradle modules:
+Six Gradle modules:
 
 | Module | Kind | Depends on | Holds |
 |---|---|---|---|
 | `core/` | Kotlin Multiplatform (JVM target today) | — | Domain rules, commands, sync and watch protocols |
 | `data/` | Kotlin Multiplatform (Android, iOS klibs) | `core` | Room, repositories, the CommandHandler, sync client, settings, rest timer, `TungContainer` |
+| `data-fixtures/` | Android library (tests only) | `core`, `data` | The test doubles of data's seams: `FakeSyncServer`, `MemoryTokenStore`, `FakePushEnvironment`, `FakeHealthConnect` |
 | `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
 | `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
 | `server/` | Ktor server | `core` | tung-server |
@@ -137,14 +138,18 @@ holds what needs Android: `TungContainer`, the database builders,
 WorkManager's `SyncWorker`, `EncryptedTokenStore`, the rest timer's alarm and
 alerts, the ongoing notification, push, Health Connect, the Wear state and
 `ExerciseNames`. **`src/iosMain`** holds the iOS actuals (below). The
-`expect`/`actual` seams, each one file per platform: `TungDatabase.build`
-(Room's Android open helper as always; `BundledSQLiteDriver` over a file path
-on iOS) with `ALL_MIGRATIONS` and the seed callback, both running the SQL of
-common `DatabaseSchema`; `RoomDatabase.transaction` (Room's `withTransaction`
-on Android, a writer connection's `immediateTransaction` on iOS: every rule
-that writes more than one row runs in one); `ioDispatcher` (the platform's
-`Dispatchers.IO`, which common code cannot name); `syncHttpClient` and
-`aiHttpClient` (OkHttp on Android, Darwin on iOS). The iOS klibs compile on
+platform seams, each one file per platform: `TungDatabase.build`, an
+extension on the companion per platform (Room's Android open helper on the
+phone and the watch; `BundledSQLiteDriver` over a file path on iOS), and the
+`expect`/`actual` declarations `TungDatabaseConstructor` (Room generates the
+actuals), `ALL_MIGRATIONS` and the seed callback (both running the SQL of
+common `DatabaseSchema`), `RoomDatabase.transaction` (Room's `withTransaction`
+on Android; on iOS a writer connection's `immediateTransaction`, which checks
+the caller's `Job` before it commits, so a cancelled caller rolls back there
+too: every rule that writes more than one row runs in one), `ioDispatcher`
+(the platform's `Dispatchers.IO`, which common code cannot name), and
+`syncHttpClient` and `aiHttpClient` (OkHttp on Android; Darwin on iOS, whose
+engine has no connect timeout, only the socket one). The iOS klibs compile on
 Linux and in CI (`:data:compileKotlinIosArm64`), so a JVM-only type in
 `commonMain` fails the build before there is a Mac. The packages are the ones
 the files had in `app/`:
@@ -168,7 +173,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 - **`app` and `wear` never touch Room.** No DAO, no `TungDatabase`, no
   `transaction` outside `data/`: the apps read the repositories' Flows
   and change data through `container.commands` (see "Commands").
-- **`TungContainer(context, clock, createDatabase, createTokenStore, startedBy, createPushEnvironment)`** is the
+- **`TungContainer(context, clock, createDatabase, createTokenStore, startedBy, createPushEnvironment, createHealthConnect, createAiKeyStore)`** is the
   one container. The application implements `TungHost` (`container`,
   `isInForeground`, the notification icon, the intents "Rest over" and the
   ongoing notification open), which
@@ -1103,7 +1108,7 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   routines (their exercises and the program days that use them), programs and
   program days. Existing queries never read the table. There is no delete path
   for exercises.
-- **One sync** (`SyncClient.syncOnce`, always on `Dispatchers.IO`, one at a
+- **One sync** (`SyncClient.syncOnce`, always on the platform's IO dispatcher (`ioDispatcher`), one at a
   time): read the dirty rows and tombstones in one transaction, plan, POST each
   chunk with the latest cursor (5xx and I/O errors are retried twice, a 4xx
   never), and apply each response in one Room transaction (`SyncStore.apply`):
@@ -1179,8 +1184,10 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   `room { schemaDirectory }` in `data/build.gradle.kts`), adds a
   `MigrationStep` with its SQL to `DatabaseSchema.MIGRATIONS`
   (`data/src/commonMain/.../data/DatabaseSchema.kt`; the platforms'
-  `ALL_MIGRATIONS` run it, and every builder registers them all) and a case
-  in `MigrationTest`, which creates the old
+  `ALL_MIGRATIONS` run it, and every builder registers them all; the test
+  reaches a step through `MIGRATION_1_2`/`MIGRATION_2_3`, accessors over
+  `ALL_MIGRATIONS` in `TungDatabase.android.kt`, so a new step gets one) and
+  a case in `MigrationTest`, which creates the old
   version from its committed JSON with `MigrationTestHelper` under
   Robolectric (the schemas are a test asset directory), runs the migration,
   validates against the new schema and reads the old rows back.
@@ -1415,7 +1422,7 @@ to Health Connect, it stores what the phone syncs.
   `androidx.health.connect:connect-client:1.1.0`, the stable release, which
   needs compileSdk 36), and
   `HealthConnectRecorder`, which does the work. `FakeHealthConnect` is in
-  data's test fixtures. `TungContainer(createHealthConnect = …)` is the seam:
+  the `data-fixtures` module. `TungContainer(createHealthConnect = …)` is the seam:
   `TungApp` passes `::AndroidHealthConnectGateway`, the watch nothing (null),
   `FlowTestApp` the fake. The pure parts are in core, `core/health/`:
   `HEALTH_CONNECT_SEGMENTS` (catalogue key → `HealthSegmentType`, named after
@@ -2041,7 +2048,10 @@ export PATH=$JAVA_HOME/bin:$PATH
 variant) and `:server:test`. Only the core tests, fast and without AGP:
 `./gradlew :core:jvmTest --no-daemon`. Results land in
 `core/build/test-results/jvmTest/` and
-`<module>/build/test-results/testDebugUnitTest/`.
+`<module>/build/test-results/testDebugUnitTest/`. `test` compiles no iOS
+code: `./gradlew :core:compileKotlinIosArm64 :data:compileKotlinIosArm64
+--no-daemon` is the check CI adds, the one that catches a JVM-only type in
+either `commonMain` (the Kotlin/Native compiler lands in `~/.konan`).
 
 **On a phone, install `dogfood`, not `debug`:** `./gradlew :app:assembleDogfood`
 gives `app/build/outputs/apk/dogfood/app-dogfood.apk`, release code (R8, not
@@ -2101,9 +2111,9 @@ part of `./gradlew test`. Only them:
   `Clock` (`FlowTestApp.today`) for Home's "Today", and a `TokenStore` in
   memory (`FlowTestApp.tokens`), because Robolectric has no Android Keystore,
   and the push transports (`FlowTestApp.push`, a `FakePushEnvironment` from
-  data's test fixtures, none by default), and Health Connect
-  (`FlowTestApp.healthConnect`, a `FakeHealthConnect` from data's test
-  fixtures: available, nothing granted, nothing to read by default), and the
+  the `data-fixtures` module, none by default), and Health Connect
+  (`FlowTestApp.healthConnect`, a `FakeHealthConnect` from the same module:
+  available, nothing granted, nothing to read by default), and the
   assistant's API key in memory (`FlowTestApp.aiKeys`), and Account's default
   server (`FlowTestApp.defaultServer`, a closed localhost port; a test that
   wants the default to answer points it at its `FakeSyncServer`). Those six
@@ -2224,7 +2234,8 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
   builds, and use `--no-daemon` so that no daemon is left behind. `/tmp` is
   tmpfs — put nothing large there.
 - **`kotlinOptions {}` is gone.** The Android modules set their bytecode
-  target in a top-level `kotlin { compilerOptions { jvmTarget } }` block,
+  target in a top-level `kotlin { compilerOptions { jvmTarget } }` block
+  (`data/`, multiplatform, inside `kotlin { androidTarget { compilerOptions } }`),
   the DSL Kotlin 2.2 keeps; the old block inside `android {}` is an error.
   KSP runs as KSP2 (the default since KSP 2.0): Room 2.6.x's generator
   crashed under it (`unexpected jvm signature V`), which is why Room is 2.8.
@@ -2239,5 +2250,6 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
 - No `!!`, no `GlobalScope`, no blocking DB calls on main. The DAOs are
   `suspend` or `Flow`.
 - **A schema change without a migration crashes every installed phone** on
-  open. Version + 1, the committed schema JSON, a `Migration` and a
-  `MigrationTest` case, always; see "Sync", "Schema".
+  open. Version + 1, the committed schema JSON, a `MigrationStep` in
+  `DatabaseSchema.MIGRATIONS` and a `MigrationTest` case, always; see "Sync",
+  "Schema".

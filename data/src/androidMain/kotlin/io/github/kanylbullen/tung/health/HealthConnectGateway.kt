@@ -27,7 +27,7 @@ enum class HealthAvailability {
 /**
  * Health Connect as Tung uses it (CLAUDE.md, "Health Connect"), behind an
  * interface so the flow and data tests run against [FakeHealthConnect][io.github.kanylbullen.tung.health.FakeHealthConnect]
- * (test fixtures): the devserver and Robolectric have no Health Connect.
+ * (the `data-fixtures` module): the devserver and Robolectric have no Health Connect.
  * [AndroidHealthConnectGateway] is the real one, on the phone only.
  */
 interface HealthConnectGateway {

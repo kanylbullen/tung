@@ -18,10 +18,11 @@ import io.github.kanylbullen.tung.data.AppExerciseResolver
 import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.TungDatabase
-import io.github.kanylbullen.tung.data.buildInMemory
 import io.github.kanylbullen.tung.data.WorkoutRepository
+import io.github.kanylbullen.tung.data.buildInMemory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.TimeZone
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -30,7 +31,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
-import kotlinx.datetime.TimeZone
 
 /**
  * The [Importer] over a real Room database with the synthetic Jefit export

@@ -22,8 +22,9 @@ import kotlinx.io.IOException
 const val AI_TIMEOUT_MILLIS = 120_000L
 
 /**
- * The assistant's HTTP client: OkHttp with [timeoutMillis] for the whole
- * call, **no retries** (the engine's silent retry on a failed connection is off)
+ * The assistant's HTTP client: the platform's engine (OkHttp on Android,
+ * Darwin on iOS) with [timeoutMillis] for the whole call, **no retries**
+ * (where the engine has a silent retry on a failed connection, it is off)
  * and **no redirects**, so the key in the header never follows a redirect to
  * another host. Separate from sync's client, whose timeouts and retries differ.
  */

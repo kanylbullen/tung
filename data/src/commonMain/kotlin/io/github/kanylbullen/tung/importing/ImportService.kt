@@ -1,6 +1,5 @@
 package io.github.kanylbullen.tung.importing
 
-import io.github.kanylbullen.tung.data.systemMillis
 import io.github.kanylbullen.tung.core.command.ExerciseCandidate
 import io.github.kanylbullen.tung.core.command.ExerciseRef
 import io.github.kanylbullen.tung.core.command.ExerciseResolver
@@ -15,6 +14,7 @@ import io.github.kanylbullen.tung.core.importing.adapterFor
 import io.github.kanylbullen.tung.core.importing.importExerciseNames
 import io.github.kanylbullen.tung.core.importing.nameUsage
 import io.github.kanylbullen.tung.core.importing.resolveImportNames
+import io.github.kanylbullen.tung.data.systemMillis
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf

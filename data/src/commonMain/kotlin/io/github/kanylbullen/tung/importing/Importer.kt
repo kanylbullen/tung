@@ -9,7 +9,6 @@ import io.github.kanylbullen.tung.core.importing.ImportChoice
 import io.github.kanylbullen.tung.core.importing.importedCustomExerciseId
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.core.sync.SyncTable
-import io.github.kanylbullen.tung.data.systemMillis
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
@@ -18,6 +17,7 @@ import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.WorkoutExercise
 import io.github.kanylbullen.tung.data.WorkoutRepository
+import io.github.kanylbullen.tung.data.systemMillis
 import io.github.kanylbullen.tung.data.transaction
 
 /** What one import wrote; [routineIds] is what "Undo import" deletes besides the batch's workouts. */

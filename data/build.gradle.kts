@@ -93,7 +93,7 @@ kotlin {
             // MigrationTest: opens version 1 from data/schemas and runs the migrations to the current one.
             implementation("androidx.room:room-testing:2.8.5")
             implementation("androidx.test:runner:1.6.2")
-            // FakeSyncServer and MemoryTokenStore, shared with the tests of app/ and wear/.
+            // FakeSyncServer, MemoryTokenStore, FakePushEnvironment and FakeHealthConnect, shared with the tests of app/ and wear/.
             implementation(project(":data-fixtures"))
         }
     }

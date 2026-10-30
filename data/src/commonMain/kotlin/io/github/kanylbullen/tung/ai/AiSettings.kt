@@ -1,12 +1,12 @@
 package io.github.kanylbullen.tung.ai
 
-import io.github.kanylbullen.tung.data.ioDispatcher
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import io.github.kanylbullen.tung.core.ai.AiProviderKind
+import io.github.kanylbullen.tung.data.ioDispatcher
 import io.github.kanylbullen.tung.sync.TokenStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

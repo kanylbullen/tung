@@ -6,7 +6,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 
-/** NSURLSession, through Ktor's Darwin engine. */
+/** NSURLSession, through Ktor's Darwin engine, which has no connect timeout: the socket timeout (60 s of silence) covers a host that never answers. */
 actual fun syncHttpClient(): HttpClient = HttpClient(Darwin) {
     expectSuccess = false
     install(ContentNegotiation) { json(SyncJson) }

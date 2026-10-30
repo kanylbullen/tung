@@ -3,10 +3,10 @@ package io.github.kanylbullen.tung.data
 import io.github.kanylbullen.tung.core.CoreExercise
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.catalog.CatalogueIndex
-import kotlin.concurrent.Volatile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.concurrent.Volatile
 
 /**
  * Core's [CatalogueIndex] over the catalogue files the APK ships, for the

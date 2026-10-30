@@ -10,8 +10,8 @@ import io.github.kanylbullen.tung.core.health.HealthSegmentType
 import io.github.kanylbullen.tung.core.health.HeartRateSample
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.TungDatabase
-import io.github.kanylbullen.tung.data.buildInMemory
 import io.github.kanylbullen.tung.data.WorkoutRepository
+import io.github.kanylbullen.tung.data.buildInMemory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
