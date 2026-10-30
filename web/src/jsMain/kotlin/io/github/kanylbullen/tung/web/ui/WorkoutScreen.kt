@@ -9,7 +9,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import io.github.kanylbullen.tung.core.DEFAULT_REST_SECONDS
 import io.github.kanylbullen.tung.core.REPS_RULER
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.RulerScale
@@ -101,7 +100,7 @@ fun WorkoutScreen(container: WebContainer) {
     }
 
     fun startRest(exercise: ExerciseView) {
-        val seconds = exercise.restSeconds ?: DEFAULT_REST_SECONDS
+        val seconds = exercise.restSeconds ?: container.preferences.restSeconds.value
         rest = if (seconds > 0) RestTimer(Date.now().toLong() + seconds * 1000L, seconds * 1000L) else null
         RestStore.save(rest)
     }
@@ -499,8 +498,9 @@ fun Picker(container: WebContainer, onClose: () -> Unit, onPick: (String) -> Uni
     val strings = container.strings
     var query by remember { mutableStateOf("") }
     val order = remember { browseNameOrder(container.locale) }
-    val rows = remember(query) {
-        pickerRows(container.store, query, { exerciseDisplayName(it, container.catalogueNames, strings.tag) }, order)
+    val available = container.preferences.equipment.collectAsState().value
+    val rows = remember(query, available) {
+        pickerRows(container.store, query, { exerciseDisplayName(it, container.catalogueNames, strings.tag) }, order, available)
     }
     Div({ classes("sheet-backdrop"); onClick { onClose() } })
     Div({ classes("sheet"); attr("role", "dialog"); attr("aria-modal", "true"); attr("aria-label", strings.addExercise) }) {

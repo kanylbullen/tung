@@ -391,3 +391,17 @@ a.text-button { text-decoration: none; display: inline-flex; align-items: center
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
 .bottom-bar .tab { flex-basis: 140px; font-size: 15px; }
 .chips { scrollbar-width: none; } .chips::-webkit-scrollbar { display: none; }
+
+/* --- Settings --- */
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; }
+.setting.column { flex-direction: column; align-items: stretch; }
+.setting-label { font-weight: 600; }
+.setting-control { display: flex; align-items: center; gap: 8px; }
+.setting-value { min-width: 3.5em; text-align: center; font-weight: 700; font-size: 18px; }
+.setting-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+.hint.flush, .chips.flush { margin-left: 0; padding-left: 0; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 4px 12px; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.flush-link { padding-left: 0; }
