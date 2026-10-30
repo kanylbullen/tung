@@ -77,6 +77,19 @@ interface Strings {
     val emptyWorkout: String
     fun setDone(number: Int): String
     fun removeExercise(name: String): String
+    val weight: String
+    val reps: String
+    val done: String
+    val applyToOpenSets: String
+    val less: String
+    val more: String
+    fun logSet(name: String, values: String): String
+    fun addSetSticky(name: String, values: String): String
+    val rest: String
+    val skip: String
+    val plusThirty: String
+    fun makeCurrent(number: Int): String
+    val currentSet: String
     fun removeExerciseTitle(name: String, logged: Int): String
     val remove: String
 
@@ -173,6 +186,19 @@ object English : Strings {
     override val emptyWorkout = "Add an exercise to start."
     override fun setDone(number: Int): String = "Set $number done"
     override fun removeExercise(name: String): String = "Remove $name"
+    override val weight = "Weight"
+    override val reps = "Reps"
+    override val done = "Done"
+    override val applyToOpenSets = "Apply to all sets not ticked"
+    override val less = "Less"
+    override val more = "More"
+    override fun logSet(name: String, values: String): String = "Log set · $name · $values"
+    override fun addSetSticky(name: String, values: String): String = "Add set · $name · $values"
+    override val rest = "Rest"
+    override val skip = "Skip"
+    override val plusThirty = "+30 s"
+    override fun makeCurrent(number: Int): String = "Make set $number the current set"
+    override val currentSet = "Current set"
     override fun removeExerciseTitle(name: String, logged: Int): String =
         if (logged == 1) "Remove $name and its logged set?" else "Remove $name and its $logged logged sets?"
     override val remove = "Remove"
@@ -272,6 +298,19 @@ object Swedish : Strings {
     override val emptyWorkout = "Lägg till en övning för att börja."
     override fun setDone(number: Int): String = "Set $number klart"
     override fun removeExercise(name: String): String = "Ta bort $name"
+    override val weight = "Vikt"
+    override val reps = "Reps"
+    override val done = "Klar"
+    override val applyToOpenSets = "Använd på alla set som inte är bockade"
+    override val less = "Mindre"
+    override val more = "Mer"
+    override fun logSet(name: String, values: String): String = "Logga set · $name · $values"
+    override fun addSetSticky(name: String, values: String): String = "Lägg till set · $name · $values"
+    override val rest = "Vila"
+    override val skip = "Hoppa över"
+    override val plusThirty = "+30 s"
+    override fun makeCurrent(number: Int): String = "Gör set $number till aktuellt set"
+    override val currentSet = "Aktuellt set"
     override fun removeExerciseTitle(name: String, logged: Int): String =
         if (logged == 1) "Ta bort $name och dess loggade set?" else "Ta bort $name och dess $logged loggade set?"
     override val remove = "Ta bort"
