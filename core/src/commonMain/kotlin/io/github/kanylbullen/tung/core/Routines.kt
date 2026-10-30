@@ -77,3 +77,11 @@ fun daysAgo(thenMillis: Long, nowMillis: Long, zone: TimeZone): Long {
     val now = Instant.fromEpochMilliseconds(nowMillis).toLocalDateTime(zone).date
     return then.daysUntil(now).coerceAtLeast(0).toLong()
 }
+
+/**
+ * What an import puts between a routine's group and its day ("Skokloster Gym
+ * · JT2 dag 1"), and what the app's rows cut a name on: the last one in the
+ * name ends the group. A name a person typed may contain it too, and is then
+ * drawn the same way.
+ */
+const val ROUTINE_NAME_SEPARATOR = " · "

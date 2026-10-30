@@ -196,10 +196,20 @@ in `HomeViewModel` on
 `Dispatchers.Default` from `WorkoutRepository.observeProgressSets()`. Then
 Start workout (or Resume with its menu), "Today" when a program is active,
 the three routines as one raised group (`RoutineRow(compact = true)`: a
-56 dp row with an outlined 40 dp Start; `styledRoutineName` draws
-everything up to the last " · " of a name muted, so an imported
-"Skokloster Gym · JT2 dag 1" reads as its day), Recent workouts, and the
-Assistant's row. A workout's row (`WorkoutRow`, shared with History) is
+56 dp row with an outlined 40 dp Start), Recent workouts, and the
+Assistant's row. **A routine's name on a row is `RoutineName`**
+(`ui/common/RoutineName.kt`, the routine rows and the workout rows):
+everything up to the last `core.ROUTINE_NAME_SEPARATOR` (" · ", the one
+constant the import builds names with) is drawn muted, so an imported
+"Skokloster Gym · JT2 dag 1" reads as its day, and when the line is too
+narrow it is the muted group that is cut, never the day ("Your Adap… ·
+Full Body Workout"; with no room for three ems of the group, the day
+alone). A `Layout` of three texts measures each part's intrinsic width,
+the pure `routineNameWidths` (`RoutineNameWidthsTest`) shares the line,
+the parts sit on one baseline, and the whole name is one semantics node
+(`clearAndSetSemantics`), so a screen reader hears it entire and a test
+finds it as one string (`RoutineNameFlowTest`, which also renders the
+day-alone case). A workout's row (`WorkoutRow`, shared with History) is
 titled with the routine it was started from, else its first two exercises,
 else "Workout", with the short date (`shortLocalDate`, "Thu 22 Oct"),
 duration and exercise count muted under it and the volume on the right; `WorkoutSummaryRow` carries the routine's name

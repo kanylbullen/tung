@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.core.importing
 
+import io.github.kanylbullen.tung.core.ROUTINE_NAME_SEPARATOR
 import io.github.kanylbullen.tung.core.MAX_WEIGHT_KG
 import io.github.kanylbullen.tung.core.clampTargetSets
 import io.github.kanylbullen.tung.core.mostCommonReps
@@ -299,7 +300,7 @@ object JefitImport : ImportAdapter {
             packageName.isEmpty() && dayName.isEmpty() -> "Jefit"
             packageName.isEmpty() -> dayName
             dayName.isEmpty() || !severalDays -> dayName.ifEmpty { packageName }
-            else -> "$packageName · $dayName"
+            else -> packageName + ROUTINE_NAME_SEPARATOR + dayName
         }
 
         private fun plausibleSeconds(cell: String): Long? = cell.trim().toLongOrNull()?.takeIf { it >= EARLIEST_SECONDS }
