@@ -104,7 +104,7 @@ its server, for linking).
 
 ## How it is built
 
-`wear/` depends on `data/`, the Android library it shares with the phone:
+`wear/` depends on `data/`, the multiplatform data layer it shares with the phone:
 `TungWearApp` builds a `TungContainer` (its own Room database, repositories,
 command handler, sync client and worker). `WatchViewModel` picks a backend by
 mode: `LocalWatchBackend` (the watch's database through `WatchStateSource`,
