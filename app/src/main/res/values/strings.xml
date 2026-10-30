@@ -415,6 +415,7 @@
     <string name="today_start_description">Start today’s routine, %1$s</string>
     <string name="today_choose_another">Choose another</string>
     <string name="today_choose_title">Choose a day</string>
+    <string name="today_day_gone">That day is no longer in the program.</string>
 
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- Settings and sync -->

@@ -366,7 +366,12 @@ gone. "Last completed" is the latest *finished* workout whose
 (`ProgramDao.observeLastCompletedDayId`). Starting from Today, or from the
 "Choose another" sheet that overrides the suggestion, runs
 `StartRoutine(routineId, programDayId)`, so the workout records
-both ids. `programDayId` is indexed and, like `routineId`, **not** a foreign
+both ids. `start_routine` refuses a day that is gone (removed on another
+device, with the sync landing between the card's drawing and the tap):
+nothing opens, and Home says so in a snackbar ("That day is no longer in the
+program.", `HomeMessage.DAY_GONE` over `HomeViewModel.messages`); the card
+follows Room and already shows the program as it is now. A rest day has no
+Start and is unchanged. `programDayId` is indexed and, like `routineId`, **not** a foreign
 key: removing a day or deleting a program never touches history. "Today" is
 `LocalDate.now(container.clock)`: the system clock in the app, a settable
 one (`FlowTestApp.today`) in the flow tests. Programs are reached from a row
