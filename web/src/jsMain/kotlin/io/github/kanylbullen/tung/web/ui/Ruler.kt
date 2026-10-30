@@ -50,6 +50,9 @@ private class RulerController(private val scale: RulerScale, private val label: 
     private var strip: HTMLElement? = null
     private var pos = 0.0
     private var shownTick = -1
+
+    /** The last value this ruler reported: when it comes back as the screen's value, it is not news. */
+    private var reported: Double? = null
     private var frame = 0
     private var dragging = false
     private var startX = 0.0
@@ -87,7 +90,8 @@ private class RulerController(private val scale: RulerScale, private val label: 
 
     /** A value from outside: the strip goes there, nothing is reported back. */
     fun show(value: Double) {
-        if (dragging) return
+        // Our own value coming back (a drag, a glide, a settle): leave the motion alone.
+        if (dragging || value == reported) return
         stop()
         pos = scale.positionOf(value) * TICK_PX
         shownTick = scale.snapTick(scale.positionOf(value))
@@ -104,7 +108,9 @@ private class RulerController(private val scale: RulerScale, private val label: 
         val tick = scale.snapTick(pos / TICK_PX)
         if (tick != shownTick) {
             shownTick = tick
-            onChange(scale.valueAt(tick.toDouble()))
+            val value = scale.valueAt(tick.toDouble())
+            reported = value
+            onChange(value)
         }
     }
 
