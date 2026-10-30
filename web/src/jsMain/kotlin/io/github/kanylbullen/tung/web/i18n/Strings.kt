@@ -132,6 +132,26 @@ interface Strings {
     fun moreSets(name: String): String
     val lastUsedNever: String
 
+    // Progress
+    val progress: String
+    val last12Weeks: String
+    fun streak(weeks: Int): String
+    val exercises: String
+    val recentRecords: String
+    val records: String
+    val lastSessions: String
+    val progressEmpty: String
+    val chartEmpty: String
+    fun metricLabel(metric: io.github.kanylbullen.tung.core.progress.ProgressMetric): String
+    fun rangeShort(range: io.github.kanylbullen.tung.core.progress.ProgressRange): String
+    fun rangeLong(range: io.github.kanylbullen.tung.core.progress.ProgressRange): String
+    fun recordLabel(kind: io.github.kanylbullen.tung.core.progress.RecordKind): String
+    fun changeIn(change: String, range: String): String
+    fun noChangeIn(range: String): String
+    fun sessionsIn(count: Int, range: String): String
+    fun chartSummary(metric: String, range: String, from: String, to: String): String
+    fun weeksSummary(volumes: String): String
+
     // History
     val history: String
     val historyEmpty: String
@@ -281,6 +301,42 @@ object English : Strings {
     override fun fewerSets(name: String): String = "Fewer sets of $name"
     override fun moreSets(name: String): String = "More sets of $name"
     override val lastUsedNever = "Never"
+    override val progress = "Progress"
+    override val last12Weeks = "Last 12 weeks"
+    override fun streak(weeks: Int): String = if (weeks == 1) "1-week streak" else "$weeks-week streak"
+    override val exercises = "Exercises"
+    override val recentRecords = "Recent records"
+    override val records = "Records"
+    override val lastSessions = "Last sessions"
+    override val progressEmpty = "Finish a workout to see your progress."
+    override val chartEmpty = "Log this exercise in two workouts to see a chart."
+    override fun metricLabel(metric: io.github.kanylbullen.tung.core.progress.ProgressMetric): String = when (metric) {
+        io.github.kanylbullen.tung.core.progress.ProgressMetric.E1RM -> "Est. 1RM"
+        io.github.kanylbullen.tung.core.progress.ProgressMetric.TOP_SET -> "Top set"
+        io.github.kanylbullen.tung.core.progress.ProgressMetric.VOLUME -> "Session volume"
+        io.github.kanylbullen.tung.core.progress.ProgressMetric.WEEKLY_VOLUME -> "Weekly volume"
+    }
+    override fun rangeShort(range: io.github.kanylbullen.tung.core.progress.ProgressRange): String = when (range) {
+        io.github.kanylbullen.tung.core.progress.ProgressRange.THREE_MONTHS -> "3M"
+        io.github.kanylbullen.tung.core.progress.ProgressRange.ONE_YEAR -> "1Y"
+        io.github.kanylbullen.tung.core.progress.ProgressRange.ALL -> "All"
+    }
+    override fun rangeLong(range: io.github.kanylbullen.tung.core.progress.ProgressRange): String = when (range) {
+        io.github.kanylbullen.tung.core.progress.ProgressRange.THREE_MONTHS -> "3 months"
+        io.github.kanylbullen.tung.core.progress.ProgressRange.ONE_YEAR -> "12 months"
+        io.github.kanylbullen.tung.core.progress.ProgressRange.ALL -> "all time"
+    }
+    override fun recordLabel(kind: io.github.kanylbullen.tung.core.progress.RecordKind): String = when (kind) {
+        io.github.kanylbullen.tung.core.progress.RecordKind.HEAVIEST_WEIGHT -> "Heaviest weight"
+        io.github.kanylbullen.tung.core.progress.RecordKind.BEST_E1RM -> "Best est. 1RM"
+        io.github.kanylbullen.tung.core.progress.RecordKind.MOST_REPS -> "Most reps"
+        io.github.kanylbullen.tung.core.progress.RecordKind.BEST_SESSION_VOLUME -> "Best session volume"
+    }
+    override fun changeIn(change: String, range: String): String = "$change in $range"
+    override fun noChangeIn(range: String): String = "No change in $range"
+    override fun sessionsIn(count: Int, range: String): String = if (count == 1) "1 session in $range" else "$count sessions in $range"
+    override fun chartSummary(metric: String, range: String, from: String, to: String): String = "$metric, $range: from $from to $to kg"
+    override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -433,6 +489,42 @@ object Swedish : Strings {
     override fun fewerSets(name: String): String = "Färre set av $name"
     override fun moreSets(name: String): String = "Fler set av $name"
     override val lastUsedNever = "Aldrig"
+    override val progress = "Framsteg"
+    override val last12Weeks = "Senaste 12 veckorna"
+    override fun streak(weeks: Int): String = if (weeks == 1) "1 vecka i rad" else "$weeks veckor i rad"
+    override val exercises = "Övningar"
+    override val recentRecords = "Senaste rekorden"
+    override val records = "Rekord"
+    override val lastSessions = "Senaste passen"
+    override val progressEmpty = "Avsluta ett pass för att se dina framsteg."
+    override val chartEmpty = "Logga övningen i två pass för att se ett diagram."
+    override fun metricLabel(metric: io.github.kanylbullen.tung.core.progress.ProgressMetric): String = when (metric) {
+        io.github.kanylbullen.tung.core.progress.ProgressMetric.E1RM -> "Uppsk. 1RM"
+        io.github.kanylbullen.tung.core.progress.ProgressMetric.TOP_SET -> "Toppset"
+        io.github.kanylbullen.tung.core.progress.ProgressMetric.VOLUME -> "Passvolym"
+        io.github.kanylbullen.tung.core.progress.ProgressMetric.WEEKLY_VOLUME -> "Veckovolym"
+    }
+    override fun rangeShort(range: io.github.kanylbullen.tung.core.progress.ProgressRange): String = when (range) {
+        io.github.kanylbullen.tung.core.progress.ProgressRange.THREE_MONTHS -> "3 mån"
+        io.github.kanylbullen.tung.core.progress.ProgressRange.ONE_YEAR -> "1 år"
+        io.github.kanylbullen.tung.core.progress.ProgressRange.ALL -> "Allt"
+    }
+    override fun rangeLong(range: io.github.kanylbullen.tung.core.progress.ProgressRange): String = when (range) {
+        io.github.kanylbullen.tung.core.progress.ProgressRange.THREE_MONTHS -> "3 månader"
+        io.github.kanylbullen.tung.core.progress.ProgressRange.ONE_YEAR -> "12 månader"
+        io.github.kanylbullen.tung.core.progress.ProgressRange.ALL -> "hela tiden"
+    }
+    override fun recordLabel(kind: io.github.kanylbullen.tung.core.progress.RecordKind): String = when (kind) {
+        io.github.kanylbullen.tung.core.progress.RecordKind.HEAVIEST_WEIGHT -> "Tyngsta vikt"
+        io.github.kanylbullen.tung.core.progress.RecordKind.BEST_E1RM -> "Bästa uppsk. 1RM"
+        io.github.kanylbullen.tung.core.progress.RecordKind.MOST_REPS -> "Flest reps"
+        io.github.kanylbullen.tung.core.progress.RecordKind.BEST_SESSION_VOLUME -> "Största passvolym"
+    }
+    override fun changeIn(change: String, range: String): String = "$change på $range"
+    override fun noChangeIn(range: String): String = "Ingen ändring på $range"
+    override fun sessionsIn(count: Int, range: String): String = if (count == 1) "1 pass på $range" else "$count pass på $range"
+    override fun chartSummary(metric: String, range: String, from: String, to: String): String = "$metric, $range: från $from till $to kg"
+    override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"
