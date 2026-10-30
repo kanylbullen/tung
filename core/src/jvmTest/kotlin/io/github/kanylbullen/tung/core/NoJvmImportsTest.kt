@@ -20,6 +20,15 @@ class NoJvmImportsTest {
     /** `Dispatchers.IO` is not in common kotlinx-coroutines (JS has none); a caller passes its dispatcher in. */
     private val ioDispatcher = Regex("""\bDispatchers\.IO\b""")
 
+    /**
+     * What the JVM offers without an import, so an import scan alone would miss it: a
+     * fully qualified `java.util.UUID`, `System.currentTimeMillis()`, `Charsets.UTF_8`,
+     * `String.format`, `synchronized`, `Thread`, `Math`, `Character`, `kotlin.jvm.*`.
+     */
+    private val jvmOnly = Regex("""\b(javax?\.[a-z]|System\.|Charsets\.|String\.format\(|synchronized\(|Thread\.|Math\.|Character\.|kotlin\.jvm\.)""")
+
+    private fun isComment(line: String): Boolean = line.trimStart().let { it.startsWith("*") || it.startsWith("//") || it.startsWith("/*") }
+
     private fun commonSources(): File =
         listOfNotNull(System.getProperty("tung.core.commonSrc"), "src/commonMain", "core/src/commonMain")
             .map(::File)
@@ -35,7 +44,9 @@ class NoJvmImportsTest {
             file.readLines().mapIndexedNotNull { i, line ->
                 when {
                     platformImport.containsMatchIn(line) -> "${file.name}:${i + 1}: ${line.trim()}"
-                    ioDispatcher.containsMatchIn(line) && !line.trimStart().startsWith("*") -> "${file.name}:${i + 1}: ${line.trim()}"
+                    isComment(line) -> null
+                    ioDispatcher.containsMatchIn(line) -> "${file.name}:${i + 1}: ${line.trim()}"
+                    jvmOnly.containsMatchIn(line) -> "${file.name}:${i + 1}: ${line.trim()}"
                     else -> null
                 }
             }
