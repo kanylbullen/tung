@@ -119,7 +119,10 @@ diacritic folding and composition (`Diacritics.kt` over
 the JDK's Unicode tables and compared with `java.text.Normalizer` over the
 whole BMP by `DiacriticsTest`; Hangul and the CJK compatibility ideographs
 are left out, as they are not diacritics), and the server URL check
-(`checkServerUrl`, a small parser of `scheme://host[:port][/path]`).
+(`checkServerUrl`, a small parser of
+`scheme://host[:port][/path]`: a bracketed host must be a well-formed IPv6
+literal, and a dotted name with a leading-zero octet, `010.0.0.5`, is a host
+name that needs https, not a private address).
 
 ### `data/` — the shared Android data layer
 

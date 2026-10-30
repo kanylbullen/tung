@@ -22,8 +22,13 @@ sealed interface ServerUrlCheck {
  *
  * Parsed here rather than with a platform URI class: `scheme://host[:port][/path]`,
  * the host a name of ASCII letters, digits, `-` and `.`, an IPv4 literal or a
- * bracketed IPv6 literal; a query, a fragment, user info or whitespace is
- * malformed.
+ * bracketed IPv6 literal ([isIpv6Literal]: brackets around anything else,
+ * `[192.168.1.10]` or `[abc]`, are malformed); a query, a fragment, user
+ * info or whitespace is malformed. A dotted name whose octet has a leading
+ * zero (`010.0.0.5`) is not an IP literal but a host name, so over http it
+ * needs https like any other name: platform parsers read such octets as
+ * octal, and a private-looking address must not pass as one by a reading
+ * this check does not share.
  */
 fun checkServerUrl(input: String): ServerUrlCheck {
     val trimmed = input.trim().trimEnd('/')
@@ -67,12 +72,36 @@ private fun splitHostPort(authority: String): Pair<String, Int?>? {
 
 private fun isValidHost(host: String): Boolean {
     if (host.isEmpty()) return false
-    if (host.startsWith("[")) {
-        val inside = host.removePrefix("[").removeSuffix("]")
-        return host.endsWith("]") && inside.isNotEmpty() && inside.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' || it == ':' || it == '.' }
-    }
+    if (host.startsWith("[")) return host.endsWith("]") && isIpv6Literal(host.substring(1, host.length - 1))
     return host.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '-' || it == '.' } &&
         !host.startsWith(".") && !host.endsWith(".") && !host.startsWith("-")
+}
+
+/**
+ * A well-formed IPv6 address (RFC 4291, section 2.2): hex groups of one to
+ * four digits separated by `:`, eight of them, or fewer with one `::` standing
+ * for the missing zeros; the last group may be a dotted IPv4 address
+ * (`::ffff:192.168.1.10`), which counts as two groups. No zone id (`%eth0`).
+ */
+private fun isIpv6Literal(text: String): Boolean {
+    if (text.isEmpty() || text.any { !(it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' || it == ':' || it == '.') }) return false
+    val gap = text.indexOf("::")
+    if (gap >= 0 && text.indexOf("::", gap + 1) >= 0) return false
+    val head = if (gap < 0) text else text.substring(0, gap)
+    val tail = if (gap < 0) "" else text.substring(gap + 2)
+    val groups = listOf(head, tail).filter { it.isNotEmpty() }.flatMap { it.split(':') }
+    if (groups.any { it.isEmpty() }) return false
+    var count = 0
+    groups.forEachIndexed { index, group ->
+        if ('.' in group) {
+            if (index != groups.lastIndex || ipv4(group) == null) return false
+            count += 2
+        } else {
+            if (group.length > 4) return false
+            count += 1
+        }
+    }
+    return if (gap < 0) count == 8 else count <= 7
 }
 
 /** `localhost`, or a loopback, link-local or private IP literal (IPv6 in brackets or not). */
@@ -90,10 +119,16 @@ fun isLocalHost(host: String): Boolean {
     return false
 }
 
-/** The first two octets of a dotted IPv4 literal, or null if [host] is not one. */
+/**
+ * The first two octets of a dotted IPv4 literal, or null if [host] is not one:
+ * four decimal octets of 0–255, written without a leading zero (`010.0.0.5`
+ * is not an address here; see [checkServerUrl]).
+ */
 private fun ipv4(host: String): Pair<Int, Int>? {
     val parts = host.split('.')
     if (parts.size != 4) return null
-    val octets = parts.map { p -> p.toIntOrNull()?.takeIf { p.isNotEmpty() && p.length <= 3 && it in 0..255 } ?: return null }
+    val octets = parts.map { p ->
+        p.toIntOrNull()?.takeIf { p.isNotEmpty() && p.length <= 3 && (p.length == 1 || p[0] != '0') && it in 0..255 } ?: return null
+    }
     return octets[0] to octets[1]
 }
