@@ -75,11 +75,12 @@ fun ProgressScreen(container: WebContainer, account: Account) {
                         append(strings.metricLabel(ProgressMetric.E1RM))
                         trend.latest?.let { append(" ").append(wholeNumber(it, locale)).append(" kg") }
                         append(strings.separator)
+                        val change = trend.change
                         append(
                             when {
                                 trend.values.size < 2 -> strings.sessionsIn(trend.values.size, strings.rangeLong(range))
-                                trend.change == null || kotlin.math.round(trend.change!!.delta) == 0.0 -> strings.noChangeIn(strings.rangeLong(range))
-                                else -> strings.changeIn(signedWhole(trend.change!!.delta, locale) + " kg", strings.rangeLong(range))
+                                change == null || kotlin.math.round(change.delta) == 0.0 -> strings.noChangeIn(strings.rangeLong(range))
+                                else -> strings.changeIn(signedWhole(change.delta, locale) + " kg", strings.rangeLong(range))
                             },
                         )
                     }
