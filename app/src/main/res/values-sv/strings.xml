@@ -611,6 +611,7 @@
     <string name="voice_echo_no_set">Det finns inget set att logga</string>
     <string name="voice_echo_no_previous">Det finns inget tidigare set att kopiera</string>
     <string name="voice_echo_no_next">Det finns inget annat set att gå till</string>
+    <string name="voice_echo_not_logged">Setet loggades inte. Försök igen.</string>
     <string name="voice_echo_not_understood">Uppfattade inte: ”%1$s”</string>
     <string name="voice_echo_heard_nothing">Hörde ingenting</string>
     <string name="voice_echo_unavailable">Taligenkänning finns inte på den här telefonen</string>

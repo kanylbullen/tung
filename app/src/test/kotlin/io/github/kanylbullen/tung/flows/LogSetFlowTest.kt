@@ -215,6 +215,31 @@ class LogSetFlowTest : FlowTest() {
         assertTrue(alarms.scheduledAlarms.isEmpty())
     }
 
+    /**
+     * The set the button shows lost its reps after the screen last read it (a
+     * sync's write landing before the tap; here written behind Room's back, so
+     * the screen still says 80 × 8). `log_set` refuses it, and the refusal
+     * changes nothing: no tick, no rest, no alarm, and the set stays current,
+     * now shown without reps, so the next tap asks for them as before.
+     */
+    @Test
+    fun aRefusedLogSetStartsNoRestAndKeepsTheCurrentSet() {
+        seedFinishedWorkout(System.currentTimeMillis() - 2 * DAY, bench(), weightKg = 80.0, reps = 8)
+        startWorkoutFromHome()
+        addExercise("bench", benchPress)
+        waitForText(logSet("80", "8"))
+        // Room's invalidation tracker looks only after a Room transaction, so the screen keeps showing 80 × 8.
+        db.openHelper.writableDatabase.execSQL("UPDATE set_entry SET reps = 0 WHERE completed = 0")
+        clickText(logSet("80", "8"))
+        // The command's own transaction brought the change to the screen: the same set, without reps, still current.
+        waitForText(logSet("80", str(R.string.workout_reps_empty)))
+        screenshot("1-refused")
+        compose.onNode(countdown).assertDoesNotExist()
+        assertEquals(0, activeSets("s.completed = 1"))
+        assertTrue(alarms.scheduledAlarms.isEmpty())
+        compose.onNode(hasText(addSet("80", "8"))).assertDoesNotExist()
+    }
+
     private fun seedWorkout(startedAt: Long, exerciseId: String, sets: List<Pair<Double, Int>>): String = runBlocking {
         var now = startedAt
         val repo = WorkoutRepository(db, clock = { now })

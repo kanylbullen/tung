@@ -633,6 +633,7 @@
     <string name="voice_echo_no_set">There is no set to log</string>
     <string name="voice_echo_no_previous">There is no earlier set to copy</string>
     <string name="voice_echo_no_next">There is no other set to move to</string>
+    <string name="voice_echo_not_logged">The set was not logged. Try again.</string>
     <string name="voice_echo_not_understood">Didn\'t catch that: \'%1$s\'</string>
     <string name="voice_echo_heard_nothing">Didn\'t hear anything</string>
     <string name="voice_echo_unavailable">Speech recognition is not available on this phone</string>
