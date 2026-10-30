@@ -1120,8 +1120,12 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   routines (their exercises and the program days that use them), programs and
   program days. Existing queries never read the table. There is no delete path
   for exercises.
-- **One sync** (`SyncClient.syncOnce`, always on the platform's IO dispatcher (`ioDispatcher`), one at a
-  time): read the dirty rows and tombstones in one transaction, plan, POST each
+- **One sync** (`SyncClient.syncOnce`, on the platform's IO dispatcher
+  (`ioDispatcher`), one at a time; the loop itself is core's `SyncLoop` in
+  `core/sync/SyncLoop.kt`, over three seams: `SyncLocalStore` (here
+  `SyncStore`), `SyncSession` (the settings and the token) and
+  `SyncTransport` (Ktor), so the web runs the same one; `SyncLoopTest`): read the dirty rows and
+  tombstones in one transaction, plan, POST each
   chunk with the latest cursor (5xx and I/O errors are retried twice, a 4xx
   never), and apply each response in one Room transaction (`SyncStore.apply`):
   strictly newer wins, equal or older is ignored (a newer local edit stays
@@ -2073,20 +2077,16 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   (`remember(version)`). The catalogue's seventy are seeded at start from
   `catalog/core.json` (shipped as a resource) with the phone's ids and
   `updatedAt` 0, not dirty (`seedCatalogue`).
-- **Sync is the phone's** (`sync/WebSync.kt`): core's `SyncPlanner` and
-  `SyncApplier` with `fetch` against `POST /api/v1/sync`, the same loop as
-  `data/src/commonMain/.../sync/SyncClient.kt` (chunks, the cursor after each response,
-  pulling again while a response is full, two retries on 5xx and network, a
-  401 signs out), and `TungStore.apply` is `SyncStore.apply` over memory:
-  parents first, a row completed from the local one when the wire row
-  leaves a required field null (`TableSpecs`, the phone's `SyncMapping`),
-  the null-keeps fields (`started_by`, Health Connect, the import), a
-  parent that is missing skips the row, an exercise in use is not deleted,
-  a deleted parent takes its children (Room's cascades, by hand), and the
-  dirty flags of a request's rows are cleared only with the `updatedAt`
-  they went with. The loop is the one piece the phone has in `data/` and
-  the web here; now that `data/` is multiplatform (#105) it moves into
-  core behind a transport interface (agreed with that work, a follow-up).
+- **Sync is the phone's** (`sync/WebSync.kt`): core's `SyncLoop` (below,
+  "Sync"), the same object the phone and the watch run, over the browser's
+  store, `WebSettings` and `fetch`. `TungStore.apply` is `SyncStore.apply`
+  over memory: parents first, a row completed from the local one when the
+  wire row leaves a required field null (`TableSpecs`, the phone's
+  `SyncMapping`), the null-keeps fields (`started_by`, Health Connect, the
+  import), a parent that is missing skips the row, an exercise in use is
+  not deleted, a deleted parent takes its children (Room's cascades, by
+  hand), and the dirty flags of a request's rows are cleared only with the
+  `updatedAt` they went with.
   **The server must list `X-Tung-Device` in its CORS headers** (it does
   since this module: `Application.kt`, `allowHeader(DEVICE_HEADER)`); against
   an older server the browser's preflight is refused and every sync reads

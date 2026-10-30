@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.web.store
 
 import io.github.kanylbullen.tung.core.CoreExercise
 import io.github.kanylbullen.tung.core.catalogExerciseId
+import io.github.kanylbullen.tung.core.sync.LocalChanges
 import io.github.kanylbullen.tung.core.sync.LocalVersion
 import io.github.kanylbullen.tung.core.sync.SyncAction
 import io.github.kanylbullen.tung.core.sync.SyncApplier
@@ -15,9 +16,6 @@ import io.github.kanylbullen.tung.core.sync.tombstoneEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-/** What this browser has to push: dirty rows and dirty tombstones, as wire rows. */
-data class LocalChanges(val dirty: SyncChanges, val tombstones: SyncChanges)
 
 /**
  * One change to carry to IndexedDB. The store changes memory first and

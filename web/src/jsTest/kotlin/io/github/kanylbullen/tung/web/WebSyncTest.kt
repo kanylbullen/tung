@@ -6,6 +6,7 @@ import io.github.kanylbullen.tung.core.sync.SyncChanges
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncRequest
 import io.github.kanylbullen.tung.core.sync.SyncResponse
+import io.github.kanylbullen.tung.core.sync.SyncResult
 import io.github.kanylbullen.tung.core.sync.SyncRoutine
 import io.github.kanylbullen.tung.core.sync.SyncWorkout
 import io.github.kanylbullen.tung.web.store.IndexedDbStore
@@ -15,7 +16,6 @@ import io.github.kanylbullen.tung.web.sync.AuthResult
 import io.github.kanylbullen.tung.web.sync.HttpReply
 import io.github.kanylbullen.tung.web.sync.HttpUnreachable
 import io.github.kanylbullen.tung.web.sync.SyncJson
-import io.github.kanylbullen.tung.web.sync.SyncResult
 import io.github.kanylbullen.tung.web.sync.WebAuth
 import io.github.kanylbullen.tung.web.sync.WebSettings
 import io.github.kanylbullen.tung.web.sync.WebSync

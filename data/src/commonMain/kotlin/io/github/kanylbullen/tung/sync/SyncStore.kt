@@ -1,10 +1,12 @@
 package io.github.kanylbullen.tung.sync
 
+import io.github.kanylbullen.tung.core.sync.LocalChanges
 import io.github.kanylbullen.tung.core.sync.LocalVersion
 import io.github.kanylbullen.tung.core.sync.SyncAction
 import io.github.kanylbullen.tung.core.sync.SyncApplier
 import io.github.kanylbullen.tung.core.sync.SyncChanges
 import io.github.kanylbullen.tung.core.sync.SyncEntry
+import io.github.kanylbullen.tung.core.sync.SyncLocalStore
 import io.github.kanylbullen.tung.core.sync.SyncResponse
 import io.github.kanylbullen.tung.core.sync.SyncTable
 import io.github.kanylbullen.tung.core.sync.entries
@@ -14,21 +16,19 @@ import io.github.kanylbullen.tung.data.SyncDao
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.transaction
 
-/** What this device has to push: dirty rows and dirty tombstones, as wire rows. */
-data class LocalChanges(val dirty: SyncChanges, val tombstones: SyncChanges)
 
 /**
  * Sync's side of Room: reads what is dirty, and merges a server response in
  * one transaction ([apply]). The decisions are core's ([SyncApplier]); this
  * class only reads the local versions and carries them out.
  */
-class SyncStore(private val db: TungDatabase) {
+class SyncStore(private val db: TungDatabase) : SyncLocalStore {
 
     private val dao: SyncDao = db.syncDao()
     private val tombstones = db.tombstoneDao()
 
     /** Everything dirty, read in one transaction so rows and tombstones agree. */
-    suspend fun readDirty(): LocalChanges = db.transaction {
+    override suspend fun readDirty(): LocalChanges = db.transaction {
         val rows = tables.values.flatMap { it.dirtyEntries() }
         val deleted = tombstones.dirty().mapNotNull { t ->
             SyncTable.fromKey(t.tableName)?.let { tombstoneEntry(it, t.id, t.deletedAt) }
@@ -50,7 +50,7 @@ class SyncStore(private val db: TungDatabase) {
      *
      * @return how many rows of the response changed something here.
      */
-    suspend fun apply(response: SyncResponse, pushed: SyncChanges): Int = db.transaction {
+    override suspend fun apply(response: SyncResponse, pushed: SyncChanges): Int = db.transaction {
         val incoming = response.changes.entries()
         val localRows = HashMap<SyncTable, Map<String, Any>>()
         val localTombstones = HashMap<SyncTable, Map<String, Long>>()
