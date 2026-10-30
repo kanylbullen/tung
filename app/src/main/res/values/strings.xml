@@ -14,10 +14,32 @@
     <!-- Home -->
     <string name="home_start_workout">Start workout</string>
     <string name="home_resume_workout">Resume workout</string>
+    <string name="home_workout_menu">Options for the workout in progress</string>
     <string name="home_in_progress_since">In progress for %1$s</string>
     <string name="home_recent">Recent workouts</string>
     <string name="home_empty">No workouts yet. Start your first and it will show up here.</string>
     <string name="home_show_all">Show all</string>
+    <!-- Home's "This week" block: the hero number is the week's volume in kg, under it the counts, then the days. -->
+    <string name="home_this_week">This week</string>
+    <plurals name="home_week_workouts">
+        <item quantity="one">%d workout</item>
+        <item quantity="other">%d workouts</item>
+    </plurals>
+    <plurals name="home_week_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d sets</item>
+    </plurals>
+    <string name="home_week_none">No workout yet this week</string>
+    <string name="home_week_last">Last week %1$s kg</string>
+    <string name="home_week_best">Best of the last 12 weeks</string>
+    <!-- The seven bars, for a screen reader: "Volume per day this week: Monday 3 020 kg, Wednesday 4 420 kg" or "…: nothing yet" -->
+    <string name="home_week_days_description">Volume per day this week: %1$s</string>
+    <string name="home_week_day_volume">%1$s %2$s kg</string>
+    <string name="home_week_days_none">nothing yet</string>
+    <!-- The small body on Home: "Muscles worked this week: chest 50 %, …" -->
+    <string name="home_muscles_description">Muscles worked this week: %1$s</string>
+    <!-- A finished workout's row without a routine and without exercises -->
+    <string name="workout_row_untitled">Workout</string>
 
     <!-- Workout list rows and stats -->
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
@@ -51,11 +73,36 @@
     <string name="workout_mark_undone">Mark set %1$d as not done</string>
     <string name="workout_delete_set">Delete set</string>
     <string name="workout_delete">Delete</string>
+    <!-- The Delete button a swipe reveals behind a set row (issue #81) -->
+    <string name="workout_delete_set_number">Delete set %1$d</string>
+    <!-- Discard the workout in progress (issue #81): the workout's menu, and the menu on Home's Resume card -->
+    <string name="workout_discard">Discard workout…</string>
+    <string name="workout_discard_title">Discard this workout?</string>
+    <string name="workout_discard_body">The sets you logged are deleted.</string>
+    <string name="workout_discard_confirm">Discard</string>
     <string name="workout_elapsed_description">Time since start %1$s</string>
     <string name="workout_finish_title">Finish workout?</string>
-    <string name="workout_finish_body">Sets that are not ticked and exercises without sets will be removed.</string>
+    <!-- The finish dialog says what goes: the sets that are not ticked (or ticked with no reps), and exercises with no set. -->
+    <plurals name="workout_finish_unlogged">
+        <item quantity="one">%d set that is not ticked will be removed.</item>
+        <item quantity="other">%d sets that are not ticked will be removed.</item>
+    </plurals>
+    <plurals name="workout_finish_empty_exercises">
+        <item quantity="one">%d exercise without sets goes too.</item>
+        <item quantity="other">%d exercises without sets go too.</item>
+    </plurals>
+    <string name="workout_finish_body_clean">Every set is logged.</string>
     <string name="workout_finish_body_empty">No sets are ticked, so the workout will not be saved.</string>
+    <!-- The dialog's buttons: short, so they sit side by side. -->
+    <string name="workout_finish_confirm">Finish</string>
     <string name="workout_keep_training">Keep training</string>
+    <!-- "Remove exercise" asks when the exercise has logged sets: "Remove Bench press and its 3 logged sets?" -->
+    <plurals name="workout_remove_exercise_title">
+        <item quantity="one">Remove %1$s and its logged set?</item>
+        <item quantity="other">Remove %1$s and its %2$d logged sets?</item>
+    </plurals>
+    <string name="workout_remove_exercise_body">What you logged for it in this workout is deleted.</string>
+    <string name="workout_remove_exercise_confirm">Remove</string>
     <string name="workout_discarded">The workout was not saved because no sets were ticked.</string>
     <string name="workout_not_found">This workout no longer exists. Go back and start a new one.</string>
     <string name="workout_log_set">Log set · %1$s · %2$s × %3$s</string>
@@ -137,7 +184,7 @@
     <string name="exercise_add_to_routine">Add to routine</string>
     <string name="exercise_add_to_workout">Add to workout</string>
     <string name="exercise_choose_routine">Add to which routine?</string>
-    <string name="exercise_no_routines">No routines yet. Save a finished workout as a routine first.</string>
+    <string name="exercise_no_routines">No routines yet. Create one in the Routines tab with “+ New routine”, or save a finished workout as one.</string>
     <!-- Confirmation after "Add to routine"; %1$s is the routine's name. -->
     <string name="exercise_added_to_routine">Added to %1$s</string>
     <string name="exercise_history">History</string>
@@ -235,7 +282,22 @@
 
     <!-- Summary -->
     <string name="summary_title">Workout done</string>
-    <string name="summary_best_set">Best set</string>
+    <!-- The summary after a workout: each exercise with its sets, volume and best estimated 1RM; the muscles worked; progress charts. -->
+    <string name="summary_exercises">Exercises</string>
+    <plurals name="summary_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d sets</item>
+    </plurals>
+    <string name="summary_muscles">Muscles worked</string>
+    <!-- The muscle map for a screen reader: "Muscles worked: Chest 50%, Triceps 25%, Front delts 25%". -->
+    <string name="summary_muscles_description">Muscles worked: %1$s</string>
+    <string name="summary_muscle_item">%1$s %2$s</string>
+    <!-- A muscle with under half a percent of the work: "<1%". -->
+    <string name="summary_muscle_less_than">&lt;%1$s</string>
+    <plurals name="summary_muscles_uncounted">
+        <item quantity="one">%d set of a custom exercise is not counted: custom exercises have no muscles</item>
+        <item quantity="other">%d sets of custom exercises are not counted: custom exercises have no muscles</item>
+    </plurals>
     <string name="summary_record">New record</string>
     <string name="summary_done">Done</string>
     <string name="times_sign">×</string>
@@ -245,8 +307,27 @@
     <string name="routines_title">Routines</string>
     <string name="routines_all">All</string>
     <string name="routines_empty">No routines. Create one with + New routine, or save a finished workout as a routine from its summary or from its menu in History.</string>
+    <plurals name="routines_selected">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="routines_select">Select</string>
+    <string name="routines_select_all">Select all</string>
+    <string name="routines_leave_selection">Leave selection</string>
+    <string name="routines_delete_selected">Delete selected routines</string>
+    <plurals name="routines_delete_many_title">
+        <item quantity="one">Delete %1$d routine?</item>
+        <item quantity="other">Delete %1$d routines?</item>
+    </plurals>
+    <string name="routines_delete_many_body">Your workout history is kept.</string>
+    <plurals name="routines_delete_many_days">
+        <item quantity="one">%1$d program day that uses them goes too.</item>
+        <item quantity="other">%1$d program days that use them go too.</item>
+    </plurals>
     <string name="routine_start">Start</string>
     <string name="routine_start_description">Start %1$s</string>
+    <!-- The body on a routine row and page, for a screen reader: "Muscles: chest, triceps, front delts" -->
+    <string name="routine_muscles_description">Muscles: %1$s</string>
     <string name="routine_last">Last: %1$s</string>
     <string name="routine_never">Never</string>
     <string name="routine_today">today</string>
@@ -320,7 +401,7 @@
     <string name="program_days_empty">No days yet. Add your routines in the order you train them.</string>
     <string name="program_add_day">Add day</string>
     <string name="program_pick_routine">Choose a routine</string>
-    <string name="program_no_routines">No routines yet. Save a finished workout as a routine first.</string>
+    <string name="program_no_routines">No routines yet. Create one in the Routines tab with “+ New routine”, or save a finished workout as one.</string>
     <string name="program_day_menu">Options for %1$s</string>
     <string name="program_remove_day">Remove day</string>
     <string name="program_rename_title">Rename program</string>
@@ -366,7 +447,8 @@
     <string name="settings_rest_default">Default rest</string>
     <string name="settings_rest_default_hint">The rest timer between sets, for exercises without their own. An exercise\'s own is set from its menu in a workout.</string>
     <string name="settings_units">Units</string>
-    <string name="settings_units_kg">Kilograms (kg)</string>
+    <!-- Only kilograms exist today; the row says so rather than looking like a choice. -->
+    <string name="settings_units_kg">Kilograms (pounds are not supported yet)</string>
     <string name="about_version">Version</string>
     <string name="about_licence">Licence</string>
     <string name="about_licence_text">Free software under the GNU AGPL-3.0.</string>
@@ -592,6 +674,15 @@
     <string name="import_chosen_create">New exercise “%1$s”</string>
     <string name="import_chosen_skip">Skipped</string>
     <string name="import_suggestion">%1$s?</string>
+    <string name="import_decided_count">%1$d of %2$d decided</string>
+    <string name="import_decided_use">✓ %1$s</string>
+    <string name="import_decided_create">✓ Create “%1$s”</string>
+    <string name="import_decided_skip">✓ Skipped</string>
+    <string name="import_decided_use_description">%1$s: imported as %2$s</string>
+    <string name="import_decided_create_description">%1$s: imported as a new exercise</string>
+    <string name="import_decided_skip_description">%1$s: skipped</string>
+    <string name="import_change">Change</string>
+    <string name="import_change_description">Change %1$s</string>
     <plurals name="import_used_in_workouts">
         <item quantity="one">In %d workout</item>
         <item quantity="other">In %d workouts</item>
@@ -691,6 +782,15 @@
         <item quantity="other">Last import: %1$d workouts, %2$s</item>
     </plurals>
     <string name="import_undo_last">Undo last import</string>
+    <!-- Undo asks first: it deletes every workout the import added. -->
+    <plurals name="import_undo_title">
+        <item quantity="one">Remove %d imported workout?</item>
+        <item quantity="other">Remove %d imported workouts?</item>
+    </plurals>
+    <string name="import_undo_body">Workouts you logged in Tung are kept.</string>
+    <string name="import_undo_confirm">Remove</string>
+    <string name="import_delete_routines">Delete routines from the last import (%1$d)</string>
+    <string name="import_delete_routines_body">The import\'s workouts are kept.</string>
 
     <!-- Progress (ui/progress, CLAUDE.md "Progress") -->
     <string name="nav_progress">Progress</string>
@@ -716,22 +816,31 @@
     <string name="progress_change_down">−%1$s kg</string>
     <string name="progress_change_3m">%1$s in 3 months</string>
     <string name="progress_no_change_3m">No change in 3 months</string>
-    <plurals name="progress_sessions">
-        <item quantity="one">%d session</item>
-        <item quantity="other">%d sessions</item>
+    <string name="progress_change_12m">%1$s in 12 months</string>
+    <string name="progress_no_change_12m">No change in 12 months</string>
+    <!-- A row with fewer than two values in its span says how many sessions the span holds, in the span's own words. -->
+    <plurals name="progress_sessions_3m">
+        <item quantity="one">%d session in 3 months</item>
+        <item quantity="other">%d sessions in 3 months</item>
     </plurals>
-    <!-- An exercise row: "Est. 1RM 101 kg". -->
+    <plurals name="progress_sessions_12m">
+        <item quantity="one">%d session in 12 months</item>
+        <item quantity="other">%d sessions in 12 months</item>
+    </plurals>
+    <!-- An exercise row's latest value: "Est. 1RM 101 kg", the last session's volume, the last trained week's volume. -->
     <string name="progress_e1rm_value">Est. 1RM %1$s kg</string>
-    <!-- The sparkline for a screen reader. -->
-    <string name="progress_sparkline_summary">Estimated 1RM, 3 months: from %1$s to %2$s kg</string>
+    <string name="progress_session_volume_value">Session volume %1$s kg</string>
+    <string name="progress_weekly_volume_value">Weekly volume %1$s kg</string>
     <string name="progress_open_exercise">Open progress for %1$s</string>
     <!-- Metric chips and their names inside a sentence. -->
     <string name="progress_metric_e1rm">Est. 1RM</string>
     <string name="progress_metric_top_set">Top set</string>
     <string name="progress_metric_volume">Volume</string>
+    <string name="progress_metric_weekly_volume">Weekly volume</string>
     <string name="progress_metric_e1rm_long">Estimated 1RM</string>
     <string name="progress_metric_top_set_long">Top set</string>
     <string name="progress_metric_volume_long">Session volume</string>
+    <string name="progress_metric_weekly_volume_long">Weekly volume</string>
     <!-- Range chips and their names inside a sentence. -->
     <string name="progress_range_3m">3M</string>
     <string name="progress_range_1y">1Y</string>
@@ -739,9 +848,16 @@
     <string name="progress_range_3m_long">3 months</string>
     <string name="progress_range_1y_long">1 year</string>
     <string name="progress_range_all_long">all time</string>
-    <!-- A chart for a screen reader: "Estimated 1RM, 3 months: from 92 to 101 kg". -->
+    <!-- The span of the Progress tab's rows and the sheet in a workout: 3M (progress_range_3m) or 12M. -->
+    <string name="progress_range_12m">12M</string>
+    <string name="progress_range_12m_long">12 months</string>
+    <!-- The arrow on a chart's choice when its chips do not fit on one line and it opens a menu. -->
+    <string name="progress_show_choices">Show all choices</string>
+    <!-- A chart or a row's sparkline for a screen reader: "Estimated 1RM, 3 months: from 92 to 101 kg". -->
     <string name="progress_chart_summary">%1$s, %2$s: from %3$s to %4$s kg</string>
     <string name="progress_chart_summary_empty">%1$s, %2$s: not enough sessions for a chart</string>
+    <!-- A row's sparkline with one value in the span: "Estimated 1RM, 3 months: one session, 112 kg" -->
+    <string name="progress_chart_summary_one">%1$s, %2$s: one session, %3$s kg</string>
     <string name="progress_chart_empty">Log this exercise in two workouts to see a chart</string>
     <string name="progress_record_heaviest">Heaviest weight</string>
     <string name="progress_record_e1rm">Best estimated 1RM</string>

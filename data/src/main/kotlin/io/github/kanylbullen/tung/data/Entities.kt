@@ -280,13 +280,22 @@ data class WorkoutExerciseWithSets(
     val sortedSets: List<SetEntry> get() = sets.sortedBy { it.position }
 }
 
-/** One row in the history list, aggregated in SQL. */
+/**
+ * One row in the history list, aggregated in SQL. [routineName] is the routine
+ * the workout was started from, if it still exists; the first two exercises
+ * (name and catalogue key, in workout order) title a row without one.
+ */
 data class WorkoutSummaryRow(
     val id: String,
     val startedAt: Long,
     val endedAt: Long?,
     val exerciseCount: Int,
     val volumeKg: Double,
+    val routineName: String? = null,
+    val firstExerciseName: String? = null,
+    val firstExerciseKey: String? = null,
+    val secondExerciseName: String? = null,
+    val secondExerciseKey: String? = null,
 )
 
 /** One exercise of a finished workout, for the picker's history (`WorkoutDao.recentExerciseOrder`). */
@@ -313,6 +322,9 @@ data class RoutineExerciseWithExercise(
     @Relation(parentColumn = "exerciseId", entityColumn = "id")
     val exercise: Exercise,
 )
+
+/** A routine's exercise with its target sets, for the muscles a routine works (`routineMuscles`). */
+data class RoutineExerciseLink(val routineId: String, val exerciseId: String, val targetSets: Int)
 
 /** One row in a routine list, aggregated in SQL. */
 data class RoutineSummaryRow(

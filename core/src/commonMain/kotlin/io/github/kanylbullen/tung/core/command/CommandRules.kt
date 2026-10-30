@@ -8,6 +8,7 @@ import io.github.kanylbullen.tung.core.addedExerciseSets
 import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.clampTargetSets
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.DELETED_COUNT
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
@@ -332,6 +333,21 @@ class CommandRules(private val ids: () -> String = { newId() }) {
         tx.routineExercises(routineId).forEach { tx.deleteRoutineExercise(it.id) }
         tx.deleteRoutine(routineId)
         return Done()
+    }
+
+    /**
+     * `delete_routines`: [deleteRoutine] for every routine in [routineIds]
+     * that still exists, in the one transaction. A duplicate counts once and
+     * an id that is gone is skipped (the count says what happened), but a
+     * list in which none exists is refused, as `delete_routine` refuses a
+     * missing id. Answers [DELETED_COUNT].
+     */
+    suspend fun deleteRoutines(tx: CommandTx, routineIds: List<String>): CommandResult {
+        val ids = routineIds.distinct()
+        val live = ids.filter { tx.routine(it) != null }
+        if (live.isEmpty()) return ids.singleOrNull()?.let { noSuch("routine", it) } ?: Rejected(listOf("none of the ${ids.size} routines exists"))
+        live.forEach { deleteRoutine(tx, it) }
+        return Done(mapOf(DELETED_COUNT to live.size.toString()))
     }
 
     /**

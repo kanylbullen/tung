@@ -14,10 +14,28 @@
     <!-- Home -->
     <string name="home_start_workout">Starta pass</string>
     <string name="home_resume_workout">Fortsätt pass</string>
+    <string name="home_workout_menu">Val för pågående pass</string>
     <string name="home_in_progress_since">Pågår sedan %1$s</string>
     <string name="home_recent">Senaste passen</string>
     <string name="home_empty">Inga pass än. Starta ditt första så hamnar det här.</string>
     <string name="home_show_all">Visa alla</string>
+    <string name="home_this_week">Den här veckan</string>
+    <plurals name="home_week_workouts">
+        <item quantity="one">%d pass</item>
+        <item quantity="other">%d pass</item>
+    </plurals>
+    <plurals name="home_week_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d set</item>
+    </plurals>
+    <string name="home_week_none">Inget pass än den här veckan</string>
+    <string name="home_week_last">Förra veckan %1$s kg</string>
+    <string name="home_week_best">Bäst på 12 veckor</string>
+    <string name="home_week_days_description">Volym per dag den här veckan: %1$s</string>
+    <string name="home_week_day_volume">%1$s %2$s kg</string>
+    <string name="home_week_days_none">inget än</string>
+    <string name="home_muscles_description">Muskler tränade den här veckan: %1$s</string>
+    <string name="workout_row_untitled">Pass</string>
 
     <!-- Workout list rows and stats -->
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
@@ -51,11 +69,31 @@
     <string name="workout_mark_undone">Markera set %1$d som inte klart</string>
     <string name="workout_delete_set">Ta bort set</string>
     <string name="workout_delete">Ta bort</string>
+    <string name="workout_delete_set_number">Ta bort set %1$d</string>
+    <string name="workout_discard">Kasta pass…</string>
+    <string name="workout_discard_title">Kasta det här passet?</string>
+    <string name="workout_discard_body">Seten du loggat tas bort.</string>
+    <string name="workout_discard_confirm">Kasta</string>
     <string name="workout_elapsed_description">Tid sedan start %1$s</string>
     <string name="workout_finish_title">Avsluta pass?</string>
-    <string name="workout_finish_body">Set som inte är bockade och övningar utan set tas bort.</string>
+    <plurals name="workout_finish_unlogged">
+        <item quantity="one">%d set som inte är bockat tas bort.</item>
+        <item quantity="other">%d set som inte är bockade tas bort.</item>
+    </plurals>
+    <plurals name="workout_finish_empty_exercises">
+        <item quantity="one">%d övning utan set tas också bort.</item>
+        <item quantity="other">%d övningar utan set tas också bort.</item>
+    </plurals>
+    <string name="workout_finish_body_clean">Alla set är loggade.</string>
     <string name="workout_finish_body_empty">Inga set är bockade, så passet sparas inte.</string>
+    <string name="workout_finish_confirm">Avsluta</string>
     <string name="workout_keep_training">Fortsätt träna</string>
+    <plurals name="workout_remove_exercise_title">
+        <item quantity="one">Ta bort %1$s och dess loggade set?</item>
+        <item quantity="other">Ta bort %1$s och dess %2$d loggade set?</item>
+    </plurals>
+    <string name="workout_remove_exercise_body">Det du loggat för den i det här passet raderas.</string>
+    <string name="workout_remove_exercise_confirm">Ta bort</string>
     <string name="workout_discarded">Passet sparades inte eftersom inga set var bockade.</string>
     <string name="workout_not_found">Passet finns inte längre. Gå tillbaka och starta ett nytt.</string>
     <string name="workout_log_set">Logga set · %1$s · %2$s × %3$s</string>
@@ -135,7 +173,7 @@
     <string name="exercise_add_to_routine">Lägg till i rutin</string>
     <string name="exercise_add_to_workout">Lägg till i passet</string>
     <string name="exercise_choose_routine">Till vilken rutin?</string>
-    <string name="exercise_no_routines">Inga rutiner än. Spara ett avslutat pass som rutin först.</string>
+    <string name="exercise_no_routines">Inga rutiner än. Skapa en i fliken Rutiner med ”+ Ny rutin”, eller spara ett avslutat pass som en.</string>
     <!-- Confirmation after "Add to routine"; %1$s is the routine's name. -->
     <string name="exercise_added_to_routine">Tillagd i %1$s</string>
     <string name="exercise_history">Historik</string>
@@ -231,7 +269,19 @@
 
     <!-- Summary -->
     <string name="summary_title">Pass klart</string>
-    <string name="summary_best_set">Bästa set</string>
+    <string name="summary_exercises">Övningar</string>
+    <plurals name="summary_sets">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d set</item>
+    </plurals>
+    <string name="summary_muscles">Tränade muskler</string>
+    <string name="summary_muscles_description">Tränade muskler: %1$s</string>
+    <string name="summary_muscle_item">%1$s %2$s</string>
+    <string name="summary_muscle_less_than">&lt;%1$s</string>
+    <plurals name="summary_muscles_uncounted">
+        <item quantity="one">%d set av en egen övning räknas inte: egna övningar har inga muskler</item>
+        <item quantity="other">%d set av egna övningar räknas inte: egna övningar har inga muskler</item>
+    </plurals>
     <string name="summary_record">Nytt rekord</string>
     <string name="summary_done">Klar</string>
     <string name="times_sign">×</string>
@@ -241,8 +291,26 @@
     <string name="routines_title">Rutiner</string>
     <string name="routines_all">Alla</string>
     <string name="routines_empty">Inga rutiner. Skapa en med + Ny rutin, eller spara ett avslutat pass som rutin från sammanfattningen eller från passets meny i historiken.</string>
+    <plurals name="routines_selected">
+        <item quantity="one">%1$d vald</item>
+        <item quantity="other">%1$d valda</item>
+    </plurals>
+    <string name="routines_select">Välj</string>
+    <string name="routines_select_all">Välj alla</string>
+    <string name="routines_leave_selection">Avsluta urval</string>
+    <string name="routines_delete_selected">Radera valda rutiner</string>
+    <plurals name="routines_delete_many_title">
+        <item quantity="one">Radera %1$d rutin?</item>
+        <item quantity="other">Radera %1$d rutiner?</item>
+    </plurals>
+    <string name="routines_delete_many_body">Din träningshistorik finns kvar.</string>
+    <plurals name="routines_delete_many_days">
+        <item quantity="one">%1$d programdag som använder dem försvinner också.</item>
+        <item quantity="other">%1$d programdagar som använder dem försvinner också.</item>
+    </plurals>
     <string name="routine_start">Starta</string>
     <string name="routine_start_description">Starta %1$s</string>
+    <string name="routine_muscles_description">Muskler: %1$s</string>
     <string name="routine_last">Senast: %1$s</string>
     <string name="routine_never">Aldrig</string>
     <string name="routine_today">i dag</string>
@@ -316,7 +384,7 @@
     <string name="program_days_empty">Inga dagar än. Lägg till dina rutiner i den ordning du tränar dem.</string>
     <string name="program_add_day">Lägg till dag</string>
     <string name="program_pick_routine">Välj en rutin</string>
-    <string name="program_no_routines">Inga rutiner än. Spara ett avslutat pass som rutin först.</string>
+    <string name="program_no_routines">Inga rutiner än. Skapa en i fliken Rutiner med ”+ Ny rutin”, eller spara ett avslutat pass som en.</string>
     <string name="program_day_menu">Val för %1$s</string>
     <string name="program_remove_day">Ta bort dagen</string>
     <string name="program_rename_title">Byt namn på program</string>
@@ -362,7 +430,7 @@
     <string name="settings_rest_default">Standardvila</string>
     <string name="settings_rest_default_hint">Vilotimern mellan set, för övningar utan egen. En övnings egen ställer du in i dess meny under ett pass.</string>
     <string name="settings_units">Måttenhet</string>
-    <string name="settings_units_kg">Kilogram (kg)</string>
+    <string name="settings_units_kg">Kilogram (pund stöds inte än)</string>
     <string name="about_version">Version</string>
     <string name="about_licence">Licens</string>
     <string name="about_licence_text">Fri programvara under GNU AGPL-3.0.</string>
@@ -584,6 +652,15 @@
     <string name="import_chosen_create">Ny övning ”%1$s”</string>
     <string name="import_chosen_skip">Hoppas över</string>
     <string name="import_suggestion">%1$s?</string>
+    <string name="import_decided_count">%1$d av %2$d bestämda</string>
+    <string name="import_decided_use">✓ %1$s</string>
+    <string name="import_decided_create">✓ Skapa ”%1$s”</string>
+    <string name="import_decided_skip">✓ Hoppas över</string>
+    <string name="import_decided_use_description">%1$s: importeras som %2$s</string>
+    <string name="import_decided_create_description">%1$s: importeras som en ny övning</string>
+    <string name="import_decided_skip_description">%1$s: hoppas över</string>
+    <string name="import_change">Ändra</string>
+    <string name="import_change_description">Ändra %1$s</string>
     <plurals name="import_used_in_workouts">
         <item quantity="one">I %d pass</item>
         <item quantity="other">I %d pass</item>
@@ -683,6 +760,14 @@
         <item quantity="other">Senaste importen: %1$d pass, %2$s</item>
     </plurals>
     <string name="import_undo_last">Ångra senaste importen</string>
+    <plurals name="import_undo_title">
+        <item quantity="one">Ta bort %d importerat pass?</item>
+        <item quantity="other">Ta bort %d importerade pass?</item>
+    </plurals>
+    <string name="import_undo_body">Pass du loggat i Tung behålls.</string>
+    <string name="import_undo_confirm">Ta bort</string>
+    <string name="import_delete_routines">Radera rutiner från senaste importen (%1$d)</string>
+    <string name="import_delete_routines_body">Importens pass finns kvar.</string>
 
     <!-- Progress (ui/progress, CLAUDE.md "Progress") -->
     <string name="nav_progress">Framsteg</string>
@@ -706,27 +791,40 @@
     <string name="progress_change_down">−%1$s kg</string>
     <string name="progress_change_3m">%1$s på 3 månader</string>
     <string name="progress_no_change_3m">Ingen förändring på 3 månader</string>
-    <plurals name="progress_sessions">
-        <item quantity="one">%d pass</item>
-        <item quantity="other">%d pass</item>
+    <string name="progress_change_12m">%1$s på 12 månader</string>
+    <string name="progress_no_change_12m">Ingen förändring på 12 månader</string>
+    <plurals name="progress_sessions_3m">
+        <item quantity="one">%d pass på 3 månader</item>
+        <item quantity="other">%d pass på 3 månader</item>
+    </plurals>
+    <plurals name="progress_sessions_12m">
+        <item quantity="one">%d pass på 12 månader</item>
+        <item quantity="other">%d pass på 12 månader</item>
     </plurals>
     <string name="progress_e1rm_value">Uppsk. 1RM %1$s kg</string>
-    <string name="progress_sparkline_summary">Uppskattad 1RM, 3 månader: från %1$s till %2$s kg</string>
+    <string name="progress_session_volume_value">Passvolym %1$s kg</string>
+    <string name="progress_weekly_volume_value">Veckovolym %1$s kg</string>
     <string name="progress_open_exercise">Öppna framsteg för %1$s</string>
     <string name="progress_metric_e1rm">Uppsk. 1RM</string>
     <string name="progress_metric_top_set">Tyngsta set</string>
     <string name="progress_metric_volume">Volym</string>
+    <string name="progress_metric_weekly_volume">Veckovolym</string>
     <string name="progress_metric_e1rm_long">Uppskattad 1RM</string>
     <string name="progress_metric_top_set_long">Tyngsta set</string>
     <string name="progress_metric_volume_long">Volym per pass</string>
+    <string name="progress_metric_weekly_volume_long">Volym per vecka</string>
     <string name="progress_range_3m">3 mån</string>
     <string name="progress_range_1y">1 år</string>
     <string name="progress_range_all">Allt</string>
     <string name="progress_range_3m_long">3 månader</string>
     <string name="progress_range_1y_long">1 år</string>
     <string name="progress_range_all_long">all tid</string>
+    <string name="progress_range_12m">12 mån</string>
+    <string name="progress_range_12m_long">12 månader</string>
+    <string name="progress_show_choices">Visa alla val</string>
     <string name="progress_chart_summary">%1$s, %2$s: från %3$s till %4$s kg</string>
     <string name="progress_chart_summary_empty">%1$s, %2$s: för få pass för ett diagram</string>
+    <string name="progress_chart_summary_one">%1$s, %2$s: ett pass, %3$s kg</string>
     <string name="progress_chart_empty">Logga övningen i två pass så syns ett diagram</string>
     <string name="progress_record_heaviest">Tyngsta vikt</string>
     <string name="progress_record_e1rm">Bästa uppskattade 1RM</string>

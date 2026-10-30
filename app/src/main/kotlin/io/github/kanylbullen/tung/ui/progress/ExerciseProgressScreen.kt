@@ -39,7 +39,6 @@ import io.github.kanylbullen.tung.core.progress.PersonalRecord
 import io.github.kanylbullen.tung.core.progress.ProgressMetric
 import io.github.kanylbullen.tung.core.progress.ProgressRange
 import io.github.kanylbullen.tung.core.progress.SessionPoint
-import io.github.kanylbullen.tung.core.progress.within
 import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.charts.LineChart
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
@@ -53,21 +52,33 @@ const val EXERCISE_PROGRESS_TAG = "exercise-progress"
 /** Sessions the exercise progress screen lists under "Last sessions". */
 private const val LAST_SESSIONS = 5
 
+/**
+ * The exercise progress screen's view model, keyed `progress-<exerciseId>`;
+ * with [shared] (the sheet in a workout, keyed `progress-sheet-<exerciseId>`)
+ * its metric and span are the Progress tab's, remembered in [ProgressSettings][io.github.kanylbullen.tung.data.ProgressSettings].
+ */
 @Composable
-internal fun exerciseProgressViewModel(exerciseId: String): ExerciseProgressViewModel {
+internal fun exerciseProgressViewModel(exerciseId: String, shared: Boolean = false): ExerciseProgressViewModel {
     val container = appContainer()
     return viewModel(
-        key = "progress-$exerciseId",
+        key = if (shared) "progress-sheet-$exerciseId" else "progress-$exerciseId",
         factory = factoryOf {
-            ExerciseProgressViewModel(exerciseId, container.workoutRepository, container.exerciseRepository, container.clock)
+            ExerciseProgressViewModel(
+                exerciseId,
+                container.workoutRepository,
+                container.exerciseRepository,
+                container.clock,
+                settings = if (shared) container.progressSettings else null,
+            )
         },
     )
 }
 
 /**
  * One exercise's progress (route `progress/{exerciseId}`): a chart with a
- * metric (estimated 1RM, top set, session volume) and a range (3 months, 1
- * year, all), the records with their dates, and the last sessions' sets.
+ * metric (estimated 1RM, top set, session or weekly volume) and a range (3
+ * months, 1 year, all), the records with their dates, and the last sessions'
+ * sets.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,7 +133,8 @@ fun ExerciseProgressScreen(exerciseId: String, onBack: () -> Unit) {
 
 /**
  * [metric] over [range] of [sessions] as a line chart, or a muted line saying
- * two sessions are needed; either way the summary describes it.
+ * two sessions are needed; either way the summary describes it, naming the
+ * range as [span] says it.
  */
 @Composable
 internal fun ProgressChart(
@@ -131,9 +143,10 @@ internal fun ProgressChart(
     range: ProgressRange,
     today: LocalDate,
     height: Dp,
+    span: String = rangeLongLabel(range),
 ) {
-    val points = chartPoints(sessions.within(range, today), metric)
-    val summary = chartSummary(metric, range, points)
+    val points = chartPoints(sessions, metric, range, today)
+    val summary = chartSummary(metric, span, points.map { it.y })
     if (points.size < 2) {
         // One node, like a drawn chart: the summary says why there is none.
         Column(

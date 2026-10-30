@@ -28,6 +28,10 @@ interface RoutineDao {
     @Query("SELECT * FROM routine WHERE id = :id")
     fun observeRoutine(id: String): Flow<Routine?>
 
+    /** Every routine's exercises with their target sets, for the muscles each routine works. */
+    @Query("SELECT routineId, exerciseId, targetSets FROM routine_exercise")
+    fun observeRoutineExerciseLinks(): Flow<List<RoutineExerciseLink>>
+
     @Query("SELECT * FROM routine WHERE id = :id")
     suspend fun getRoutine(id: String): Routine?
 

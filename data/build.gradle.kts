@@ -11,7 +11,9 @@ plugins {
 
 android {
     namespace = "io.github.kanylbullen.tung.data"
-    compileSdk = 35
+    compileSdk = 36
+    // Pinned like the apps': AGP's default build-tools is not compileSdk's.
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         minSdk = 26
@@ -67,15 +69,18 @@ dependencies {
 
     api("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("androidx.core:core-ktx:1.15.0")
+    // 1.17.0 for NotificationCompat's Live Update on Android 16 (setRequestPromotedOngoing and
+    // setShortCriticalText, ongoing/OngoingWorkoutNotifier.kt); it needs compileSdk 36.
+    implementation("androidx.core:core-ktx:1.17.0")
 
     // Room: the apps read the repositories' Flows of entities, so the entity types are API.
     api("androidx.room:room-runtime:2.6.1")
     api("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
-    // Small state outside Room (the rest timer, sync's settings).
-    api("androidx.datastore:datastore-preferences:1.1.1")
+    // Small state outside Room (the rest timer, sync's settings). At least 1.1.3: before it a read
+    // that raced the file's very first write (a fresh install) threw FileNotFoundException.
+    api("androidx.datastore:datastore-preferences:1.1.7")
 
     // Sync with tung-server: Ktor client on OkHttp, kotlinx JSON, WorkManager for the
     // background sync, the session token in EncryptedSharedPreferences.
@@ -92,10 +97,11 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.unifiedpush.android:connector:2.5.0")
 
-    // Health Connect (issue #45): write finished workouts, read heart rate and calories. 1.1.0-beta01 is
-    // the newest that builds with compileSdk 35 and AGP 8.7 (rc01 and 1.1.0 need compileSdk 36, AGP 8.9.1).
-    // Only the phone builds the real gateway; the watch carries the library unused.
-    implementation("androidx.health.connect:connect-client:1.1.0-beta01")
+    // Health Connect (issue #45): write finished workouts, read heart rate and calories. The stable 1.1.0
+    // (October 2025, no change since rc03) needs compileSdk 36, which the build has since PR #95; nothing
+    // the gateway calls moved between beta01 and it. Only the phone builds the real gateway; the watch
+    // carries the library unused.
+    implementation("androidx.health.connect:connect-client:1.1.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")

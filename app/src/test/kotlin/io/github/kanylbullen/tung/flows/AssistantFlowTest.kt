@@ -75,7 +75,7 @@ class AssistantFlowTest : FlowTest() {
         waitForText(str(R.string.ai_intro))
     }
 
-    private fun alwaysShowPayload(): Boolean = runBlocking { app.container.aiSettings.alwaysShowPayload.first() }
+    private fun waitForAlwaysShowPayload(on: Boolean) = waitUntilStored(on) { app.container.aiSettings.alwaysShowPayload.first() }
 
     private fun ask(label: Int) {
         val button = hasText(str(label)) and isEnabled()
@@ -156,7 +156,7 @@ class AssistantFlowTest : FlowTest() {
         // "Show what is sent" in the menu: the next request is shown first, and Cancel sends nothing.
         clickDescription(str(R.string.action_more))
         clickText(str(R.string.ai_show_payload))
-        waitUntil { alwaysShowPayload() }
+        waitForAlwaysShowPayload(true)
         ask(R.string.ai_ask_plateaus)
         waitForText(str(R.string.ai_payload_title))
         clickText(str(R.string.action_cancel))
@@ -166,7 +166,7 @@ class AssistantFlowTest : FlowTest() {
         // Off again: with the first review done, a tap sends at once.
         clickDescription(str(R.string.action_more))
         clickText(str(R.string.ai_show_payload))
-        waitUntil { !alwaysShowPayload() }
+        waitForAlwaysShowPayload(false)
         ask(R.string.ai_ask_next)
         waitForText(str(R.string.ai_start_workout))
         assertEquals(1, server.requestCount)

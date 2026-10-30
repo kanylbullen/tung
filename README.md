@@ -43,7 +43,7 @@ planned and described in detail in [`docs/architecture.md`](docs/architecture.md
   unlinked, it mirrors the phone's workout over Bluetooth. See
   [`wear/README.md`](wear/README.md).
 
-Stack: Kotlin, Jetpack Compose, Material 3, Room. minSdk 26, targetSdk 35.
+Stack: Kotlin, Jetpack Compose, Material 3, Room. minSdk 26, targetSdk 36.
 The app needs no backend and has no analytics; its only network use is the
 sync server you name.
 

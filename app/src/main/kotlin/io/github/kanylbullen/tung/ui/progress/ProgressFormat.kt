@@ -13,6 +13,7 @@ import io.github.kanylbullen.tung.core.progress.RecordKind
 import io.github.kanylbullen.tung.core.progress.SessionPoint
 import io.github.kanylbullen.tung.core.progress.beatsRecord
 import io.github.kanylbullen.tung.core.progress.repsToBeatE1rm
+import io.github.kanylbullen.tung.core.progress.trendPoints
 import io.github.kanylbullen.tung.ui.common.charts.ChartPoint
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.localWeight
@@ -30,7 +31,7 @@ import kotlin.math.roundToLong
 fun metricText(metric: ProgressMetric, kg: Double): String = when (metric) {
     ProgressMetric.E1RM -> localWeight(kg.roundToLong().toDouble())
     ProgressMetric.TOP_SET -> localWeight(kg)
-    ProgressMetric.VOLUME -> localVolume(kg)
+    ProgressMetric.VOLUME, ProgressMetric.WEEKLY_VOLUME -> localVolume(kg)
 }
 
 /** "+7.5 kg", "−2 kg", or null when it rounds to no change. */
@@ -55,6 +56,7 @@ fun metricLabel(metric: ProgressMetric): String = stringResource(
         ProgressMetric.E1RM -> R.string.progress_metric_e1rm
         ProgressMetric.TOP_SET -> R.string.progress_metric_top_set
         ProgressMetric.VOLUME -> R.string.progress_metric_volume
+        ProgressMetric.WEEKLY_VOLUME -> R.string.progress_metric_weekly_volume
     },
 )
 
@@ -64,6 +66,7 @@ fun metricLongLabel(metric: ProgressMetric): String = stringResource(
         ProgressMetric.E1RM -> R.string.progress_metric_e1rm_long
         ProgressMetric.TOP_SET -> R.string.progress_metric_top_set_long
         ProgressMetric.VOLUME -> R.string.progress_metric_volume_long
+        ProgressMetric.WEEKLY_VOLUME -> R.string.progress_metric_weekly_volume_long
     },
 )
 
@@ -85,22 +88,40 @@ fun rangeLongLabel(range: ProgressRange): String = stringResource(
     },
 )
 
-/** The points a line chart plots for [metric]: one per session that has a value, x the epoch day. */
-fun chartPoints(sessions: List<SessionPoint>, metric: ProgressMetric): List<ChartPoint> =
-    sessions.mapNotNull { s -> s.value(metric)?.let { ChartPoint(s.date.toEpochDays().toLong(), it) } }
-
-/** "Estimated 1RM, 3 months: from 92 to 101 kg", or that there are too few sessions. */
+/** The compact trends' span chips (the Progress tab's rows, the sheet in a workout): "3M", "12M". */
 @Composable
-fun chartSummary(metric: ProgressMetric, range: ProgressRange, points: List<ChartPoint>): String {
+fun trendRangeLabel(range: ProgressRange): String =
+    if (range == ProgressRange.ONE_YEAR) stringResource(R.string.progress_range_12m) else rangeLabel(range)
+
+/** [trendRangeLabel] inside a sentence: "3 months", "12 months" (the exercise screen says "1 year"). */
+@Composable
+fun trendRangeLongLabel(range: ProgressRange): String =
+    if (range == ProgressRange.ONE_YEAR) stringResource(R.string.progress_range_12m_long) else rangeLongLabel(range)
+
+/**
+ * The points a line chart plots for [metric] over [range]: one per session
+ * that has a value, or per week for weekly volume (core's [trendPoints]), x
+ * the epoch day.
+ */
+fun chartPoints(sessions: List<SessionPoint>, metric: ProgressMetric, range: ProgressRange, today: LocalDate): List<ChartPoint> =
+    trendPoints(sessions, metric, range, today).map { ChartPoint(it.date.toEpochDays().toLong(), it.value) }
+
+/**
+ * A chart's or a sparkline's summary over [span] ("3 months"): "Estimated
+ * 1RM, 3 months: from 92 to 101 kg", or that there are too few sessions.
+ */
+@Composable
+fun chartSummary(metric: ProgressMetric, span: String, values: List<Double>): String {
     val name = metricLongLabel(metric)
-    val span = rangeLongLabel(range)
-    if (points.size < 2) return stringResource(R.string.progress_chart_summary_empty, name, span)
+    // One value is a dot on a row's sparkline: say the value, not "log two workouts".
+    if (values.size == 1) return stringResource(R.string.progress_chart_summary_one, name, span, metricText(metric, values.first()))
+    if (values.isEmpty()) return stringResource(R.string.progress_chart_summary_empty, name, span)
     return stringResource(
         R.string.progress_chart_summary,
         name,
         span,
-        metricText(metric, points.first().y),
-        metricText(metric, points.last().y),
+        metricText(metric, values.first()),
+        metricText(metric, values.last()),
     )
 }
 

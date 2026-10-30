@@ -18,6 +18,7 @@ import io.github.kanylbullen.tung.core.command.Command.CreateRoutine
 import io.github.kanylbullen.tung.core.command.Command.DeactivateProgram
 import io.github.kanylbullen.tung.core.command.Command.DeleteProgram
 import io.github.kanylbullen.tung.core.command.Command.DeleteRoutine
+import io.github.kanylbullen.tung.core.command.Command.DeleteRoutines
 import io.github.kanylbullen.tung.core.command.Command.DeleteWorkout
 import io.github.kanylbullen.tung.core.command.Command.FinishWorkout
 import io.github.kanylbullen.tung.core.command.Command.LogSet
@@ -50,6 +51,9 @@ const val MAX_PLANNED_SETS = 50
 const val MIN_ADDED_SETS = 1
 const val MAX_ADDED_SETS = 20
 
+/** Most routines one `delete_routines` can name. */
+const val MAX_DELETE_ROUTINES = 500
+
 /** The longest rest timer a command may set, in seconds. The app's menu offers 0–300. */
 const val MAX_REST_SECONDS = 3600
 
@@ -67,7 +71,8 @@ sealed interface Validation {
  * [MIN_PLANNED_SETS]..[MAX_PLANNED_SETS], a routine's target sets
  * [MIN_TARGET_SETS]..[MAX_TARGET_SETS] and target reps 1..[MAX_REPS], sets
  * added at once [MIN_ADDED_SETS]..[MAX_ADDED_SETS], rest 0..[MAX_REST_SECONDS] s, weekday
- * 1..7), names and ids not blank, plans not empty. Whether the ids exist is the
+ * 1..7, 1..[MAX_DELETE_ROUTINES] routines in `delete_routines`), names and ids
+ * not blank, plans not empty. Whether the ids exist is the
  * handler's business. Pure, so the app, the server and a client checking
  * before it sends all agree.
  */
@@ -183,6 +188,10 @@ fun validate(command: Command): Validation {
             name(command.name)
         }
         is DeleteRoutine -> id(command.routineId, "routineId")
+        is DeleteRoutines -> {
+            if (command.ids.size !in 1..MAX_DELETE_ROUTINES) reasons += "between 1 and $MAX_DELETE_ROUTINES routine ids are needed"
+            if (command.ids.any { it.isBlank() }) reasons += "routine ids must not be blank"
+        }
         is MoveRoutineExercise -> id(command.routineExerciseId, "routineExerciseId")
         is AdjustTargetSets -> id(command.routineExerciseId, "routineExerciseId")
         is AddRoutineExercise -> {

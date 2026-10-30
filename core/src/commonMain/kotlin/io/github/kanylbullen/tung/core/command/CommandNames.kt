@@ -13,6 +13,7 @@ import io.github.kanylbullen.tung.core.command.Command.CreateRoutine
 import io.github.kanylbullen.tung.core.command.Command.DeactivateProgram
 import io.github.kanylbullen.tung.core.command.Command.DeleteProgram
 import io.github.kanylbullen.tung.core.command.Command.DeleteRoutine
+import io.github.kanylbullen.tung.core.command.Command.DeleteRoutines
 import io.github.kanylbullen.tung.core.command.Command.DeleteWorkout
 import io.github.kanylbullen.tung.core.command.Command.FinishWorkout
 import io.github.kanylbullen.tung.core.command.Command.LogSet
@@ -70,6 +71,7 @@ object CommandNames {
         CreateRoutine::class to "create_routine",
         RenameRoutine::class to "rename_routine",
         DeleteRoutine::class to "delete_routine",
+        DeleteRoutines::class to "delete_routines",
         MoveRoutineExercise::class to "move_routine_exercise",
         AdjustTargetSets::class to "adjust_target_sets",
         AddRoutineExercise::class to "add_routine_exercise",

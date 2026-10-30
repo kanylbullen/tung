@@ -7,6 +7,7 @@ import io.github.kanylbullen.tung.core.OngoingStatus
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.StickyAction
 import io.github.kanylbullen.tung.core.currentSet
+import io.github.kanylbullen.tung.core.formatWeight
 import io.github.kanylbullen.tung.core.ongoingStatus
 import io.github.kanylbullen.tung.core.stickyAction
 import io.github.kanylbullen.tung.data.R
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import java.text.DecimalFormatSymbols
 
 /**
  * A workout in progress as the ongoing notification shows it: everything it
@@ -30,9 +32,10 @@ import kotlinx.coroutines.flow.map
  *
  * @param logSetId the set the notification's "Log set" ticks (the current set
  *   by the default rule); null when every set is ticked.
- * @param logSetHasReps false when that set has 0 reps: logging it would tick a
- *   set that does not count, so the action opens the workout instead, as the
- *   tick on the row opens the reps sheet.
+ * @param logSetWeightKg that set's weight in kg, for the Live Update chip on
+ *   Android 16 ([chipText]); null with [logSetId].
+ * @param logSetReps that set's reps, the same way; 0 means logging it would
+ *   tick a set that does not count ([logSetHasReps]).
  * @param addSetWorkoutExerciseId with every set ticked, the workout exercise the
  *   notification's "Add set" adds a set to ([stickyAction]); null otherwise.
  */
@@ -42,9 +45,36 @@ data class OngoingWorkout(
     val status: OngoingStatus,
     val startedBy: String? = null,
     val logSetId: String? = null,
-    val logSetHasReps: Boolean = false,
+    val logSetWeightKg: Double? = null,
+    val logSetReps: Int? = null,
     val addSetWorkoutExerciseId: String? = null,
-)
+) {
+    /**
+     * False when the current set has 0 reps: logging it would tick a set that
+     * does not count, so the action opens the workout instead, as the tick on
+     * the row opens the reps sheet.
+     */
+    val logSetHasReps: Boolean get() = (logSetReps ?: 0) > 0
+}
+
+/**
+ * The text of the Live Update's chip in the status bar (Android 16; see
+ * `OngoingWorkoutNotifier`): the current set's numbers, "80×8", the weight
+ * as the app writes it ([formatWeight], the locale's decimal separator) and
+ * no spaces, since the chip is 96 dp wide and shows a text whole only under
+ * seven characters: "80×8" and "100×10" do, "22,5×12" and "102,5×10" are
+ * cut to what fits. A bodyweight set is "0×12", as its row reads. Null when
+ * that set has no reps yet (0 × 0 says nothing) or when every set is ticked;
+ * the chip then shows the icon (the guide's note on a chronometer in the chip
+ * is not verified for a count-up one).
+ */
+fun OngoingWorkout.chipText(context: Context): String? {
+    val weightKg = logSetWeightKg ?: return null
+    val reps = logSetReps ?: return null
+    if (reps <= 0) return null
+    val weight = formatWeight(weightKg, DecimalFormatSymbols.getInstance().decimalSeparator)
+    return context.getString(R.string.ongoing_chip_set, weight, reps)
+}
 
 /** The notification's body: "Bench press · set 3 of 5", "4 sets logged", or "Bench press · all sets logged". */
 fun OngoingStatus.text(context: Context): String = when (this) {
@@ -108,7 +138,8 @@ internal fun ongoingWorkout(
         status = ongoingStatus(ongoing, index, touched),
         startedBy = workout.startedBy,
         logSetId = set?.id,
-        logSetHasReps = (set?.reps ?: 0) > 0,
+        logSetWeightKg = set?.weightKg,
+        logSetReps = set?.reps,
         addSetWorkoutExerciseId = addSet?.let { exercises[it.exercise].workoutExercise.id },
     )
 }

@@ -5,6 +5,7 @@ import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
+import io.github.kanylbullen.tung.core.command.CommandIds.DELETED_COUNT
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_DAY_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.PROGRAM_ID
@@ -461,6 +462,29 @@ class CommandRulesTest {
             tx.writes,
         )
         assertEquals(listOf("no routine $routineId"), rejected { executor.deleteRoutine(tx, routineId) }.reasons)
+    }
+
+    @Test
+    fun deleteRoutinesTakesEveryLiveOneOnceAndRefusesAListOfNone() {
+        val a = tx.addRoutine(name = "A")
+        val b = tx.addRoutine(name = "B")
+        val kept = tx.addRoutine(name = "Kept")
+        val benchOfA = tx.addRoutineExercise(a, "bench", 3)
+        tx.addProgram("p1")
+        val dayA = tx.addProgramDay(a, "p1")
+        val dayKept = tx.addProgramDay(kept, "p1")
+
+        val result = done { executor.deleteRoutines(tx, listOf(a, b, a, "gone")) }
+        assertEquals("a duplicate counts once, an id that is gone is skipped", "2", result.ids[DELETED_COUNT])
+        assertEquals(listOf(kept), runBlocking { tx.routines.map { it.id } })
+        assertEquals(listOf(dayKept), runBlocking { tx.programDays("p1") }.map { it.id })
+        assertEquals(
+            listOf("delete day $dayA", "delete routine exercise $benchOfA", "delete routine $a", "delete routine $b"),
+            tx.writes,
+        )
+        assertEquals(listOf("no routine $a"), rejected { executor.deleteRoutines(tx, listOf(a)) }.reasons)
+        assertEquals(listOf("none of the 2 routines exists"), rejected { executor.deleteRoutines(tx, listOf(a, b)) }.reasons)
+        assertEquals("a refusal writes nothing", 4, tx.writes.size)
     }
 
     @Test

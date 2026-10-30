@@ -4,12 +4,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.core.command.CommandIds
+import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.data.RoutineRepository
+import io.github.kanylbullen.tung.data.WorkoutRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import io.github.kanylbullen.tung.core.muscles.MuscleBreakdown
+import io.github.kanylbullen.tung.data.CatalogueMuscles
+import io.github.kanylbullen.tung.data.routineMuscles
+import kotlinx.coroutines.flow.flow
 
 data class RoutineExerciseUi(
     val id: String,
@@ -25,24 +32,34 @@ data class RoutineDetailUiState(
     val missing: Boolean = false,
     val name: String = "",
     val exercises: List<RoutineExerciseUi> = emptyList(),
+    /** No workout is in progress (issue #81); Start also needs an exercise. */
+    val canStart: Boolean = false,
+    /** The muscles the routine works, by its exercises' target sets; null until read, empty for custom exercises only. */
+    val muscles: MuscleBreakdown? = null,
 )
 
 class RoutineDetailViewModel(
     private val routineId: String,
     repo: RoutineRepository,
+    workouts: WorkoutRepository,
     private val commands: CommandHandler,
+    catalogueMuscles: CatalogueMuscles,
 ) : ViewModel() {
 
     val state: StateFlow<RoutineDetailUiState> = combine(
         repo.observeRoutine(routineId),
         repo.observeRoutineExercises(routineId),
-    ) { routine, exercises ->
+        workouts.observeActiveWorkout(),
+        flow { emit(catalogueMuscles.index()) },
+    ) { routine, exercises, active, index ->
         if (routine == null) {
             RoutineDetailUiState(loading = false, missing = true)
         } else {
             RoutineDetailUiState(
                 loading = false,
                 name = routine.name,
+                canStart = active == null,
+                muscles = routineMuscles(exercises.map { it.exercise.id to it.routineExercise.targetSets }, index),
                 exercises = exercises.map { e ->
                     RoutineExerciseUi(
                         id = e.routineExercise.id,
@@ -58,6 +75,11 @@ class RoutineDetailViewModel(
 
     fun rename(name: String) {
         viewModelScope.launch { commands.execute(Command.RenameRoutine(routineId, name)) }
+    }
+
+    /** Starts a workout from this routine, as the row's Start does, and hands back its id (issue #81). */
+    fun start(onReady: (String) -> Unit) {
+        viewModelScope.launch { commands.execute(Command.StartRoutine(routineId)).id(CommandIds.WORKOUT_ID)?.let(onReady) }
     }
 
     fun delete(onDeleted: () -> Unit) {

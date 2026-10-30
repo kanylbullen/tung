@@ -19,8 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.LoggedSet
-import io.github.kanylbullen.tung.core.progress.ProgressMetric
-import io.github.kanylbullen.tung.core.progress.ProgressRange
+import io.github.kanylbullen.tung.core.progress.TREND_METRICS
+import io.github.kanylbullen.tung.core.progress.beatsRecord
+import io.github.kanylbullen.tung.core.progress.TREND_RANGES
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
@@ -28,16 +29,18 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 private const val SHEET_SESSIONS = 3
 
 /**
- * An exercise's progress without leaving the workout: the estimated 1RM over
- * 3 months (compact), the last three sessions, and what [proposed] (the
- * exercise's current set, if it has one) would beat. Only finished workouts
- * count, so the workout in progress is not part of it. It reads and changes
- * nothing of the workout; dismissing it leaves the list where it was.
+ * An exercise's progress without leaving the workout: a compact chart of the
+ * estimated 1RM or the volume per session or per week over 3 or 12 months
+ * (the chips; the same remembered choice as the Progress tab's rows), the
+ * last three sessions, and what [proposed] (the exercise's current set, if it
+ * has one) would beat. Only finished workouts count, so the workout in
+ * progress is not part of it. It reads and changes nothing of the workout;
+ * dismissing it leaves the list where it was.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProgressSheet(exerciseId: String, exerciseName: String, proposed: LoggedSet?, onDismiss: () -> Unit) {
-    val vm = exerciseProgressViewModel(exerciseId)
+    val vm = exerciseProgressViewModel(exerciseId, shared = true)
     val state by vm.state.collectAsStateWithLifecycle()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -60,15 +63,20 @@ fun ProgressSheet(exerciseId: String, exerciseName: String, proposed: LoggedSet?
             }
             proposed?.let { set ->
                 recordLine(set.weightKg, set.reps, state.records)?.let { line ->
+                    // The accent is for good news: a set that beats a record. The reps it would take, or
+                    // "is no new record", are muted like every other neutral line.
+                    val record = beatsRecord(set.weightKg, set.reps, state.records) != null
                     Text(
                         line,
                         style = MaterialTheme.typography.titleMedium,
-                        color = Tung.colors.accentText,
+                        color = if (record) Tung.colors.accentText else Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     )
                 }
             }
-            ProgressChart(state.sessions, ProgressMetric.E1RM, ProgressRange.THREE_MONTHS, state.today, height = 140.dp)
+            ChoiceChips(TREND_METRICS, state.metric, { metricLabel(it) }, vm::setMetric)
+            ProgressChart(state.sessions, state.metric, state.range, state.today, height = 140.dp, span = trendRangeLongLabel(state.range))
+            ChoiceChips(TREND_RANGES, state.range, { trendRangeLabel(it) }, vm::setRange)
             ProgressHeading(stringResource(R.string.progress_last_sessions), Modifier.padding(top = 0.dp))
             state.sessions.takeLast(SHEET_SESSIONS).reversed().forEach { session ->
                 SessionLine(mediumDate(session.date), session.sets)

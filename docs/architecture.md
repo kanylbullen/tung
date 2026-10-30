@@ -274,7 +274,8 @@ A workout in progress is visible outside the app. Decided 2026-10-20.
 - **Phone: an ongoing notification** whenever a workout is in progress,
   whoever started it: "Workout in progress · Bench press, set 3 of 5",
   updated as sets are logged, tapping it opens the active workout, with
-  actions for Log set and Finish. On Android 16 it is a Live Update. It uses
+  actions for Log set and Finish. On Android 16 it is a Live Update, with
+  the current set's numbers ("80×8") in the status-bar chip. It uses
   the existing notification channel plumbing from the rest timer. When the
   workout was started by another client (an assistant through MCP, the watch,
   another phone) the text says so.

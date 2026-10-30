@@ -30,8 +30,12 @@ Adding an app language:
 
 Kotlin 2.0.21, Jetpack Compose (BOM 2024.12.01), Material 3, Room 2.6.1 via
 KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
-DataStore 1.1.1 (small state outside Room). AGP 8.7.3,
-Gradle 8.11.1 (wrapper). compileSdk/targetSdk 35, minSdk 26. For sync only:
+DataStore 1.1.7 (small state outside Room). AGP 8.9.1,
+Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the three Android
+modules: AGP's default is not compileSdk's). compileSdk 36; targetSdk 36 on
+the phone (Play's requirement since 2026-08-31) and 35 on the watch (Play's
+Wear OS bar; Android 16's behaviour changes are not wanted there yet);
+minSdk 26. For sync only:
 Ktor client 3.0.3 (OkHttp engine, kotlinx JSON), WorkManager 2.10.0,
 androidx.security-crypto 1.0.0 (the stable release) and lifecycle-process;
 for Sign in with Google, Credential Manager (`androidx.credentials` 1.3.0
@@ -41,7 +45,7 @@ with its Play services provider) and `googleid` 1.1.1, in `app/` only.
 watch's `TungWearApp`) holds the database and the repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
 (`ui/common/Containers.kt`) and get repositories (for reads), `container.commands`
 (for every change, see "Commands") and nav arguments in the constructor;
-the active workout's factory also passes `createSavedStateHandle()`, for the rest timer.
+the active workout's factory also passes `createSavedStateHandle()`, for the rest timer, and so does the Routines tab's, for its selection.
 
 ## Layers
 
@@ -80,7 +84,8 @@ with their JSON parsing (`CoreCatalog`/`CoreExercise` for `core.json`,
 extended-catalogue search), the command surface (`core/command/`, see
 "Commands"), the picker's suggestions (`core/picker/`, see "Smart picker"),
 the Exercises tab's browse list and the catalogue by id (`core/catalog/`),
-the muscle map's shapes (`core/muscles/BodyMap.kt`) and an exercise's history
+the muscle map's shapes (`core/muscles/BodyMap.kt`) and a workout's sets per
+muscle (`core/muscles/MuscleWork.kt`, see "Workout summary"), an exercise's history
 (`ExerciseHistory.kt`; see "Exercises tab and exercise page"), progress
 (`core/progress/`: estimated 1RM, sessions, weeks, streak, records; see
 "Progress"), the sync protocol with its pure rules (`core/sync/`, see
@@ -119,11 +124,11 @@ databases. The packages are the ones the files had in `app/`:
 
 | Package (`data/src/main/kotlin/io/github/kanylbullen/tung/…`) | Contents |
 |---|---|
-| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
+| `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `ProgressSettings` (the compact trends' metric and span), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
 | `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
 | `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
-| `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set and Add set). See "Ongoing workout and push". |
+| `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories, and `chipText`, the Live Update chip's text), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set and Add set). See "Ongoing workout and push". |
 | `push/` | Push: `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`. See "Ongoing workout and push". |
 | `importing/` | Import from other apps: `Importer` (the one bulk write), `ImportService` (`container.imports`), `ImportHistory`. See "Import". |
 | `ui/common/` | `ExerciseNames` and `Exercise.displayName(context)`; the composable `exerciseDisplayName` stays in `app/`. |
@@ -144,7 +149,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
   without the library knowing either app.
 - **Tests:** `DirtyTrackingTest`, `SeedExercisesTest`,
   `RoutineEditingCommandsTest` (`create_routine` and the routine-editing
-  commands through `AppCommandHandler`), `AddExerciseCommandsTest`
+  commands through `AppCommandHandler`), `DeleteRoutinesCommandTest`, `AddExerciseCommandsTest`
   (`add_exercise` set counts and pre-fill, `add_set` with a count), `LogSetCommandsTest`
   (`log_set` only ticks; `add_next` and routine targets), `ProgressSetsTest` (the progress reads), `ImporterTest` and `SyncMappingImportTest` (see "Import"), `SyncClientTest` and `LinkClientTest` in `data/src/test` (Robolectric with the default
   application). `FakeSyncServer` and `MemoryTokenStore` are Kotlin test
@@ -156,7 +161,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap`), `history` (list + detail), `summary`, `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap` with `MuscleHeatMap`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -168,6 +173,39 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 The app's most important query is `WorkoutDao.previousSessionSets` — the sets
 for an exercise from the latest finished workout that contains it. It drives
 both "Last: 80 × 8" and the pre-fill of new sets.
+
+### Home
+
+`ui/home/`: the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
+and heaviest, `ArchivoWide` in `ui/theme/Type.kt`, which only the wordmark
+and the hero number use), then, once there is a finished workout, **"This
+week"** (`ThisWeekSection`): the week's volume as the hero number
+(`Tung.numbers.hero`, 64 sp, smaller for a longer number), "3 workouts ·
+41 sets" (or "No workout yet this week · Last week 2 430 kg", from
+`ThisWeek.lastWeek`), "Best of the last 12 weeks" in the accent when it is, the
+muscles the week's sets worked as the small body (`MuscleHeatMap` at 112 dp
+over core's `muscleBreakdown`, like the summary's), and the seven days as
+bars (`WeekStrip`: Monday first, a trained day in the accent scaled to the
+week's biggest day, an empty day a short mark, today outlined; one
+semantics node naming the trained days). The numbers are core's
+`thisWeek(sets, today, zone)` (`core/progress/ThisWeek.kt`, `ThisWeekTest`:
+every day present, workouts counted once per day, logged sets only, the
+date in the zone, and `bestOfRecentWeeks` = strictly more volume than each
+of the eleven weeks before, at least one of which had a workout), computed
+in `HomeViewModel` on
+`Dispatchers.Default` from `WorkoutRepository.observeProgressSets()`. Then
+Start workout (or Resume with its menu), "Today" when a program is active,
+the three routines as one raised group (`RoutineRow(compact = true)`: a
+56 dp row with an outlined 40 dp Start; `styledRoutineName` draws
+everything up to the last " · " of a name muted, so an imported
+"Skokloster Gym · JT2 dag 1" reads as its day), Recent workouts, and the
+Assistant's row. A workout's row (`WorkoutRow`, shared with History) is
+titled with the routine it was started from, else its first two exercises,
+else "Workout", with the short date (`shortLocalDate`, "Thu 22 Oct"),
+duration and exercise count muted under it and the volume on the right; `WorkoutSummaryRow` carries the routine's name
+and the first two exercises' names and keys as SQL subqueries (a query
+result, not an entity: no schema change). The date stays its own text node,
+which is how the flow tests find a workout.
 
 ### Settings
 
@@ -186,7 +224,7 @@ column). All in `app/.../ui/settings/`:
 | Training | `settings/training` | "Default rest 1:30 · kg" | `TrainingScreen`: the default rest (−/+ 30 s, 0–300 s), the unit (kg), and "My equipment" (`EquipmentSection`, issue #65) |
 | Assistant | `settings/assistant` | the model, or "Not set up" | `AiSection` |
 | Health Connect | `settings/health` | "Writing workouts", "Off", … | `HealthConnectSection` |
-| Data | `settings/data` | "Last import 21 Oct" | `ImportSection` (import's `onDone` pops back here) |
+| Data | `settings/data` | "Last import 21 Oct" | `ImportSection` (import's `onDone` pops back here): import, "Undo last import", "Delete routines from the last import (N)" |
 | About | `settings/about` | "Version 0.1.0 · dogfood" | `AboutScreen` in `SettingsGroups.kt`: version and build type (`BuildConfig`), AGPL-3.0 with the source link, the catalogue's credit (core CC0, free-exercise-db Unlicense) |
 
 A section's own composable keeps its logic and has no title of its own: the
@@ -216,18 +254,45 @@ exists; `RoutineRow`'s Start is also disabled for a routine with no exercises.
 deleting a routine (which cascades to its `RoutineExercise` rows) never
 touches history.
 
+**A routine's muscles.** Every routine row (Home's group, the Routines tab)
+carries a small body (`MuscleHeatMap` at 44 dp, `RoutineRow(muscles = …)`)
+and the routine's page the body at 140 dp with a line of its most worked
+muscles: data's `routineMuscles(exercises, index)` (`data/RoutineMuscles.kt`)
+is core's `muscleBreakdown` over the catalogue with each exercise's
+`targetSets` as its sets, so a routine with 4 × squat and 3 × curl shows
+quads over biceps; `RoutineDao.observeRoutineExerciseLinks` gives every
+routine's exercises in one query for the lists, computed on
+`Dispatchers.Default` in `RoutinesViewModel` and `HomeViewModel`. A screen
+reader hears "Muscles: quads, glutes, chest" (the row's top three; the page
+names them all with percentages). `RoutineMusclesFlowTest`.
+
 **The Routines tab** (`Routes.ROUTINES`, `ui/routines/RoutinesScreen.kt`) is
 the second of the bottom bar's tabs, Home · Routines · Exercises · History ·
 Progress,
 switched with `navigateToTab` (`saveState`/`restoreState`, like the others):
 the Programs row on top, then every routine by last use, each with Start and
 its detail behind a tap; routine and program details are pushed on top of the
-tab, so back returns to it. Home keeps its Routines section and "Today"; its
+tab, so back returns to it. Home keeps its Routines section, the three most recently used
+(`HomeViewModel.HOME_ROUTINES`), and "Today"; its
 "All" switches to the tab, and so does the Assistant's "Save program".
 **"+ New routine"** in the tab's top bar opens `RoutineNameDialog` and runs
 `CreateRoutine(name)` (`RoutineRepository.create`: an empty routine, stamped
 and dirty), then opens the routine's detail, which says "Add exercises with
 + Exercise" until it has one.
+
+**Selection mode** (issue #79, `RoutinesViewModel`): a long press on a row
+starts it with that routine selected (the row's long-press action is labelled
+"Select" for a screen reader); a tap then toggles a row, which is
+`selectable` (announced as selected) with a checkbox where Start was: the
+Start buttons are hidden while selecting. The top bar becomes ✕, "3
+selected", "Select all" (until all are) and a delete icon; ✕ or back leaves.
+The selection is in the ViewModel's `SavedStateHandle`, so it survives
+rotation and process death, and a routine that disappears drops out of it.
+Delete asks once (`DeleteRoutinesDialog`, shared with Settings → Data):
+"Delete 12 routines?", "Your workout history is kept.", and, when any of
+them is a program day, "3 program days that use them go too."
+(`RoutineRepository.programDaysUsing`); then one `DeleteRoutines` with the
+ids, one transaction and one sync.
 
 **Editing a saved routine** (routine detail, `ui/routines/RoutineDetail*`),
 each a command:
@@ -246,6 +311,12 @@ each a command:
 - Move up/down, rename and delete as before. An edit never touches a workout
   already started from the routine, except that Log set there reads the
   target sets live (`WorkoutDao.routineTargetSets`).
+- **Start** (issue #81): a primary Start button at the top of the page, the
+  same `StartRoutine` as the row's Start on Home and the Routines tab, then
+  the workout opens (`popUpTo(HOME)`, so back lands on Home). Disabled while
+  a workout is in progress (`RoutineDetailUiState.canStart`, from
+  `observeActiveWorkout`) or while the routine has no exercise.
+  `RoutineStartFlowTest`.
 
 ### Programs
 
@@ -285,9 +356,10 @@ at the top of the Routines tab (`ui/routines/Program*`).
 
 The active workout has a sticky **Log set · Bench press · 80 × 8** button
 above the system navigation (always under the thumb, wherever the list is
-scrolled). It acts on the **current set** (`core.currentSet`), marked by a 3dp
-accent bar at the left edge of its row (`Tung.colors.accent`; "Current set"
-as its number's state description). The rule, in order: an explicit selection
+scrolled). It acts on the **current set** (`core.currentSet`), marked by the
+`raised` background on its row, a 3dp accent bar at the row's left edge and
+its number in `accentText` (`Tung.colors.accent`; "Current set" as its
+number's state description). The rule, in order: an explicit selection
 while that set still exists and is un-ticked; else the first un-ticked set of
 the exercise the user last touched (ticked, edited, added a set to, or just
 added); else the first un-ticked set of the first exercise that has one; no
@@ -361,7 +433,9 @@ and drops one that already ended. The rest per exercise is
 `Exercise.restSeconds` (null = default, 0 = off), set from the exercise's menu
 ("Rest timer…", 0–300 s in 30 s steps) as an ordinary update with
 `updatedAt`. The countdown sits next to the elapsed time; tapping it shows
-Skip and +30 s.
+Skip and +30 s. The menu's other item, "Remove exercise", asks first when
+the exercise has a logged set ("Remove Bench press and its 3 logged sets?")
+and removes at once when it has none.
 
 **When it ends:** `RestAlarm` sets a one-shot `RTC_WAKEUP` alarm, exact
 (`setExactAndAllowWhileIdle`) below Android 12 or when "Alarms & reminders"
@@ -382,6 +456,36 @@ notification); denied, the countdown and the vibration still work.
 The DataStore is built in `TungContainer` with `PreferenceDataStoreFactory`,
 not the `preferencesDataStore` delegate: the delegate is a process-wide
 singleton, and Robolectric makes a new application for every flow test.
+It must be at least 1.1.3: in 1.1.1 a read that raced the file's very first
+write (a fresh install, e.g. the first workout's `stored` read next to
+`firstTimeAskingForNotifications`) threw `FileNotFoundException` when the
+write's atomic move landed between the failed open and the `exists` check;
+1.1.3 reads again.
+
+**Deleting a set** (issue #81): a swipe to the left on a set row no longer
+deletes it; the row settles open with a **Delete** button revealed behind it
+(`SwipeableSetRow`, an `AnchoredDraggableState` with `Closed` at 0 and
+`Open` at −96 dp, filled with `Tung.colors.danger`), and a tap on the button
+deletes. A tap on the open row, a swipe back, a scroll, or a tap on anything
+else in the list closes it, and only one row is open at a time
+(`WorkoutList`'s `openSetId`; every row and header callback goes through
+`closing`). The button is composed only while revealed, so a screen reader
+never meets "Delete" on every set; its way to delete is still the custom
+action "Delete set" on each part of the row. `SwipeDeleteFlowTest`,
+`AccessibilityFlowTest`.
+
+**Discard workout** (issue #81): the active workout's top bar has a menu after
+Finish with "Discard workout…", and Home's Resume card the same in a small
+menu, both opening `DiscardWorkoutDialog` ("Discard this workout? The sets
+you logged are deleted."). Confirming runs `Command.DeleteWorkout` (the
+ordinary delete, tombstones included), clears the rest timer and its alarm as
+finish does (`ActiveWorkoutViewModel.discard`, `ActiveWorkoutEvent.Discarded`)
+and returns to Home; the ongoing notification follows the database and goes.
+It is the only way to abandon a workout: Finish keeps the ticked sets or, with
+none, discards with the "not saved" toast. `DiscardWorkoutFlowTest`. The
+finish dialog says what goes ("3 sets that are not ticked will be removed.",
+"1 exercise without sets goes too.", or "Every set is logged.") and its
+buttons are short, "Finish" and "Keep training", so they sit side by side.
 
 ### Ids and `updatedAt`
 
@@ -443,8 +547,10 @@ build it from its classpath copies. free-exercise-db has one `shoulders`, so
 the import maps every one to `side_delts` (`catalog/README.md`); front and
 rear delts come only from `core.json`. Table and rules: `catalog/README.md`,
 "Muscles". The exercise page draws them on a body (the muscle map, see
-"Exercises tab and exercise page"); every muscle has a region there, so a
-new `Muscle` needs one in `core/muscles/BodyMap.kt` too (`BodyMapTest`).
+"Exercises tab and exercise page"), and the workout summary shades them by
+how much a workout worked them (see "Workout summary"); every muscle has a
+region there, so a new `Muscle` needs one in `core/muscles/BodyMap.kt` too
+(`BodyMapTest`).
 
 ### The extended catalogue
 
@@ -606,7 +712,7 @@ have no documented origin.
 
 ### Progress
 
-Issue #60. The last tab, after History, and two ways into one exercise's
+Issues #60 and #78. The last tab, after History, and two ways into one exercise's
 progress. **All computation is pure in core**, `core/progress/` (package
 `io.github.kanylbullen.tung.core.progress`, `ProgressTest`), so the tab, the
 sheet and later the server and MCP compute the same:
@@ -621,11 +727,25 @@ sheet and later the server and MCP compute the same:
   exercise added twice is one session), oldest first, with the date in the
   zone, the sets, the best estimate and its set, the top set (heaviest, ties
   to more reps) and the session volume; `value(ProgressMetric)` for `E1RM`,
-  `TOP_SET`, `VOLUME`. `exerciseProgress(sets, zone)`: every exercise with a
-  session, most recently trained first.
+  `TOP_SET`, `VOLUME` (null for `WEEKLY_VOLUME`, a week's number).
+  `exerciseProgress(sets, zone)`: every exercise with a session, most
+  recently trained first.
 - **Ranges** (`ProgressRange`: `THREE_MONTHS`, `ONE_YEAR`, `ALL`) count back
-  from today (`startOn`, inclusive; `within`). **`change(points, metric)`**:
-  first to last value in the points given, null with fewer than two.
+  from today (`startOn`, inclusive; `within`).
+- **Trends**: **`trendPoints(sessions, metric, range, today)`** is what every
+  chart and sparkline plots, `TrendPoint(date, value)` oldest first: one per
+  session in range that has a value, or for **`WEEKLY_VOLUME`** one per ISO
+  week with a session, dated its Monday, the sum of its sessions' volume.
+  Weeks without the exercise are no point (not zeros: x is the date, so a
+  gap shows), and the range's first week counts whole, from the Monday of
+  the week its first day falls in. **`change(points, metric)`** (and
+  `List<TrendPoint>.change()`): first to last value, null with fewer than
+  two. `TREND_RANGES` (3 and 12 months: `ONE_YEAR` is twelve months, called
+  "1Y" on the exercise screen and "12M" in the compact trends),
+  `TREND_METRICS` (`E1RM`, `VOLUME`, `WEEKLY_VOLUME`) and
+  `ExerciseProgress.trend(metric, range, today)` (`RowTrend`: the latest
+  value of all, the last session's or the last trained week's, then the
+  values in range and their change) are what a tab row shows.
 - **Weeks**: `weekStart` is the ISO week's Monday (1 January 2026 is in the
   week of 29 December 2025); `weeklyBuckets(sets, today, zone, weeks = 12)`
   has every week, empty ones as zeros, with the workouts that have a logged
@@ -661,26 +781,53 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
 - **The Progress tab** (`Routes.PROGRESS`, `ProgressScreen`, icon
   `ic_trending_up`): "Last 12 weeks" with workouts and weeks in a row, bars
   for workouts and volume per week; **Exercises**, most recently trained
-  first, each row "Est. 1RM 112 kg · +14 kg in 3 months" (or "No change", or
-  the session count when 3 months hold fewer than two estimates) with a
-  sparkline of the 3 months' estimates; **Recent records**. A row opens the
-  exercise's progress.
+  first, each row "Est. 1RM 112 kg · +14 kg in 3 months" (or "No change in
+  3 months", or "1 session in 3 months" when the span holds fewer than two
+  values), always with a sparkline of the span's values (one session is a
+  dot, so the rows line up); **Recent records**. A row opens the
+  exercise's progress. **The compact trends' choices** (issue #78), two
+  rows of chips under the Exercises heading (`ChoiceChips`, the exercise
+  screen's style; see below when they do not fit): the metric **Est. 1RM ·
+  Volume · Weekly volume** (Volume is per session: "Session volume 480 kg ·
+  +60 kg in 3 months"; "Weekly volume 930 kg · …" is the last trained
+  week's) and the span **3M · 12M** ("−1 kg in 12 months"); default
+  estimated 1RM over 3 months. Both are remembered in the `settings` DataStore
+  (`data/ProgressSettings`, keys `progress_rows_metric`, `"session_volume"`
+  or `"weekly_volume"`, and `progress_rows_range`, `"12m"`; the default is no
+  key; `container.progressSettings`), **not synced**, and **shared with the
+  sheet in a workout**: a choice in either is the other's. The weekly bars
+  stay at 12 weeks whatever the choice.
 - **Exercise progress** (`progress/{exerciseId}`, `ExerciseProgressScreen`):
-  metric chips (Est. 1RM · Top set · Volume) above a line chart, range chips
-  (3M · 1Y · All) below it, the records with dates, the last five sessions'
-  sets. Reached from the tab and from the exercise page's **Progress**.
-  Estimates and volumes are written in whole kilos, a top set as lifted.
+  metric chips (Est. 1RM · Top set · Volume · Weekly volume, a menu on a
+  phone since four do not fit) above a line chart, range chips (3M · 1Y ·
+  All) below it, the records with dates, the last five sessions' sets. Reached from the tab and from the exercise
+  page's **Progress**. Its choices start at estimated 1RM over 3 months each
+  time and are not the compact trends'. Estimates and volumes are written in
+  whole kilos, a top set as lifted.
 - **The sheet in a workout** (`ProgressSheet`): each exercise header in the
   active workout has a trend button ("Progress for Bench press") next to its
   menu. The sheet shows the record line for the exercise's current set (the
   screen's current set if it is this exercise's, else its first open set):
   "96 × 7 would be a new best estimated 1RM", "… would be your heaviest
   weight", "… your most reps at 96 kg or more", else the reps at that weight
-  that would beat the estimate, else "is no new record"; then the estimate
-  over 3 months (compact) and the last three sessions. It writes nothing; the
-  open sheet is `rememberSaveable` state on the screen, and dismissing it
-  leaves the list, its scroll and the selection as they were. Both screens
-  share `ExerciseProgressViewModel`, keyed `progress-<exerciseId>`.
+  that would beat the estimate, else "is no new record" (only a set that
+  beats a record is in the accent; the rest is muted); then a compact
+  chart between the tab's two chip rows (Est. 1RM · Volume · Weekly volume
+  above, 3M · 12M below, the same remembered choice as the rows) and the
+  last three sessions. It writes no training data; the open sheet is
+  `rememberSaveable` state on the screen, and dismissing it leaves the list,
+  its scroll and the selection as they were. Both screens use
+  `ExerciseProgressViewModel`, keyed `progress-<exerciseId>` on the screen
+  and `progress-sheet-<exerciseId>` in the sheet, which hands it
+  `ProgressSettings` for its choices.
+- **`ChoiceChips`** (`ProgressComponents.kt`) is always one line. It
+  measures its chips (a `SubcomposeLayout` with a probe that is never
+  placed and has no semantics) and, when they are wider than the line,
+  shows instead one chip naming the choice with an arrow ("Show all
+  choices") that opens a `DropdownMenu` of every option, the chosen one
+  ticked. So it holds for any width, font scale and language; at the flow
+  tests' 411 dp the exercise screen's metrics are the menu and every other
+  choice is chips.
 
 **Charts, `ui/common/charts/`**, drawn with Compose `Canvas`, no chart
 library: `LineChart` (line plus a dot per point, the last one larger, x
@@ -691,9 +838,47 @@ proportional to the date), `BarChart` (a zero is a short baseline mark), and
 last date under the x axis as the locale writes a short month and day
 (`shortDate`, `getBestDateTimePattern("MMMd")`). **Each chart is one semantics
 node whose content description is its summary** ("Estimated 1RM, 3 months:
-from 98 to 112 kg"), which is what a screen reader says and what
+from 98 to 112 kg", "Weekly volume, 12 months: from 360 to 930 kg";
+`chartSummary`, a row's sparkline too), which is what a screen reader says and what
 `ProgressFlowTest` asserts; with fewer than two sessions in range the chart is
 "Log this exercise in two workouts to see a chart" and the summary says so.
+
+### Workout summary
+
+The screen after Finish (`ui/summary/`, route `summary/{id}`,
+`SummaryScreen` + `SummaryViewModel`), one `LazyColumn` (`SUMMARY_LIST_TAG`)
+under the top bar, with **Save as routine** and **Done** side by side in a
+bottom bar that stays put whatever is scrolled:
+
+- **Stats**: duration, sets, volume, as before.
+- **Exercises**: each row "2 sets · 960 kg · Est. 1RM 112 kg" (logged sets,
+  `ExerciseReport.volumeKg`, `e1rmKg`: the best Epley estimate of its sets),
+  "New record" when it is one, and the best set in large numbers.
+- **Muscles worked**: the body (`MuscleHeatMap`, the exercise page's
+  `BodyMap` with each muscle in the accent by how much it was worked, from
+  30 % for the least to full for the most) and a row per muscle, most worked
+  first: its name, its percentage and a bar against the most worked one.
+  The numbers are core's **`muscleBreakdown`** (`core/muscles/MuscleWork.kt`,
+  `MuscleWorkTest`): **sets per muscle**, so weight does not enter
+  (bodyweight work counts, a heavy squat does not drown the curls). Each
+  logged set credits each primary muscle of its exercise with one set and
+  each secondary one with `SECONDARY_SET_CREDIT` = 0.5; a muscle in both is
+  primary. Percentages are of all credit and rounded by largest remainder
+  (`wholePercents`), so they add up to 100 (a sliver shows "<1%"). The
+  muscles come from `container.catalogueMuscles`; a custom exercise has
+  none, and its sets are a muted line ("2 sets of custom exercises are not
+  counted…", `uncountedSets`). A screen reader hears the map as "Muscles
+  worked: chest 50%, front delts 25%, triceps 25%".
+- **Progress**: the compact trends' chips (Est. 1RM · Volume · Weekly
+  volume, 3M · 12M; the same remembered choice as the Progress tab and the
+  workout sheet, `ProgressSettings`) and, per exercise of the workout (once
+  each, in workout order), its name, which opens its progress
+  (`progress/{exerciseId}`), and a `ProgressChart` over every finished
+  workout (`WorkoutRepository.observeProgressSets()`), this one the last
+  point.
+
+`SummaryFlowTest` (light and dark) covers the rows, the muscles and their
+percentages, the charts and the shared choice.
 
 ## Commands
 
@@ -830,6 +1015,18 @@ its signal to commands, never a new path into the database
   clearing is explicit), and for programs `SetProgramMode` next to the day
   commands. Wire names: `add_routine_exercise`, `remove_routine_exercise`,
   `set_target_reps`, `set_program_mode`.
+- **`DeleteRoutines(ids)`**, wire `delete_routines` with `routine_ids`
+  (issue #79): 1–500 non-blank ids (`MAX_DELETE_ROUTINES`), a duplicate
+  counts once. Each routine goes as `delete_routine` takes it (its exercises
+  and the program days that use it, a tombstone for every row; workouts
+  started from it stay), all in **one transaction**
+  (`CommandRules.deleteRoutines`, so the phone and the server do the same).
+  Returns `deletedCount` (a number as a string, like every id value). An id
+  that is gone is skipped and not counted; a list in which none of the ids
+  exists is `Rejected`, as `delete_routine` rejects a missing id. Callers:
+  the Routines tab's selection mode and Settings → Data's "Delete routines
+  from the last import" (both ask `RoutineRepository.programDaysUsing` how
+  many program days go, before).
 - **`CommandNames` are stable.** Each command has a snake_case wire name
   (`log_set`, `apply_plan`, …): the future REST route and MCP tool name.
   Clients and saved prompts outside the repository will call them, so a name
@@ -1054,16 +1251,45 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   "Workout in progress"; body from core's `ongoingStatus`: "Bench press · set
   3 of 5" for the current set by the default rule of `core.currentSet`
   (no selection: the notification cannot see the screen's), counted against
-  the routine's target sets (or the sets there are, if more), else "4 sets
-  logged", and with every set ticked "Bench press · all sets logged"
+  the routine's target sets or, without a routine, the sets there are (the
+  Live Update's chip shows that set's numbers, so the body names it too);
+  only a workout with no set at all says "0 sets logged"; and with every set
+  ticked "Bench press · all sets logged"
   (`OngoingStatus.AllLogged`, for the exercise Add set goes to: the one whose
   sets changed last, `lastTouchedByTime`, else the last); elapsed time by `setUsesChronometer` + `setWhen(startedAt)`. The
   phone's source is `ongoingWorkouts(...)` over the repositories, built as
   `container.ongoingWorkout` and started in `TungApp.onCreate`, so it shows
   whoever started the workout: this phone, a companion watch, or a sync that
   brought one from the server. Nothing is posted without `POST_NOTIFICATIONS`.
-  **Android 16 Live Update is not done:** `setRequestPromotedOngoing` is API 36
-  and compileSdk stays 35.
+  **On Android 16 (API 36) the phone's notification is a Live Update.** The
+  phone's `TungContainer.ongoingWorkout` builds the notifier with
+  `liveUpdate = true`, and on 36 and above it calls
+  `setRequestPromotedOngoing(true)` and `setShortCriticalText` (androidx.core
+  1.17.0, which needs compileSdk 36). Nothing else changes: the standard
+  template it already uses is one of the promotable styles (standard,
+  BigText, Call, Progress, Metric), it is ongoing, has a title and a channel
+  above `IMPORTANCE_MIN`, so title, body, chronometer and the three actions
+  stay as they are, and the system shows it at the top of the shade and the
+  lock screen and as a chip in the status bar. The chip's text is the current
+  set's numbers, `OngoingWorkout.chipText` ("80×8": `ongoing_chip_set` over
+  `logSetWeightKg` and `logSetReps`, the weight as `formatWeight` writes it,
+  no spaces because the chip is 96 dp and shows a text whole only under seven
+  characters: "100×10" fits, "22,5×12" is cut to what fits), and nothing when
+  that set has no reps or every set is ticked (the chip then shows the icon).
+  While it is on, the notifier debounces its source by `DEBOUNCE_MILLIS`
+  (100 ms, like `WearStatePublisher`), since the chip follows every weight
+  and reps edit of the current set and the system drops posts over its rate
+  limit; below 36 and on the watch the source is collected as before. The phone's manifest
+  declares `POST_PROMOTED_NOTIFICATIONS` (granted by default, revocable in
+  Settings; revoked, the system ignores the request and the notification is
+  the ordinary ongoing one). **Below 36 neither call is made**: the compat
+  builder writes both into the extras on every API level, so the guard is in
+  the notifier, and `OngoingNotificationFlowTest` (SDK 34) asserts the extras
+  carry no request. **The watch never asks**: its chip is its Ongoing
+  Activity, and Wear OS 6 is Android 16, so the API level alone would not keep
+  it out; `liveUpdate` defaults to false and the watch's manifest has no such
+  permission. `OngoingWorkoutTest` (data) covers the chip's text; seeing the
+  chip needs an Android 16 phone with a dogfood build.
 - **Actions.** Tap opens the workout (`TungHost.openWorkoutIntent`). **Log
   set** is a broadcast to `OngoingWorkoutReceiver` (in data's manifest) with
   the set the notification showed; it runs `Command.LogSet` through
@@ -1143,8 +1369,8 @@ to Health Connect, it stores what the phone syncs.
   `availability`, `permissions(access)`, `hasPermissions(access)`, the
   permission sheet's `ActivityResultContract`, `writeSession`, `readVitals`),
   `AndroidHealthConnectGateway` (the real one, over
-  `androidx.health.connect:connect-client:1.1.0-beta01`, the newest that builds
-  with compileSdk 35 and AGP 8.7; 1.1.0 needs compileSdk 36), and
+  `androidx.health.connect:connect-client:1.1.0`, the stable release, which
+  needs compileSdk 36), and
   `HealthConnectRecorder`, which does the work. `FakeHealthConnect` is in
   data's test fixtures. `TungContainer(createHealthConnect = …)` is the seam:
   `TungApp` passes `::AndroidHealthConnectGateway`, the watch nothing (null),
@@ -1296,7 +1522,16 @@ Jefit is done; Strong and Hevy follow in the same frame.
   remembers the last import in the `settings` DataStore (`ImportHistory`).
 - **app.** Settings → Data (`ui/settings/ImportSection.kt`, in `DataSettingsScreen`):
   "Import from Jefit" opens the system file picker (`ACTION_OPEN_DOCUMENT`,
-  `text/*` and `*/*`), and "Undo last import" while one is remembered. The
+  `text/*` and `*/*`), and "Undo last import" while one is remembered; it
+  asks first ("Remove 138 imported workouts?", "Workouts you logged in Tung
+  are kept."), since it deletes every workout the import added.
+  **"Delete routines from the last import (N)"** (issue #79) shows while
+  routines that import created (`LastImport.routineIds`) still exist, N
+  counting those that do (live, over the routines Flow); it asks with
+  `DeleteRoutinesDialog` ("The import's workouts are kept.", plus the program
+  days that go) and runs one `DeleteRoutines` with those ids. The import's
+  workouts are untouched, and undo still works afterwards: it deletes the
+  batch's workouts and skips routines that are already gone. The
   file goes to `import?uri=…` (`ui/importing/`): read on IO (at most 64 MB),
   then the preview — date range, workouts · sets · routines, the set types
   imported as normal sets, what was skipped and why — and the review: each
@@ -1307,7 +1542,23 @@ Jefit is done; Strong and Hevy follow in the same frame.
   (`ImportPreview.usage`), so the person sees which names carry history, and
   the best two offline suggestions as chips ("Lat pulldown?"); a chip is the
   same as Choose with that exercise. Above the rows, "Create all remaining"
-  and "Skip all remaining" decide only the rows still "Not decided".
+  and "Skip all remaining" decide only the rows still "Not decided", and
+  "8 of 11 decided" counts the rows (`ImportUiState.decidedCount`).
+  **A decided row collapses** (issue #77, `DecidedRow`): the name, the usage
+  line and one decision line in `accentText` with a check ("✓ Leverage Iso
+  Row", "✓ Create “Heel Walking”", "✓ Skipped"), one node for a screen reader
+  ("Machine Seated Row: imported as Leverage Iso Row"), and a quiet **Change**
+  text button (described "Change Machine Seated Row"). No filled button, no
+  chips, no proposal and no Choose/Create/Skip while it is collapsed: after
+  Accept an accent-filled Choose read as the next step. Every decision path
+  (Accept, a chip, Choose's pick, Create, Skip, the bulk actions) goes
+  through the ViewModel's `choose` or the bulk functions and collapses the
+  row the same way. **Change** (`reopen`) puts the name in
+  `ImportUiState.reopened`: the row shows exactly the open layout again
+  ("As …", the selected chip), but **the decision stands until a new one is
+  made**, so the counter keeps it, Import stays enabled, and Choose then back
+  from the picker leaves it decided; the next decision collapses it, and the
+  bulk actions leave a reopened row alone (it is decided).
   Import is enabled once every name is decided; the summary says
   what was added and offers "Undo import".
 - **"Suggest with the assistant"** (issue #71), above the rows when a BYOK
@@ -1348,12 +1599,17 @@ Jefit is done; Strong and Hevy follow in the same frame.
   suggestions) and `AiMatchTest` (see "In-app AI (BYOK)").
   Data: `ImporterTest` (stamped and dirty, idempotent, undo with tombstones
   leaves other workouts, re-import after undo), `SyncMappingImportTest`,
+  `DeleteRoutinesCommandTest` (`delete_routines`: one transaction, tombstones
+  for routines, their exercises and program days, history kept, gone ids),
   `MigrationTest`, and `AiServiceTest`'s matching case. Server:
   `ImportColumnsTest`. Flows: `ImportFlowTest` (the picker answered through
-  Robolectric's `receiveResult`, no app seam; a suggestion chip and "Skip all
+  Robolectric's `receiveResult`, no app seam; "Delete routines from the last
+  import" and undo after it; a suggestion chip and "Skip all
   remaining"; the assistant against a MockWebServer, "What is sent", the
   proposals and "Accept all high-confidence"; the confidence tags and
-  Accept's style in the light and the dark theme). `AssistantFlowTest`
+  Accept's style in the light and the dark theme; Accept collapsing a row,
+  Change reopening it with the decision kept, the counter, and "Create all
+  remaining" collapsing the rest). `AssistantFlowTest`
   checks that an `en-rSE` phone asks for English and an `sv` one for
   Swedish; core's `AiLanguageTest` the mapping and every request type.
 
@@ -1747,7 +2003,9 @@ variant) and `:server:test`. Only the core tests, fast and without AGP:
 **On a phone, install `dogfood`, not `debug`:** `./gradlew :app:assembleDogfood`
 gives `app/build/outputs/apk/dogfood/app-dogfood.apk`, release code (R8, not
 debuggable) signed with the debug key, so `adb install -r` replaces a debug
-build and keeps the data. A debug build of a Compose app is several times
+build and keeps the data (with the release key in the environment, below, it
+is signed with that instead, so it replaces a Play install; `adb install -r -d`,
+its versionCode is lower). A debug build of a Compose app is several times
 slower: on the Note9, scrolling the Exercises tab had 34 % janky frames and a
 90th percentile of 150 ms as debug, 11 % and 32 ms as dogfood (2026-10-21).
 Release has R8 on (`isMinifyEnabled`, `isShrinkResources`); the app's own
@@ -1758,6 +2016,29 @@ to dependencies or reflection, start the dogfood build once and sync.
 APKs: `app/build/outputs/apk/debug/app-debug.apk` and
 `wear/build/outputs/apk/debug/wear-debug.apk` (`:wear:assembleDebug`). The first build downloads
 dependencies and takes a few minutes.
+
+**A Play build is `scripts/release.sh`** (the console side: `deploy/play.md`).
+The release inputs live in the root `build.gradle.kts` and reach `app/` and
+`wear/` through `rootProject.extra`: the one release key from
+`TUNG_KEYSTORE`, `TUNG_KEYSTORE_PASSWORD`, `TUNG_KEY_ALIAS` and
+`TUNG_KEY_PASSWORD` (environment or `-P`; blank counts as missing; the key
+is outside the checkout, `*.jks` is gitignored), and the build number from
+`TUNG_VERSION_CODE`, which the script derives from the number of commits on
+`main`. The phone's versionCode is `number × 10 + 1`, the watch's
+`number × 10 + 2` (one applicationId, so Play wants distinct codes), and a
+build without a number is number 1. The root's `releaseGate` refuses
+`assembleRelease` and `bundleRelease` without the key or the number before
+anything is packaged; the release variant's unit tests, which CI runs
+without a key, are not affected. The watch is signed with the same key as the
+phone, or the Data Layer will not pair them. **Play requires targetSdk 36
+since 2026-08-31** (Wear OS 35), and the phone app meets it: AGP 8.9.1,
+compileSdk 36 and build-tools 36.0.0 in every Android module, targetSdk 36 in
+`app/` and, on purpose, 35 in `wear/`; CI reads both numbers back from the
+built APKs. What Android 16 changes for an app targeting 36, and how each
+item was checked against this app, is in `deploy/play.md`, "targetSdk": in
+short, edge-to-edge was already on and predictive back needs nothing. **The
+flow tests run under Robolectric SDK 34 and see neither**, so a change to
+insets or to back handling is checked on a phone.
 
 ## Flow tests
 
@@ -1808,6 +2089,11 @@ part of `./gradlew test`. Only them:
   output, so a run restored from the build cache restores them too. They are
   drawn with `View.draw`, because `captureToImage()` times out under
   Robolectric on API 34.
+- **A value in the `settings` DataStore is checked with
+  `waitUntilStored(expected) { … }`** (`FlowTest`), never read once with
+  `runBlocking { ….first() }` right after a tap: a screen can show a choice
+  before DataStore has written it (Training's rest is the screen's own
+  value), and a read that throws counts as not yet.
 - **`addExercise(query, name)` dismisses the first-time weight sheet** an
   exercise with no history opens (issue #55, `dismissSheet` runs the sheet
   scrim's click action, "Close sheet" in the app's language), so flows that add an exercise and then
@@ -1873,6 +2159,7 @@ logged. Weight and reps are applied independently.
 | muted | `#9AA0A6` | `#5F6368` | Muted text, "Last:" |
 | accent | `#F2C230` | `#B98900` | Fill: primary button, ticked set |
 | accentText | `#F2C230` | `#8A6500` | Accent as text: "New record", "Finish workout" |
+| danger | `#C9413A` | `#B3261E` | Fill only, white on it: the Delete a swipe reveals behind a set row |
 
 Contrast (WCAG): chalk/graphite 13.8:1, yellow/graphite 10.1:1, muted/graphite
 6.4:1, muted/raised 5.7:1. In light mode `#B98900` only reaches 3.2:1 against

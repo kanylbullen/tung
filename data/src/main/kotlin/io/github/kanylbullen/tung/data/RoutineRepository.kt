@@ -28,6 +28,9 @@ class RoutineRepository(
 
     fun observeRoutine(id: String): Flow<Routine?> = dao.observeRoutine(id)
 
+    /** Every routine's exercises with their target sets, for [routineMuscles]. */
+    fun observeRoutineExerciseLinks(): Flow<List<RoutineExerciseLink>> = dao.observeRoutineExerciseLinks()
+
     fun observeRoutineExercises(routineId: String): Flow<List<RoutineExerciseWithExercise>> =
         dao.observeRoutineExercises(routineId)
 
@@ -104,4 +107,8 @@ class RoutineRepository(
         executor.deleteRoutine(tx(), routineId)
         Unit
     }
+
+    /** How many program days use any of [routineIds], i.e. go with them when they are deleted. */
+    suspend fun programDaysUsing(routineIds: Collection<String>): Int =
+        routineIds.distinct().sumOf { db.programDao().getDaysUsing(it).size }
 }

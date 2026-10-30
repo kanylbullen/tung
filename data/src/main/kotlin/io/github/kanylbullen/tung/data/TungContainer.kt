@@ -176,11 +176,12 @@ class TungContainer(
 
     /**
      * The ongoing notification of the workout in progress in this database
-     * (CLAUDE.md, "Ongoing workout and push"). The phone starts it from
-     * `TungApp.onCreate`; the watch builds its own over the state it shows.
+     * (CLAUDE.md, "Ongoing workout and push"), a Live Update on Android 16.
+     * The phone starts it from `TungApp.onCreate`; the watch builds its own
+     * over the state it shows, without the Live Update.
      */
     val ongoingWorkout: OngoingWorkoutNotifier by lazy {
-        OngoingWorkoutNotifier(this.context, ongoingWorkouts(this.context, workoutRepository, routineRepository), appScope)
+        OngoingWorkoutNotifier(this.context, ongoingWorkouts(this.context, workoutRepository, routineRepository), appScope, liveUpdate = true)
     }
 
     /**
@@ -195,6 +196,9 @@ class TungContainer(
 
     /** "My equipment": what the Exercises tab, the picker and the assistant keep to. Not synced. */
     val equipmentSettings: EquipmentSettings by lazy { EquipmentSettings(settings) }
+
+    /** The compact trends' span and metric, shared by the Progress tab's rows and the sheet in a workout. Not synced. */
+    val progressSettings: ProgressSettings by lazy { ProgressSettings(settings) }
 
     // --- sync with tung-server (sync/, CLAUDE.md "Sync") ---
     private val tokenStore: TokenStore by lazy { createTokenStore(this.context) }

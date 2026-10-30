@@ -70,6 +70,7 @@ class CommandExecutor(
         is Command.CreateRoutine -> rules.createRoutine(tx, command.name)
         is Command.RenameRoutine -> rules.renameRoutine(tx, command.routineId, command.name)
         is Command.DeleteRoutine -> rules.deleteRoutine(tx, command.routineId)
+        is Command.DeleteRoutines -> rules.deleteRoutines(tx, command.ids)
         is Command.MoveRoutineExercise -> rules.moveRoutineExercise(tx, command.routineExerciseId, command.delta)
         is Command.AdjustTargetSets -> rules.adjustTargetSets(tx, command.routineExerciseId, command.delta)
         is Command.AddRoutineExercise -> addRoutineExercise(tx, command)

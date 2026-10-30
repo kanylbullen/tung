@@ -1,6 +1,9 @@
 package io.github.kanylbullen.tung.flows
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -9,10 +12,15 @@ import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isNotEnabled
 import androidx.compose.ui.test.isSelectable
+import androidx.compose.ui.test.isNotSelected
 import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performTextReplacement
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.data.ProgramRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -137,6 +145,118 @@ class RoutinesTabFlowTest : FlowTest() {
             count("SELECT COUNT(*) FROM workout w JOIN routine r ON w.routineId = r.id WHERE w.endedAt IS NULL AND r.name = 'Legs'"),
         )
         screenshot("6-workout")
+    }
+
+    private fun routineRow(name: String): SemanticsMatcher = hasText(name) and hasClickAction()
+
+    private fun longPress(name: String) {
+        waitFor(routineRow(name))
+        compose.onNode(routineRow(name)).performTouchInput { longClick() }
+    }
+
+    private fun selectedTitle(n: Int) = plural(R.plurals.routines_selected, n, n)
+
+    /**
+     * Selection mode (issue #79): a long press on "Push A" starts it with that
+     * row selected and the Start buttons hidden; taps add "Pull B" and "Legs
+     * C", and the selection survives a rotation. Delete asks once, naming the
+     * one program day that uses Push A, and the three go in one command; the
+     * fourth routine, the program's other day and every workout stay.
+     */
+    @Test
+    fun longPressSelectThreeAndDeleteThem() {
+        val pushA = seedRoutine("Push A")
+        seedRoutine("Pull B")
+        seedRoutine("Legs C")
+        val kept = seedRoutine("Kept day")
+        runBlocking {
+            val programs = ProgramRepository(db)
+            val program = programs.create("PPL", ProgramMode.ROTATING)
+            programs.addDay(program, pushA)
+            programs.addDay(program, kept)
+        }
+        waitForText(str(R.string.home_recent))
+        compose.onNode(tab(R.string.nav_routines)).performClick()
+        waitForRoutinesTab()
+
+        // Before selecting, the row offers the long press to a screen reader as "Select".
+        val selectAction = SemanticsMatcher("long press labelled Select") {
+            it.config.getOrNull(SemanticsActions.OnLongClick)?.label == str(R.string.routines_select)
+        }
+        assertShown(routineRow("Push A") and selectAction)
+
+        longPress("Push A")
+        waitForText(selectedTitle(1))
+        assertShown(routineRow("Push A") and isSelected())
+        assertShown(routineRow("Pull B") and isNotSelected())
+        waitGone(hasContentDescription(str(R.string.routine_start_description, "Push A")))
+        waitGone(hasText(str(R.string.routine_new)))
+        clickText("Pull B")
+        clickText("Legs C")
+        waitForText(selectedTitle(3))
+        screenshot("1-three-selected")
+
+        compose.activityRule.scenario.recreate()
+        waitForText(selectedTitle(3))
+        assertShown(routineRow("Legs C") and isSelected())
+        assertShown(routineRow("Kept day") and isNotSelected())
+
+        clickDescription(str(R.string.routines_delete_selected))
+        waitFor(isDialog())
+        assertShown(hasText(plural(R.plurals.routines_delete_many_title, 3, 3)))
+        assertShown(hasText(str(R.string.routines_delete_many_body)))
+        assertShown(hasText(plural(R.plurals.routines_delete_many_days, 1, 1)))
+        screenshot("2-confirm")
+        clickInDialog(str(R.string.routine_delete_confirm))
+        waitGone(isDialog())
+
+        waitUntil { count("SELECT COUNT(*) FROM routine") == 1 }
+        waitForText(str(R.string.routine_new))
+        listOf("Push A", "Pull B", "Legs C").forEach { waitGone(hasText(it)) }
+        assertShown(hasText("Kept day"))
+        assertShown(hasContentDescription(str(R.string.routine_start_description, "Kept day")))
+        assertEquals("history is kept", 4, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NOT NULL"))
+        assertEquals(1, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$kept'"))
+        assertEquals(0, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$pushA'"))
+        assertEquals(3, count("SELECT COUNT(*) FROM tombstones WHERE tableName = 'routines'"))
+        screenshot("3-after-delete")
+    }
+
+    /**
+     * ✕ and back both leave selection mode; "Select all" selects every routine,
+     * and with no program day involved the dialog says only that history is kept.
+     */
+    @Test
+    fun closeBackAndSelectAll() {
+        listOf("Push A", "Pull B", "Legs C").forEach(::seedRoutine)
+        waitForText(str(R.string.home_recent))
+        compose.onNode(tab(R.string.nav_routines)).performClick()
+        waitForRoutinesTab()
+
+        longPress("Pull B")
+        waitForText(selectedTitle(1))
+        clickDescription(str(R.string.routines_leave_selection))
+        waitForText(str(R.string.routine_new))
+
+        longPress("Pull B")
+        waitForText(selectedTitle(1))
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        waitForText(str(R.string.routine_new))
+        assertShown(tab(R.string.nav_routines) and isSelected())
+
+        longPress("Legs C")
+        clickText(str(R.string.routines_select_all))
+        waitForText(selectedTitle(3))
+        waitGone(hasText(str(R.string.routines_select_all)))
+        screenshot("1-all-selected")
+        clickDescription(str(R.string.routines_delete_selected))
+        waitFor(isDialog())
+        assertShown(hasText(plural(R.plurals.routines_delete_many_title, 3, 3)))
+        compose.onNode(hasText(plural(R.plurals.routines_delete_many_days, 0, 0))).assertDoesNotExist()
+        clickInDialog(str(R.string.routine_delete_confirm))
+        waitForText(str(R.string.routines_empty))
+        assertEquals(0, count("SELECT COUNT(*) FROM routine"))
+        assertEquals(3, count("SELECT COUNT(*) FROM workout"))
     }
 
     private fun seedRoutine(name: String): String = runBlocking {

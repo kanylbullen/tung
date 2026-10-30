@@ -42,6 +42,7 @@ class CommandWireTest {
         "create_routine" to """{"name": "Legs"}""",
         "rename_routine" to """{"routine_id": "$id", "name": "Pull"}""",
         "delete_routine" to """{"routine_id": "$id"}""",
+        "delete_routines" to """{"routine_ids": ["$id"]}""",
         "move_routine_exercise" to """{"routine_exercise_id": "$id", "delta": -1}""",
         "adjust_target_sets" to """{"routine_exercise_id": "$id", "delta": 1}""",
         "add_routine_exercise" to """{"routine_id": "$id", "exercise": $ex, "target_sets": 4, "target_reps": 8}""",
@@ -238,5 +239,21 @@ class CommandWireTest {
         val suggestion = (question["questions"] as JsonArray)[0].jsonObject["suggestions"]!!.jsonArray[0].jsonObject
         assertEquals("Bench press", suggestion["name"]!!.jsonPrimitive.content)
         assertEquals(obj("""{"key": "bench_press"}"""), suggestion["ref"])
+    }
+
+    @Test
+    fun deleteRoutinesTakesAListOfIds() {
+        assertEquals(Command.DeleteRoutines(listOf(id, "b")), decoded("delete_routines", """{"routine_ids": ["$id", "b"]}"""))
+        fun reasons(body: String) = (CommandWire.decode("delete_routines", obj(body)) as WireDecoding.Invalid).reasons
+        assertEquals(listOf("routine_ids is required"), reasons("{}"))
+        assertEquals(listOf("routine_ids must be an array of ids"), reasons("""{"routine_ids": "$id"}"""))
+        assertEquals(listOf("routine_ids[1] must be a string"), reasons("""{"routine_ids": ["$id", 3]}"""))
+        val schema = checkNotNull(CommandWire.schema("delete_routines"))["properties"]!!.jsonObject["routine_ids"]!!.jsonObject
+        assertEquals("array", schema["type"]!!.jsonPrimitive.content)
+        assertEquals("$MAX_DELETE_ROUTINES", schema["maxItems"]!!.jsonPrimitive.content)
+        assertEquals(
+            obj("""{"status": "done", "ids": {"deletedCount": "2"}}"""),
+            CommandWire.encode(CommandResult.Done(mapOf(CommandIds.DELETED_COUNT to "2"))),
+        )
     }
 }
