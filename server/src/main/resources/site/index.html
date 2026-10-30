@@ -179,6 +179,43 @@
     }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
+
+    /* --- Sign up to test the Android app --- */
+    .test { margin: 14vh 0 0; max-width: var(--measure); }
+    .test p { color: var(--muted); margin: 0 0 20px; }
+    .test form { display: grid; gap: 16px; }
+    .test label.field { display: grid; gap: 6px; font-size: 15px; color: var(--muted); }
+    .test input[type=email] {
+      font: inherit;
+      color: var(--text);
+      background: var(--raised);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      min-height: 52px;
+      padding: 0 16px;
+    }
+    .test input[type=email]:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+    .test label.consent { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; color: var(--muted); cursor: pointer; }
+    .test label.consent input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+    .test button {
+      justify-self: start;
+      font: inherit;
+      font-weight: 700;
+      min-height: 52px;
+      padding: 0 24px;
+      border: 0;
+      border-radius: var(--radius);
+      background: var(--accent);
+      color: var(--on-accent);
+      cursor: pointer;
+    }
+    .test button:disabled { opacity: 0.6; cursor: default; }
+    .test .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+    .test .result { min-height: 1.5em; margin: 0; font-size: 15px; }
+    .test .result.ok { color: var(--text); }
+    .test .result.error { color: #E5736C; }
+    @media (prefers-color-scheme: light) { .test .result.error { color: #B3261E; } }
+
     footer {
       margin: 14vh 0 0;
       padding: 28px 0 max(28px, env(safe-area-inset-bottom));
@@ -253,6 +290,26 @@
         </dl>
       </section>
 
+      <section class="test" aria-labelledby="test">
+        <h2 id="test" data-sv="Testa Android-appen">Test the Android app</h2>
+        <p data-sv="Android-appen är i ett test på Google Play. Lämna adressen till Google-kontot du använder i telefonen, så får du en inbjudan när nästa testomgång öppnar.">The Android app is in a test on Google Play. Leave the address of the Google account you use on your phone, and you get an invitation when the next test round opens.</p>
+        <form id="signup" novalidate>
+          <label class="field">
+            <span data-sv="E-post till ditt Google-konto">Email of your Google account</span>
+            <input id="signup-email" type="email" name="email" autocomplete="email" required maxlength="254">
+          </label>
+          <label class="consent">
+            <input id="signup-consent" type="checkbox" name="consent" required>
+            <span data-sv="Använd adressen bara för att bjuda in mig till testet, och ta bort den sedan.">Use my address only to invite me to the test, and delete it afterwards.</span>
+          </label>
+          <div class="trap" aria-hidden="true">
+            <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+          </div>
+          <button id="signup-button" type="submit" data-sv="Anmäl mig">Sign me up</button>
+          <p id="signup-result" class="result" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
       <section class="own" aria-labelledby="own">
         <h2 id="own" data-sv="Kör din egen">Run your own</h2>
         <p data-sv="Klona repot, sätt ett lösenord för databasen i deploy/.env och starta:">Clone the repository, set a database password in deploy/.env and start it:</p>
@@ -299,6 +356,52 @@ docker compose up -d</code></pre>
       }
       ruler.addEventListener("input", show);
       show();
+
+      // Sign up to test the Android app: POST /api/v1/testers on this server.
+      var messages = swedish ? {
+        ok: "Tack. Du får en inbjudan från Google Play när nästa testomgång öppnar.",
+        invalid_email: "Det där är ingen e-postadress. Kontrollera den och försök igen.",
+        consent_required: "Kryssa i rutan, så att vi får skicka inbjudan till dig.",
+        rate_limited: "För många försök. Vänta en minut och försök igen.",
+        list_full: "Testet är fullt just nu. Försök igen senare.",
+        failed: "Det gick inte att skicka. Kontrollera din uppkoppling och försök igen.",
+        sending: "Skickar…"
+      } : {
+        ok: "Thanks. You get an invitation from Google Play when the next test round opens.",
+        invalid_email: "That is not an email address. Check it and try again.",
+        consent_required: "Tick the box, so we may send you the invitation.",
+        rate_limited: "Too many attempts. Wait a minute and try again.",
+        list_full: "The test is full for now. Try again later.",
+        failed: "Could not send it. Check your connection and try again.",
+        sending: "Sending…"
+      };
+      var form = document.getElementById("signup");
+      var result = document.getElementById("signup-result");
+      var button = document.getElementById("signup-button");
+      function say(text, kind) { result.textContent = text; result.className = "result " + (kind || ""); }
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        var email = document.getElementById("signup-email").value.trim();
+        var consent = document.getElementById("signup-consent").checked;
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say(messages.invalid_email, "error"); return; }
+        if (!consent) { say(messages.consent_required, "error"); return; }
+        button.disabled = true;
+        say(messages.sending);
+        fetch("/api/v1/testers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, consent: true, language: swedish ? "sv" : "en", website: form.website.value || null })
+        }).then(function (response) {
+          if (response.ok) { say(messages.ok, "ok"); form.reset(); return; }
+          if (response.status === 429) { say(messages.rate_limited, "error"); return; }
+          return response.json().then(function (body) {
+            var code = body && body.error && body.error.code;
+            say(messages[code] || messages.failed, "error");
+          }, function () { say(messages.failed, "error"); });
+        }, function () {
+          say(messages.failed, "error");
+        }).then(function () { button.disabled = false; });
+      });
     })();
   </script>
 </body>

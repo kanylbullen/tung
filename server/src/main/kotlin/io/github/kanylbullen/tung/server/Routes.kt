@@ -1,5 +1,19 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
+import io.github.kanylbullen.tung.core.sync.SYNC_PATH
+import io.github.kanylbullen.tung.core.sync.SyncRequest
+import io.github.kanylbullen.tung.server.command.CommandService
+import io.github.kanylbullen.tung.server.push.ChangeNotifier
+import io.github.kanylbullen.tung.server.push.PushStore
+import io.github.kanylbullen.tung.server.push.sourceDevice
+import io.github.kanylbullen.tung.server.routes.Testers
+import io.github.kanylbullen.tung.server.routes.linkRoutes
+import io.github.kanylbullen.tung.server.routes.programRoutes
+import io.github.kanylbullen.tung.server.routes.pushRoutes
+import io.github.kanylbullen.tung.server.routes.routineRoutes
+import io.github.kanylbullen.tung.server.routes.testerAdminRoutes
+import io.github.kanylbullen.tung.server.routes.testerSignupRoute
 import io.ktor.http.ContentDisposition
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -16,6 +30,7 @@ import io.ktor.server.plugins.ratelimit.rateLimit
 import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.receive
+import io.ktor.server.request.receiveChannel
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -26,24 +41,12 @@ import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
-import io.github.kanylbullen.tung.server.push.ChangeNotifier
-import io.github.kanylbullen.tung.server.push.PushStore
-import io.github.kanylbullen.tung.server.push.sourceDevice
-import io.github.kanylbullen.tung.server.command.CommandService
-import io.github.kanylbullen.tung.server.routes.linkRoutes
-import io.github.kanylbullen.tung.server.routes.programRoutes
-import io.github.kanylbullen.tung.server.routes.pushRoutes
-import io.github.kanylbullen.tung.server.routes.routineRoutes
-import io.github.kanylbullen.tung.core.sync.SYNC_PATH
-import io.github.kanylbullen.tung.core.sync.SyncRequest
-import io.ktor.server.request.receiveChannel
 import io.ktor.utils.io.readRemaining
+import java.time.Instant
+import java.time.ZoneOffset
 import kotlinx.io.readByteArray
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
-import java.time.Instant
-import java.time.ZoneOffset
 
 const val BEARER = "bearer"
 val AUTH_RATE_LIMIT = RateLimitName("auth")
@@ -93,9 +96,11 @@ fun Route.apiRoutes(
     get("/openapi.yaml") { call.respondText(spec, ContentType.parse("application/yaml")) }
     swaggerUI(path = "docs", swaggerFile = "openapi/openapi.yaml")
 
+    val testers = Testers(db, config.adminEmails, config.clock)
     route("/api/v1") {
         linkRoutes(db, accounts)
         rateLimit(AUTH_RATE_LIMIT) {
+            testerSignupRoute(testers)
             post("/auth/register") { call.respond(HttpStatusCode.Created, accounts.register(call.receive())) }
             post("/auth/login") { call.respond(accounts.login(call.receive())) }
             post("/auth/google") { call.respond(accounts.signInWithGoogle(call.receive<GoogleSignIn>().idToken)) }
@@ -114,6 +119,8 @@ fun Route.apiRoutes(
             }
 
             get("/me") { call.respond(accounts.me(call.user().userId)) }
+
+            testerAdminRoutes(testers)
 
             route("/tokens") {
                 get { call.respond(accounts.listTokens(call.user())) }

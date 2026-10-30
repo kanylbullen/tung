@@ -1980,6 +1980,17 @@ fallback, and only on a tap.
   and client) that `POST /oauth/authorize` takes instead of the password.
   Tests: `GoogleSignInTest` (a test RSA key and a JWK set on a JDK
   `HttpServer`; `ServerConfig.clock` exists for expiry).
+- **Play test sign-ups** (`routes/TesterRoutes.kt`, `V12__tester_signups.sql`):
+  the landing page's form posts `POST /api/v1/testers {email, consent,
+  language, website}` (public, under the auth rate limit; no consent is 400
+  `consent_required`; `website` is a honeypot people never see, answered
+  like anyone and stored as nothing; the answer is the same for a new and a
+  known address, so nobody learns who signed up; at most
+  `MAX_TESTER_SIGNUPS`, then 503 `list_full`). Only an account whose email
+  is in `TUNG_ADMIN_EMAILS` may `GET /api/v1/testers` (to copy into the Play
+  Console) and `DELETE /api/v1/testers/{email}` (once invited); anyone else
+  gets 403 `not_admin`. The table holds the address, when and the page's
+  language, nothing else, linked to no account. `TesterSignupTest`.
 - **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST
   /api/v1/link/start` (write token) gives a six-digit code valid ten minutes,
   unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)

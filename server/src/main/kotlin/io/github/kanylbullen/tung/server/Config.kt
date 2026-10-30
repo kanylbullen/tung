@@ -27,6 +27,8 @@ data class ServerConfig(
      * The Docker image sets `TUNG_WEB_DIR=/app/web`.
      */
     val webDir: File? = null,
+    /** Accounts (by email, lower case) that may list and delete the Play test sign-ups (`TUNG_ADMIN_EMAILS`). */
+    val adminEmails: Set<String> = emptySet(),
     /** Behind a reverse proxy: take the client address from X-Forwarded-For / Forwarded, for the rate limit and the log. */
     val trustProxy: Boolean = false,
     /** Requests per minute and client address to register and login. */
@@ -97,6 +99,8 @@ data class ServerConfig(
                 webDir = value("TUNG_WEB_DIR")?.let(::File)?.also {
                     if (!it.resolve("index.html").isFile) throw ConfigException("TUNG_WEB_DIR has no index.html: ${it.path}")
                 },
+                adminEmails = value("TUNG_ADMIN_EMAILS")
+                    ?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.toSet().orEmpty(),
                 googleClientIds = value("TUNG_GOOGLE_CLIENT_ID")
                     ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty(),
             )
