@@ -156,17 +156,8 @@ internal class WebCommandTx(private val store: TungStore, private val clock: () 
         store.sets.rows.values.map { it.row }.filter { it.workoutExerciseId == workoutExerciseId }
             .mapNotNull { it.toRow() }.sortedBy { it.position }
 
-    /** The phone's `previousSessionSets`: the ticked sets of the first time [exerciseId] appears in the latest other finished workout. */
-    override suspend fun previousSession(exerciseId: String, excludeWorkoutId: String): List<LoggedSet> {
-        val finished = store.workouts.rows.values.map { it.row }
-            .filter { it.endedAt != null && it.id != excludeWorkoutId }
-            .associateBy { it.id }
-        val latest = store.workoutExercises.rows.values.map { it.row }
-            .filter { it.exerciseId == exerciseId && it.workoutId in finished }
-            .sortedWith(compareByDescending<SyncWorkoutExercise> { finished[it.workoutId]?.startedAt ?: 0L }.thenBy { it.position ?: 0 })
-            .firstOrNull() ?: return emptyList()
-        return sets(latest.id).filter { it.completed }.map { it.values }
-    }
+    override suspend fun previousSession(exerciseId: String, excludeWorkoutId: String): List<LoggedSet> =
+        store.previousSession(exerciseId, excludeWorkoutId)
 
     override suspend fun routineTargetSets(workoutId: String, exerciseId: String): Int? {
         val routineId = store.workouts.get(workoutId)?.routineId ?: return null

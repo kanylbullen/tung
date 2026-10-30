@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.progress.ThisWeek
 import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
@@ -12,10 +15,13 @@ import io.github.kanylbullen.tung.web.home.HomeRoutine
 import io.github.kanylbullen.tung.web.home.homeModel
 import io.github.kanylbullen.tung.web.sync.Account
 import kotlin.js.Date
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import org.jetbrains.compose.web.attributes.disabled
 import org.jetbrains.compose.web.dom.A
+import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Li
@@ -40,23 +46,46 @@ fun HomeScreen(container: WebContainer, account: Account) {
         homeModel(container.store, Clock.System.todayIn(zone), zone) { exerciseDisplayName(it, container.catalogueNames, strings.tag) }
     }
     val now = Date.now().toLong()
+    val scope = rememberCoroutineScope()
 
     Div({ classes("screen") }) {
         TopBar(container, account) { Div({ classes("wordmark", "small") }) { Text(strings.appName) } }
         model.thisWeek?.let { ThisWeekSection(it, container) }
-        model.inProgress?.let { workout ->
-            Div({ classes("card") }) {
-                Div({ classes("card-title") }) { Text(workout.routineName ?: strings.workoutUntitled) }
-                Div({ classes("details", "numbers") }) { Text(strings.inProgressFor(durationText(now - workout.startedAt, strings))) }
+        val inProgress = model.inProgress
+        if (inProgress != null) {
+            A(href = Route.WORKOUT.hash, attrs = { classes("card", "card-link") }) {
+                Div({ classes("card-title") }) { Text(inProgress.routineName ?: strings.workoutUntitled) }
+                Div({ classes("details", "numbers") }) { Text(strings.inProgressFor(durationText(now - inProgress.startedAt, strings))) }
                 P({ classes("hint") }) { Text(strings.inProgressHint) }
+                Div({ classes("card-action") }) { Text(strings.resumeWorkout) }
             }
+        } else {
+            Button({
+                classes("primary")
+                onClick { scope.launch { if (container.run(Command.StartWorkout()) is CommandResult.Done) go(Route.WORKOUT) } }
+            }) { Text(strings.startWorkout) }
         }
         H2({ classes("section") }) { Text(strings.routines) }
         if (model.routines.isEmpty()) {
             P({ classes("hint") }) { Text(strings.routinesEmpty) }
         } else {
             Ul({ classes("rows") }) {
-                model.routines.forEach { routine -> key(routine.id) { Li({ classes("row") }) { RoutineRow(routine, container) } } }
+                model.routines.forEach { routine ->
+                    key(routine.id) {
+                        Li({ classes("row") }) {
+                            RoutineRow(routine, container)
+                            Button({
+                                classes("secondary", "start")
+                                if (inProgress != null || routine.exerciseCount == 0) disabled()
+                                onClick {
+                                    scope.launch {
+                                        if (container.run(Command.StartRoutine(routine.id)) is CommandResult.Done) go(Route.WORKOUT)
+                                    }
+                                }
+                            }) { Text(strings.start) }
+                        }
+                    }
+                }
             }
         }
         H2({ classes("section") }) { Text(strings.recent) }

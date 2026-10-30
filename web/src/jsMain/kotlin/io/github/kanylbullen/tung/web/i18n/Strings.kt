@@ -54,6 +54,30 @@ interface Strings {
     val homeEmpty: String
     val showAll: String
 
+    // Workout
+    val startWorkout: String
+    val start: String
+    val resumeWorkout: String
+    val noWorkout: String
+    val addExercise: String
+    val addSet: String
+    fun last(sets: String): String
+    val finish: String
+    val discard: String
+    val finishTitle: String
+    fun finishDropsOpen(count: Int): String
+    val finishAllLogged: String
+    val finishNothingLogged: String
+    val keepTraining: String
+    val discardTitle: String
+    val discardBody: String
+    val searchExercises: String
+    val noMatches: String
+    val close: String
+    val emptyWorkout: String
+    fun setDone(number: Int): String
+    fun removeExercise(name: String): String
+
     // History
     val history: String
     val historyEmpty: String
@@ -118,12 +142,35 @@ object English : Strings {
     override fun weekDaysDescription(days: String): String = "Volume per day this week: $days"
     override val weekDaysNone = "nothing yet"
     override fun inProgressFor(duration: String): String = "In progress for $duration"
-    override val inProgressHint = "Log it on your phone or watch; it shows up here when it is finished."
+    override val inProgressHint = "Continue here, or on your phone or watch."
     override val routines = "Routines"
     override val routinesEmpty = "Routines you make on your phone show up here."
     override val recent = "Recent workouts"
     override val homeEmpty = "No workouts yet. Finished workouts show up here."
     override val showAll = "Show all"
+    override val startWorkout = "Start workout"
+    override val start = "Start"
+    override val resumeWorkout = "Resume workout"
+    override val noWorkout = "No workout in progress."
+    override val addExercise = "Add exercise"
+    override val addSet = "+ Set"
+    override fun last(sets: String): String = "Last: $sets"
+    override val finish = "Finish"
+    override val discard = "Discard workout"
+    override val finishTitle = "Finish the workout?"
+    override fun finishDropsOpen(count: Int): String =
+        if (count == 1) "1 set that is not ticked will be removed." else "$count sets that are not ticked will be removed."
+    override val finishAllLogged = "Every set is logged."
+    override val finishNothingLogged = "No set is logged, so the workout is not saved."
+    override val keepTraining = "Keep training"
+    override val discardTitle = "Discard this workout?"
+    override val discardBody = "The sets you logged are deleted."
+    override val searchExercises = "Search exercises"
+    override val noMatches = "No exercise matches."
+    override val close = "Close"
+    override val emptyWorkout = "Add an exercise to start."
+    override fun setDone(number: Int): String = "Set $number done"
+    override fun removeExercise(name: String): String = "Remove $name"
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -191,12 +238,35 @@ object Swedish : Strings {
     override fun weekDaysDescription(days: String): String = "Volym per dag den här veckan: $days"
     override val weekDaysNone = "inget än"
     override fun inProgressFor(duration: String): String = "Pågår sedan $duration"
-    override val inProgressHint = "Logga det på telefonen eller klockan; det hamnar här när det är avslutat."
+    override val inProgressHint = "Fortsätt här, eller på telefonen eller klockan."
     override val routines = "Rutiner"
     override val routinesEmpty = "Rutiner du gör på telefonen hamnar här."
     override val recent = "Senaste passen"
     override val homeEmpty = "Inga pass än. Avslutade pass hamnar här."
     override val showAll = "Visa alla"
+    override val startWorkout = "Starta pass"
+    override val start = "Starta"
+    override val resumeWorkout = "Fortsätt passet"
+    override val noWorkout = "Inget pass pågår."
+    override val addExercise = "Lägg till övning"
+    override val addSet = "+ Set"
+    override fun last(sets: String): String = "Förra: $sets"
+    override val finish = "Avsluta"
+    override val discard = "Släng passet"
+    override val finishTitle = "Avsluta passet?"
+    override fun finishDropsOpen(count: Int): String =
+        if (count == 1) "1 set som inte är bockat tas bort." else "$count set som inte är bockade tas bort."
+    override val finishAllLogged = "Alla set är loggade."
+    override val finishNothingLogged = "Inget set är loggat, så passet sparas inte."
+    override val keepTraining = "Fortsätt träna"
+    override val discardTitle = "Släng passet?"
+    override val discardBody = "Setten du loggat tas bort."
+    override val searchExercises = "Sök övning"
+    override val noMatches = "Ingen övning matchar."
+    override val close = "Stäng"
+    override val emptyWorkout = "Lägg till en övning för att börja."
+    override fun setDone(number: Int): String = "Set $number klart"
+    override fun removeExercise(name: String): String = "Ta bort $name"
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"
