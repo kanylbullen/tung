@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.sync
 
+import io.github.kanylbullen.tung.core.sync.SyncResult
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider

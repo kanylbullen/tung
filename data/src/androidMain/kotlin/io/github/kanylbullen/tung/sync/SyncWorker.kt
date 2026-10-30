@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.sync
 
+import io.github.kanylbullen.tung.core.sync.SyncResult
 import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints

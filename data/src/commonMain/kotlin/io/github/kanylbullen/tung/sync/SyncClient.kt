@@ -4,12 +4,14 @@ import io.github.kanylbullen.tung.core.sync.DEVICE_HEADER
 import io.github.kanylbullen.tung.core.sync.PUSH_ENDPOINTS_PATH
 import io.github.kanylbullen.tung.core.sync.PushEndpoint
 import io.github.kanylbullen.tung.core.sync.PushEndpointRequest
-import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
 import io.github.kanylbullen.tung.core.sync.SyncFailure
-import io.github.kanylbullen.tung.core.sync.SyncPlanner
-import io.github.kanylbullen.tung.core.sync.SyncRequest
+import io.github.kanylbullen.tung.core.sync.SyncLoop
+import io.github.kanylbullen.tung.core.sync.SyncReply
 import io.github.kanylbullen.tung.core.sync.SyncResponse
+import io.github.kanylbullen.tung.core.sync.SyncResult
+import io.github.kanylbullen.tung.core.sync.SyncSession
+import io.github.kanylbullen.tung.core.sync.SyncTransport
 import io.github.kanylbullen.tung.data.ioDispatcher
 import io.github.kanylbullen.tung.data.systemMillis
 import io.ktor.client.HttpClient
@@ -22,16 +24,10 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.serialization.SerialName
@@ -50,16 +46,6 @@ val SyncJson = Json {
  * by the caller; 15 s to connect, 60 s of silence, 120 s for a request.
  */
 expect fun syncHttpClient(): HttpClient
-
-sealed interface SyncResult {
-    /** [pushed] rows went up, [applied] rows of the responses changed something here. */
-    data class Success(val pushed: Int, val applied: Int) : SyncResult
-
-    /** No server or no token: nothing to do. */
-    data object NotSignedIn : SyncResult
-
-    data class Failed(val failure: SyncFailure) : SyncResult
-}
 
 sealed interface AuthResult {
     /** [googleLinked]: the account has a Google account linked (the server's `user.google_linked`). */
@@ -171,96 +157,65 @@ class SyncClient(
     private val retryDelaysMillis: List<Long> = listOf(2_000L, 8_000L),
     private val onSignedOut: suspend () -> Unit = {},
 ) {
-    private val mutex = Mutex()
-    private val _running = MutableStateFlow(false)
-
-    /** True while a sync is in progress, for the settings screen. */
-    val running: StateFlow<Boolean> = _running.asStateFlow()
-
-    /**
-     * One full sync: plan (dirty rows and tombstones, in chunks of at most
-     * [SYNC_MAX_ROWS]) → POST each chunk with the latest cursor → apply each
-     * response in one Room transaction, clearing the dirty flags of exactly
-     * the rows that chunk carried → store the cursor. While a response comes
-     * back full it pulls again, so a server that pages its answer is read to
-     * the end. Success and failure are recorded in [SyncSettings]; a 401
-     * signs the device out.
-     */
-    suspend fun syncOnce(): SyncResult = withContext(ioDispatcher) {
-        mutex.withLock {
-            _running.value = true
-            try {
-                runSync()
-            } finally {
-                _running.value = false
-            }
-        }
-    }
-
-    private suspend fun runSync(): SyncResult {
-        val baseUrl = settings.serverUrl() ?: return SyncResult.NotSignedIn
-        val token = tokens.read() ?: return SyncResult.NotSignedIn
-        return try {
-            val local = store.readDirty()
-            var cursor = settings.cursor()
-            var pushed = 0
-            var applied = 0
-            var last: SyncResponse? = null
-            suspend fun exchange(request: SyncRequest) {
-                val response = postSync(baseUrl, token, request.copy(cursor = cursor))
-                applied += store.apply(response, request.changes)
-                pushed += request.changes.size()
-                cursor = maxOf(cursor, response.cursor)
-                settings.setCursor(cursor)
-                last = response
-            }
-            SyncPlanner.plan(local.dirty, local.tombstones, cursor).forEach { exchange(it) }
-            while ((last?.changes?.size() ?: 0) >= SYNC_MAX_ROWS) exchange(SyncRequest())
-            settings.recordSuccess(clock())
-            SyncResult.Success(pushed, applied)
-        } catch (failed: SyncFailedException) {
-            if (failed.failure == SyncFailure.SIGNED_OUT) {
+    /** Sync itself is core's [SyncLoop]; this class gives it Room, the settings and Ktor. */
+    private val loop = SyncLoop(
+        local = store,
+        session = object : SyncSession {
+            override suspend fun serverUrl() = settings.serverUrl()
+            override suspend fun token() = tokens.read()
+            override suspend fun deviceId() = settings.deviceId()
+            override suspend fun cursor() = settings.cursor()
+            override suspend fun setCursor(cursor: Long) { settings.setCursor(cursor) }
+            override suspend fun recordSuccess(at: Long) { settings.recordSuccess(at) }
+            override suspend fun recordFailure(failure: SyncFailure) { settings.recordFailure(failure) }
+            override suspend fun signedOutByServer() {
                 tokens.write(null)
                 settings.signedOut(SyncFailure.SIGNED_OUT)
-                onSignedOut()
-            } else {
-                settings.recordFailure(failed.failure)
             }
-            SyncResult.Failed(failed.failure)
-        }
-    }
-
-    private suspend fun postSync(baseUrl: String, token: String, request: SyncRequest): SyncResponse {
-        val deviceId = settings.deviceId()
-        var attempt = 0
-        while (true) {
-            val failure = try {
+        },
+        transport = SyncTransport { baseUrl, token, deviceId, request ->
+            try {
                 val response = http.post(baseUrl + SYNC_PATH) {
                     bearerAuth(token)
                     header(DEVICE_HEADER, deviceId)
                     contentType(ContentType.Application.Json)
                     setBody(request)
                 }
-                when {
-                    response.status.isSuccess() -> return response.body<SyncResponse>()
-                    response.status == HttpStatusCode.Unauthorized -> throw SyncFailedException(SyncFailure.SIGNED_OUT)
-                    response.status.value in 400..499 -> throw SyncFailedException(SyncFailure.REJECTED)
-                    else -> SyncFailure.SERVER
+                if (!response.status.isSuccess()) {
+                    SyncReply.Status(response.status.value)
+                } else {
+                    try {
+                        SyncReply.Answer(response.body<SyncResponse>())
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        SyncReply.Unreadable
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: SyncFailedException) {
-                throw e
             } catch (e: IOException) {
-                SyncFailure.NETWORK
+                SyncReply.Unreachable
             } catch (e: Exception) {
-                // A body that is not a SyncResponse: the server's fault, and maybe passing.
-                SyncFailure.SERVER
+                // Anything else from the client is the answer's fault, as before: a server error, retried.
+                SyncReply.Unreadable
             }
-            val wait = retryDelaysMillis.getOrNull(attempt++) ?: throw SyncFailedException(failure)
-            delay(wait)
-        }
-    }
+        },
+        clock = clock,
+        retryDelaysMillis = retryDelaysMillis,
+        onSignedOut = onSignedOut,
+    )
+
+    /** True while a sync is in progress, for the settings screen. */
+    val running: StateFlow<Boolean> = loop.running
+
+    /**
+     * One full sync, core's [SyncLoop]: plan, POST each chunk with the
+     * latest cursor, apply each response in one Room transaction, store the
+     * cursor, pull again while a response is full. Success and failure are
+     * recorded in [SyncSettings]; a 401 signs the device out.
+     */
+    suspend fun syncOnce(): SyncResult = withContext(ioDispatcher) { loop.syncOnce() }
 
     /** `POST /api/v1/auth/login`, or `/register` when [create]. Stores nothing; [SyncAccount] does. */
     suspend fun authenticate(baseUrl: String, email: String, password: String, create: Boolean): AuthResult =

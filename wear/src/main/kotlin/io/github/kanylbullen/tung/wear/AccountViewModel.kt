@@ -10,7 +10,7 @@ import io.github.kanylbullen.tung.data.TungHost
 import io.github.kanylbullen.tung.sync.AccountState
 import io.github.kanylbullen.tung.sync.LinkClaimResult
 import io.github.kanylbullen.tung.sync.LinkFailure
-import io.github.kanylbullen.tung.sync.SyncResult
+import io.github.kanylbullen.tung.core.sync.SyncResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
