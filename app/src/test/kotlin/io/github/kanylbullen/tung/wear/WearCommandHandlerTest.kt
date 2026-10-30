@@ -9,6 +9,7 @@ import io.github.kanylbullen.tung.core.wear.WatchProtocol
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.SetEntry
 import io.github.kanylbullen.tung.data.TungDatabase
+import io.github.kanylbullen.tung.data.buildInMemory
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.timer.RestTimerController
 import kotlinx.coroutines.CoroutineScope

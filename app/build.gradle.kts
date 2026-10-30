@@ -179,7 +179,7 @@ dependencies {
     // The fake tung-server of the sync tests (SyncClientTest, SyncFlowTest): a real HTTP
     // server in the test JVM, so the production OkHttp engine is what gets exercised.
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
-    testImplementation(testFixtures(project(":data")))
+    testImplementation(project(":data-fixtures"))
     testImplementation("androidx.work:work-testing:2.10.0")
     // PushFlowTest calls the push receivers (data/push/) as their transports would.
     testImplementation(platform("com.google.firebase:firebase-bom:33.7.0"))
