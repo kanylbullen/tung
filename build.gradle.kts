@@ -121,6 +121,18 @@ plugins.withType<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin>
 }
 plugins.withType<org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin> {
     the<org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootEnvSpec>().repositoryIsInSettings()
+    // The plugin pins its own build and test tooling (webpack, its dev server,
+    // Karma, Mocha), and those pins carry known advisories. None of it reaches
+    // tung.js, but it runs on this machine and in CI, so the patched release
+    // of each, in the major the plugin asks for, is forced here. Drop a line
+    // once the Kotlin plugin's own pin is past it.
+    the<org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension>().apply {
+        resolution("webpack", "5.112.2")
+        resolution("webpack-dev-server", "5.2.7")
+        resolution("serialize-javascript", "7.1.4")
+        resolution("uuid", "11.1.1")
+        resolution("diff", "8.0.4")
+    }
 }
 allprojects {
     plugins.withType<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin> {
