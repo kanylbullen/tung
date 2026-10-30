@@ -15,6 +15,8 @@ data class ExerciseView(
     val name: String,
     val sets: List<SetView>,
     val last: List<LoggedSet>,
+    /** The exercise's own rest between sets in seconds, 0 for none, null to follow the default. */
+    val restSeconds: Int? = null,
 )
 
 /** The workout in progress, wherever it was started. */
@@ -29,6 +31,18 @@ data class WorkoutView(
 
     /** Sets finishing removes: not ticked, or ticked without reps. */
     val openSets: Int get() = exercises.sumOf { e -> e.sets.count { !(it.completed && it.reps > 0) } }
+
+    /** Each exercise's sets' ticked state, in screen order: what core's current-set rule takes. */
+    val completed: List<List<Boolean>> get() = exercises.map { e -> e.sets.map { it.completed } }
+
+    /** Where the set [setId] is, or null. */
+    fun indexOf(setId: String): io.github.kanylbullen.tung.core.SetIndex? {
+        exercises.forEachIndexed { e, exercise ->
+            val s = exercise.sets.indexOfFirst { it.id == setId }
+            if (s >= 0) return io.github.kanylbullen.tung.core.SetIndex(e, s)
+        }
+        return null
+    }
 }
 
 /** The workout in progress (no end; the latest started when a sync brought several), or null. */
@@ -51,6 +65,7 @@ fun activeWorkout(store: TungStore, displayName: (SyncExercise) -> String): Work
                     SetView(set.id, index + 1, set.weightKg ?: 0.0, set.reps ?: 0, set.completed ?: false)
                 },
                 last = store.previousSession(exerciseId, excludeWorkoutId = workout.id),
+                restSeconds = exercise?.restSeconds,
             )
         }
     return WorkoutView(workout.id, workout.startedAt ?: 0L, workout.routineId?.let { store.routines.get(it)?.name }, exercises)
