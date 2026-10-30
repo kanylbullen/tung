@@ -55,7 +55,13 @@ class WebCommandStore(
             tx.undo()
             return@withLock result
         }
-        persist(tx.journal)
+        try {
+            persist(tx.journal)
+        } catch (e: Throwable) {
+            // Memory never runs ahead of IndexedDB: what could not be stored did not happen.
+            tx.undo()
+            throw e
+        }
         store.bump()
         result
     }

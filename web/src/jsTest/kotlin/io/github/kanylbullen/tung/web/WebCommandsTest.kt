@@ -151,4 +151,17 @@ class WebCommandsTest {
             IndexedDbStore.delete(name)
         }
     }
+
+    @Test
+    fun aFailedWriteUndoesTheCommandInMemory() = runTest {
+        val store = TungStore()
+        val executor = CommandExecutor(
+            WebCommandStore(store, persist = { error("quota exceeded") }, clock = { 1L }),
+            WebExerciseResolver(store) { emptyMap() },
+            startedBy = StartedBy.WEB,
+        )
+        val thrown = runCatching { executor.execute(Command.StartWorkout()) }
+        assertTrue(thrown.isFailure)
+        assertTrue(store.workouts.rows.isEmpty())
+    }
 }
