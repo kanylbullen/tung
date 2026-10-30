@@ -1,104 +1,136 @@
-# Tung
+<p align="center">
+  <img src="server/src/main/resources/site/og.png" alt="Tung: 80 kg × 8 reps, a training log for the set you are about to do" width="720">
+</p>
 
-**Tung** is Swedish for *heavy*. It is a strength training log for Android:
-start a session, add exercises, enter weight and reps with one hand between
-sets, and see what you did last time next to every set. Think Jefit, but
-calmer, faster, and yours.
+<p align="center">
+  <a href="https://tung.xuper.fun/"><b>Website</b></a> ·
+  <a href="https://tung.xuper.fun/app/"><b>Web app</b></a> ·
+  <a href="https://tung.xuper.fun/docs"><b>API docs</b></a> ·
+  <a href="deploy/README.md"><b>Self-host</b></a>
+</p>
 
-Early days: the app logs workouts and keeps history, locally on the phone.
-Everything below the "Today" line works now. Everything below "Direction" is
-planned and described in detail in [`docs/architecture.md`](docs/architecture.md).
+<p align="center">
+  <a href="https://github.com/kanylbullen/tung/actions/workflows/ci.yml"><img src="https://github.com/kanylbullen/tung/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-1A1D21" alt="Licence: AGPL-3.0"></a>
+  <img src="https://img.shields.io/badge/Android-8.0%2B-1A1D21" alt="Android 8.0+">
+  <img src="https://img.shields.io/badge/Wear%20OS-3%2B-1A1D21" alt="Wear OS 3+">
+</p>
+
+**Tung** is Swedish for *heavy*. It is a strength training log for people
+who lift: start a workout, enter weight and reps with one thumb between
+sets, and see what you did last time right next to every set. Think Jefit,
+but calmer, faster, and yours.
+
+<p align="center">
+  <img src="server/src/main/resources/site/screens/workout.webp" alt="An active workout: bench press, two sets of 80 kg × 8, last time shown under the set, and a Log set button at the bottom" width="240">
+  <img src="server/src/main/resources/site/screens/weight.webp" alt="The weight sheet: 62.5 kg in large type over a ruler, with minus, plus and Done" width="240">
+  <img src="server/src/main/resources/site/screens/summary.webp" alt="The summary after a workout: duration, sets, volume, the best set and a body map of the muscles worked" width="240">
+</p>
 
 ## Principles
 
-- **The numbers are the content.** Weight and reps are set large; everything
-  else stays quiet. One accent colour, no cards, no decoration.
+- **The numbers are the content.** Weight and reps are set large, everything
+  else stays quiet. One accent colour, one typeface, no decoration.
 - **Last time, right there.** Every set shows the matching set from your
-  previous session with that exercise, and new sets are pre-filled from it.
-  That is the feature Jefit buries; here it is the point.
+  previous session, and new sets are pre-filled from it. Jefit buries this;
+  here it is the point.
 - **Offline first.** Gyms have bad reception. The app works fully without a
   network or an account. A server is optional and adds sync, an API and MCP.
-- **Your data is yours.** It never leaves the device unless you turn sync on,
-  and it can always be exported.
-- **Everything except personal data is open.** Code, server, exercise
-  catalogue, documentation.
+- **Your data is yours.** Nothing leaves the device unless you turn sync on,
+  and there are no analytics and no ads. The server exports your whole log
+  as JSON.
+- **Everything except personal data is open.** The code, the server, the
+  exercise catalogue and the documentation.
 
-## Today
+## What it does
 
-- Home: start or continue a session, recent sessions with duration and volume.
-- Active session: exercises and sets, "last time" under each set, a large
-  input sheet for weight (steps of 2.5 kg) and reps.
-- Exercise picker with search, grouped by muscle, plus custom exercises.
-- History with session detail, and a summary after each session with best
-  sets and new records.
-- Swedish and English. Dark theme by default, light follows the system.
-- 70 curated exercises seeded on first start.
-- Sync, if you want it: sign in to a tung-server in Settings and the phone
-  syncs row by row in the background, newest write wins and deletions as
-  tombstones; without a server it works exactly as before.
-- A Wear OS app: start a session or a routine and log sets from the wrist
-  with the bezel or crown, rest timer included. Linked to your server with a
-  six-digit code from the phone (no password on the watch), it keeps its own
-  log and syncs over Wi-Fi, so the phone can stay in the locker or at home;
-  unlinked, it mirrors the phone's workout over Bluetooth. See
-  [`wear/README.md`](wear/README.md).
+**Logging**
+- A sticky **Log set** button under the thumb, a huge input sheet with a
+  ruler for weight and reps, and a rest timer that alerts you even with the
+  screen off.
+- The ongoing workout as a notification with Log set and Finish, shown as a
+  Live Update chip on Android 16.
+- Log a set by voice ("80 kilo 8"), in English and Swedish, on the device
+  with no network.
 
-Stack: Kotlin, Jetpack Compose, Material 3, Room. minSdk 26, targetSdk 36.
-The app needs no backend and has no analytics; its only network use is the
-sync server you name.
+**Planning**
+- Routines and programs: fixed weekdays or a rotating split, with "Today" on
+  the home screen.
+- About 680 exercises by muscle group, filtered by the equipment you have,
+  each with a muscle map and instructions.
+- A smart picker that suggests the next exercise from your own habits.
 
-### Server
+**Progress**
+- Estimated 1RM, top set and volume over time, weekly volume, streaks and
+  records, and the muscles each workout and routine works.
+- A sheet inside the workout that tells you whether the set you are about to
+  do is a new record.
 
-An optional server in [`server/`](server/README.md), not yet connected to
-the app:
+**Everywhere**
+- **Wear OS:** log sets from the wrist. Linked to your server with a
+  six-digit code, the watch keeps its own log and syncs over Wi-Fi, so the
+  phone can stay in the locker. See [`wear/README.md`](wear/README.md).
+- **Web:** an installable PWA that keeps your log in the browser and syncs
+  like the phone. See [`web/README.md`](web/README.md).
+- **Sync** with a tung-server, signed in with email and password or Google.
+  Newest write wins, row by row, and push wakes your other devices.
 
-- Accounts with email and password, and API tokens (read or write) for
-  scripts and agents; six-digit link codes so a watch signs in without a
-  password.
-- A REST API over exercises and workouts, with "last time" for any exercise
-  and a full JSON export. Every endpoint is in the OpenAPI spec, served with
-  Swagger UI at `/docs`; a test fails if a route is missing from it.
-- Self-hosting with one Docker image and Postgres: `docker compose up` in
-  [`deploy/`](deploy/README.md), backups with one `pg_dump` line.
+**Bring your own**
+- **Import from Jefit**, with a review of every exercise name it cannot
+  match by itself.
+- **Health Connect:** write your workouts and read heart rate and calories,
+  each only when you turn it on.
+- **An assistant with your own key** (OpenAI-compatible, Anthropic or a
+  local Ollama) that suggests a program, your next workout or where you have
+  stalled. The request goes straight from the phone to your provider, and
+  the app shows what it sends before it sends it.
 
-Stack: Kotlin, Ktor, Exposed, Postgres, sharing the domain code with the app
-through `core/`.
+## The server
 
-### Web
+[`server/`](server/README.md) is optional, and the same image runs our
+instance at [tung.xuper.fun](https://tung.xuper.fun/) and your own.
 
-A web app in [`web/`](web/README.md), early: sign in to your server, and
-History. It is a PWA (install it, it opens offline) that keeps your log in
-the browser and syncs it with the same protocol as the phone, over the same
-`core/`. Kotlin/JS with Compose HTML.
+- **One command surface.** Every change the app makes is a command in
+  `core/`, and the server exposes the same commands over REST and as MCP
+  tools. A button and an assistant cannot drift apart.
+- **REST API** with tokens and an OpenAPI spec, served as Swagger UI at
+  `/docs`. A test fails when a route is missing from the spec.
+- **MCP** with OAuth 2.1, so the assistant you already use (Claude, ChatGPT,
+  a local model) can log a set, answer "what did I bench last time", or save
+  a program it wrote from your history.
+- **Self-hosting** with one Docker image and Postgres: `docker compose up` in
+  [`deploy/`](deploy/README.md).
 
-## Direction
+## Try it
 
-- **The whole app as an API.** Every command the app's buttons use
-  (`core/command/`) exposed over HTTP under the same names, so everything the
-  app can do is in the OpenAPI spec. No private endpoints.
-- **MCP server** built into the same server binary, so the AI you already use
-  (Claude, ChatGPT, a local model) can log a set, answer "what did I bench
-  last time", and save a training programme it wrote for you from your own
-  history. The programme goes through `save_routine`, which only accepts a
-  structured plan validated against the catalogue.
-- **Our hosted instance**, the same image self-hosters run, with OAuth 2.1
-  for hosted assistants.
-- **AI in the app** as a second option for people without an assistant:
-  bring your own key (OpenAI-compatible or Anthropic, including a local
-  Ollama), an operator key on self-hosted servers, or a small free monthly
-  budget on our instance. Always on request, never in the background, and the
-  app shows what it sends before it sends it.
-- **Open exercise catalogue.** The curated core is open data under CC0 in
-  [`catalog/core.json`](catalog/core.json); the app's seed list and strings
-  are generated from it. A broader English catalogue is imported from
-  [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (Unlicense)
-  into `catalog/extended.json` and reachable through search in the picker.
-  See [`catalog/README.md`](catalog/README.md).
+- **On the web:** [tung.xuper.fun/app](https://tung.xuper.fun/app/), with
+  an account on the server.
+- **On Android and Wear OS:** in internal testing on Google Play. Sign up on
+  [tung.xuper.fun](https://tung.xuper.fun/) with the email of your Google
+  account.
+- **From source:** see [Building](#building).
+
+An iPhone app is in progress: `core` and `data` are Kotlin Multiplatform,
+and the screens move to Compose Multiplatform next.
+
+## Repository
+
+| Path | What it is |
+|---|---|
+| [`core/`](core/) | Domain rules, commands, the sync protocol, progress and the import adapters. Kotlin Multiplatform, no Android. |
+| [`data/`](data/) | Room, the repositories, sync, the rest timer and the ongoing notification, shared by the phone and the watch. |
+| [`app/`](app/) | The Android phone app: Jetpack Compose and Material 3. |
+| [`wear/`](wear/README.md) | The Wear OS app. |
+| [`web/`](web/README.md) | The web app: Kotlin/JS with Compose HTML. |
+| [`server/`](server/README.md) | tung-server: Ktor, Exposed and Postgres, with REST, sync and MCP. |
+| [`catalog/`](catalog/README.md) | The exercise catalogue as open data, and the scripts that generate the app's seed and strings from it. |
+| [`deploy/`](deploy/README.md) | Self-hosting with Docker Compose, and the Play release in [`deploy/play.md`](deploy/play.md). |
+| [`docs/`](docs/architecture.md) | The architecture and the decisions behind it. |
 
 ## Building
 
-Requirements: JDK 21 and an Android SDK with platform 35. Nothing else; the
-Gradle wrapper fetches the rest.
+You need JDK 21 and an Android SDK with platform 36. The Gradle wrapper
+fetches the rest.
 
 ```sh
 export JAVA_HOME=/path/to/jdk-21
@@ -107,28 +139,26 @@ echo "sdk.dir=$ANDROID_HOME" > local.properties   # once, gitignored
 ./gradlew assembleDebug test
 ```
 
-The APK ends up in `app/build/outputs/apk/debug/app-debug.apk`. The domain
-logic (volume, best set, records, pre-fill, weight parsing, search) lives in
-the Android-free `core/` module, and `test` runs its plain JVM tests together
-with the app's; reports land under `core/build/reports/tests/jvmTest/` and
-`app/build/reports/tests/`. CI runs the same command on every pull request.
+- The phone's APK is `app/build/outputs/apk/debug/app-debug.apk`. On a
+  phone, `./gradlew :app:assembleDogfood` gives a minified build that runs
+  several times faster.
+- `test` runs every module's tests. They include flow tests that drive the
+  real screens under Robolectric, with no emulator.
+- The server's tests start Postgres in Docker through Testcontainers.
+  Without Docker, add `-x :server:test`.
+- The web app is `./gradlew :web:jsBrowserDistribution`.
+- On a machine that prefers IPv6, Gradle may fail to reach Maven. The
+  repository already forces IPv4 in `gradle.properties`.
 
-`test` also runs the server's tests, which start Postgres in Docker
-(Testcontainers); without Docker, add `-x :server:test`. The server alone:
-`./gradlew :server:test`, and its image: `docker build -f server/Dockerfile .`.
-See [`server/README.md`](server/README.md).
-
-If Gradle cannot reach Maven on a machine that prefers IPv6, add
-`-Djava.net.preferIPv4Stack=true` to `org.gradle.jvmargs` in
-`gradle.properties`; the repo already does this.
-
-The Archivo typeface in `app/src/main/res/font/` is under the SIL Open Font
-License; the licence text ships in the APK as `assets/licenses/archivo-OFL.txt`.
+CI runs the same build on every pull request.
 
 ## Licence
 
 The code is free software under **GNU AGPL-3.0-or-later**, see
 [`LICENSE`](LICENSE). Anyone who runs a modified version as a service must
-offer its source to the users. The exercise catalogue (names, muscle groups,
-equipment) is open data under CC0 and may be used without conditions. Your
-training data is yours.
+offer its source to its users.
+
+The curated exercise catalogue is open data under CC0. The broader English
+catalogue comes from [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
+under the Unlicense. The Archivo typeface is under the SIL Open Font
+License. Your training data is yours.
