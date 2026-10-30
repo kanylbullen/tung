@@ -246,10 +246,13 @@ fun ActiveWorkoutScreen(
     }
     val handleUtterance: suspend (String) -> VoiceEcho = { text ->
         val action = voiceAction(parseUtterance(text, language), vm.state.value)
+        var echo = action.echo
         when (action) {
             is VoiceAction.Apply -> {
-                vm.applyVoice(action).join()
+                val logged = vm.applyVoice(action).await()
                 if (action.after == AfterVoice.ASK_FOR_REPS) editing = EditTarget(action.set.id, Field.REPS)
+                // `log_set` refused the set (it changed under the screen): never echo it as logged.
+                if (!logged) echo = VoiceEcho.Problem(VoiceProblem.NOT_LOGGED, action.exercise.name, action.exercise.nameKey)
             }
             is VoiceAction.Select -> vm.selectFromVoice(action.exercise.workoutExerciseId, action.set.id)
             is VoiceAction.AddSet -> vm.addSet(action.exercise.workoutExerciseId)
@@ -257,7 +260,7 @@ fun ActiveWorkoutScreen(
             is VoiceAction.Rest -> vm.startRestFor(action.exercise)
             is VoiceAction.Problem, is VoiceAction.NotUnderstood -> Unit
         }
-        action.echo
+        echo
     }
     var pendingHandsFree by remember { mutableStateOf<Boolean?>(null) }
     fun startVoice(handsFree: Boolean) {

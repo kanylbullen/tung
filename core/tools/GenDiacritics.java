@@ -13,12 +13,16 @@ import java.util.List;
  *
  *  - FOLDS: every character whose canonical decomposition (NFD) minus the
  *    non-spacing marks (Mn) is not the character itself: "À" -> "A", the
- *    ohm sign -> Greek omega, a Tibetan vowel sign made of two marks -> "".
+ *    ohm sign -> Greek omega, a Tibetan vowel sign made of two marks -> "",
+ *    a CJK compatibility ideograph -> its unified ideograph.
  *  - COMPOSITIONS: every (base, mark) pair that NFC composes into one
  *    character, stepwise: "a" + ring -> "å", and "å" + acute -> "ǻ".
  *
- * DiacriticTablesTest compares the tables with the running JDK's Normalizer
- * over the whole plane; a newer Unicode may need a regeneration.
+ * The Hangul syllables are left out: their decomposition into jamo is a
+ * formula, which Diacritics.kt applies (appendHangulJamo), and as a table they
+ * would be eleven thousand entries. DiacriticsTest compares the folding with
+ * the running JDK's Normalizer over the whole plane, syllables included; a
+ * newer Unicode may need a regeneration.
  */
 public class GenDiacritics {
     public static void main(String[] args) {
@@ -67,14 +71,9 @@ public class GenDiacritics {
         System.out.print(out);
     }
 
-    /**
-     * Hangul syllables (which decompose into jamo, not marks) and the CJK
-     * compatibility ideographs (each a singleton of a unified ideograph) are
-     * not diacritic folding and would be two thirds of the table; a search
-     * for them matches them as typed.
-     */
+    /** Hangul syllables: decomposed by the formula in Diacritics.kt, not from a table. */
     private static boolean isOutsideScope(int cp) {
-        return (cp >= 0xAC00 && cp <= 0xD7A3) || (cp >= 0xF900 && cp <= 0xFAFF);
+        return cp >= 0xAC00 && cp <= 0xD7A3;
     }
 
     /** One string literal per line of at most 24 entries, joined with +, every character escaped. */
