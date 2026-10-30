@@ -495,7 +495,7 @@ private object RestStore {
 
 /** The exercise picker: a search field over every exercise in the store, by the name on screen. */
 @Composable
-private fun Picker(container: WebContainer, onClose: () -> Unit, onPick: (String) -> Unit) {
+fun Picker(container: WebContainer, onClose: () -> Unit, onPick: (String) -> Unit) {
     val strings = container.strings
     var query by remember { mutableStateOf("") }
     val order = remember { browseNameOrder(container.locale) }
