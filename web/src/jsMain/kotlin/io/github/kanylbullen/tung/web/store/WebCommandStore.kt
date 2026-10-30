@@ -163,7 +163,7 @@ internal class WebCommandTx(private val store: TungStore, private val clock: () 
             .associateBy { it.id }
         val latest = store.workoutExercises.rows.values.map { it.row }
             .filter { it.exerciseId == exerciseId && it.workoutId in finished }
-            .sortedWith(compareByDescending<SyncWorkoutExercise> { finished[it.workoutId]?.startedAt ?: 0 }.thenBy { it.position ?: 0 })
+            .sortedWith(compareByDescending<SyncWorkoutExercise> { finished[it.workoutId]?.startedAt ?: 0L }.thenBy { it.position ?: 0 })
             .firstOrNull() ?: return emptyList()
         return sets(latest.id).filter { it.completed }.map { it.values }
     }

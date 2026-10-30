@@ -94,12 +94,20 @@ class WebCommandsTest {
         rig.run(Command.LogSet(first, set.id))
         rig.run(Command.FinishWorkout(first))
 
+        // A second finished session, heavier: the latest one is what the next pre-fills from.
         val second = assertNotNull(rig.run(Command.StartWorkout()).ids[CommandIds.WORKOUT_ID])
-        val weId = assertNotNull(rig.run(Command.AddExercise(second, ExerciseRef.ByKey("back_squat"))).ids[CommandIds.WORKOUT_EXERCISE_ID])
-        val prefilled = rig.store.sets.rows.values.map { it.row }.single { it.workoutExerciseId == weId }
-        assertEquals(100.0, prefilled.weightKg)
-        assertEquals(5, prefilled.reps)
-        assertEquals(false, prefilled.completed)
+        val secondWe = assertNotNull(rig.run(Command.AddExercise(second, ExerciseRef.ByKey("back_squat"))).ids[CommandIds.WORKOUT_EXERCISE_ID])
+        val secondSet = rig.store.sets.rows.values.map { it.row }.single { it.workoutExerciseId == secondWe }
+        assertEquals(100.0, secondSet.weightKg)
+        assertEquals(5, secondSet.reps)
+        assertEquals(false, secondSet.completed)
+        rig.run(Command.SetWeight(secondSet.id, 105.0))
+        rig.run(Command.LogSet(second, secondSet.id))
+        rig.run(Command.FinishWorkout(second))
+
+        val third = assertNotNull(rig.run(Command.StartWorkout()).ids[CommandIds.WORKOUT_ID])
+        val thirdWe = assertNotNull(rig.run(Command.AddExercise(third, ExerciseRef.ByKey("back_squat"))).ids[CommandIds.WORKOUT_EXERCISE_ID])
+        assertEquals(105.0, rig.store.sets.rows.values.map { it.row }.single { it.workoutExerciseId == thirdWe }.weightKg)
     }
 
     @Test
