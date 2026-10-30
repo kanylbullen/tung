@@ -5,7 +5,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.AlignmentLine
+import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.text
@@ -18,6 +21,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
+import io.github.kanylbullen.tung.core.ROUTINE_NAME_SEPARATOR
 import io.github.kanylbullen.tung.ui.theme.Tung
 import kotlin.math.ceil
 
@@ -42,7 +46,10 @@ fun RoutineName(name: String, modifier: Modifier = Modifier, style: TextStyle = 
         Text(name, modifier = modifier, style = style, color = Tung.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
         return
     }
-    val minPrefix = with(LocalDensity.current) { MIN_PREFIX_WIDTH.roundToPx() }
+    // A few letters and the ellipsis, in the style's own size so a larger font scale keeps them.
+    val minPrefix = with(LocalDensity.current) {
+        if (style.fontSize.isSp) (style.fontSize * MIN_PREFIX_EMS).roundToPx() else MIN_PREFIX_WIDTH.roundToPx()
+    }
     // What the prefix drew, read in measure: a cut line rarely fills the width it was given.
     val prefixLayout = remember { arrayOfNulls<TextLayoutResult>(1) }
     Layout(
@@ -74,17 +81,23 @@ fun RoutineName(name: String, modifier: Modifier = Modifier, style: TextStyle = 
         val prefixPlaceable = if (widths.prefix > 0) measurables[0].measure(Constraints(maxWidth = widths.prefix, maxHeight = maxHeight)) else null
         val separatorPlaceable = if (widths.separator > 0) measurables[1].measure(Constraints(maxWidth = widths.separator, maxHeight = maxHeight)) else null
         val suffixPlaceable = measurables[2].measure(Constraints(maxWidth = widths.suffix, maxHeight = maxHeight))
-        // The separator follows the prefix's last glyph, not the width the prefix was given.
+        // The separator follows the prefix's last glyph, not the width the prefix was given. The
+        // layout result is used only when it is the one this measure produced (the same width).
         val prefixDrawn = prefixPlaceable?.let { placeable ->
-            prefixLayout[0]?.let { ceil(it.getLineRight(0)).toInt().coerceIn(0, placeable.width) } ?: placeable.width
+            prefixLayout[0]?.takeIf { it.size.width == placeable.width }
+                ?.let { ceil(it.getLineRight(0)).toInt().coerceIn(0, placeable.width) }
+                ?: placeable.width
         } ?: 0
         val separatorWidth = separatorPlaceable?.width ?: 0
+        // On one baseline, whatever the weights' metrics.
+        val parts = listOfNotNull(prefixPlaceable, separatorPlaceable, suffixPlaceable)
+        val baseline = parts.maxOf { it.baseline() }
         val width = constraints.constrainWidth(prefixDrawn + separatorWidth + suffixPlaceable.width)
-        val height = constraints.constrainHeight(maxOf(prefixPlaceable?.height ?: 0, separatorPlaceable?.height ?: 0, suffixPlaceable.height))
+        val height = constraints.constrainHeight(parts.maxOf { baseline - it.baseline() + it.height })
         layout(width, height) {
-            prefixPlaceable?.placeRelative(0, 0)
-            separatorPlaceable?.placeRelative(prefixDrawn, 0)
-            suffixPlaceable.placeRelative(prefixDrawn + separatorWidth, 0)
+            prefixPlaceable?.let { it.placeRelative(0, baseline - it.baseline()) }
+            separatorPlaceable?.let { it.placeRelative(prefixDrawn, baseline - it.baseline()) }
+            suffixPlaceable.placeRelative(prefixDrawn + separatorWidth, baseline - suffixPlaceable.baseline())
         }
     }
 }
@@ -108,8 +121,11 @@ fun routineNameWidths(available: Int, prefixWanted: Int, separatorWanted: Int, s
     else RoutineNameWidths(0, 0, minOf(suffixWanted, available))
 }
 
-/** The import's separator between a routine's group and its day; the last one in a name is the cut. */
-const val ROUTINE_NAME_SEPARATOR = " · "
+/** A placeable's first baseline, or its top when it has none. */
+private fun Placeable.baseline(): Int = this[FirstBaseline].takeIf { it != AlignmentLine.Unspecified } ?: 0
 
-/** The least a cut prefix gets: a few letters and the ellipsis, so "Yo… · " never degrades to "… · ". */
+/** The least a cut prefix gets, in ems of the style: a few letters and the ellipsis, so "Yo… · " never degrades to "… · ". */
+private const val MIN_PREFIX_EMS = 3f
+
+/** The same minimum for a style without a font size. */
 private val MIN_PREFIX_WIDTH = 48.dp
