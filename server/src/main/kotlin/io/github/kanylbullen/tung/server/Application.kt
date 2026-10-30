@@ -9,6 +9,7 @@ import io.github.kanylbullen.tung.server.mcp.TungMcp
 import io.github.kanylbullen.tung.core.sync.DEVICE_HEADER
 import io.github.kanylbullen.tung.core.sync.PushTransport
 import io.github.kanylbullen.tung.server.oauth.OAuthStore
+import io.github.kanylbullen.tung.server.routes.siteRoutes
 import io.github.kanylbullen.tung.server.push.DisabledPushSender
 import io.github.kanylbullen.tung.server.push.EndpointGuard
 import io.github.kanylbullen.tung.server.push.FcmSender
@@ -175,6 +176,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     installErrorPages()
 
     routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push, commands) }
+    routing { siteRoutes(config) }
     routing {
         commandRoutes(commands)
         oauthRoutes(config, accounts, oauth)

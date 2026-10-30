@@ -9,7 +9,7 @@ import androidx.compose.runtime.setValue
 import io.github.kanylbullen.tung.core.sync.ServerUrlCheck
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.checkServerUrl
-import io.github.kanylbullen.tung.web.DEFAULT_SERVER_URL
+import io.github.kanylbullen.tung.web.defaultServerUrl
 import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.sync.AuthResult
 import kotlinx.coroutines.launch
@@ -38,8 +38,8 @@ fun SignInScreen(container: WebContainer) {
     val storedServer = container.settings.lastServerUrl
     var email by remember { mutableStateOf(container.settings.lastEmail ?: "") }
     var password by remember { mutableStateOf("") }
-    var server by remember { mutableStateOf(storedServer ?: DEFAULT_SERVER_URL) }
-    var editingServer by remember { mutableStateOf(storedServer != null && storedServer != DEFAULT_SERVER_URL) }
+    var server by remember { mutableStateOf(storedServer ?: defaultServerUrl()) }
+    var editingServer by remember { mutableStateOf(storedServer != null && storedServer != defaultServerUrl()) }
     var busy by remember { mutableStateOf(false) }
     var error by remember {
         mutableStateOf(if (container.signedOutByServer) strings.syncFailure(SyncFailure.SIGNED_OUT) else null)

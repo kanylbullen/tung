@@ -29,10 +29,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * The server a fresh browser signs in to, the phone's
- * `BuildConfig.DEFAULT_SERVER_URL`: one line for a self-hoster's fork.
+ * The server a fresh browser signs in to when the app is not served by one
+ * (GitHub Pages, a dev server), the phone's `BuildConfig.DEFAULT_SERVER_URL`:
+ * one line for a self-hoster's fork.
  */
 const val DEFAULT_SERVER_URL = "https://tung.xuper.fun"
+
+/**
+ * The server to offer: the page's own origin when a tung-server serves the
+ * app (under `/app/`, `SiteRoutes.kt`), so a self-hosted instance signs in
+ * to itself, else [DEFAULT_SERVER_URL].
+ */
+fun defaultServerUrl(): String =
+    if (window.location.pathname.startsWith("/app/")) window.location.origin else DEFAULT_SERVER_URL
 
 /**
  * The web's `TungContainer`: the store, IndexedDB, the settings, sign-in and

@@ -2167,107 +2167,21 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
 - **Not there yet:** the workout screen (logging sets), every other screen, a
   second tab (two tabs each hold the log in memory; the last write per row
   wins at the next load), Sign in with Google.
-- **Hosting**: GitHub Pages, `https://kanylbullen.github.io/tung/`,
-  published from `main` by `.github/workflows/web-pages.yml` (its own
-  workflow so only its deploy job gets `pages: write`; Pages' source is
-  "GitHub Actions"). Every path falls back to the shell (`404.html` is a
-  copy of `index.html`). The site has no server of its own: everything
-  relative, so it works under `/tung/` or any other path.
-
-## Building
-
-```sh
-cd /home/xup/tung
-export JAVA_HOME=/home/xup/android/jdk ANDROID_HOME=/home/xup/android/sdk ANDROID_SDK_ROOT=/home/xup/android/sdk
-export PATH=$JAVA_HOME/bin:$PATH
-./gradlew assembleDebug test --no-daemon
-```
-
-`test` runs `:core:jvmTest` (through its `test` alias), the unit tests of
-`data`, `app` and `wear` (AGP runs them for both the debug and the release
-variant) and `:server:test`. Only the core tests, fast and without AGP:
-`./gradlew :core:jvmTest --no-daemon`. Results land in
-`core/build/test-results/jvmTest/` and
-`<module>/build/test-results/testDebugUnitTest/`. `test` compiles no iOS
-code: `./gradlew :core:compileKotlinIosArm64 :data:compileKotlinIosArm64
---no-daemon` is the check CI adds, the one that catches a JVM-only type in
-either `commonMain` (the Kotlin/Native compiler lands in `~/.konan`).
-The web app is not in `test` either: `./gradlew :web:jsBrowserDistribution
-:web:jsBrowserTest --no-daemon` builds its site and runs its tests in
-headless Chrome (CI's `web` job; see "Web").
-
-**On a phone, install `dogfood`, not `debug`:** `./gradlew :app:assembleDogfood`
-gives `app/build/outputs/apk/dogfood/app-dogfood.apk`, release code (R8, not
-debuggable) signed with the debug key, so `adb install -r` replaces a debug
-build and keeps the data (with the release key in the environment, below, it
-is signed with that instead, so it replaces a Play install; `adb install -r -d`,
-its versionCode is lower). A debug build of a Compose app is several times
-slower: on the Note9, scrolling the Exercises tab had 34 % janky frames and a
-90th percentile of 150 ms as debug, 11 % and 32 ms as dogfood (2026-10-21).
-Release has R8 on (`isMinifyEnabled`, `isShrinkResources`); the app's own
-rules are in `app/proguard-rules.pro` and should stay empty unless the app
-itself reflects on a class. The flow tests run unminified, so after a change
-to dependencies or reflection, start the dogfood build once and sync.
-
-APKs: `app/build/outputs/apk/debug/app-debug.apk` and
-`wear/build/outputs/apk/debug/wear-debug.apk` (`:wear:assembleDebug`). The first build downloads
-dependencies and takes a few minutes.
-
-**A Play build is `scripts/release.sh`** (the console side: `deploy/play.md`).
-The release inputs live in the root `build.gradle.kts` and reach `app/` and
-`wear/` through `rootProject.extra`: the one release key from
-`TUNG_KEYSTORE`, `TUNG_KEYSTORE_PASSWORD`, `TUNG_KEY_ALIAS` and
-`TUNG_KEY_PASSWORD` (environment or `-P`; blank counts as missing; the key
-is outside the checkout, `*.jks` is gitignored), and the build number from
-`TUNG_VERSION_CODE`, which the script derives from the number of commits on
-`main`. The phone's versionCode is `number × 10 + 1`, the watch's
-`number × 10 + 2` (one applicationId, so Play wants distinct codes), and a
-build without a number is number 1. The root's `releaseGate` refuses
-`assembleRelease` and `bundleRelease` without the key or the number before
-anything is packaged; the release variant's unit tests, which CI runs
-without a key, are not affected. The watch is signed with the same key as the
-phone, or the Data Layer will not pair them. **Play requires targetSdk 36
-since 2026-08-31** (Wear OS 35), and the phone app meets it: AGP 8.9.1,
-compileSdk 36 and build-tools 36.0.0 in every Android module, targetSdk 36 in
-`app/` and, on purpose, 35 in `wear/`; CI reads both numbers back from the
-built APKs. What Android 16 changes for an app targeting 36, and how each
-item was checked against this app, is in `deploy/play.md`, "targetSdk": in
-short, edge-to-edge was already on and predictive back needs nothing. **The
-flow tests run under Robolectric SDK 34 and see neither**, so a change to
-insets or to back handling is checked on a phone.
-
-## Flow tests
-
-`app/src/test/kotlin/io/github/kanylbullen/tung/flows/` drives the real
-screens: `MainActivity`, the nav graph, the ViewModels and a real Room
-database, held in memory. They run on the JVM under Robolectric (SDK 34,
-native graphics) with Compose UI testing — no emulator, no device — and are
-part of `./gradlew test`. Only them:
-
-```sh
-./gradlew :app:testDebugUnitTest --tests 'io.github.kanylbullen.tung.flows.*' --no-daemon
-```
-
-- `FlowTestApp` (named in `src/test/resources/robolectric.properties`)
-  overrides `TungApp.createContainer()` to hand `TungContainer` an in-memory
-  `TungDatabase.buildInMemory`, same schema and seed, and a settable
-  `Clock` (`FlowTestApp.today`) for Home's "Today", and a `TokenStore` in
-  memory (`FlowTestApp.tokens`), because Robolectric has no Android Keystore,
-  and the push transports (`FlowTestApp.push`, a `FakePushEnvironment` from
-  the `data-fixtures` module, none by default), and Health Connect
-  (`FlowTestApp.healthConnect`, a `FakeHealthConnect` from the same module:
-  available, nothing granted, nothing to read by default), and the
-  assistant's API key in memory (`FlowTestApp.aiKeys`), and Account's default
-  server (`FlowTestApp.defaultServer`, a closed localhost port; a test that
-  wants the default to answer points it at its `FakeSyncServer`). Those six
-  `TungContainer` parameters, and `TungApp`'s `createSpeechInput`,
-  `createGoogleSignIn` and `defaultServerUrl`, are the only test seams in production code. Sync tests talk to `FakeSyncServer` (the `data-fixtures`
-  module, `data-fixtures/src/main/kotlin/.../sync/`, the protocol and the link routes on a
-  MockWebServer), and `SyncFlowTest` installs WorkManager's test
-  instance (`WorkManagerTestInitHelper`) before it signs in.
-- Assertions are on semantics, with text from the English string resources
-  (`str(R.string.…)`), never on pixels. Room works on its own threads, so wait
-  (`waitForText`, `assertShown`) rather than assert right after a tap.
+- **Hosting**: tung-server serves it. The Docker image builds
+  `:web:jsBrowserDistribution` and sets `TUNG_WEB_DIR=/app/web`;
+  `routes/SiteRoutes.kt` serves that directory at `/app/` (every path under
+  it that is not a file is the shell, `sw.js` and `index.html` revalidated)
+  and the landing page at `/` (`server/src/main/resources/site/index.html`,
+  English with Swedish swapped in by the browser's language, its font and
+  icon copied from the repository's one copy into `site/` by the server's
+  `processResources`). The service worker is served from `/app/`, so it
+  controls `/app/` only, never the API, `/docs` or the OAuth pages. Served
+  by a tung-server, the app offers that server at sign-in
+  (`defaultServerUrl()`); elsewhere `DEFAULT_SERVER_URL`. GitHub Pages
+  (`.github/workflows/web-pages.yml`, `https://kanylbullen.github.io/tung/`)
+  publishes the same site from `main` as well. `OpenApiCoverageTest` leaves
+  `/`, `/site` and `/app` out: pages, not API. The site has no server of its
+  own: everything relative, so it works under any path.
 - **Wait with `FlowTest.waitUntil`, never `compose.waitUntil`** (issue #28).
   Under Robolectric the test thread is the main thread and the main looper
   runs only when the test idles it; `compose.waitUntil` just advances
