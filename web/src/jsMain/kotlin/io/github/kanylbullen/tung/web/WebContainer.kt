@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.web.store.WebCommandStore
 import io.github.kanylbullen.tung.web.store.WebExerciseResolver
 import io.github.kanylbullen.tung.web.store.Write
 import io.github.kanylbullen.tung.web.sync.AuthResult
+import io.github.kanylbullen.tung.web.sync.PeriodicSync
 import io.github.kanylbullen.tung.web.sync.WebAuth
 import io.github.kanylbullen.tung.web.sync.WebSettings
 import io.github.kanylbullen.tung.web.sync.WebSync
@@ -121,6 +122,12 @@ class WebContainer(
         // the page is shown again or the connection comes back.
         window.addEventListener("online", { syncInBackground() })
         window.addEventListener("visibilitychange", { if (window.document.asDynamic().visibilityState == "visible") syncInBackground() })
+        // And every few minutes while it stays open and shown: a page gets no push.
+        PeriodicSync(
+            isVisible = { window.document.asDynamic().visibilityState == "visible" },
+            isSignedIn = { settings.account.value != null },
+            sync = { sync.syncOnce() },
+        ).start(scope)
     }
 
     /** Signs in and, on success, pulls the account's log. */
