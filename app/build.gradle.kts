@@ -137,7 +137,7 @@ dependencies {
     // Room, the repositories, the CommandHandler, sync and the rest timer, shared with wear/.
     implementation(project(":data"))
 
-    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+    val composeBom = platform("androidx.compose:compose-bom:2026.05.01")
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-text")
@@ -150,9 +150,9 @@ dependencies {
     // The same androidx.core as data/, which needs 1.17.0 for the Live Update.
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
@@ -165,7 +165,7 @@ dependencies {
     // Sync itself is in data/; the app keeps WorkManager (TungApp is its Configuration.Provider)
     // and the process lifecycle for "sync when the app comes to the foreground".
     implementation("androidx.work:work-runtime-ktx:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-process:2.9.2")
     // Sign in with Google (issue #51): Credential Manager with Play services' provider and the Google ID option.
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
@@ -179,7 +179,7 @@ dependencies {
     // The fake tung-server of the sync tests (SyncClientTest, SyncFlowTest): a real HTTP
     // server in the test JVM, so the production OkHttp engine is what gets exercised.
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
-    testImplementation(testFixtures(project(":data")))
+    testImplementation(project(":data-fixtures"))
     testImplementation("androidx.work:work-testing:2.10.0")
     // PushFlowTest calls the push receivers (data/push/) as their transports would.
     testImplementation(platform("com.google.firebase:firebase-bom:33.7.0"))

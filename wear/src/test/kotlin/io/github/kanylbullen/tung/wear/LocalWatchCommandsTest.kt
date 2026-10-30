@@ -13,6 +13,7 @@ import io.github.kanylbullen.tung.core.wear.WatchLastSet
 import io.github.kanylbullen.tung.core.wear.WatchWorkoutState
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungDatabase
+import io.github.kanylbullen.tung.data.buildInMemory
 import io.github.kanylbullen.tung.sync.MemoryTokenStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

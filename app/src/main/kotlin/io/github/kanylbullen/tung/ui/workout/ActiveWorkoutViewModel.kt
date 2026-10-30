@@ -9,14 +9,17 @@ import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds
+import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.timer.RestTimerController
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -258,13 +261,13 @@ class ActiveWorkoutViewModel(
 
     /**
      * "Log set": ticks [set] ([Command.LogSet], on the set this screen shows
-     * as current; it adds no set, issue #64) and starts the rest timer. With
-     * that the last open set, the button turns into Add set ([addSetFromButton]).
+     * as current; it adds no set, issue #64) and, once the command is done,
+     * moves the current set on and starts the rest timer ([log]). With that
+     * the last open set, the button turns into Add set ([addSetFromButton]).
      */
     fun logSet(exercise: ActiveExerciseUi, set: ActiveSetUi) {
         val before = state.value
-        launch { log(before, set) }
-        startRest(exercise)
+        launch { log(before, exercise, set) }
     }
 
     /**
@@ -272,15 +275,16 @@ class ActiveWorkoutViewModel(
      * on the set, then, when it asks for it, the same as [logSet]. One
      * coroutine, so the set is logged with the values just written; on
      * [viewModelScope], so it completes even if the screen leaves meanwhile.
+     * False only when logging was asked for and the command refused it
+     * ([log]), so the echo never says "logged" of a set that is not.
      */
-    fun applyVoice(action: VoiceAction.Apply): Job {
+    fun applyVoice(action: VoiceAction.Apply): Deferred<Boolean> {
         val before = state.value
         touch(action.exercise.workoutExerciseId)
-        if (action.after == AfterVoice.LOG) startRest(action.exercise)
-        return viewModelScope.launch {
+        return viewModelScope.async {
             action.weightKg?.let { commands.execute(Command.SetWeight(action.set.id, it)) }
             action.reps?.let { commands.execute(Command.SetReps(action.set.id, it)) }
-            if (action.after == AfterVoice.LOG) log(before, action.set)
+            action.after != AfterVoice.LOG || log(before, action.exercise, action.set)
         }
     }
 
@@ -293,9 +297,20 @@ class ActiveWorkoutViewModel(
     /** Voice's "rest": [exercise]'s rest timer, as after a tick. */
     fun startRestFor(exercise: ActiveExerciseUi) = startRest(exercise)
 
-    private suspend fun log(before: ActiveWorkoutUiState, set: ActiveSetUi) {
-        commands.execute(Command.LogSet(workoutId, set.id))
+    /**
+     * `log_set` on [set]; only when it is done ([CommandResult.Done]) does
+     * the current set move on ([advanceAfterLogging]) and [exercise]'s rest
+     * start. The command refuses a set with 0 reps, or one that is gone. The
+     * screen's own guard asks for the reps before it gets here, so a refusal
+     * means the set changed under the screen (a sync's write, say): the
+     * current set stays where it is, the state follows the database, and the
+     * next tap asks for the reps as before. Returns whether the set was logged.
+     */
+    private suspend fun log(before: ActiveWorkoutUiState, exercise: ActiveExerciseUi, set: ActiveSetUi): Boolean {
+        if (commands.execute(Command.LogSet(workoutId, set.id)) !is CommandResult.Done) return false
         advanceAfterLogging(before, set.id, scrollAlways = true)
+        startRest(exercise)
+        return true
     }
 
     fun skipRest() = setRest(rest.value?.skip())

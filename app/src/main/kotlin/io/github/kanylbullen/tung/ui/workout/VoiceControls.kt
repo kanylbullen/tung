@@ -152,6 +152,7 @@ fun voiceEchoText(echo: VoiceEcho): String? {
             VoiceProblem.NO_PREVIOUS_SET -> stringResource(R.string.voice_echo_no_previous)
             VoiceProblem.NO_NEXT_SET -> stringResource(R.string.voice_echo_no_next)
             VoiceProblem.REST_OFF -> stringResource(R.string.voice_echo_rest_off, exerciseDisplayName(echo.nameKey, echo.name.orEmpty()))
+            VoiceProblem.NOT_LOGGED -> stringResource(R.string.voice_echo_not_logged)
         }
         is VoiceEcho.NotUnderstood -> stringResource(R.string.voice_echo_not_understood, echo.text)
         is VoiceEcho.Failed -> stringResource(

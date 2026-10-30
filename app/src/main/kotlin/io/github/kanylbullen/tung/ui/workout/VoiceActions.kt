@@ -26,7 +26,15 @@ enum class AfterVoice {
     ASK_FOR_REPS,
 }
 
-enum class VoiceProblem { NO_CURRENT_SET, NO_PREVIOUS_SET, NO_NEXT_SET, REST_OFF }
+enum class VoiceProblem {
+    NO_CURRENT_SET,
+    NO_PREVIOUS_SET,
+    NO_NEXT_SET,
+    REST_OFF,
+
+    /** Logging was asked for, but `log_set` refused the set: it lost its reps, or is gone, since the screen last read it. */
+    NOT_LOGGED,
+}
 
 sealed interface VoiceAction {
     /** What the screen shows for a moment (see [voiceEchoText]). */

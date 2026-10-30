@@ -71,9 +71,9 @@ in the wrong group. A key in this list never changes once it exists.
 
 1. Add the entry to `core.json`, in its place in alphabetical order by `key`.
 2. Run `python3 -I catalog/tools/gen_android.py` from the repository root.
-3. Three files are updated: `app/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt`,
-   `app/src/main/res/values/strings.xml` (English) and
-   `app/src/main/res/values-sv/strings.xml` (Swedish); in the string files only
+3. Five files are updated: `data/src/commonMain/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt`,
+   and `src/main/res/values/strings.xml` (English) and
+   `src/main/res/values-sv/strings.xml` (Swedish) of both `app/` and `wear/`; in the string files only
    the lines between `<!-- catalog:begin -->` and `<!-- catalog:end -->`.
    Commit all four.
 

@@ -29,6 +29,7 @@ import io.github.kanylbullen.tung.data.WorkoutSummaryRow
 import io.github.kanylbullen.tung.timer.RestTimerController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -92,6 +94,15 @@ data class HomeUiState(
     val recent: List<WorkoutSummaryRow> = emptyList(),
     val hasMore: Boolean = false,
 )
+
+/** What Home says for a moment (a snackbar) when a tap did nothing. */
+enum class HomeMessage {
+    /**
+     * The program day tapped is no longer in the program: removed on another
+     * device, with the sync landing between the card's drawing and the tap.
+     */
+    DAY_GONE,
+}
 
 private data class ActiveProgram(val program: Program, val days: List<ProgramDayRow>, val lastCompletedDayId: String?)
 
@@ -147,6 +158,11 @@ class HomeViewModel(
         flow { emit(catalogueMuscles.index()) },
     ) { links, index -> routineMuscles(links, index) }.flowOn(Dispatchers.Default)
 
+    private val messageChannel = Channel<HomeMessage>(Channel.BUFFERED)
+
+    /** One-shot messages for the screen's snackbar ([HomeMessage]). */
+    val messages: Flow<HomeMessage> = messageChannel.receiveAsFlow()
+
     val state: StateFlow<HomeUiState> = combine(
         combine(
             workouts.observeActiveWorkout(),
@@ -182,9 +198,20 @@ class HomeViewModel(
         viewModelScope.launch { start(Command.StartRoutine(routineId))?.let(onReady) }
     }
 
-    /** Starts a workout from a program day, which the workout records, and hands back its id. */
+    /**
+     * Starts a workout from a program day, which the workout records, and hands
+     * back its id. `start_routine` refuses a day (or a routine) that is gone,
+     * which happens when another device removed it and the sync landed before
+     * the tap: nothing opens then, and Home says so ([HomeMessage.DAY_GONE]).
+     * The card itself follows Room, and the refusing command's own transaction
+     * is what makes it show the program as it is now; a rest day is not a
+     * refusal (it has no Start).
+     */
     fun startDay(day: ProgramDayUi, onReady: (String) -> Unit) {
-        viewModelScope.launch { start(Command.StartRoutine(day.routineId, programDayId = day.id))?.let(onReady) }
+        viewModelScope.launch {
+            val workoutId = start(Command.StartRoutine(day.routineId, programDayId = day.id))
+            if (workoutId != null) onReady(workoutId) else messageChannel.send(HomeMessage.DAY_GONE)
+        }
     }
 
     /**

@@ -23,9 +23,13 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -87,184 +92,201 @@ fun HomeScreen(
     // "Last: 3 days ago" changes at most at midnight; a minute is plenty.
     val today = rememberNow(intervalMillis = 60_000L)
     val date = remember(today) { LocalDate.now(container.clock) }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().statusBarsPadding(),
-    ) {
-        item(key = "header") {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // The wordmark: small, wide and heavy. The screen's content is the week below it.
-                    Text(
-                        stringResource(R.string.app_name),
-                        style = Tung.numbers.wordmark,
-                        color = Tung.colors.text,
-                        modifier = Modifier.weight(1f),
-                    )
-                    // Quiet on purpose: settings are visited once, training every day.
-                    IconButton(onClick = onShowSettings) {
-                        Icon(
-                            Icons.Filled.Settings,
-                            contentDescription = stringResource(R.string.settings_title),
-                            tint = Tung.colors.muted,
-                        )
-                    }
-                }
-                // "This week" once there is any history: the numbers are the content, so they come first.
-                val week = state.week
-                if (week != null && state.recent.isNotEmpty()) {
-                    ThisWeekSection(week, date)
-                }
-                val active = state.activeWorkout
-                if (active != null) {
-                    var menuOpen by remember { mutableStateOf(false) }
-                    var confirmDiscard by rememberSaveable { mutableStateOf(false) }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            PrimaryButton(
-                                text = stringResource(R.string.home_resume_workout),
-                                onClick = { onOpenWorkout(active.id) },
-                                modifier = Modifier.weight(1f).heightIn(min = 72.dp),
-                            )
-                            // The same "Discard workout…" as the workout's own menu (issue #81):
-                            // a workout started by mistake can be abandoned without opening it.
-                            Box {
-                                IconButton(onClick = { menuOpen = true }) {
-                                    Icon(
-                                        Icons.Filled.MoreVert,
-                                        contentDescription = stringResource(R.string.home_workout_menu),
-                                        tint = Tung.colors.muted,
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = menuOpen,
-                                    onDismissRequest = { menuOpen = false },
-                                    containerColor = Tung.colors.raised,
-                                    shape = TungCorner,
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.workout_discard)) },
-                                        onClick = { menuOpen = false; confirmDiscard = true },
-                                    )
-                                }
-                            }
-                        }
-                        val now = rememberNow(intervalMillis = 15_000L)
-                        Text(
-                            stringResource(R.string.home_in_progress_since, durationText(now - active.startedAt)),
-                            style = Tung.numbers.inline,
-                            color = Tung.colors.muted,
-                        )
-                    }
-                    if (confirmDiscard) {
-                        DiscardWorkoutDialog(
-                            onConfirm = { confirmDiscard = false; vm.discard(active.id) },
-                            onDismiss = { confirmDiscard = false },
-                        )
-                    }
-                } else {
-                    PrimaryButton(
-                        text = stringResource(R.string.home_start_workout),
-                        onClick = { vm.startOrResume(onOpenWorkout) },
-                        enabled = !state.loading,
-                        modifier = Modifier.heightIn(min = 72.dp),
-                    )
-                }
-            }
+    // A tap that could do nothing says why: Today's day went while the card showed it.
+    val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    LaunchedEffect(vm) {
+        vm.messages.collect { message ->
+            snackbar.showSnackbar(
+                when (message) {
+                    HomeMessage.DAY_GONE -> context.getString(R.string.today_day_gone)
+                },
+            )
         }
+    }
 
-        state.today?.let { program ->
-            item(key = "today") {
-                TodaySection(
-                    today = program,
-                    startEnabled = !state.loading && state.activeWorkout == null,
-                    onStart = { day -> vm.startDay(day, onOpenWorkout) },
-                    onChooseAnother = { choosingDay = true },
-                )
-            }
-        }
-
-        if (state.routines.isNotEmpty()) {
-            // The few routines as one raised group: what is for today, apart from the archive below.
-            item(key = "routines") {
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+        ) {
+            item(key = "header") {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 20.dp, end = 20.dp, top = 20.dp)
-                        .background(Tung.colors.raised, TungCorner)
-                        .padding(bottom = 4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // The wordmark: small, wide and heavy. The screen's content is the week below it.
                         Text(
-                            stringResource(R.string.routines_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Tung.colors.muted,
+                            stringResource(R.string.app_name),
+                            style = Tung.numbers.wordmark,
+                            color = Tung.colors.text,
                             modifier = Modifier.weight(1f),
                         )
-                        TextButton(onClick = onShowRoutines, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text(stringResource(R.string.routines_all), color = Tung.colors.accentText)
+                        // Quiet on purpose: settings are visited once, training every day.
+                        IconButton(onClick = onShowSettings) {
+                            Icon(
+                                Icons.Filled.Settings,
+                                contentDescription = stringResource(R.string.settings_title),
+                                tint = Tung.colors.muted,
+                            )
                         }
                     }
-                    state.routines.forEach { row ->
-                        RoutineRow(
-                            row = row,
-                            now = today,
-                            startEnabled = !state.loading && state.activeWorkout == null,
-                            onStart = { vm.startRoutine(row.id, onOpenWorkout) },
-                            // A tap opens the routine, so its exercises can be seen before Start.
-                            onClick = { onOpenRoutine(row.id) },
-                            compact = true,
-                            muscles = state.routineMuscles[row.id],
+                    // "This week" once there is any history: the numbers are the content, so they come first.
+                    val week = state.week
+                    if (week != null && state.recent.isNotEmpty()) {
+                        ThisWeekSection(week, date)
+                    }
+                    val active = state.activeWorkout
+                    if (active != null) {
+                        var menuOpen by remember { mutableStateOf(false) }
+                        var confirmDiscard by rememberSaveable { mutableStateOf(false) }
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                PrimaryButton(
+                                    text = stringResource(R.string.home_resume_workout),
+                                    onClick = { onOpenWorkout(active.id) },
+                                    modifier = Modifier.weight(1f).heightIn(min = 72.dp),
+                                )
+                                // The same "Discard workout…" as the workout's own menu (issue #81):
+                                // a workout started by mistake can be abandoned without opening it.
+                                Box {
+                                    IconButton(onClick = { menuOpen = true }) {
+                                        Icon(
+                                            Icons.Filled.MoreVert,
+                                            contentDescription = stringResource(R.string.home_workout_menu),
+                                            tint = Tung.colors.muted,
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = menuOpen,
+                                        onDismissRequest = { menuOpen = false },
+                                        containerColor = Tung.colors.raised,
+                                        shape = TungCorner,
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.workout_discard)) },
+                                            onClick = { menuOpen = false; confirmDiscard = true },
+                                        )
+                                    }
+                                }
+                            }
+                            val now = rememberNow(intervalMillis = 15_000L)
+                            Text(
+                                stringResource(R.string.home_in_progress_since, durationText(now - active.startedAt)),
+                                style = Tung.numbers.inline,
+                                color = Tung.colors.muted,
+                            )
+                        }
+                        if (confirmDiscard) {
+                            DiscardWorkoutDialog(
+                                onConfirm = { confirmDiscard = false; vm.discard(active.id) },
+                                onDismiss = { confirmDiscard = false },
+                            )
+                        }
+                    } else {
+                        PrimaryButton(
+                            text = stringResource(R.string.home_start_workout),
+                            onClick = { vm.startOrResume(onOpenWorkout) },
+                            enabled = !state.loading,
+                            modifier = Modifier.heightIn(min = 72.dp),
                         )
                     }
                 }
             }
-        }
 
-        // "No workouts yet" would contradict "Resume workout" above it; the
-        // in-progress line under the button says enough until the first one is finished.
-        if (!state.loading && state.recent.isEmpty() && state.activeWorkout == null) {
-            item(key = "empty") {
-                Text(
-                    stringResource(R.string.home_empty),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Tung.colors.muted,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
-                )
+            state.today?.let { program ->
+                item(key = "today") {
+                    TodaySection(
+                        today = program,
+                        startEnabled = !state.loading && state.activeWorkout == null,
+                        onStart = { day -> vm.startDay(day, onOpenWorkout) },
+                        onChooseAnother = { choosingDay = true },
+                    )
+                }
             }
-        } else if (state.recent.isNotEmpty()) {
-            item(key = "recent-title") {
-                Text(
-                    stringResource(R.string.home_recent),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Tung.colors.muted,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 4.dp),
-                )
-            }
-            items(state.recent, key = { it.id }) { row ->
-                WorkoutRow(row, onClick = { onOpenDetail(row.id) })
-            }
-            if (state.hasMore) {
-                item(key = "more") {
-                    TextButton(
-                        onClick = onShowHistory,
-                        modifier = Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp),
+
+            if (state.routines.isNotEmpty()) {
+                // The few routines as one raised group: what is for today, apart from the archive below.
+                item(key = "routines") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 20.dp, end = 20.dp, top = 20.dp)
+                            .background(Tung.colors.raised, TungCorner)
+                            .padding(bottom = 4.dp),
                     ) {
-                        Text(stringResource(R.string.home_show_all), color = Tung.colors.text)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                stringResource(R.string.routines_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Tung.colors.muted,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = onShowRoutines, modifier = Modifier.heightIn(min = 48.dp)) {
+                                Text(stringResource(R.string.routines_all), color = Tung.colors.accentText)
+                            }
+                        }
+                        state.routines.forEach { row ->
+                            RoutineRow(
+                                row = row,
+                                now = today,
+                                startEnabled = !state.loading && state.activeWorkout == null,
+                                onStart = { vm.startRoutine(row.id, onOpenWorkout) },
+                                // A tap opens the routine, so its exercises can be seen before Start.
+                                onClick = { onOpenRoutine(row.id) },
+                                compact = true,
+                                muscles = state.routineMuscles[row.id],
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        // Last and quiet: the assistant is a second opinion, not the way to train.
-        item(key = "assistant") {
-            AssistantEntry(onClick = onShowAssistant)
+            // "No workouts yet" would contradict "Resume workout" above it; the
+            // in-progress line under the button says enough until the first one is finished.
+            if (!state.loading && state.recent.isEmpty() && state.activeWorkout == null) {
+                item(key = "empty") {
+                    Text(
+                        stringResource(R.string.home_empty),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Tung.colors.muted,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
+                    )
+                }
+            } else if (state.recent.isNotEmpty()) {
+                item(key = "recent-title") {
+                    Text(
+                        stringResource(R.string.home_recent),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Tung.colors.muted,
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 4.dp),
+                    )
+                }
+                items(state.recent, key = { it.id }) { row ->
+                    WorkoutRow(row, onClick = { onOpenDetail(row.id) })
+                }
+                if (state.hasMore) {
+                    item(key = "more") {
+                        TextButton(
+                            onClick = onShowHistory,
+                            modifier = Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(R.string.home_show_all), color = Tung.colors.text)
+                        }
+                    }
+                }
+            }
+
+            // Last and quiet: the assistant is a second opinion, not the way to train.
+            item(key = "assistant") {
+                AssistantEntry(onClick = onShowAssistant)
+            }
+        }
+        SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter)) { data ->
+            Snackbar(data, shape = TungCorner, containerColor = Tung.colors.raised, contentColor = Tung.colors.text)
         }
     }
 

@@ -199,6 +199,40 @@ class ProgramFlowTest : FlowTest() {
     }
 
     /**
+     * Home suggests "Day 1 of 2: Push day", but another device removed that day
+     * and the sync landed between the card's drawing and the tap (here the row
+     * is deleted behind Room's back, so the card still shows it). Start then
+     * opens nothing: Home says the day is gone, and the card, which follows the
+     * database, has moved on to the program as it is now, Pull day alone.
+     */
+    @Test
+    fun startingADayThatIsGoneSaysSoAndMovesOn() {
+        val push = seedRoutine("Push day", bench())
+        val pull = seedRoutine("Pull day", row())
+        val pushDay = runBlocking {
+            val programs = ProgramRepository(db)
+            val program = programs.create("Push pull", ProgramMode.ROTATING)
+            val day = programs.addDay(program, push)
+            programs.addDay(program, pull)
+            programs.activate(program)
+            day
+        }
+
+        waitForText(rotatingLine(1, 2, "Push day"))
+        // Room's invalidation tracker looks only after a Room transaction, so the card keeps showing Push day.
+        db.openHelper.writableDatabase.execSQL("DELETE FROM program_day WHERE id = ?", arrayOf(pushDay))
+        compose.onNode(startToday("Push day")).performClick()
+
+        waitForText(str(R.string.today_day_gone))
+        screenshot("1-day-gone")
+        // The refusing command's own transaction brought the removal to the card.
+        waitForText(rotatingLine(1, 1, "Pull day"))
+        compose.onNode(hasText(str(R.string.workout_finish))).assertDoesNotExist()
+        assertEquals(0, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL"))
+        assertEquals(1, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$pull'"))
+    }
+
+    /**
      * A rotating program "Split" with one day changes its mind: on its own
      * screen the owner picks "Fixed days", the day gets its weekday toggles
      * (and loses "Day 1 of 1"); ticking Monday and going back to "Rotating"

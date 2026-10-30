@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.auth.GoogleSignIn
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungDatabase
+import io.github.kanylbullen.tung.data.buildInMemory
 import io.github.kanylbullen.tung.health.FakeHealthConnect
 import io.github.kanylbullen.tung.push.FakePushEnvironment
 import io.github.kanylbullen.tung.sync.MemoryTokenStore

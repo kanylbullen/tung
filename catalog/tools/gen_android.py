@@ -3,7 +3,7 @@
 
 catalog/core.json is the source of truth. This script writes:
 
-  data/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt
+  data/src/commonMain/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt
   <app>/src/main/res/values/strings.xml          (en, only between the catalog markers)
   <app>/src/main/res/values-<lang>/strings.xml   (<lang>, only between the catalog markers)
 
@@ -30,7 +30,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / "catalog" / "core.json"
-KOTLIN = ROOT / "data/src/main/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt"
+KOTLIN = ROOT / "data/src/commonMain/kotlin/io/github/kanylbullen/tung/data/SeedExercises.kt"
 # The apps whose strings.xml carry the ex_* block; each has values/ with the markers.
 APPS = ["app", "wear"]
 
