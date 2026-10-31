@@ -13,6 +13,7 @@ import io.github.kanylbullen.tung.core.command.CommandIds
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.ExerciseRef
 import io.github.kanylbullen.tung.web.WebContainer
+import io.github.kanylbullen.tung.web.programs.programRows
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.routines.RoutineExerciseView
 import io.github.kanylbullen.tung.web.routines.routineRows
@@ -55,6 +56,11 @@ fun RoutinesScreen(container: WebContainer, account: Account) {
 
     Div({ classes("screen") }) {
         TopBar(container, account) { H1 { Text(strings.routines) } }
+        val programs = remember(version) { programRows(container.store) }
+        A(href = Route.PROGRAMS.hash, attrs = { classes("card", "card-link") }) {
+            Div({ classes("card-title") }) { Text(strings.programs) }
+            P({ classes("hint") }) { Text(programs.firstOrNull { it.isActive }?.let { strings.programsActive(it.name) } ?: strings.programsHint) }
+        }
         Button({ classes("secondary", "wide"); onClick { naming = true } }) { Text(strings.newRoutine) }
         if (rows.isEmpty()) {
             P({ classes("empty") }) { Text(strings.routinesAllEmpty) }
