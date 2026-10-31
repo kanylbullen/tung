@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.web.i18n
 
 import io.github.kanylbullen.tung.core.Muscle
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 
@@ -160,6 +161,26 @@ interface Strings {
     fun musclesWorkedDescription(muscles: String): String
     fun muscleName(muscle: Muscle): String
     fun uncountedSets(count: Int): String
+
+    // Exercises
+    val all: String
+    fun groupLabel(group: MuscleGroup): String
+    val custom: String
+    fun equipmentFilter(count: Int?): String
+    val addToRoutine: String
+    val addToWorkout: String
+    val chooseRoutine: String
+    val noRoutinesYet: String
+    fun addedToRoutine(name: String): String
+    val notLogged: String
+    fun lastTime(date: String): String
+    val bestSetKg: String
+    fun inWorkouts(count: Int): String
+    val howTo: String
+    val primary: String
+    val secondary: String
+    fun mapDescription(primary: String, secondary: String?): String
+    val exerciseNotFound: String
     fun weeksSummary(volumes: String): String
 
     // Settings
@@ -419,6 +440,36 @@ object English : Strings {
     override fun uncountedSets(count: Int) =
         if (count == 1) "1 set of a custom exercise is not counted: custom exercises have no muscles"
         else "$count sets of custom exercises are not counted: custom exercises have no muscles"
+
+    override val all = "All"
+    override fun groupLabel(group: MuscleGroup): String = when (group) {
+        MuscleGroup.CHEST -> "Chest"
+        MuscleGroup.BACK -> "Back"
+        MuscleGroup.SHOULDERS -> "Shoulders"
+        MuscleGroup.BICEPS -> "Biceps"
+        MuscleGroup.TRICEPS -> "Triceps"
+        MuscleGroup.LEGS -> "Legs"
+        MuscleGroup.GLUTES -> "Glutes"
+        MuscleGroup.CORE -> "Core"
+        MuscleGroup.FULLBODY -> "Full body"
+    }
+    override val custom = "Custom"
+    override fun equipmentFilter(count: Int?) = "Equipment: " + (count?.toString() ?: "All")
+    override val addToRoutine = "Add to routine"
+    override val addToWorkout = "Add to workout"
+    override val chooseRoutine = "Add to which routine?"
+    override val noRoutinesYet = "No routines yet. Create one in the Routines tab with “+ New routine”, or save a finished workout as one."
+    override fun addedToRoutine(name: String) = "Added to $name"
+    override val notLogged = "Not logged yet."
+    override fun lastTime(date: String) = "Last time, $date"
+    override val bestSetKg = "Best set, kg"
+    override fun inWorkouts(count: Int) = if (count == 1) "In 1 workout" else "In $count workouts"
+    override val howTo = "How to do it"
+    override val primary = "Primary"
+    override val secondary = "Secondary"
+    override fun mapDescription(primary: String, secondary: String?) =
+        if (secondary == null) "Muscles worked. Primary: $primary." else "Muscles worked. Primary: $primary. Secondary: $secondary."
+    override val exerciseNotFound = "This exercise no longer exists."
     override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
     override val settings = "Settings"
     override val training = "Training"
@@ -689,6 +740,36 @@ object Swedish : Strings {
     override fun uncountedSets(count: Int) =
         if (count == 1) "1 set av en egen övning räknas inte: egna övningar har inga muskler"
         else "$count set av egna övningar räknas inte: egna övningar har inga muskler"
+
+    override val all = "Alla"
+    override fun groupLabel(group: MuscleGroup): String = when (group) {
+        MuscleGroup.CHEST -> "Bröst"
+        MuscleGroup.BACK -> "Rygg"
+        MuscleGroup.SHOULDERS -> "Axlar"
+        MuscleGroup.BICEPS -> "Biceps"
+        MuscleGroup.TRICEPS -> "Triceps"
+        MuscleGroup.LEGS -> "Ben"
+        MuscleGroup.GLUTES -> "Säte"
+        MuscleGroup.CORE -> "Bål"
+        MuscleGroup.FULLBODY -> "Helkropp"
+    }
+    override val custom = "Egen"
+    override fun equipmentFilter(count: Int?) = "Utrustning: " + (count?.toString() ?: "Alla")
+    override val addToRoutine = "Lägg till i rutin"
+    override val addToWorkout = "Lägg till i passet"
+    override val chooseRoutine = "Till vilken rutin?"
+    override val noRoutinesYet = "Inga rutiner än. Skapa en i fliken Rutiner med ”+ Ny rutin”, eller spara ett avslutat pass som en."
+    override fun addedToRoutine(name: String) = "Tillagd i $name"
+    override val notLogged = "Inte loggad än."
+    override fun lastTime(date: String) = "Senast, $date"
+    override val bestSetKg = "Bästa set, kg"
+    override fun inWorkouts(count: Int) = "I $count pass"
+    override val howTo = "Så gör du"
+    override val primary = "Primär"
+    override val secondary = "Sekundär"
+    override fun mapDescription(primary: String, secondary: String?) =
+        if (secondary == null) "Muskler som arbetar. Primär: $primary." else "Muskler som arbetar. Primär: $primary. Sekundär: $secondary."
+    override val exerciseNotFound = "Övningen finns inte längre."
     override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
     override val settings = "Inställningar"
     override val training = "Träning"

@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.web.store
 
 import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.ExtendedExercise
+import io.github.kanylbullen.tung.core.extendedExerciseId
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
@@ -336,21 +338,37 @@ private fun SyncProgramDay.toRow(): ProgramDayRow? {
  * Core's [ExerciseResolver] in the browser: the exercises in the store (the
  * seeded catalogue, the user's own, extended entries already picked), each
  * with the core catalogue's names in every language from [catalogueNames],
- * so "Bänkpress" resolves in an English browser. The extended catalogue is
- * not shipped to the web yet, so an extended entry with no row is unknown.
+ * so "Bänkpress" resolves in an English browser, and the extended catalogue
+ * ([extended], empty until it is read) for the entries not picked yet, so a
+ * command naming one makes its row, as on the phone.
  */
 class WebExerciseResolver(
     private val store: TungStore,
     private val catalogueNames: () -> Map<String, Map<String, String>>,
+    private val extended: () -> List<ExtendedExercise> = { emptyList() },
 ) : ExerciseResolver {
     override suspend fun lookupKey(nameKey: String): ExerciseCandidate? =
         store.exercises.rows.values.map { it.row }.firstOrNull { it.nameKey == nameKey }?.let(::candidate)
 
     override suspend fun lookupId(id: String): ExerciseCandidate? = store.exercises.get(id)?.let(::candidate)
 
-    override suspend fun lookupExtended(fedId: String): ExerciseCandidate? = null
+    override suspend fun lookupExtended(fedId: String): ExerciseCandidate? =
+        extended().firstOrNull { it.id == fedId }?.let(::candidate)
 
-    override suspend fun searchByName(text: String): List<ExerciseCandidate> = store.exercises.rows.values.map { candidate(it.row) }
+    /** Every exercise in the store, then every extended entry that has no row yet. */
+    override suspend fun searchByName(text: String): List<ExerciseCandidate> {
+        val rows = store.exercises.rows.values.map { candidate(it.row) }
+        val ids = rows.mapTo(HashSet()) { it.id }
+        return rows + extended().filter { extendedExerciseId(it.id) !in ids }.map(::candidate)
+    }
+
+    private fun candidate(entry: ExtendedExercise) = ExerciseCandidate(
+        id = extendedExerciseId(entry.id),
+        names = listOf(entry.displayName),
+        extendedId = entry.id,
+        equipment = Equipment.fromKey(entry.equipment),
+        muscleGroup = MuscleGroup.fromKey(entry.muscleGroup),
+    )
 
     private fun candidate(row: SyncExercise): ExerciseCandidate {
         val catalogue = row.nameKey?.let { catalogueNames()[it]?.values }.orEmpty()
