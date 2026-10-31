@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.importing.SkipReason
 import io.github.kanylbullen.tung.core.sync.SyncFailure
+import io.github.kanylbullen.tung.web.ai.AiFailure
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 
 /**
@@ -268,6 +269,56 @@ interface Strings {
     val undoImportBody: String
     fun deleteImportRoutines(count: Int): String
     val deleteImportRoutinesBody: String
+
+    // Assistant
+    val assistant: String
+    val aiEntryHint: String
+    val aiIntro: String
+    val askProgram: String
+    val askNext: String
+    val askPlateaus: String
+    val aiNotConfigured: String
+    val openSettings: String
+    val aiAsking: String
+    val showWhatIsSent: String
+    val payloadTitle: String
+    val send: String
+    val setFromLastTime: String
+    val programDefaultName: String
+    val saveProgram: String
+    val saveProgramHint: String
+    val startThisWorkout: String
+    val saveFailed: String
+    val plateausNone: String
+    val aiSettingsIntro: String
+    val providerOpenAi: String
+    val providerOpenAiHint: String
+    val providerAnthropic: String
+    val providerAnthropicHint: String
+    val baseUrl: String
+    val baseUrlHint: String
+    val model: String
+    val modelHint: String
+    val apiKey: String
+    val apiKeyHint: String
+    val keySaved: String
+    val removeKey: String
+    val keyRemoved: String
+    val jsonMode: String
+    val jsonModeHint: String
+    val test: String
+    val testing: String
+    val saved: String
+    val testOk: String
+    val errorAiUrl: String
+    val errorAiUrlHttps: String
+    val errorModel: String
+    fun payloadIntro(host: String): String
+    fun aiDropped(count: Int): String
+    fun targetSets(count: Int): String
+    fun plateauSince(date: String): String
+    fun aiFailure(failure: AiFailure): String
+    fun providerSays(message: String): String
     fun weeksSummary(volumes: String): String
 
     // Settings
@@ -666,6 +717,68 @@ object English : Strings {
     override val undoImportBody = "Workouts you logged in Tung are kept."
     override fun deleteImportRoutines(count: Int) = "Delete routines from the last import ($count)"
     override val deleteImportRoutinesBody = "The import's workouts are kept."
+
+    override val assistant = "Assistant"
+    override val aiEntryHint = "A program, today's workout or where you are stuck, from a model with your own key"
+    override val aiIntro = "Each button sends your training history, routines and programs to the provider set up in Settings, with your own key, and only when you tap it. Never your email, name or device."
+    override val askProgram = "Suggest a program"
+    override val askNext = "Next workout"
+    override val askPlateaus = "Where have I got stuck"
+    override val aiNotConfigured = "Set up the assistant first: a provider, a model and your key, in Settings."
+    override val openSettings = "Open settings"
+    override val aiAsking = "Waiting for the answer…"
+    override val showWhatIsSent = "Show what is sent"
+    override val payloadTitle = "What is sent"
+    override val send = "Send"
+    override val setFromLastTime = "as last time"
+    override val programDefaultName = "Suggested program"
+    override val saveProgram = "Save program"
+    override val saveProgramHint = "Saves the routines, and a rotating program with them in this order. Activate it under Programs."
+    override val startThisWorkout = "Start this workout"
+    override val saveFailed = "Could not save the suggestion. Try again."
+    override val plateausNone = "No plateaus found: what you train regularly is still moving."
+    override val aiSettingsIntro = "Use your own key with an OpenAI-compatible API (OpenAI, Ollama, LM Studio and others) or with Anthropic. Calls go straight from this browser to the provider, only when you tap; Tung's server never sees the key."
+    override val providerOpenAi = "OpenAI-compatible"
+    override val providerOpenAiHint = "OpenAI, or a local server such as Ollama"
+    override val providerAnthropic = "Anthropic"
+    override val providerAnthropicHint = "The Claude models"
+    override val baseUrl = "Base URL"
+    override val baseUrlHint = "Empty for the provider's own. http only on your own network."
+    override val model = "Model"
+    override val modelHint = "The model's name at your provider"
+    override val apiKey = "API key"
+    override val apiKeyHint = "Kept in this browser only. Anyone who can use this browser profile can read it, so do not save it on a shared computer. A local server may need none."
+    override val keySaved = "A key is saved. Type a new one to replace it."
+    override val removeKey = "Remove key"
+    override val keyRemoved = "The key is removed."
+    override val jsonMode = "Ask for JSON mode"
+    override val jsonModeHint = "Turn off if your server refuses response_format."
+    override val test = "Test"
+    override val testing = "Testing…"
+    override val saved = "Saved."
+    override val testOk = "The provider answered. The assistant is ready."
+    override val errorAiUrl = "Enter a base URL such as https://api.openai.com/v1, or leave it empty."
+    override val errorAiUrlHttps = "Use https://. Plain http only works for localhost and addresses on your own network."
+    override val errorModel = "Enter the model's name."
+    override fun payloadIntro(host: String) = "This is the request exactly as it goes to $host. Your key goes in a header and is not shown."
+    override fun aiDropped(count: Int) = if (count == 1) "1 suggestion could not be used and was left out." else "$count suggestions could not be used and were left out."
+    override fun targetSets(count: Int) = if (count == 1) "1 set" else "$count sets"
+    override fun plateauSince(date: String) = "Since $date"
+    override fun providerSays(message: String) = "The provider says: $message"
+    override fun aiFailure(failure: AiFailure): String = when (failure) {
+        AiFailure.NOT_CONFIGURED -> aiNotConfigured
+        AiFailure.NETWORK -> "Could not reach the provider. Check the address and your connection; a local server must allow this page's origin."
+        AiFailure.UNAUTHORIZED -> "The provider refused the key. Check it in Settings."
+        AiFailure.NOT_FOUND -> "Nothing answers at that address, or the model does not exist. Check both in Settings."
+        AiFailure.RATE_LIMITED -> "The provider's limit is reached. Wait a while, or check your quota."
+        AiFailure.REJECTED -> "The provider refused the request."
+        AiFailure.SERVER -> "The provider had a problem. Try again in a while."
+        AiFailure.NO_ANSWER -> "The provider answered with nothing. Try again."
+        AiFailure.OUT_OF_ROOM -> "The model ran out of room before answering. Try again, or use a model that thinks less."
+        AiFailure.DECLINED -> "The model declined this request."
+        AiFailure.UNREADABLE -> "The answer was not in the form Tung asked for. Try again, or use a stronger model."
+        AiFailure.NOTHING_USABLE -> "The answer named no exercise Tung knows, so there is nothing to show. Try again."
+    }
     override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
     override val settings = "Settings"
     override val training = "Training"
@@ -1075,6 +1188,68 @@ object Swedish : Strings {
     override val undoImportBody = "Pass du loggat i Tung behålls."
     override fun deleteImportRoutines(count: Int) = "Radera rutiner från senaste importen ($count)"
     override val deleteImportRoutinesBody = "Importens pass finns kvar."
+
+    override val assistant = "Assistent"
+    override val aiEntryHint = "Ett program, dagens pass eller var du har kört fast, från en modell med din egen nyckel"
+    override val aiIntro = "Varje knapp skickar din träningshistorik, dina rutiner och program till leverantören du ställt in under Inställningar, med din egen nyckel, och bara när du trycker. Aldrig din e-post, ditt namn eller din enhet."
+    override val askProgram = "Föreslå ett program"
+    override val askNext = "Nästa pass"
+    override val askPlateaus = "Var har jag kört fast"
+    override val aiNotConfigured = "Ställ in assistenten först: en leverantör, en modell och din nyckel, under Inställningar."
+    override val openSettings = "Öppna inställningar"
+    override val aiAsking = "Väntar på svaret…"
+    override val showWhatIsSent = "Visa vad som skickas"
+    override val payloadTitle = "Det här skickas"
+    override val send = "Skicka"
+    override val setFromLastTime = "som förra gången"
+    override val programDefaultName = "Föreslaget program"
+    override val saveProgram = "Spara programmet"
+    override val saveProgramHint = "Sparar rutinerna, och ett roterande program med dem i den här ordningen. Aktivera det under Program."
+    override val startThisWorkout = "Starta det här passet"
+    override val saveFailed = "Förslaget gick inte att spara. Försök igen."
+    override val plateausNone = "Inga platåer: det du tränar regelbundet går fortfarande framåt."
+    override val aiSettingsIntro = "Använd din egen nyckel med ett OpenAI-kompatibelt API (OpenAI, Ollama, LM Studio med flera) eller med Anthropic. Anropen går direkt från webbläsaren till leverantören, bara när du trycker; Tungs server ser aldrig nyckeln."
+    override val providerOpenAi = "OpenAI-kompatibel"
+    override val providerOpenAiHint = "OpenAI, eller en lokal server som Ollama"
+    override val providerAnthropic = "Anthropic"
+    override val providerAnthropicHint = "Claude-modellerna"
+    override val baseUrl = "Bas-URL"
+    override val baseUrlHint = "Tom för leverantörens egen. http bara på ditt eget nätverk."
+    override val model = "Modell"
+    override val modelHint = "Modellens namn hos din leverantör"
+    override val apiKey = "API-nyckel"
+    override val apiKeyHint = "Sparas bara i den här webbläsaren. Den som kan använda webbläsarprofilen kan läsa den, så spara den inte på en delad dator. En lokal server behöver kanske ingen."
+    override val keySaved = "En nyckel är sparad. Skriv en ny för att byta."
+    override val removeKey = "Ta bort nyckeln"
+    override val keyRemoved = "Nyckeln är borttagen."
+    override val jsonMode = "Be om JSON-läge"
+    override val jsonModeHint = "Stäng av om din server inte godtar response_format."
+    override val test = "Testa"
+    override val testing = "Testar…"
+    override val saved = "Sparat."
+    override val testOk = "Leverantören svarade. Assistenten är redo."
+    override val errorAiUrl = "Ange en bas-URL som https://api.openai.com/v1, eller lämna fältet tomt."
+    override val errorAiUrlHttps = "Använd https://. Vanlig http fungerar bara för localhost och adresser på ditt eget nätverk."
+    override val errorModel = "Ange modellens namn."
+    override fun payloadIntro(host: String) = "Så här ser förfrågan ut, exakt som den går till $host. Din nyckel skickas i en rubrik och visas inte."
+    override fun aiDropped(count: Int) = "$count förslag gick inte att använda och togs bort."
+    override fun targetSets(count: Int) = "$count set"
+    override fun plateauSince(date: String) = "Sedan $date"
+    override fun providerSays(message: String) = "Leverantören säger: $message"
+    override fun aiFailure(failure: AiFailure): String = when (failure) {
+        AiFailure.NOT_CONFIGURED -> aiNotConfigured
+        AiFailure.NETWORK -> "Kunde inte nå leverantören. Kontrollera adressen och din anslutning; en lokal server måste tillåta den här sidans ursprung."
+        AiFailure.UNAUTHORIZED -> "Leverantören godtog inte nyckeln. Kontrollera den under Inställningar."
+        AiFailure.NOT_FOUND -> "Inget svarar på den adressen, eller så finns inte modellen. Kontrollera båda under Inställningar."
+        AiFailure.RATE_LIMITED -> "Leverantörens gräns är nådd. Vänta en stund, eller kontrollera din kvot."
+        AiFailure.REJECTED -> "Leverantören avvisade förfrågan."
+        AiFailure.SERVER -> "Leverantören fick problem. Försök igen om en stund."
+        AiFailure.NO_ANSWER -> "Leverantören svarade utan innehåll. Försök igen."
+        AiFailure.OUT_OF_ROOM -> "Modellen fick slut på utrymme innan den hann svara. Försök igen, eller använd en modell som tänker mindre."
+        AiFailure.DECLINED -> "Modellen avböjde den här förfrågan."
+        AiFailure.UNREADABLE -> "Svaret var inte i den form Tung bad om. Försök igen, eller använd en starkare modell."
+        AiFailure.NOTHING_USABLE -> "Svaret nämnde ingen övning som Tung känner till, så det finns inget att visa. Försök igen."
+    }
     override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
     override val settings = "Inställningar"
     override val training = "Träning"
