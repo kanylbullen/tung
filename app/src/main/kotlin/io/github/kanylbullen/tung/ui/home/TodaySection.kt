@@ -101,7 +101,7 @@ fun TodaySection(
 private fun todayLine(mode: ProgramMode, day: ProgramDayUi): String = when (mode) {
     ProgramMode.FIXED -> stringResource(R.string.today_fixed, day.routineName)
     ProgramMode.ROTATING ->
-        stringResource(R.string.today_rotating, stringResource(R.string.program_day_of, day.number, day.count), day.routineName)
+        stringResource(R.string.today_rotating, stringResource(Res.string.program_day_of, day.number, day.count), day.routineName)
 }
 
 /** Every day of the active program; tapping one starts it instead of the suggestion. */

@@ -38,8 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -47,13 +46,9 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.data.ProgramSummaryRow
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
-import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -61,9 +56,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 /** Every program: create one, open one, or make one the active program. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProgramsScreen(onBack: () -> Unit, onOpenProgram: (String) -> Unit) {
-    val container = appContainer()
-    val vm: ProgramsViewModel = viewModel(factory = factoryOf { ProgramsViewModel(container.programRepository, container.commands) })
+fun ProgramsScreen(vm: ProgramsViewModel, onBack: () -> Unit, onOpenProgram: (String) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     var creating by rememberSaveable { mutableStateOf(false) }
 
@@ -87,7 +80,7 @@ fun ProgramsScreen(onBack: () -> Unit, onOpenProgram: (String) -> Unit) {
         LazyColumn(contentPadding = padding, modifier = Modifier.fillMaxSize()) {
             item(key = "new") {
                 SecondaryButton(
-                    text = stringResource(R.string.program_new),
+                    text = stringResource(Res.string.program_new),
                     onClick = { creating = true },
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 )
@@ -95,7 +88,7 @@ fun ProgramsScreen(onBack: () -> Unit, onOpenProgram: (String) -> Unit) {
             if (!state.loading && state.programs.isEmpty()) {
                 item(key = "empty") {
                     Text(
-                        stringResource(R.string.programs_empty),
+                        stringResource(Res.string.programs_empty),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
@@ -124,7 +117,7 @@ fun ProgramsScreen(onBack: () -> Unit, onOpenProgram: (String) -> Unit) {
 private fun ProgramRow(row: ProgramSummaryRow, onClick: () -> Unit, onActivate: () -> Unit) {
     val details = listOf(
         programModeLabel(ProgramMode.fromKey(row.mode)),
-        pluralStringResource(R.plurals.program_day_count, row.dayCount, row.dayCount),
+        pluralStringResource(Res.plurals.program_day_count, row.dayCount, row.dayCount),
     ).joinToString(stringResource(Res.string.row_separator))
     Row(
         modifier = Modifier
@@ -140,7 +133,7 @@ private fun ProgramRow(row: ProgramSummaryRow, onClick: () -> Unit, onActivate: 
         }
         Spacer(Modifier.width(12.dp))
         if (row.isActive) {
-            Text(stringResource(R.string.program_active), style = MaterialTheme.typography.labelLarge, color = Tung.colors.accentText)
+            Text(stringResource(Res.string.program_active), style = MaterialTheme.typography.labelLarge, color = Tung.colors.accentText)
         } else {
             ActivateButton(name = row.name, onClick = onActivate)
         }
@@ -150,7 +143,7 @@ private fun ProgramRow(row: ProgramSummaryRow, onClick: () -> Unit, onActivate: 
 /** "Activate" on the raised surface, described with the program's name. */
 @Composable
 fun ActivateButton(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val description = stringResource(R.string.program_activate_description, name)
+    val description = stringResource(Res.string.program_activate_description, name)
     Button(
         onClick = onClick,
         shape = TungCorner,
@@ -158,7 +151,7 @@ fun ActivateButton(name: String, onClick: () -> Unit, modifier: Modifier = Modif
         elevation = null,
         modifier = modifier.heightIn(min = 48.dp).semantics { contentDescription = description },
     ) {
-        Text(stringResource(R.string.program_activate), style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(Res.string.program_activate), style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -176,17 +169,17 @@ private fun NewProgramDialog(onDismiss: () -> Unit, onCreate: (String, ProgramMo
         containerColor = Tung.colors.raised,
         tonalElevation = 0.dp,
         shape = TungCorner,
-        title = { Text(stringResource(R.string.program_new)) },
+        title = { Text(stringResource(Res.string.program_new)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it; showError = false },
-                    label = { Text(stringResource(R.string.program_name)) },
+                    label = { Text(stringResource(Res.string.program_name)) },
                     singleLine = true,
                     isError = showError,
                     supportingText = if (showError) {
-                        { Text(stringResource(R.string.program_error_name)) }
+                        { Text(stringResource(Res.string.program_error_name)) }
                     } else {
                         null
                     },
@@ -200,7 +193,7 @@ private fun NewProgramDialog(onDismiss: () -> Unit, onCreate: (String, ProgramMo
         },
         confirmButton = {
             TextButton(onClick = { if (name.isBlank()) showError = true else onCreate(name.trim(), mode) }) {
-                Text(stringResource(R.string.program_create), color = Tung.colors.accentText)
+                Text(stringResource(Res.string.program_create), color = Tung.colors.accentText)
             }
         },
         dismissButton = {
