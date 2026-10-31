@@ -96,7 +96,9 @@ fun Route.apiRoutes(
     get("/openapi.yaml") { call.respondText(spec, ContentType.parse("application/yaml")) }
     swaggerUI(path = "docs", swaggerFile = "openapi/openapi.yaml")
 
-    val testers = Testers(db, config.adminEmails, config.clock)
+    val admins = Admins(db, config.adminEmails)
+    val testers = Testers(db, admins, config.testerSignups, config.clock)
+    val adminStore = AdminStore(db, admins, config.testerSignups, config.clock)
     route("/api/v1") {
         linkRoutes(db, accounts)
         rateLimit(AUTH_RATE_LIMIT) {
@@ -118,9 +120,13 @@ fun Route.apiRoutes(
                 call.respond(HttpStatusCode.NoContent)
             }
 
-            get("/me") { call.respond(accounts.me(call.user().userId)) }
+            get("/me") {
+                val userId = call.user().userId
+                call.respond(accounts.me(userId).copy(isAdmin = admins.isAdmin(userId)))
+            }
 
             testerAdminRoutes(testers)
+            adminRoutes(adminStore)
 
             route("/tokens") {
                 get { call.respond(accounts.listTokens(call.user())) }

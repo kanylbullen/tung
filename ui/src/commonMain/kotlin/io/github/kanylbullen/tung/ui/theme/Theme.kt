@@ -10,6 +10,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
 
 /** One radius for buttons, sheets and dialogs. List rows are square. */
@@ -69,13 +70,17 @@ fun TungTheme(
 ) {
     // Dynamic colour is deliberately off: the palette is part of the product.
     val colors = if (darkTheme) DarkTungColors else LightTungColors
+    val archivo = archivoFamily()
+    val wide = archivoWideFamily()
+    val typography = remember(archivo) { tungTypography(archivo) }
+    val numbers = remember(archivo, wide) { tungNumbers(archivo, wide) }
     CompositionLocalProvider(
         LocalTungColors provides colors,
-        LocalNumberStyles provides TungNumbers,
+        LocalNumberStyles provides numbers,
     ) {
         MaterialTheme(
             colorScheme = schemeFrom(colors, darkTheme),
-            typography = TungTypography,
+            typography = typography,
             shapes = TungShapes,
             content = content,
         )

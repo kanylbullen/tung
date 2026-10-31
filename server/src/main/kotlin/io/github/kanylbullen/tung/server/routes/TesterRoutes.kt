@@ -1,11 +1,10 @@
 package io.github.kanylbullen.tung.server.routes
 
+import io.github.kanylbullen.tung.server.Admins
 import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.Db
 import io.github.kanylbullen.tung.server.TokenPrincipal
-import io.github.kanylbullen.tung.server.Users
 import io.github.kanylbullen.tung.server.badRequest
-import io.github.kanylbullen.tung.server.forbidden
 import io.github.kanylbullen.tung.server.user
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
@@ -60,11 +59,12 @@ data class TesterList(val testers: List<TesterDto>)
 
 /**
  * Sign-ups to test the Android app on Google Play, from the landing page.
- * Anyone may sign up ([signUp]); the owner, an account whose email is in
- * `TUNG_ADMIN_EMAILS`, lists them to copy into the Play Console and deletes
- * them once invited.
+ * Anyone may sign up ([signUp]); an admin (`TUNG_ADMIN_EMAILS`) lists them
+ * to copy into the Play Console and deletes them once invited. Only while
+ * [enabled] (`TUNG_TESTER_SIGNUPS`): a self-hosted server runs no Play test,
+ * so there every call is 404 `not_configured`.
  */
-class Testers(private val db: Db, private val adminEmails: Set<String>, private val clock: () -> Long) {
+class Testers(private val db: Db, private val admins: Admins, private val enabled: Boolean, private val clock: () -> Long) {
 
     /**
      * Stores [request]'s address once. The answer is the same whether the
@@ -72,6 +72,7 @@ class Testers(private val db: Db, private val adminEmails: Set<String>, private 
      * form tells nobody who else signed up.
      */
     suspend fun signUp(request: TesterSignup) {
+        requireEnabled()
         val email = normalize(request.email)
         if (!request.consent) throw badRequest("Tick the box to say we may email you the invitation.", "consent_required")
         if (!request.website.isNullOrEmpty()) return
@@ -89,7 +90,8 @@ class Testers(private val db: Db, private val adminEmails: Set<String>, private 
     }
 
     suspend fun list(principal: TokenPrincipal): TesterList {
-        requireAdmin(principal)
+        requireEnabled()
+        admins.require(principal)
         return db.tx {
             TesterList(
                 TesterSignups.selectAll().orderBy(TesterSignups.createdAt to SortOrder.ASC).map {
@@ -100,16 +102,14 @@ class Testers(private val db: Db, private val adminEmails: Set<String>, private 
     }
 
     suspend fun delete(principal: TokenPrincipal, email: String) {
-        requireAdmin(principal)
+        requireEnabled()
+        admins.require(principal)
         val address = email.trim().lowercase()
         db.tx { TesterSignups.deleteWhere { TesterSignups.email eq address } }
     }
 
-    private suspend fun requireAdmin(principal: TokenPrincipal) {
-        val email = db.tx { Users.selectAll().where { Users.id eq principal.userId }.singleOrNull()?.get(Users.email) }
-        if (email == null || email.lowercase() !in adminEmails) {
-            throw forbidden("not_admin", "Only the server's owner (TUNG_ADMIN_EMAILS) may see the tester list.")
-        }
+    private fun requireEnabled() {
+        if (!enabled) throw ApiException(HttpStatusCode.NotFound, "not_configured", "This server takes no test sign-ups (TUNG_TESTER_SIGNUPS).")
     }
 
     private fun normalize(raw: String): String {

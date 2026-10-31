@@ -29,7 +29,8 @@ private object SiteRoutes
 fun Route.siteRoutes(config: ServerConfig) {
     // The page itself by a route of its own: a static tree at "/" would also
     // claim every unknown API path and turn its 404 into another answer.
-    page("/", "index.html")
+    // The sign-up for the Play test only where that test is run (TUNG_TESTER_SIGNUPS).
+    page("/", "index.html") { keepBlocks(it, if (config.testerSignups) "testers" else "no-testers", if (config.testerSignups) "no-testers" else "testers") }
     // What the site and the apps store; also the privacy policy Google Play asks for.
     page("/privacy", "privacy.html")
     staticResources("/site", "site")
@@ -61,9 +62,19 @@ private val assetVersion: String by lazy {
     digest.digest().joinToString("") { "%02x".format(it) }.take(12)
 }
 
-/** One page of the site at [path], read from the classpath's `site/[file]`, with `@assets@` as [assetVersion]. */
-private fun Route.page(path: String, file: String) {
-    val page by lazy { SiteRoutes::class.java.getResource("/site/$file")?.readText()?.replace("@assets@", assetVersion) }
+/**
+ * [html] with the blocks named [keep] (`<!-- keep:begin -->` … `<!-- keep:end -->`)
+ * left in without their markers, and those named [drop] taken out whole.
+ */
+internal fun keepBlocks(html: String, keep: String, drop: String): String {
+    fun marker(name: String, end: String) = Regex("""[ \t]*<!-- ${Regex.escape(name)}:$end -->\n?""")
+    val dropped = Regex("""[ \t]*<!-- ${Regex.escape(drop)}:begin -->[\s\S]*?<!-- ${Regex.escape(drop)}:end -->\n?""").replace(html, "")
+    return marker(keep, "end").replace(marker(keep, "begin").replace(dropped, ""), "")
+}
+
+/** One page of the site at [path], read from the classpath's `site/[file]`, with `@assets@` as [assetVersion] and then [transform]. */
+private fun Route.page(path: String, file: String, transform: (String) -> String = { it }) {
+    val page by lazy { SiteRoutes::class.java.getResource("/site/$file")?.readText()?.replace("@assets@", assetVersion)?.let(transform) }
     get(path) {
         val html = page ?: return@get call.respond(HttpStatusCode.NotFound)
         call.respondText(html, ContentType.Text.Html)

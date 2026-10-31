@@ -8,6 +8,7 @@ import io.github.kanylbullen.tung.core.command.CommandExecutor
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.sync.SyncFailure
+import io.github.kanylbullen.tung.web.admin.WebAdmin
 import io.github.kanylbullen.tung.web.catalog.WebCatalogue
 import io.github.kanylbullen.tung.web.i18n.Strings
 import io.github.kanylbullen.tung.web.settings.WebPreferences
@@ -66,6 +67,9 @@ class WebContainer(
 
     val store = TungStore()
     val auth = WebAuth()
+
+    /** The server-admin reads, for Settings → Server admin. */
+    val admin = WebAdmin()
 
     /** The browser's own settings: the default rest and "My equipment". */
     val preferences = WebPreferences()

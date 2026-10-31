@@ -107,13 +107,19 @@
       <section class="platforms" aria-labelledby="platforms">
         <h2 id="platforms" data-sv="Var den finns">Where it runs</h2>
         <ul>
+          <!-- testers:begin -->
           <li><span class="name">Android</span><span class="state" data-sv="I test på Google Play. Anmäl dig nedan.">In a test on Google Play. Sign up below.</span></li>
+          <!-- testers:end -->
+          <!-- no-testers:begin -->
+          <li><span class="name">Android</span><span class="state" data-sv="I test på Google Play.">In a test on Google Play.</span></li>
+          <!-- no-testers:end -->
           <li><span class="name">Wear OS</span><span class="state" data-sv="Klar, men väntar på layouter för runda skärmar innan den släpps.">Ready, waiting for layouts for round screens before release.</span></li>
           <li><span class="name" data-sv="Webb">Web</span><span class="state"><a href="/app/" data-sv="Öppen nu">Open now</a></span></li>
           <li><span class="name">iPhone</span><span class="state" data-sv="På gång.">In the works.</span></li>
         </ul>
       </section>
 
+      <!-- testers:begin -->
       <section class="test" aria-labelledby="test">
         <h2 id="test" data-sv="Testa Android-appen">Test the Android app</h2>
         <p data-sv="Android-appen är i ett test på Google Play. Lämna adressen till Google-kontot du använder i telefonen, så får du en inbjudan när nästa testomgång öppnar.">The Android app is in a test on Google Play. Leave the address of the Google account you use on your phone, and you get an invitation when the next test round opens.</p>
@@ -134,6 +140,7 @@
           <p class="hint"><a href="/privacy" data-sv="Så hanterar vi adressen">How we handle the address</a></p>
         </form>
       </section>
+      <!-- testers:end -->
 
       <section class="assistant" aria-labelledby="assistant">
         <h2 id="assistant" data-sv="Koppla din assistent">Connect your assistant</h2>
@@ -325,7 +332,8 @@ docker compose up -d</code></pre>
       var result = document.getElementById("signup-result");
       var button = document.getElementById("signup-button");
       function say(text, kind) { result.textContent = text; result.className = "result " + (kind || ""); }
-      form.addEventListener("submit", function (event) {
+      // No form where the server runs no Play test (TUNG_TESTER_SIGNUPS off).
+      if (form) form.addEventListener("submit", function (event) {
         event.preventDefault();
         var email = document.getElementById("signup-email").value.trim();
         var consent = document.getElementById("signup-consent").checked;

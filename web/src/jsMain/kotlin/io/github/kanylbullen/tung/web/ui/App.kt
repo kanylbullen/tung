@@ -25,6 +25,7 @@ enum class Route(val hash: String) {
     ROUTINES("#/routines"),
     PROGRESS("#/progress"),
     SETTINGS("#/settings"),
+    ADMIN("#/settings/admin"),
     SUMMARY("#/summary"),
     ;
 
@@ -70,6 +71,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
         summaryId != null -> SummaryScreen(container, summaryId)
         progressId != null -> ExerciseProgressScreen(container, progressId)
         route == Route.PROGRESS -> ProgressScreen(container, account)
+        route == Route.ADMIN -> AdminScreen(container, account)
         route == Route.SETTINGS -> SettingsScreen(container, account)
         detailId != null -> WorkoutDetailScreen(container, detailId)
         routineId != null -> RoutineScreen(container, routineId)
@@ -85,7 +87,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
         else -> route
     }
     // The workout and the summary have their own bottom, as on the phone.
-    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.SUMMARY) BottomBar(tab, container)
+    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.ADMIN && route != Route.SUMMARY) BottomBar(tab, container)
 }
 
 /** Home · History, the phone's bottom bar; the current one in the accent, announced as the current page. */

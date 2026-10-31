@@ -29,10 +29,10 @@ Adding an app language:
 
 ## Stack (decided)
 
-Kotlin 2.2.21 (KSP 2.2.21-2.0.5, KSP2), Jetpack Compose (BOM 2026.05.01: Compose 1.11, the line Compose Multiplatform 1.11 runs on Android; lifecycle 2.9.2),
+Kotlin 2.2.21 (KSP 2.2.21-2.0.5, KSP2), Jetpack Compose (BOM 2026.05.01: Compose 1.11; lifecycle 2.9.2) and, for the shared screens in `ui/`, Compose Multiplatform 1.10.3 (the last line whose iOS klibs are compiled with Kotlin 2.2; on Android its artifacts are Jetpack Compose's and the BOM's 1.11 wins),
 Material 3, Room 2.8.5 via KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
 DataStore 1.1.7 (small state outside Room). AGP 8.9.1,
-Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the four Android
+Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the five Android
 modules: AGP's default is not compileSdk's). compileSdk 36; targetSdk 36 on
 the phone (Play's requirement since 2026-08-31) and 35 on the watch (Play's
 Wear OS bar; Android 16's behaviour changes are not wanted there yet);
@@ -50,13 +50,14 @@ the active workout's factory also passes `createSavedStateHandle()`, for the res
 
 ## Layers
 
-Seven Gradle modules:
+Eight Gradle modules:
 
 | Module | Kind | Depends on | Holds |
 |---|---|---|---|
 | `core/` | Kotlin Multiplatform (JVM, JS, iOS klibs) | — | Domain rules, commands, sync and watch protocols |
 | `data/` | Kotlin Multiplatform (Android, iOS klibs) | `core` | Room, repositories, the CommandHandler, sync client, settings, rest timer, `TungContainer` |
 | `data-fixtures/` | Android library (tests only) | `core`, `data` | The test doubles of data's seams: `FakeSyncServer`, `MemoryTokenStore`, `FakePushEnvironment`, `FakeHealthConnect` |
+| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | — | The screens every client shares, moved from `app/` a piece at a time: so far the theme (`ui/theme/`: colour tokens, typography, `TungTheme`, `Tung`) and the Archivo font as a Compose Resource |
 | `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
 | `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
 | `server/` | Ktor server | `core` | tung-server |
@@ -206,7 +207,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`; `charts/` holds the Canvas charts (`LineChart`, `BarChart`, `Sparkline`, `niceTicks`; see "Progress"). |
-| `ui/theme/` | Colour tokens, typography, theme. |
+| `ui/theme/` | In the `ui/` module now (`ui/src/commonMain/.../ui/theme/`, same package): colour tokens, typography, theme. The font families are composable (`archivoFamily()`, `archivoWideFamily()`), since Compose Resources loads the font; `TungTheme` builds the typography and number styles from them. |
 | `wear/` | The phone's side of the Data Layer for a companion watch (section "Wear"). |
 | `../catalog/` | The exercise catalogue as open data (CC0): `core.json`, `extended.json`, generator and import scripts. Shipped as an asset directory of `data/`. See `catalog/README.md`. |
 
@@ -217,7 +218,7 @@ both "Last: 80 × 8" and the pre-fill of new sets.
 ### Home
 
 `ui/home/`: the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
-and heaviest, `ArchivoWide` in `ui/theme/Type.kt`, which only the wordmark
+and heaviest, `archivoWideFamily()` in `ui/theme/Type.kt` (the `ui/` module), which only the wordmark
 and the hero number use), then, once there is a finished workout, **"This
 week"** (`ThisWeekSection`): the week's volume as the hero number
 (`Tung.numbers.hero`, 64 sp, smaller for a longer number), "3 workouts ·
@@ -2202,6 +2203,101 @@ summary, History, Routines, Progress and Settings.
   publishes the same site from `main` as well. `OpenApiCoverageTest` leaves
   `/`, `/privacy`, `/site` and `/app` out: pages, not API. The site has no server of its
   own: everything relative, so it works under any path.
+
+## Building
+
+```sh
+cd /home/xup/tung
+export JAVA_HOME=/home/xup/android/jdk ANDROID_HOME=/home/xup/android/sdk ANDROID_SDK_ROOT=/home/xup/android/sdk
+export PATH=$JAVA_HOME/bin:$PATH
+./gradlew assembleDebug test --no-daemon
+```
+
+`test` runs `:core:jvmTest` (through its `test` alias), the unit tests of
+`data`, `app` and `wear` (AGP runs them for both the debug and the release
+variant) and `:server:test`. Only the core tests, fast and without AGP:
+`./gradlew :core:jvmTest --no-daemon`. Results land in
+`core/build/test-results/jvmTest/` and
+`<module>/build/test-results/testDebugUnitTest/`. `test` compiles no iOS
+code: `./gradlew :core:compileKotlinIosArm64 :data:compileKotlinIosArm64
+:ui:compileKotlinIosArm64 --no-daemon` is the check CI adds, the one that
+catches a JVM-only type in any `commonMain` (the Kotlin/Native compiler lands in `~/.konan`).
+The web app is not in `test` either: `./gradlew :web:jsBrowserDistribution
+:web:jsBrowserTest --no-daemon` builds its site and runs its tests in
+headless Chrome (CI's `web` job; see "Web").
+
+**On a phone, install `dogfood`, not `debug`:** `./gradlew :app:assembleDogfood`
+gives `app/build/outputs/apk/dogfood/app-dogfood.apk`, release code (R8, not
+debuggable) signed with the debug key, so `adb install -r` replaces a debug
+build and keeps the data (with the release key in the environment, below, it
+is signed with that instead, so it replaces a Play install; `adb install -r -d`,
+its versionCode is lower). A debug build of a Compose app is several times
+slower: on the Note9, scrolling the Exercises tab had 34 % janky frames and a
+90th percentile of 150 ms as debug, 11 % and 32 ms as dogfood (2026-10-21).
+Release has R8 on (`isMinifyEnabled`, `isShrinkResources`); the app's own
+rules are in `app/proguard-rules.pro` and should stay empty unless the app
+itself reflects on a class. The flow tests run unminified, so after a change
+to dependencies or reflection, start the dogfood build once and sync.
+
+APKs: `app/build/outputs/apk/debug/app-debug.apk` and
+`wear/build/outputs/apk/debug/wear-debug.apk` (`:wear:assembleDebug`). The first build downloads
+dependencies and takes a few minutes.
+
+**A Play build is `scripts/release.sh`** (the console side: `deploy/play.md`).
+The release inputs live in the root `build.gradle.kts` and reach `app/` and
+`wear/` through `rootProject.extra`: the one release key from
+`TUNG_KEYSTORE`, `TUNG_KEYSTORE_PASSWORD`, `TUNG_KEY_ALIAS` and
+`TUNG_KEY_PASSWORD` (environment or `-P`; blank counts as missing; the key
+is outside the checkout, `*.jks` is gitignored), and the build number from
+`TUNG_VERSION_CODE`, which the script derives from the number of commits on
+`main`. The phone's versionCode is `number × 10 + 1`, the watch's
+`number × 10 + 2` (one applicationId, so Play wants distinct codes), and a
+build without a number is number 1. The root's `releaseGate` refuses
+`assembleRelease` and `bundleRelease` without the key or the number before
+anything is packaged; the release variant's unit tests, which CI runs
+without a key, are not affected. The watch is signed with the same key as the
+phone, or the Data Layer will not pair them. **Play requires targetSdk 36
+since 2026-08-31** (Wear OS 35), and the phone app meets it: AGP 8.9.1,
+compileSdk 36 and build-tools 36.0.0 in every Android module, targetSdk 36 in
+`app/` and, on purpose, 35 in `wear/`; CI reads both numbers back from the
+built APKs. What Android 16 changes for an app targeting 36, and how each
+item was checked against this app, is in `deploy/play.md`, "targetSdk": in
+short, edge-to-edge was already on and predictive back needs nothing. **The
+flow tests run under Robolectric SDK 34 and see neither**, so a change to
+insets or to back handling is checked on a phone.
+
+## Flow tests
+
+`app/src/test/kotlin/io/github/kanylbullen/tung/flows/` drives the real
+screens: `MainActivity`, the nav graph, the ViewModels and a real Room
+database, held in memory. They run on the JVM under Robolectric (SDK 34,
+native graphics) with Compose UI testing — no emulator, no device — and are
+part of `./gradlew test`. Only them:
+
+```sh
+./gradlew :app:testDebugUnitTest --tests 'io.github.kanylbullen.tung.flows.*' --no-daemon
+```
+
+- `FlowTestApp` (named in `src/test/resources/robolectric.properties`)
+  overrides `TungApp.createContainer()` to hand `TungContainer` an in-memory
+  `TungDatabase.buildInMemory`, same schema and seed, and a settable
+  `Clock` (`FlowTestApp.today`) for Home's "Today", and a `TokenStore` in
+  memory (`FlowTestApp.tokens`), because Robolectric has no Android Keystore,
+  and the push transports (`FlowTestApp.push`, a `FakePushEnvironment` from
+  the `data-fixtures` module, none by default), and Health Connect
+  (`FlowTestApp.healthConnect`, a `FakeHealthConnect` from the same module:
+  available, nothing granted, nothing to read by default), and the
+  assistant's API key in memory (`FlowTestApp.aiKeys`), and Account's default
+  server (`FlowTestApp.defaultServer`, a closed localhost port; a test that
+  wants the default to answer points it at its `FakeSyncServer`). Those six
+  `TungContainer` parameters, and `TungApp`'s `createSpeechInput`,
+  `createGoogleSignIn` and `defaultServerUrl`, are the only test seams in production code. Sync tests talk to `FakeSyncServer` (the `data-fixtures`
+  module, `data-fixtures/src/main/kotlin/.../sync/`, the protocol and the link routes on a
+  MockWebServer), and `SyncFlowTest` installs WorkManager's test
+  instance (`WorkManagerTestInitHelper`) before it signs in.
+- Assertions are on semantics, with text from the English string resources
+  (`str(R.string.…)`), never on pixels. Room works on its own threads, so wait
+  (`waitForText`, `assertShown`) rather than assert right after a tap.
 - **Wait with `FlowTest.waitUntil`, never `compose.waitUntil`** (issue #28).
   Under Robolectric the test thread is the main thread and the main looper
   runs only when the test idles it; `compose.waitUntil` just advances
@@ -2322,8 +2418,9 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
   everything goes in `res/values/strings.xml` (English, the default) and
   `res/values-sv/strings.xml` (Swedish), with the same names in both. The
   exercise names too — see "Exercise names are resources".
-- **`res/font/` takes only font files.** That is why the OFL licence is in
-  `assets/licenses/`, not next to the `.ttf` file.
+- **The font is a Compose Resource** (`ui/src/commonMain/composeResources/font/archivo_variable.ttf`,
+  read with `Res.font.archivo_variable` inside `ui/`; the APK carries it under
+  `assets/composeResources/`). The OFL licence stays in app's `assets/licenses/`.
 - No `!!`, no `GlobalScope`, no blocking DB calls on main. The DAOs are
   `suspend` or `Flow`.
 - **A schema change without a migration crashes every installed phone** on
