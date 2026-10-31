@@ -126,6 +126,11 @@ fun Route.apiRoutes(
                 call.respond(accounts.me(userId).copy(isAdmin = admins.isAdmin(userId)))
             }
 
+            delete("/me") {
+                accounts.deleteAccount(call.user(), call.receive<DeleteAccountInput>().email)
+                call.respond(HttpStatusCode.NoContent)
+            }
+
             testerAdminRoutes(testers)
             adminRoutes(adminStore)
             feedbackRoutes(feedback)

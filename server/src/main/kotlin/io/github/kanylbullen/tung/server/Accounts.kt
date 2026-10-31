@@ -10,6 +10,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
@@ -207,6 +208,11 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
 
     suspend fun createToken(userId: String, request: NewToken): CreatedToken {
         val name = validName(request.name)
+        // The names the server gives its own tokens: a made token never passes for a sign-in (account deletion
+        // trusts "session"), a watch or an OAuth grant.
+        if (name.equals(Tokens.SESSION_NAME, ignoreCase = true) || name.equals("watch", ignoreCase = true) || name.startsWith("mcp:", ignoreCase = true)) {
+            throw badRequest("'$name' is a name the server keeps for its own tokens. Choose another.", "reserved_name")
+        }
         val scope = request.scope.trim().lowercase()
         if (scope != Tokens.SCOPE_READ && scope != Tokens.SCOPE_WRITE) {
             throw badRequest("scope must be 'read' or 'write', got '${request.scope}'.", "invalid_scope")
@@ -222,6 +228,29 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
             }) { it[revokedAt] = System.currentTimeMillis() }
         }
         if (changed == 0) throw notFound("Token")
+    }
+
+    /**
+     * Deletes the account of [principal] and everything that is the user's:
+     * training data, tokens, link codes, push endpoints, OAuth grants and
+     * feedback, all through `ON DELETE CASCADE` from `users`. Only a
+     * session token (a sign-in from an app or the web) may, never an API,
+     * watch or OAuth token, and [confirmEmail] must be the account's email.
+     * Under [lockUser], so no sync of the user's is half-way when the rows go.
+     */
+    suspend fun deleteAccount(principal: TokenPrincipal, confirmEmail: String) {
+        db.tx {
+            lockUser(principal.userId)
+            val tokenName = ApiTokens.selectAll().where { ApiTokens.id eq principal.tokenId }.single()[ApiTokens.name]
+            if (tokenName != Tokens.SESSION_NAME) {
+                throw forbidden("session_required", "Delete the account from the app or the web, signed in with your password or Google.")
+            }
+            val email = Users.selectAll().where { Users.id eq principal.userId }.single()[Users.email]
+            if (!email.equals(confirmEmail.trim(), ignoreCase = true)) {
+                throw badRequest("Type the account's email to confirm.", code = "email_mismatch")
+            }
+            Users.deleteWhere { Users.id eq principal.userId }
+        }
     }
 
     suspend fun exportTokens(userId: String): List<ExportTokenDto> = db.tx {

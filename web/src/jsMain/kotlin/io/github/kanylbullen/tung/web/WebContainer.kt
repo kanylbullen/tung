@@ -22,6 +22,7 @@ import io.github.kanylbullen.tung.web.store.WebCommandStore
 import io.github.kanylbullen.tung.web.store.WebExerciseResolver
 import io.github.kanylbullen.tung.web.store.Write
 import io.github.kanylbullen.tung.web.sync.AuthResult
+import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
 import io.github.kanylbullen.tung.web.sync.PeriodicSync
 import io.github.kanylbullen.tung.web.sync.WebAuth
 import io.github.kanylbullen.tung.web.sync.WebSettings
@@ -230,6 +231,29 @@ class WebContainer(
         settings.signedOut(failure = null)
         if (account != null && token != null) auth.signOut(account.serverUrl, token)
     }
+
+    /**
+     * Deletes the account on the server (`DELETE /api/v1/me`, [email] typed
+     * again), then forgets the token as [signOut] does, without the server
+     * call: the token went with the account. The log stays in this browser.
+     */
+    suspend fun deleteAccount(email: String): DeleteAccountResult {
+        val account = settings.account.value ?: return DeleteAccountResult.SIGNED_OUT
+        val token = settings.token ?: return DeleteAccountResult.SIGNED_OUT
+        val result = auth.deleteAccount(account.serverUrl, token, email)
+        when (result) {
+            DeleteAccountResult.DELETED -> {
+                accountDeleted = true
+                settings.signedOut(failure = null)
+            }
+            DeleteAccountResult.SIGNED_OUT -> settings.signedOut(SyncFailure.SIGNED_OUT)
+            else -> Unit
+        }
+        return result
+    }
+
+    /** The account was just deleted here: the sign-in screen says so once. */
+    var accountDeleted: Boolean = false
 
     /** A sync that nobody waits for; its outcome shows on the status line. */
     fun syncInBackground() {

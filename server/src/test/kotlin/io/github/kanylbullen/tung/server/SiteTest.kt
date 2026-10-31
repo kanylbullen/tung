@@ -8,12 +8,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** The landing and privacy pages: served, and their stylesheet and script under a versioned URL a CDN cannot keep stale. */
+/** The landing, privacy and account-deletion pages: served, and their stylesheet and script under a versioned URL a CDN cannot keep stale. */
 class SiteTest {
 
     @Test
     fun thePagesLinkTheirAssetsByAVersion() = tungTest {
-        val versions = listOf("/", "/privacy").map { path ->
+        val versions = listOf("/", "/privacy", "/delete-account").map { path ->
             val response = client.get(path)
             assertEquals(HttpStatusCode.OK, response.status, path)
             val html = response.bodyAsText()

@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web.i18n
 
+import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
 import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.importing.SkipReason
@@ -424,6 +425,13 @@ interface Strings {
     // Account and sync
     fun signedInAs(email: String): String
     val signOut: String
+    val deleteAccount: String
+    val deleteAccountTitle: String
+    fun deleteAccountBody(server: String): String
+    val deleteAccountEmail: String
+    val deleteAccountConfirm: String
+    val accountDeleted: String
+    fun deleteAccountFailure(result: DeleteAccountResult): String
     val syncNow: String
     val syncing: String
     val lastSyncNever: String
@@ -944,6 +952,21 @@ object English : Strings {
 
     override fun signedInAs(email: String): String = "Signed in as $email"
     override val signOut = "Sign out"
+    override val deleteAccount = "Delete account…"
+    override val deleteAccountTitle = "Delete your account?"
+    override fun deleteAccountBody(server: String): String =
+        "This deletes your account on $server and everything stored there: workouts, routines, programs and feedback. " +
+            "The workouts in this browser are kept. It cannot be undone."
+    override val deleteAccountEmail = "Type your email to confirm"
+    override val deleteAccountConfirm = "Delete account"
+    override val accountDeleted = "Your account is deleted. The workouts in this browser are kept."
+    override fun deleteAccountFailure(result: DeleteAccountResult): String = when (result) {
+        DeleteAccountResult.EMAIL_MISMATCH -> "That is not this account's email."
+        DeleteAccountResult.NOT_ALLOWED -> "This sign-in cannot delete the account. Sign out, sign in again and try once more."
+        DeleteAccountResult.NOT_A_SERVER -> "This server cannot delete accounts yet. Ask whoever runs it."
+        DeleteAccountResult.NETWORK -> "Could not reach the server. Check your connection."
+        DeleteAccountResult.DELETED, DeleteAccountResult.SIGNED_OUT, DeleteAccountResult.SERVER -> "The server had a problem. Try again in a while."
+    }
     override val syncNow = "Sync now"
     override val syncing = "Syncing…"
     override val lastSyncNever = "Last sync: never"
@@ -1469,6 +1492,21 @@ object Swedish : Strings {
 
     override fun signedInAs(email: String): String = "Inloggad som $email"
     override val signOut = "Logga ut"
+    override val deleteAccount = "Radera kontot…"
+    override val deleteAccountTitle = "Radera ditt konto?"
+    override fun deleteAccountBody(server: String): String =
+        "Det här raderar ditt konto på $server och allt som sparats där: pass, rutiner, program och feedback. " +
+            "Passen i den här webbläsaren finns kvar. Det går inte att ångra."
+    override val deleteAccountEmail = "Skriv din e-post för att bekräfta"
+    override val deleteAccountConfirm = "Radera kontot"
+    override val accountDeleted = "Ditt konto är raderat. Passen i den här webbläsaren finns kvar."
+    override fun deleteAccountFailure(result: DeleteAccountResult): String = when (result) {
+        DeleteAccountResult.EMAIL_MISMATCH -> "Det är inte kontots e-post."
+        DeleteAccountResult.NOT_ALLOWED -> "Den här inloggningen kan inte radera kontot. Logga ut, logga in igen och försök en gång till."
+        DeleteAccountResult.NOT_A_SERVER -> "Den här servern kan inte radera konton än. Fråga den som driver den."
+        DeleteAccountResult.NETWORK -> "Kunde inte nå servern. Kontrollera din uppkoppling."
+        DeleteAccountResult.DELETED, DeleteAccountResult.SIGNED_OUT, DeleteAccountResult.SERVER -> "Servern fick ett fel. Försök igen om en stund."
+    }
     override val syncNow = "Synka nu"
     override val syncing = "Synkar…"
     override val lastSyncNever = "Senaste synk: aldrig"
