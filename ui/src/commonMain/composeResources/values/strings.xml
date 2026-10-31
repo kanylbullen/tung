@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The strings of the screens in ui/, as Compose Resources: the same names and
+  texts as app/'s res/values/strings.xml had, with every placeholder
+  positional (%1$d), the only form Compose Resources fills in, and no quotes
+  around a text that keeps its outer spaces (", " in app/ is , here: Compose
+  Resources keeps quotes as text, and keeps the spaces). A string still
+  used by a screen in app/ is in both files until that screen moves too;
+  app's SharedStringsTest keeps the two texts equal.
+-->
+<resources>
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_more">More options</string>
+    <plurals name="exercise_count">
+        <item quantity="one">%1$d exercise</item>
+        <item quantity="other">%1$d exercises</item>
+    </plurals>
+    <string name="exercise_map_description">Muscles worked. Primary: %1$s. Secondary: %2$s.</string>
+    <string name="exercise_map_description_primary">Muscles worked. Primary: %1$s.</string>
+    <string name="exercise_map_primary">Primary</string>
+    <string name="exercise_map_secondary">Secondary</string>
+    <string name="input_apply_all">Apply to all sets</string>
+    <string name="input_done">Done</string>
+    <string name="input_error_reps">Enter a whole number between 0 and 999.</string>
+    <string name="input_field_reps">Number of reps</string>
+    <string name="input_hint">Tap the number to type.</string>
+    <string name="input_minus">−</string>
+    <string name="input_minus_reps">Decrease by one rep</string>
+    <string name="input_plus">+</string>
+    <string name="input_plus_reps">Increase by one rep</string>
+    <string name="input_reps_title">Reps</string>
+    <string name="input_ruler_reps">Reps ruler</string>
+    <plurals name="input_ruler_reps_state">
+        <item quantity="one">%1$d rep</item>
+        <item quantity="other">%1$d reps</item>
+    </plurals>
+    <string name="list_separator">, </string>
+    <string name="muscle_name_abductors">abductors</string>
+    <string name="muscle_name_abs">abs</string>
+    <string name="muscle_name_adductors">adductors</string>
+    <string name="muscle_name_biceps">biceps</string>
+    <string name="muscle_name_calves">calves</string>
+    <string name="muscle_name_chest">chest</string>
+    <string name="muscle_name_forearms">forearms</string>
+    <string name="muscle_name_front_delts">front delts</string>
+    <string name="muscle_name_glutes">glutes</string>
+    <string name="muscle_name_hamstrings">hamstrings</string>
+    <string name="muscle_name_hip_flexors">hip flexors</string>
+    <string name="muscle_name_lats">lats</string>
+    <string name="muscle_name_lower_back">lower back</string>
+    <string name="muscle_name_neck">neck</string>
+    <string name="muscle_name_obliques">obliques</string>
+    <string name="muscle_name_quads">quads</string>
+    <string name="muscle_name_rear_delts">rear delts</string>
+    <string name="muscle_name_side_delts">side delts</string>
+    <string name="muscle_name_traps">traps</string>
+    <string name="muscle_name_triceps">triceps</string>
+    <string name="muscle_name_upper_back">upper back</string>
+    <string name="programs_entry_active">Active: %1$s</string>
+    <string name="programs_entry_hint">Routines on fixed weekdays or in rotation</string>
+    <string name="programs_title">Programs</string>
+    <string name="routine_add_exercise">+ Exercise</string>
+    <string name="routine_clear_target_reps">Clear target reps</string>
+    <string name="routine_create">Create</string>
+    <plurals name="routine_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+    <string name="routine_delete">Delete routine</string>
+    <string name="routine_delete_body">The routine will be deleted. Workouts you did from it stay in your history.</string>
+    <string name="routine_delete_confirm">Delete</string>
+    <string name="routine_delete_title">Delete routine?</string>
+    <string name="routine_edit_target_reps">Change the target reps of %1$s</string>
+    <string name="routine_empty_hint">Add exercises with + Exercise</string>
+    <string name="routine_error_name">Enter a name for the routine.</string>
+    <string name="routine_error_target_reps">Enter a whole number between 1 and 999.</string>
+    <string name="routine_exercise_menu">Options for %1$s</string>
+    <string name="routine_fewer_sets">Fewer sets of %1$s</string>
+    <string name="routine_last">Last: %1$s</string>
+    <string name="routine_more_sets">More sets of %1$s</string>
+    <string name="routine_move_down">Move down</string>
+    <string name="routine_move_up">Move up</string>
+    <string name="routine_muscles_description">Muscles: %1$s</string>
+    <string name="routine_name">Name</string>
+    <string name="routine_never">Never</string>
+    <string name="routine_new">+ New routine</string>
+    <string name="routine_new_title">New routine</string>
+    <string name="routine_no_target_reps">No target reps</string>
+    <string name="routine_not_found">This routine no longer exists.</string>
+    <string name="routine_remove_exercise">Remove</string>
+    <string name="routine_rename">Rename</string>
+    <string name="routine_rename_title">Rename routine</string>
+    <string name="routine_sets_label">sets</string>
+    <string name="routine_start">Start</string>
+    <string name="routine_start_description">Start %1$s</string>
+    <plurals name="routine_target_reps">
+        <item quantity="one">%1$d rep per set</item>
+        <item quantity="other">%1$d reps per set</item>
+    </plurals>
+    <string name="routine_target_reps_title">Target reps · %1$s</string>
+    <string name="routine_today">today</string>
+    <string name="routine_yesterday">yesterday</string>
+    <string name="routines_delete_many_body">Your workout history is kept.</string>
+    <plurals name="routines_delete_many_days">
+        <item quantity="one">%1$d program day that uses them goes too.</item>
+        <item quantity="other">%1$d program days that use them go too.</item>
+    </plurals>
+    <plurals name="routines_delete_many_title">
+        <item quantity="one">Delete %1$d routine?</item>
+        <item quantity="other">Delete %1$d routines?</item>
+    </plurals>
+    <string name="routines_delete_selected">Delete selected routines</string>
+    <string name="routines_empty">No routines. Create one with + New routine, or save a finished workout as a routine from its summary or from its menu in History.</string>
+    <string name="routines_leave_selection">Leave selection</string>
+    <string name="routines_select">Select</string>
+    <string name="routines_select_all">Select all</string>
+    <plurals name="routines_selected">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="routines_title">Routines</string>
+    <string name="row_separator"> · </string>
+    <string name="summary_muscle_item">%1$s %2$s</string>
+    <string name="summary_muscle_less_than">&lt;%1$s</string>
+    <string name="workout_unit_reps">reps</string>
+</resources>

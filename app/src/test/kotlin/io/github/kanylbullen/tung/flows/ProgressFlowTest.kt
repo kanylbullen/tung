@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -281,7 +282,7 @@ class ProgressFlowTest : FlowTest() {
         dismissSheet(chart)
         assertShown(hasContentDescription(str(R.string.workout_edit_weight, "96")))
 
-        enterInSheet(str(R.string.workout_edit_reps, "5"), str(R.string.input_field_reps), "7", str(R.string.workout_edit_reps, "7"))
+        enterInSheet(str(R.string.workout_edit_reps, "5"), str(Res.string.input_field_reps), "7", str(R.string.workout_edit_reps, "7"))
         clickDescription(progressFor)
         assertShown(hasText(str(R.string.progress_beats_e1rm, "96", 7)))
         screenshot("2-sheet-record")

@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -222,7 +223,7 @@ class ImportFlowTest : FlowTest() {
 
         compose.onNode(hasText(str(R.string.import_delete_routines, 2))).performClick()
         waitFor(isDialog())
-        assertShown(hasText(plural(R.plurals.routines_delete_many_title, 2, 2)))
+        assertShown(hasText(plural(Res.plurals.routines_delete_many_title, 2, 2)))
         assertShown(hasText(str(R.string.import_delete_routines_body)))
         screenshot("2-confirm")
         clickInDialog(str(R.string.routine_delete_confirm))

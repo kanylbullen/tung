@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasTestTag
@@ -76,7 +77,7 @@ class SuggestionsFlowTest : FlowTest() {
         assertEquals(6, rows.size)
         assertEquals(rows.toString(), Muscle.TRICEPS, mainMuscleOf(rows.first().name))
         assertTrue(rows.toString(), rows.take(3).none { mainMuscleOf(it.name) == Muscle.BICEPS })
-        assertEquals(str(R.string.picker_reason_pairs_with, str(R.string.muscle_name_biceps)), rows.first().reason)
+        assertEquals(str(R.string.picker_reason_pairs_with, str(Res.string.muscle_name_biceps)), rows.first().reason)
 
         val first = rows.first().name
         compose.onAllNodes(hasTestTag(SUGGESTION_TAG))[0].performClick()

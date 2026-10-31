@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.performClick
@@ -50,11 +51,11 @@ class RoutineNameFlowTest : FlowTest() {
         screenshot("1-home")
 
         compose.onNode(hasText(str(R.string.nav_routines)) and isSelectable()).performClick()
-        waitForText(str(R.string.routine_new))
+        waitForText(str(Res.string.routine_new))
         assertShown(hasText(dayAlone))
         screenshot("2-routines-tab")
         clickText(name)
-        waitForText(str(R.string.routine_add_exercise))
+        waitForText(str(Res.string.routine_add_exercise))
         screenshot("3-routine")
     }
 }

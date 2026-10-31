@@ -39,24 +39,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.ui.resources.*
 import io.github.kanylbullen.tung.core.MAX_TARGET_SETS
 import io.github.kanylbullen.tung.core.MIN_TARGET_SETS
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
-import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 import io.github.kanylbullen.tung.ui.workout.NumberInputSheet
@@ -68,22 +65,17 @@ import io.github.kanylbullen.tung.ui.exercises.MuscleHeatMap
 /**
  * One routine: start it ([onStart] gets the workout, issue #81), rename or
  * delete it; add exercises ([onAddExercise] opens the picker), remove and
- * reorder them, and change each one's target sets and reps.
+ * reorder them, and change each one's target sets and reps. [vm] is made by
+ * the platform (app/'s `RoutineDetailRoute`).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutineDetailScreen(
-    routineId: String,
+    vm: RoutineDetailViewModel,
     onBack: () -> Unit,
     onAddExercise: () -> Unit,
     onStart: (workoutId: String) -> Unit = {},
 ) {
-    val container = appContainer()
-    val vm: RoutineDetailViewModel = viewModel(
-        factory = factoryOf {
-            RoutineDetailViewModel(routineId, container.routineRepository, container.workoutRepository, container.commands, container.catalogueMuscles)
-        }
-    )
     val state by vm.state.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -102,7 +94,7 @@ fun RoutineDetailScreen(
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 title = { if (!state.missing) Text(state.name) },
@@ -110,7 +102,7 @@ fun RoutineDetailScreen(
                     if (!state.loading && !state.missing) {
                         Box {
                             IconButton(onClick = { menuOpen = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_more))
                             }
                             DropdownMenu(
                                 expanded = menuOpen,
@@ -119,11 +111,11 @@ fun RoutineDetailScreen(
                                 shape = TungCorner,
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.routine_rename)) },
+                                    text = { Text(stringResource(Res.string.routine_rename)) },
                                     onClick = { menuOpen = false; renaming = true },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.routine_delete)) },
+                                    text = { Text(stringResource(Res.string.routine_delete)) },
                                     onClick = { menuOpen = false; confirmDelete = true },
                                 )
                             }
@@ -137,7 +129,7 @@ fun RoutineDetailScreen(
             if (state.missing && !deleting) {
                 item(key = "missing") {
                     Text(
-                        stringResource(R.string.routine_not_found),
+                        stringResource(Res.string.routine_not_found),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
@@ -148,9 +140,9 @@ fun RoutineDetailScreen(
                 item(key = "start") {
                     // Start, like the row's on Home and the Routines tab: disabled while a
                     // workout is in progress, and for a routine with nothing to start.
-                    val description = stringResource(R.string.routine_start_description, state.name)
+                    val description = stringResource(Res.string.routine_start_description, state.name)
                     PrimaryButton(
-                        text = stringResource(R.string.routine_start),
+                        text = stringResource(Res.string.routine_start),
                         onClick = { vm.start(onStart) },
                         enabled = state.canStart && state.exercises.isNotEmpty(),
                         modifier = Modifier
@@ -167,14 +159,14 @@ fun RoutineDetailScreen(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        val items = muscles.muscles.map { stringResource(R.string.summary_muscle_item, muscleLabel(it.muscle), percentText(it.percent)) }
+                        val items = muscles.muscles.map { stringResource(Res.string.summary_muscle_item, muscleLabel(it.muscle), percentText(it.percent)) }
                         MuscleHeatMap(
                             intensity = muscles::intensity,
-                            description = stringResource(R.string.routine_muscles_description, items.joinToString(stringResource(R.string.list_separator))),
+                            description = stringResource(Res.string.routine_muscles_description, items.joinToString(stringResource(Res.string.list_separator))),
                             height = 140.dp,
                         )
                         Text(
-                            items.take(MUSCLES_IN_LINE).joinToString(stringResource(R.string.row_separator)),
+                            items.take(MUSCLES_IN_LINE).joinToString(stringResource(Res.string.row_separator)),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Tung.colors.muted,
                             modifier = Modifier.padding(top = 8.dp),
@@ -199,7 +191,7 @@ fun RoutineDetailScreen(
             if (!state.loading && !state.missing && !deleting && state.exercises.isEmpty()) {
                 item(key = "empty") {
                     Text(
-                        stringResource(R.string.routine_empty_hint),
+                        stringResource(Res.string.routine_empty_hint),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp),
@@ -209,7 +201,7 @@ fun RoutineDetailScreen(
             if (!state.loading && !state.missing && !deleting) {
                 item(key = "add") {
                     SecondaryButton(
-                        text = stringResource(R.string.routine_add_exercise),
+                        text = stringResource(Res.string.routine_add_exercise),
                         onClick = onAddExercise,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     )
@@ -223,9 +215,9 @@ fun RoutineDetailScreen(
         NumberInputSheet(
             spec = repsSpec(
                 initial = (repsOf.targetReps ?: DEFAULT_TARGET_REPS).toString(),
-                title = stringResource(R.string.routine_target_reps_title, exerciseDisplayName(repsOf.nameKey, repsOf.name)),
+                title = stringResource(Res.string.routine_target_reps_title, exerciseDisplayName(repsOf.nameKey, repsOf.name)),
                 minimum = 1,
-                errorText = stringResource(R.string.routine_error_target_reps),
+                errorText = stringResource(Res.string.routine_error_target_reps),
             ),
             onDismiss = { editingReps = null },
             onConfirm = { text, _ ->
@@ -237,9 +229,9 @@ fun RoutineDetailScreen(
 
     if (renaming) {
         RoutineNameDialog(
-            title = stringResource(R.string.routine_rename_title),
+            title = stringResource(Res.string.routine_rename_title),
             initialName = state.name,
-            confirmLabel = stringResource(R.string.routine_rename),
+            confirmLabel = stringResource(Res.string.routine_rename),
             onDismiss = { renaming = false },
             onConfirm = { name ->
                 renaming = false
@@ -254,20 +246,20 @@ fun RoutineDetailScreen(
             containerColor = Tung.colors.raised,
             tonalElevation = 0.dp,
             shape = TungCorner,
-            title = { Text(stringResource(R.string.routine_delete_title)) },
-            text = { Text(stringResource(R.string.routine_delete_body), color = Tung.colors.muted) },
+            title = { Text(stringResource(Res.string.routine_delete_title)) },
+            text = { Text(stringResource(Res.string.routine_delete_body), color = Tung.colors.muted) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
                     deleting = true
                     vm.delete(onBack)
                 }) {
-                    Text(stringResource(R.string.routine_delete_confirm), color = Tung.colors.accentText)
+                    Text(stringResource(Res.string.routine_delete_confirm), color = Tung.colors.accentText)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }) {
-                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                    Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
                 }
             },
         )
@@ -286,7 +278,7 @@ private fun RoutineExerciseRow(
     onRemove: () -> Unit,
 ) {
     val name = exerciseDisplayName(exercise.nameKey, exercise.name)
-    val editRepsDescription = stringResource(R.string.routine_edit_target_reps, name)
+    val editRepsDescription = stringResource(Res.string.routine_edit_target_reps, name)
     var menuOpen by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(start = 20.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
@@ -303,16 +295,16 @@ private fun RoutineExerciseRow(
                     .semantics { contentDescription = editRepsDescription },
             ) {
                 Text(
-                    exercise.targetReps?.let { pluralStringResource(R.plurals.routine_target_reps, it, it) }
-                        ?: stringResource(R.string.routine_no_target_reps),
+                    exercise.targetReps?.let { pluralStringResource(Res.plurals.routine_target_reps, it, it) }
+                        ?: stringResource(Res.string.routine_no_target_reps),
                     style = Tung.numbers.inline,
                     color = Tung.colors.muted,
                 )
             }
         }
         StepButton(
-            text = stringResource(R.string.input_minus),
-            description = stringResource(R.string.routine_fewer_sets, name),
+            text = stringResource(Res.string.input_minus),
+            description = stringResource(Res.string.routine_fewer_sets, name),
             enabled = exercise.targetSets > MIN_TARGET_SETS,
             onClick = { onChangeSets(-1) },
         )
@@ -326,17 +318,17 @@ private fun RoutineExerciseRow(
                 color = Tung.colors.text,
                 textAlign = TextAlign.Center,
             )
-            Text(stringResource(R.string.routine_sets_label), style = MaterialTheme.typography.bodySmall, color = Tung.colors.muted)
+            Text(stringResource(Res.string.routine_sets_label), style = MaterialTheme.typography.bodySmall, color = Tung.colors.muted)
         }
         StepButton(
-            text = stringResource(R.string.input_plus),
-            description = stringResource(R.string.routine_more_sets, name),
+            text = stringResource(Res.string.input_plus),
+            description = stringResource(Res.string.routine_more_sets, name),
             enabled = exercise.targetSets < MAX_TARGET_SETS,
             onClick = { onChangeSets(1) },
         )
         Box {
             IconButton(onClick = { menuOpen = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.routine_exercise_menu, name))
+                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.routine_exercise_menu, name))
             }
             DropdownMenu(
                 expanded = menuOpen,
@@ -345,22 +337,22 @@ private fun RoutineExerciseRow(
                 shape = TungCorner,
             ) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.routine_move_up)) },
+                    text = { Text(stringResource(Res.string.routine_move_up)) },
                     enabled = canMoveUp,
                     onClick = { menuOpen = false; onMove(-1) },
                 )
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.routine_move_down)) },
+                    text = { Text(stringResource(Res.string.routine_move_down)) },
                     enabled = canMoveDown,
                     onClick = { menuOpen = false; onMove(1) },
                 )
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.routine_clear_target_reps)) },
+                    text = { Text(stringResource(Res.string.routine_clear_target_reps)) },
                     enabled = exercise.targetReps != null,
                     onClick = { menuOpen = false; onClearReps() },
                 )
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.routine_remove_exercise)) },
+                    text = { Text(stringResource(Res.string.routine_remove_exercise)) },
                     onClick = { menuOpen = false; onRemove() },
                 )
             }

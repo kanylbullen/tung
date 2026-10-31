@@ -1203,14 +1203,14 @@ private fun DoneCheck(
 private val CURRENT_BAR_WIDTH = 3.dp
 
 /** "Increase by 1 kilo", "Increase by 2.5 kilos": a whole step picks its plural, a fraction is "other". */
-private fun stepDescription(context: Context, @PluralsRes id: Int, stepKg: Double): String {
+@Composable
+private fun stepDescription(@PluralsRes id: Int, stepKg: Double): String {
     val quantity = if (stepKg % 1.0 == 0.0) stepKg.toInt() else 2
-    return context.resources.getQuantityString(id, quantity, localWeight(stepKg))
+    return pluralStringResource(id, quantity, localWeight(stepKg))
 }
 
 @Composable
 private fun weightSpec(initial: String): NumberInputSpec {
-    val context = LocalContext.current
     return NumberInputSpec(
         title = stringResource(R.string.input_weight_title),
         unit = stringResource(R.string.workout_unit_kg),
@@ -1218,10 +1218,10 @@ private fun weightSpec(initial: String): NumberInputSpec {
         keyboardType = KeyboardType.Decimal,
         fieldDescription = stringResource(R.string.input_field_weight),
         minusDescription = { text ->
-            stepDescription(context, R.plurals.input_minus_weight, WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0))
+            stepDescription(R.plurals.input_minus_weight, WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0))
         },
         plusDescription = { text ->
-            stepDescription(context, R.plurals.input_plus_weight, WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0))
+            stepDescription(R.plurals.input_plus_weight, WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0))
         },
         hint = stringResource(R.string.input_hint),
         errorText = stringResource(R.string.input_error_weight),
@@ -1235,44 +1235,7 @@ private fun weightSpec(initial: String): NumberInputSpec {
         toValue = ::parseWeight,
         fromValue = ::localWeight,
         rulerDescription = stringResource(R.string.input_ruler_weight),
-        rulerState = { context.getString(R.string.input_ruler_weight_state, localWeight(it)) },
+        rulerState = { stringResource(R.string.input_ruler_weight_state, localWeight(it)) },
     )
 }
 
-/**
- * The reps sheet. A set takes 0 and up; a routine's target reps ([minimum] 1,
- * with its own [title] and [errorText]) use the same sheet.
- */
-@Composable
-internal fun repsSpec(
-    initial: String,
-    title: String = stringResource(R.string.input_reps_title),
-    minimum: Int = 0,
-    errorText: String = stringResource(R.string.input_error_reps),
-): NumberInputSpec {
-    val context = LocalContext.current
-    val minusReps = stringResource(R.string.input_minus_reps)
-    val plusReps = stringResource(R.string.input_plus_reps)
-    return NumberInputSpec(
-        title = title,
-        unit = stringResource(R.string.workout_unit_reps),
-        initialText = initial,
-        keyboardType = KeyboardType.Number,
-        fieldDescription = stringResource(R.string.input_field_reps),
-        minusDescription = { _ -> minusReps },
-        plusDescription = { _ -> plusReps },
-        hint = stringResource(R.string.input_hint),
-        errorText = errorText,
-        doneText = stringResource(R.string.input_done),
-        minusText = stringResource(R.string.input_minus),
-        plusText = stringResource(R.string.input_plus),
-        isValid = { text -> parseReps(text)?.let { it >= minimum } == true },
-        step = { text, steps -> stepReps(parseReps(text) ?: 0, steps).coerceAtLeast(minimum).toString() },
-        sanitize = { text -> text.filter { it.isDigit() }.take(3) },
-        ruler = REPS_RULER,
-        toValue = { parseReps(it)?.toDouble() },
-        fromValue = { it.roundToInt().toString() },
-        rulerDescription = stringResource(R.string.input_ruler_reps),
-        rulerState = { it.roundToInt().let { n -> context.resources.getQuantityString(R.plurals.input_ruler_reps_state, n, n) } },
-    )
-}

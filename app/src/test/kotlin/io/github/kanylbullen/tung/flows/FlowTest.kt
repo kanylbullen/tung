@@ -1,5 +1,9 @@
 package io.github.kanylbullen.tung.flows
 
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.PluralStringResource
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.getPluralString
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
@@ -76,6 +80,12 @@ abstract class FlowTest {
 
     protected fun plural(@PluralsRes id: Int, quantity: Int, vararg args: Any): String =
         app.resources.getQuantityString(id, quantity, *args)
+
+    /** A string of a screen in `ui/` (Compose Resources), as that screen writes it. */
+    protected fun str(res: StringResource, vararg args: Any): String = runBlocking { getString(res, *args) }
+
+    protected fun plural(res: PluralStringResource, quantity: Int, vararg args: Any): String =
+        runBlocking { getPluralString(res, quantity, *args) }
 
     // --- waiting: Room works on its own threads, so the UI catches up asynchronously ---
 

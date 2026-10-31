@@ -6,7 +6,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // commonMain, with Compose Resources (composeResources/) for what the screens
 // load: the Archivo font today, the strings as the screens move here. The iOS
 // klibs compile on Linux like core's and data's; linking needs a Mac. Moved
-// one piece at a time (CLAUDE.md, "Layers"): the theme first.
+// one piece at a time (CLAUDE.md, "Layers"): the theme, then the Routines tab
+// and the routine page with what they draw (the input sheet, the muscle map).
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.multiplatform")
@@ -29,7 +30,16 @@ kotlin {
             api(compose.foundation)
             api(compose.material3)
             api(compose.ui)
-            implementation(compose.components.resources)
+            // api: Res is public, and app/'s flow tests read it with getString.
+            api(compose.components.resources)
+            api(project(":core"))
+            api(project(":data"))
+            // The multiplatform lifecycle CMP 1.10 is built with; on Android it resolves to androidx.lifecycle.
+            api("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.9.6")
+            api("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.6")
+            api("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.9.6")
+            // The icons were frozen at 1.7.3 upstream; the same core set app/ uses.
+            implementation("org.jetbrains.compose.material:material-icons-core:1.7.3")
         }
     }
 }
@@ -51,6 +61,7 @@ android {
 }
 
 compose.resources {
-    // The generated accessors (Res.font.archivo_variable) stay inside this module.
+    // Public, so app/'s flow tests can read the moved strings (str(Res.string.…)).
+    publicResClass = true
     packageOfResClass = "io.github.kanylbullen.tung.ui.resources"
 }

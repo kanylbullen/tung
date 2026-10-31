@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -77,7 +78,7 @@ class ProgramFlowTest : FlowTest() {
         clickDescription(str(R.string.action_back))
         waitForText(str(R.string.program_new))
         clickDescription(str(R.string.action_back))
-        waitForText(str(R.string.programs_entry_active, "Push pull"))
+        waitForText(str(Res.string.programs_entry_active, "Push pull"))
         // Routines is a tab now, with no back arrow: Home is the tab next to it.
         clickText(str(R.string.nav_home))
         waitForText(rotatingLine(1, 2, "Push day"))
@@ -150,7 +151,7 @@ class ProgramFlowTest : FlowTest() {
         clickDescription(str(R.string.action_back))
         waitForText(str(R.string.program_new))
         clickDescription(str(R.string.action_back))
-        waitForText(str(R.string.programs_entry_active, "Weekly"))
+        waitForText(str(Res.string.programs_entry_active, "Weekly"))
         // Routines is a tab now, with no back arrow: Home is the tab next to it.
         clickText(str(R.string.nav_home))
         waitForText(str(R.string.today_fixed, "Push day"))

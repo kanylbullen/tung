@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
@@ -37,8 +38,8 @@ class RoutineMusclesFlowTest : FlowTest() {
             )
         }
         val sep = str(R.string.list_separator)
-        val top = listOf(R.string.muscle_name_quads, R.string.muscle_name_glutes, R.string.muscle_name_chest).joinToString(sep) { str(it) }
-        val rowDescription = str(R.string.routine_muscles_description, top)
+        val top = listOf(Res.string.muscle_name_quads, Res.string.muscle_name_glutes, Res.string.muscle_name_chest).joinToString(sep) { str(it) }
+        val rowDescription = str(Res.string.routine_muscles_description, top)
 
         // Home's routine group: the small body, described with the most worked muscles first.
         waitForText("Push and legs")
@@ -47,13 +48,13 @@ class RoutineMusclesFlowTest : FlowTest() {
 
         // The tab, not Home's "Routines" heading of the same text.
         compose.onNode(hasText(str(R.string.nav_routines)) and isSelectable()).performClick()
-        waitForText(str(R.string.routine_new))
+        waitForText(str(Res.string.routine_new))
         assertShown(hasContentDescription(rowDescription))
         screenshot("2-routines-tab-bodies")
 
         clickText("Push and legs")
-        waitForText(str(R.string.routine_add_exercise))
-        assertShown(hasContentDescription(str(R.string.routine_muscles_description, ""), substring = true))
+        waitForText(str(Res.string.routine_add_exercise))
+        assertShown(hasContentDescription(str(Res.string.routine_muscles_description, ""), substring = true))
         screenshot("3-routine-page-body")
     }
 }

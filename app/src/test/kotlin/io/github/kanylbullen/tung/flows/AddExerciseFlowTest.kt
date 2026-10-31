@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -21,7 +22,7 @@ import org.junit.Test
 class AddExerciseFlowTest : FlowTest() {
 
     private val weightField get() = str(R.string.input_field_weight)
-    private val repsField get() = str(R.string.input_field_reps)
+    private val repsField get() = str(Res.string.input_field_reps)
     private fun chip(count: Int) = hasContentDescription(plural(R.plurals.workout_first_sets_choice, count, count))
 
     /** Weight and reps of every set of the workout in progress, in order. */

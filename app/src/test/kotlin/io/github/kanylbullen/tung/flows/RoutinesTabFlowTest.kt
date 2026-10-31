@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -41,7 +42,7 @@ class RoutinesTabFlowTest : FlowTest() {
 
     /** The tab's own top bar: only the Routines tab has "+ New routine". */
     private fun waitForRoutinesTab() {
-        waitForText(str(R.string.routine_new))
+        waitForText(str(Res.string.routine_new))
         assertShown(tab(R.string.nav_routines) and isSelected())
     }
 
@@ -68,7 +69,7 @@ class RoutinesTabFlowTest : FlowTest() {
         waitGone(hasText(str(R.string.home_recent)))
         assertShown(hasText("Push day"))
         assertShown(hasText(str(R.string.programs_title)))
-        assertShown(hasContentDescription(str(R.string.routine_start_description, "Push day")) and isEnabled())
+        assertShown(hasContentDescription(str(Res.string.routine_start_description, "Push day")) and isEnabled())
         screenshot("2-routines-tab")
 
         compose.activityRule.scenario.recreate()
@@ -76,7 +77,7 @@ class RoutinesTabFlowTest : FlowTest() {
         assertShown(hasText("Push day"))
 
         compose.onNode(tab(R.string.nav_exercises)).performClick()
-        waitGone(hasText(str(R.string.routine_new)))
+        waitGone(hasText(str(Res.string.routine_new)))
         compose.onNode(tab(R.string.nav_routines)).performClick()
         waitForRoutinesTab()
         assertShown(hasText("Push day"))
@@ -93,40 +94,40 @@ class RoutinesTabFlowTest : FlowTest() {
         waitForText(str(R.string.home_empty))
         compose.onNode(tab(R.string.nav_routines)).performClick()
         waitForRoutinesTab()
-        waitForText(str(R.string.routines_empty))
+        waitForText(str(Res.string.routines_empty))
         screenshot("1-empty-tab")
 
-        clickText(str(R.string.routine_new))
+        clickText(str(Res.string.routine_new))
         val field = hasSetTextAction() and hasAnyAncestor(isDialog())
         waitFor(field)
-        assertShown(hasText(str(R.string.routine_new_title)))
+        assertShown(hasText(str(Res.string.routine_new_title)))
         // A blank name is refused in the dialog, as when saving a workout.
-        clickInDialog(str(R.string.routine_create))
-        waitForText(str(R.string.routine_error_name))
+        clickInDialog(str(Res.string.routine_create))
+        waitForText(str(Res.string.routine_error_name))
         compose.onNode(field).performTextReplacement("Legs")
         screenshot("2-name-dialog")
-        clickInDialog(str(R.string.routine_create))
+        clickInDialog(str(Res.string.routine_create))
         waitGone(isDialog())
 
-        waitForText(str(R.string.routine_empty_hint))
+        waitForText(str(Res.string.routine_empty_hint))
         assertShown(hasText("Legs"))
-        assertShown(hasText(str(R.string.routine_add_exercise)))
+        assertShown(hasText(str(Res.string.routine_add_exercise)))
         waitUntil { count("SELECT COUNT(*) FROM routine WHERE name = 'Legs' AND lastUsedAt IS NULL AND dirty = 1") == 1 }
         assertEquals(0, count("SELECT COUNT(*) FROM routine_exercise"))
         screenshot("3-empty-routine")
 
         clickDescription(str(R.string.action_back))
         waitForRoutinesTab()
-        val start = hasContentDescription(str(R.string.routine_start_description, "Legs"))
+        val start = hasContentDescription(str(Res.string.routine_start_description, "Legs"))
         assertShown(start and isNotEnabled())
 
         clickText("Legs")
-        clickText(str(R.string.routine_add_exercise))
+        clickText(str(Res.string.routine_add_exercise))
         searchPicker("bench press")
         clickText(benchPress)
-        waitForText(str(R.string.routine_add_exercise))
+        waitForText(str(Res.string.routine_add_exercise))
         waitForText(benchPress)
-        waitGone(hasText(str(R.string.routine_empty_hint)))
+        waitGone(hasText(str(Res.string.routine_empty_hint)))
         waitUntil { count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '${bench()}' AND position = 0 AND targetSets = 3") == 1 }
         screenshot("4-filled-routine")
 
@@ -154,7 +155,7 @@ class RoutinesTabFlowTest : FlowTest() {
         compose.onNode(routineRow(name)).performTouchInput { longClick() }
     }
 
-    private fun selectedTitle(n: Int) = plural(R.plurals.routines_selected, n, n)
+    private fun selectedTitle(n: Int) = plural(Res.plurals.routines_selected, n, n)
 
     /**
      * Selection mode (issue #79): a long press on "Push A" starts it with that
@@ -181,7 +182,7 @@ class RoutinesTabFlowTest : FlowTest() {
 
         // Before selecting, the row offers the long press to a screen reader as "Select".
         val selectAction = SemanticsMatcher("long press labelled Select") {
-            it.config.getOrNull(SemanticsActions.OnLongClick)?.label == str(R.string.routines_select)
+            it.config.getOrNull(SemanticsActions.OnLongClick)?.label == str(Res.string.routines_select)
         }
         assertShown(routineRow("Push A") and selectAction)
 
@@ -189,8 +190,8 @@ class RoutinesTabFlowTest : FlowTest() {
         waitForText(selectedTitle(1))
         assertShown(routineRow("Push A") and isSelected())
         assertShown(routineRow("Pull B") and isNotSelected())
-        waitGone(hasContentDescription(str(R.string.routine_start_description, "Push A")))
-        waitGone(hasText(str(R.string.routine_new)))
+        waitGone(hasContentDescription(str(Res.string.routine_start_description, "Push A")))
+        waitGone(hasText(str(Res.string.routine_new)))
         clickText("Pull B")
         clickText("Legs C")
         waitForText(selectedTitle(3))
@@ -201,20 +202,20 @@ class RoutinesTabFlowTest : FlowTest() {
         assertShown(routineRow("Legs C") and isSelected())
         assertShown(routineRow("Kept day") and isNotSelected())
 
-        clickDescription(str(R.string.routines_delete_selected))
+        clickDescription(str(Res.string.routines_delete_selected))
         waitFor(isDialog())
-        assertShown(hasText(plural(R.plurals.routines_delete_many_title, 3, 3)))
-        assertShown(hasText(str(R.string.routines_delete_many_body)))
-        assertShown(hasText(plural(R.plurals.routines_delete_many_days, 1, 1)))
+        assertShown(hasText(plural(Res.plurals.routines_delete_many_title, 3, 3)))
+        assertShown(hasText(str(Res.string.routines_delete_many_body)))
+        assertShown(hasText(plural(Res.plurals.routines_delete_many_days, 1, 1)))
         screenshot("2-confirm")
         clickInDialog(str(R.string.routine_delete_confirm))
         waitGone(isDialog())
 
         waitUntil { count("SELECT COUNT(*) FROM routine") == 1 }
-        waitForText(str(R.string.routine_new))
+        waitForText(str(Res.string.routine_new))
         listOf("Push A", "Pull B", "Legs C").forEach { waitGone(hasText(it)) }
         assertShown(hasText("Kept day"))
-        assertShown(hasContentDescription(str(R.string.routine_start_description, "Kept day")))
+        assertShown(hasContentDescription(str(Res.string.routine_start_description, "Kept day")))
         assertEquals("history is kept", 4, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NOT NULL"))
         assertEquals(1, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$kept'"))
         assertEquals(0, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$pushA'"))
@@ -235,26 +236,26 @@ class RoutinesTabFlowTest : FlowTest() {
 
         longPress("Pull B")
         waitForText(selectedTitle(1))
-        clickDescription(str(R.string.routines_leave_selection))
-        waitForText(str(R.string.routine_new))
+        clickDescription(str(Res.string.routines_leave_selection))
+        waitForText(str(Res.string.routine_new))
 
         longPress("Pull B")
         waitForText(selectedTitle(1))
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
-        waitForText(str(R.string.routine_new))
+        waitForText(str(Res.string.routine_new))
         assertShown(tab(R.string.nav_routines) and isSelected())
 
         longPress("Legs C")
-        clickText(str(R.string.routines_select_all))
+        clickText(str(Res.string.routines_select_all))
         waitForText(selectedTitle(3))
-        waitGone(hasText(str(R.string.routines_select_all)))
+        waitGone(hasText(str(Res.string.routines_select_all)))
         screenshot("1-all-selected")
-        clickDescription(str(R.string.routines_delete_selected))
+        clickDescription(str(Res.string.routines_delete_selected))
         waitFor(isDialog())
-        assertShown(hasText(plural(R.plurals.routines_delete_many_title, 3, 3)))
-        compose.onNode(hasText(plural(R.plurals.routines_delete_many_days, 0, 0))).assertDoesNotExist()
+        assertShown(hasText(plural(Res.plurals.routines_delete_many_title, 3, 3)))
+        compose.onNode(hasText(plural(Res.plurals.routines_delete_many_days, 0, 0))).assertDoesNotExist()
         clickInDialog(str(R.string.routine_delete_confirm))
-        waitForText(str(R.string.routines_empty))
+        waitForText(str(Res.string.routines_empty))
         assertEquals(0, count("SELECT COUNT(*) FROM routine"))
         assertEquals(3, count("SELECT COUNT(*) FROM workout"))
     }

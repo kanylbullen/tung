@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -112,9 +113,9 @@ class NumberSheetFlowTest : FlowTest() {
         assertTrue(compose.onAllNodes(hasText("8082", substring = true)).fetchSemanticsNodes().isEmpty())
         assertTrue(compose.onAllNodes(hasContentDescription("8082", substring = true)).fetchSemanticsNodes().isEmpty())
 
-        val repsField = compose.onNode(hasContentDescription(str(R.string.input_field_reps)))
+        val repsField = compose.onNode(hasContentDescription(str(Res.string.input_field_reps)))
         clickDescription(str(R.string.workout_edit_reps, "8"))
-        waitForDescription(str(R.string.input_field_reps))
+        waitForDescription(str(Res.string.input_field_reps))
         repsField.assert(hasText("8"))
         repsField.performClick()
         repsField.performTextInput("10")

@@ -1,6 +1,5 @@
 package io.github.kanylbullen.tung.ui.workout
 
-import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
@@ -30,7 +29,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -38,6 +36,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import io.github.kanylbullen.tung.core.RulerScale
+import io.github.kanylbullen.tung.ui.common.rememberTickHaptic
 import io.github.kanylbullen.tung.ui.theme.Tung
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -74,10 +73,10 @@ fun RulerPicker(
     onValueChange: (Double) -> Unit,
     tickLabel: (Double) -> String,
     description: String,
-    stateDescriptionOf: (Double) -> String,
+    stateDescriptionOf: @Composable (Double) -> String,
     modifier: Modifier = Modifier,
 ) {
-    val view = LocalView.current
+    val hapticTick = rememberTickHaptic()
     val spacingPx = with(LocalDensity.current) { TickSpacing.toPx() }
     val scope = rememberCoroutineScope()
     val lastTick = scale.lastTick.toFloat()
@@ -98,7 +97,7 @@ fun RulerPicker(
         val tick = scale.snapTick(position.toDouble())
         if (tick != holder.tick) {
             holder.tick = tick
-            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            hapticTick()
             emit(scale.valueAt(tick.toDouble()))
         }
     }
@@ -138,7 +137,7 @@ fun RulerPicker(
         holder.driving = false
         holder.tick = scale.snapTick(targetPosition.toDouble())
         if (currentValue != target) {
-            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            hapticTick()
             emit(target)
         }
         if (abs(targetPosition - position) < 1e-4f) return

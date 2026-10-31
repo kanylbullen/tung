@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The strings of the screens in ui/, as Compose Resources: the same names and
+  texts as app/'s res/values-sv/strings.xml had, with every placeholder
+  positional (%1$d), the only form Compose Resources fills in, and no quotes
+  around a text that keeps its outer spaces (", " in app/ is , here: Compose
+  Resources keeps quotes as text, and keeps the spaces). A string still
+  used by a screen in app/ is in both files until that screen moves too;
+  app's SharedStringsTest keeps the two texts equal.
+-->
+<resources>
+    <string name="action_back">Tillbaka</string>
+    <string name="action_cancel">Avbryt</string>
+    <string name="action_more">Fler val</string>
+    <plurals name="exercise_count">
+        <item quantity="one">%1$d övning</item>
+        <item quantity="other">%1$d övningar</item>
+    </plurals>
+    <string name="exercise_map_description">Muskler som arbetar. Primär: %1$s. Sekundär: %2$s.</string>
+    <string name="exercise_map_description_primary">Muskler som arbetar. Primär: %1$s.</string>
+    <string name="exercise_map_primary">Primär</string>
+    <string name="exercise_map_secondary">Sekundär</string>
+    <string name="input_apply_all">Gäller alla set</string>
+    <string name="input_done">Klar</string>
+    <string name="input_error_reps">Skriv ett heltal mellan 0 och 999.</string>
+    <string name="input_field_reps">Antal reps</string>
+    <string name="input_hint">Tryck på talet för att skriva.</string>
+    <string name="input_minus">−</string>
+    <string name="input_minus_reps">Minska med en rep</string>
+    <string name="input_plus">+</string>
+    <string name="input_plus_reps">Öka med en rep</string>
+    <string name="input_reps_title">Reps</string>
+    <string name="input_ruler_reps">Repslinjal</string>
+    <plurals name="input_ruler_reps_state">
+        <item quantity="one">%1$d rep</item>
+        <item quantity="other">%1$d reps</item>
+    </plurals>
+    <string name="list_separator">, </string>
+    <string name="muscle_name_abductors">utsida höft</string>
+    <string name="muscle_name_abs">mage</string>
+    <string name="muscle_name_adductors">insida lår</string>
+    <string name="muscle_name_biceps">biceps</string>
+    <string name="muscle_name_calves">vader</string>
+    <string name="muscle_name_chest">bröst</string>
+    <string name="muscle_name_forearms">underarmar</string>
+    <string name="muscle_name_front_delts">främre axlar</string>
+    <string name="muscle_name_glutes">säte</string>
+    <string name="muscle_name_hamstrings">baksida lår</string>
+    <string name="muscle_name_hip_flexors">höftböjare</string>
+    <string name="muscle_name_lats">lats</string>
+    <string name="muscle_name_lower_back">ländrygg</string>
+    <string name="muscle_name_neck">nacke</string>
+    <string name="muscle_name_obliques">sneda magmuskler</string>
+    <string name="muscle_name_quads">framsida lår</string>
+    <string name="muscle_name_rear_delts">bakre axlar</string>
+    <string name="muscle_name_side_delts">sidoaxlar</string>
+    <string name="muscle_name_traps">trapezius</string>
+    <string name="muscle_name_triceps">triceps</string>
+    <string name="muscle_name_upper_back">övre rygg</string>
+    <string name="programs_entry_active">Aktivt: %1$s</string>
+    <string name="programs_entry_hint">Rutiner på fasta veckodagar eller rullande</string>
+    <string name="programs_title">Program</string>
+    <string name="routine_add_exercise">+ Övning</string>
+    <string name="routine_clear_target_reps">Ta bort mål för reps</string>
+    <string name="routine_create">Skapa</string>
+    <plurals name="routine_days_ago">
+        <item quantity="one">för %1$d dag sedan</item>
+        <item quantity="other">för %1$d dagar sedan</item>
+    </plurals>
+    <string name="routine_delete">Radera rutin</string>
+    <string name="routine_delete_body">Rutinen raderas. Pass du har gjort från den finns kvar i historiken.</string>
+    <string name="routine_delete_confirm">Radera</string>
+    <string name="routine_delete_title">Radera rutin?</string>
+    <string name="routine_edit_target_reps">Ändra målet för reps i %1$s</string>
+    <string name="routine_empty_hint">Lägg till övningar med + Övning</string>
+    <string name="routine_error_name">Skriv ett namn på rutinen.</string>
+    <string name="routine_error_target_reps">Skriv ett heltal mellan 1 och 999.</string>
+    <string name="routine_exercise_menu">Val för %1$s</string>
+    <string name="routine_fewer_sets">Färre set av %1$s</string>
+    <string name="routine_last">Senast: %1$s</string>
+    <string name="routine_more_sets">Fler set av %1$s</string>
+    <string name="routine_move_down">Flytta ner</string>
+    <string name="routine_move_up">Flytta upp</string>
+    <string name="routine_muscles_description">Muskler: %1$s</string>
+    <string name="routine_name">Namn</string>
+    <string name="routine_never">Aldrig</string>
+    <string name="routine_new">+ Ny rutin</string>
+    <string name="routine_new_title">Ny rutin</string>
+    <string name="routine_no_target_reps">Inget mål för reps</string>
+    <string name="routine_not_found">Rutinen finns inte längre.</string>
+    <string name="routine_remove_exercise">Ta bort</string>
+    <string name="routine_rename">Byt namn</string>
+    <string name="routine_rename_title">Byt namn på rutin</string>
+    <string name="routine_sets_label">set</string>
+    <string name="routine_start">Starta</string>
+    <string name="routine_start_description">Starta %1$s</string>
+    <plurals name="routine_target_reps">
+        <item quantity="one">%1$d rep per set</item>
+        <item quantity="other">%1$d reps per set</item>
+    </plurals>
+    <string name="routine_target_reps_title">Mål för reps · %1$s</string>
+    <string name="routine_today">i dag</string>
+    <string name="routine_yesterday">i går</string>
+    <string name="routines_delete_many_body">Din träningshistorik finns kvar.</string>
+    <plurals name="routines_delete_many_days">
+        <item quantity="one">%1$d programdag som använder dem försvinner också.</item>
+        <item quantity="other">%1$d programdagar som använder dem försvinner också.</item>
+    </plurals>
+    <plurals name="routines_delete_many_title">
+        <item quantity="one">Radera %1$d rutin?</item>
+        <item quantity="other">Radera %1$d rutiner?</item>
+    </plurals>
+    <string name="routines_delete_selected">Radera valda rutiner</string>
+    <string name="routines_empty">Inga rutiner. Skapa en med + Ny rutin, eller spara ett avslutat pass som rutin från sammanfattningen eller från passets meny i historiken.</string>
+    <string name="routines_leave_selection">Avsluta urval</string>
+    <string name="routines_select">Välj</string>
+    <string name="routines_select_all">Välj alla</string>
+    <plurals name="routines_selected">
+        <item quantity="one">%1$d vald</item>
+        <item quantity="other">%1$d valda</item>
+    </plurals>
+    <string name="routines_title">Rutiner</string>
+    <string name="row_separator"> · </string>
+    <string name="summary_muscle_item">%1$s %2$s</string>
+    <string name="summary_muscle_less_than">&lt;%1$s</string>
+    <string name="workout_unit_reps">reps</string>
+</resources>

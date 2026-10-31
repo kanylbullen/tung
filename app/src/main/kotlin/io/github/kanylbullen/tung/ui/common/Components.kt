@@ -32,46 +32,6 @@ import androidx.compose.ui.res.stringResource
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.data.WorkoutSummaryRow
 
-/** The one loud button. Accent fill, 12dp corners, no elevation. */
-@Composable
-fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp),
-        shape = TungCorner,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Tung.colors.accent,
-            contentColor = Tung.colors.onAccent,
-            disabledContainerColor = Tung.colors.border,
-            disabledContentColor = Tung.colors.muted,
-        ),
-        elevation = null,
-    ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
-    }
-}
-
-/** A quieter full-width button on the raised surface. */
-@Composable
-fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp),
-        shape = TungCorner,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Tung.colors.raised,
-            contentColor = Tung.colors.text,
-            disabledContainerColor = Tung.colors.raised,
-            disabledContentColor = Tung.colors.muted,
-        ),
-        elevation = null,
-    ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
-    }
-}
-
 /**
  * A finished workout as one list row (Home's Recent, History): titled with
  * the routine it was started from, else its first two exercises, else
@@ -151,23 +111,3 @@ fun StatRow(content: @Composable androidx.compose.foundation.layout.RowScope.() 
         content = content,
     )
 }
-
-/** Text field colours on the raised surface, shared by every dialog with a text field. */
-@Composable
-fun tungFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = Tung.colors.raised,
-    unfocusedContainerColor = Tung.colors.raised,
-    focusedBorderColor = Tung.colors.muted,
-    unfocusedBorderColor = Tung.colors.border,
-    focusedTextColor = Tung.colors.text,
-    unfocusedTextColor = Tung.colors.text,
-    cursorColor = Tung.colors.accent,
-    focusedLeadingIconColor = Tung.colors.muted,
-    unfocusedLeadingIconColor = Tung.colors.muted,
-    focusedTrailingIconColor = Tung.colors.muted,
-    unfocusedTrailingIconColor = Tung.colors.muted,
-    focusedPlaceholderColor = Tung.colors.muted,
-    unfocusedPlaceholderColor = Tung.colors.muted,
-    focusedLabelColor = Tung.colors.muted,
-    unfocusedLabelColor = Tung.colors.muted,
-)

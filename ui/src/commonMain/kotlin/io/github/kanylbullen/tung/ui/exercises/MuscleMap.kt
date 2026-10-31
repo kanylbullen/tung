@@ -20,12 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.ui.resources.*
 import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.muscles.BodyMap
 import io.github.kanylbullen.tung.core.muscles.BodyPoint
@@ -63,8 +63,8 @@ fun MuscleMap(primary: Set<Muscle>, secondary: Set<Muscle>, modifier: Modifier =
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Legend(accent, stringResource(R.string.exercise_map_primary))
-            if ((secondary - primary).isNotEmpty()) Legend(faint, stringResource(R.string.exercise_map_secondary))
+            Legend(accent, stringResource(Res.string.exercise_map_primary))
+            if ((secondary - primary).isNotEmpty()) Legend(faint, stringResource(Res.string.exercise_map_secondary))
         }
     }
 }
@@ -137,9 +137,9 @@ private fun Legend(color: Color, label: String) {
 private fun mapDescription(primary: Set<Muscle>, secondary: Set<Muscle>): String {
     val primaryNames = primary.map { muscleLabel(it) }.joinToString(", ")
     return if (secondary.isEmpty()) {
-        stringResource(R.string.exercise_map_description_primary, primaryNames)
+        stringResource(Res.string.exercise_map_description_primary, primaryNames)
     } else {
-        stringResource(R.string.exercise_map_description, primaryNames, secondary.map { muscleLabel(it) }.joinToString(", "))
+        stringResource(Res.string.exercise_map_description, primaryNames, secondary.map { muscleLabel(it) }.joinToString(", "))
     }
 }
 

@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
@@ -41,7 +42,7 @@ class SessionFlowTest : FlowTest() {
         clickText(str(R.string.input_done))
         waitForDescription(str(R.string.workout_edit_weight, "80"))
 
-        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(R.string.input_field_reps), "8", str(R.string.workout_edit_reps, "8"))
+        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(Res.string.input_field_reps), "8", str(R.string.workout_edit_reps, "8"))
         waitForDescription(str(R.string.workout_edit_reps, "8"))
 
         clickDescription(str(R.string.workout_mark_done, 1))

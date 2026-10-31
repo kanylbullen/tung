@@ -1,6 +1,5 @@
 package io.github.kanylbullen.tung.ui.routines
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,16 +28,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
-import io.github.kanylbullen.tung.ui.common.appContainer
+import io.github.kanylbullen.tung.ui.resources.*
 import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -50,35 +44,23 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
  * A long press starts selection mode (issue #79): taps toggle rows, the top
  * bar selects all or deletes the selection in one `DeleteRoutines`.
  */
+/**
+ * The Routines tab: the Programs row, then every routine by last use, each
+ * with Start; a long press starts selection mode. [vm] is made by the
+ * platform (app/'s `RoutinesRoute`), which also leaves selection mode on back.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutinesScreen(
+    vm: RoutinesViewModel,
     onOpenRoutine: (String) -> Unit,
     onOpenWorkout: (String) -> Unit,
     onShowPrograms: () -> Unit,
 ) {
-    val container = appContainer()
-    val vm: RoutinesViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer {
-                RoutinesViewModel(
-                    container.routineRepository,
-                    container.workoutRepository,
-                    container.programRepository,
-                    container.commands,
-                    container.catalogueMuscles,
-                    createSavedStateHandle(),
-                )
-            }
-        }
-    )
     val state by vm.state.collectAsStateWithLifecycle()
     val confirm by vm.confirm.collectAsStateWithLifecycle()
     val now = rememberNow(intervalMillis = 60_000L)
     var creating by rememberSaveable { mutableStateOf(false) }
-
-    // Back leaves selection mode before it leaves the tab.
-    BackHandler(enabled = state.selecting) { vm.clearSelection() }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -97,10 +79,10 @@ fun RoutinesScreen(
                         containerColor = Tung.colors.background,
                         scrolledContainerColor = Tung.colors.background,
                     ),
-                    title = { Text(stringResource(R.string.routines_title)) },
+                    title = { Text(stringResource(Res.string.routines_title)) },
                     actions = {
                         TextButton(onClick = { creating = true }, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text(stringResource(R.string.routine_new), color = Tung.colors.text)
+                            Text(stringResource(Res.string.routine_new), color = Tung.colors.text)
                         }
                     },
                 )
@@ -114,7 +96,7 @@ fun RoutinesScreen(
             if (!state.loading && state.routines.isEmpty()) {
                 item(key = "empty") {
                     Text(
-                        stringResource(R.string.routines_empty),
+                        stringResource(Res.string.routines_empty),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
@@ -140,7 +122,7 @@ fun RoutinesScreen(
         DeleteRoutinesDialog(
             count = asked.ids.size,
             programDays = asked.programDays,
-            body = stringResource(R.string.routines_delete_many_body),
+            body = stringResource(Res.string.routines_delete_many_body),
             onDismiss = vm::dismissDelete,
             onConfirm = vm::confirmDelete,
         )
@@ -148,9 +130,9 @@ fun RoutinesScreen(
 
     if (creating) {
         RoutineNameDialog(
-            title = stringResource(R.string.routine_new_title),
+            title = stringResource(Res.string.routine_new_title),
             initialName = "",
-            confirmLabel = stringResource(R.string.routine_create),
+            confirmLabel = stringResource(Res.string.routine_create),
             onDismiss = { creating = false },
             onConfirm = { name ->
                 creating = false
@@ -171,10 +153,10 @@ private fun ProgramsEntry(activeProgram: String?, onClick: () -> Unit) {
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(stringResource(R.string.programs_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
+        Text(stringResource(Res.string.programs_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
         Text(
-            activeProgram?.let { stringResource(R.string.programs_entry_active, it) }
-                ?: stringResource(R.string.programs_entry_hint),
+            activeProgram?.let { stringResource(Res.string.programs_entry_active, it) }
+                ?: stringResource(Res.string.programs_entry_hint),
             style = MaterialTheme.typography.bodyMedium,
             color = Tung.colors.muted,
         )
@@ -192,18 +174,18 @@ private fun SelectionTopBar(count: Int, allSelected: Boolean, onClose: () -> Uni
         ),
         navigationIcon = {
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routines_leave_selection))
+                Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.routines_leave_selection))
             }
         },
-        title = { Text(pluralStringResource(R.plurals.routines_selected, count, count)) },
+        title = { Text(pluralStringResource(Res.plurals.routines_selected, count, count)) },
         actions = {
             if (!allSelected) {
                 TextButton(onClick = onSelectAll, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.routines_select_all), color = Tung.colors.text)
+                    Text(stringResource(Res.string.routines_select_all), color = Tung.colors.text)
                 }
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.routines_delete_selected))
+                Icon(Icons.Filled.Delete, contentDescription = stringResource(Res.string.routines_delete_selected))
             }
         },
     )
@@ -221,23 +203,23 @@ fun DeleteRoutinesDialog(count: Int, programDays: Int, body: String, onDismiss: 
         containerColor = Tung.colors.raised,
         tonalElevation = 0.dp,
         shape = TungCorner,
-        title = { Text(pluralStringResource(R.plurals.routines_delete_many_title, count, count)) },
+        title = { Text(pluralStringResource(Res.plurals.routines_delete_many_title, count, count)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(body, color = Tung.colors.muted)
                 if (programDays > 0) {
-                    Text(pluralStringResource(R.plurals.routines_delete_many_days, programDays, programDays), color = Tung.colors.muted)
+                    Text(pluralStringResource(Res.plurals.routines_delete_many_days, programDays, programDays), color = Tung.colors.muted)
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.routine_delete_confirm), color = Tung.colors.accentText)
+                Text(stringResource(Res.string.routine_delete_confirm), color = Tung.colors.accentText)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
             }
         },
     )
