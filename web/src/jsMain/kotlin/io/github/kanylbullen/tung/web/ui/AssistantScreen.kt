@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.web.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -53,7 +54,7 @@ private sealed interface AskPhase {
  * through the commands; plateaus are only shown.
  */
 @Composable
-fun AssistantScreen(container: WebContainer) {
+fun AssistantScreen(container: WebContainer, spoken: String? = null) {
     val strings = container.strings
     val ai = container.ai
     val config = ai.settings.config.collectAsState().value
@@ -78,6 +79,10 @@ fun AssistantScreen(container: WebContainer) {
         val prepared = ai.prepare(request, strings.tag) ?: return
         if (!ai.settings.firstShown || alwaysShow) phase = AskPhase.Showing(prepared) else send(prepared)
     }
+
+    // From the workout's mic: what the voice grammar did not know, asked once
+    // as a free-text workout (answered like Next workout).
+    LaunchedEffect(spoken) { spoken?.let { ask(AiRequest.FreeText(it)) } }
 
     Div({ classes("screen") }) {
         Div({ classes("topbar", "topbar-start") }) {
@@ -124,6 +129,9 @@ fun AssistantScreen(container: WebContainer) {
         }
     }
 }
+
+/** `#/assistant?ask=<words>`: the Assistant asked about what the mic heard. */
+fun assistantAskHash(text: String): String = "#/assistant?ask=" + js("encodeURIComponent")(text) as String
 
 private fun hostOf(url: String): String = url.substringAfter("://").substringBefore("/")
 
