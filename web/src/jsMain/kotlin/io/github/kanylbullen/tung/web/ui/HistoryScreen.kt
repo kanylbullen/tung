@@ -76,11 +76,18 @@ fun TopBar(container: WebContainer, account: Account, title: @Composable () -> U
         title()
         Div({ classes("actions") }) {
             Button({
-                classes("text-button")
+                classes("icon-button", "top-icon")
+                if (running) classes("spinning")
+                attr("aria-label", if (running) strings.syncing else strings.syncNow)
+                attr("title", strings.syncNow)
                 if (running) disabled()
                 onClick { container.syncInBackground() }
-            }) { Text(strings.syncNow) }
-            A(href = Route.SETTINGS.hash, attrs = { classes("text-button") }) { Text(strings.settings) }
+            }) { Icon(Icons.SYNC) }
+            A(href = Route.SETTINGS.hash, attrs = {
+                classes("icon-button", "top-icon")
+                attr("aria-label", strings.settings)
+                attr("title", strings.settings)
+            }) { Icon(Icons.SETTINGS) }
         }
     }
     Div({ classes("status"); attr("role", "status") }) {

@@ -45,3 +45,27 @@ class RoutinesModelTest {
         assertTrue(workoutInProgress(store))
     }
 }
+
+class RoutineMusclesTest {
+    @kotlin.test.Test
+    fun targetSetsWeighTheMuscles() {
+        val squat = io.github.kanylbullen.tung.core.catalogExerciseId("back_squat")
+        val curl = io.github.kanylbullen.tung.core.catalogExerciseId("barbell_curl")
+        val index = io.github.kanylbullen.tung.core.MuscleIndex.build(
+            listOf(
+                io.github.kanylbullen.tung.core.CoreExercise("back_squat", mapOf("en" to "Back squat"), "legs", "barbell", listOf("quads")),
+                io.github.kanylbullen.tung.core.CoreExercise("barbell_curl", mapOf("en" to "Curl"), "biceps", "barbell", listOf("biceps")),
+            ),
+            emptyList(),
+        )
+        val store = io.github.kanylbullen.tung.web.store.TungStore().apply {
+            routineExercises.put(io.github.kanylbullen.tung.core.sync.SyncRoutineExercise("a", "r", squat, 0, 4, null, 1), dirty = false)
+            routineExercises.put(io.github.kanylbullen.tung.core.sync.SyncRoutineExercise("b", "r", curl, 1, 3, null, 1), dirty = false)
+        }
+        val breakdown = kotlin.test.assertNotNull(io.github.kanylbullen.tung.web.routines.routineMuscles(store, index)["r"])
+        kotlin.test.assertEquals(
+            listOf(io.github.kanylbullen.tung.core.Muscle.QUADS, io.github.kanylbullen.tung.core.Muscle.BICEPS),
+            breakdown.muscles.map { it.muscle },
+        )
+    }
+}

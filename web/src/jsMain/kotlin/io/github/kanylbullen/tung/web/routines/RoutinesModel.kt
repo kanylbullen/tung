@@ -1,5 +1,9 @@
 package io.github.kanylbullen.tung.web.routines
 
+import io.github.kanylbullen.tung.core.MuscleIndex
+import io.github.kanylbullen.tung.core.muscles.ExerciseWork
+import io.github.kanylbullen.tung.core.muscles.MuscleBreakdown
+import io.github.kanylbullen.tung.core.muscles.muscleBreakdown
 import io.github.kanylbullen.tung.core.sync.SyncExercise
 import io.github.kanylbullen.tung.web.store.TungStore
 
@@ -39,3 +43,14 @@ fun routineView(store: TungStore, id: String, displayName: (SyncExercise) -> Str
 
 /** Whether a workout is in progress: a routine cannot be started then, as on the phone. */
 fun workoutInProgress(store: TungStore): Boolean = store.workouts.rows.values.any { it.row.endedAt == null && it.row.startedAt != null }
+
+/**
+ * The muscles each routine works, the phone's `routineMuscles`: core's
+ * [muscleBreakdown] over the catalogue with each exercise's target sets as
+ * its sets, keyed by routine id. A custom exercise has no muscles.
+ */
+fun routineMuscles(store: TungStore, index: MuscleIndex): Map<String, MuscleBreakdown> =
+    store.routineExercises.rows.values.map { it.row }
+        .filter { it.routineId != null }
+        .groupBy { it.routineId ?: "" }
+        .mapValues { (_, rows) -> muscleBreakdown(rows.map { ExerciseWork(it.exerciseId?.let(index::musclesOf), it.targetSets ?: 0) }) }

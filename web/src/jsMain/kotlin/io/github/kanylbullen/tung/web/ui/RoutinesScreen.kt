@@ -16,6 +16,7 @@ import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.programs.programRows
 import io.github.kanylbullen.tung.web.routines.RoutineExerciseView
+import io.github.kanylbullen.tung.web.routines.routineMuscles
 import io.github.kanylbullen.tung.web.routines.routineRows
 import io.github.kanylbullen.tung.web.routines.routineView
 import io.github.kanylbullen.tung.web.routines.workoutInProgress
@@ -53,6 +54,8 @@ fun RoutinesScreen(container: WebContainer, account: Account) {
     val busy = remember(version) { workoutInProgress(container.store) }
     val scope = rememberCoroutineScope()
     var naming by remember { mutableStateOf(false) }
+    val catalogue = container.catalogue.collectAsState().value
+    val muscles = remember(version, catalogue) { routineMuscles(container.store, catalogue.muscles) }
 
     // Selection mode (the phone's long press): null when off, else the
     // chosen ids, of which only routines that still exist count.
@@ -97,6 +100,7 @@ fun RoutinesScreen(container: WebContainer, account: Account) {
                             val on = routine.id in selected
                             Li {
                                 Label(attrs = { classes("row", "select-row") }) {
+                                    RoutineMuscles(muscles[routine.id], strings)
                                     Div({ classes("main") }) {
                                         Div({ classes("title") }) { RoutineTitle(routine.name) }
                                         Div({ classes("details", "numbers") }) { Text(strings.exerciseCount(routine.exerciseCount)) }
@@ -114,6 +118,7 @@ fun RoutinesScreen(container: WebContainer, account: Account) {
                             }
                         } else {
                             Li({ classes("row") }) {
+                                RoutineMuscles(muscles[routine.id], strings)
                                 A(href = routineHash(routine.id), attrs = { classes("main", "row-link") }) {
                                     Div({ classes("title") }) { RoutineTitle(routine.name) }
                                     Div({ classes("details", "numbers") }) { Text(strings.exerciseCount(routine.exerciseCount)) }
@@ -190,6 +195,14 @@ fun RoutineScreen(container: WebContainer, id: String) {
             onClick { scope.launch { if (container.run(Command.StartRoutine(routine.id)) is CommandResult.Done) go(Route.WORKOUT) } }
         }) { Text(strings.start) }
         if (routine.exercises.isEmpty()) P({ classes("empty") }) { Text(strings.routineEmptyHint) }
+        // The muscles the routine works, weighted by target sets: what kind of day it is, before the list.
+        val catalogue = container.catalogue.collectAsState().value
+        val breakdown = remember(version, catalogue, id) { routineMuscles(container.store, catalogue.muscles)[id] }
+        if (breakdown != null && !breakdown.isEmpty) {
+            val items = breakdown.muscles.map { strings.muscleName(it.muscle) + " " + (if (it.percent == 0) "<1%" else "${it.percent}%") }
+            MuscleMap(strings.routineMuscles(items.joinToString(", ")), "muscle-routine", heatShade(breakdown))
+            P({ classes("hint", "center") }) { Text(items.take(3).joinToString(strings.separator)) }
+        }
         Ul({ classes("routine-exercises") }) {
             routine.exercises.forEachIndexed { index, exercise ->
                 key(exercise.id) {

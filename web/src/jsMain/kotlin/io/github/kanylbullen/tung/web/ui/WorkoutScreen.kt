@@ -302,7 +302,7 @@ fun WorkoutScreen(container: WebContainer) {
                     onVoice(heard)
                 }
             }
-        }) { Span({ classes("mic-glyph"); attr("aria-hidden", "true") }) }
+        }) { Icon(Icons.MIC) }
     }
     when (val action = stickyAction(workout.completed, selectedSetId?.let(workout::indexOf), touchedIndex)) {
         is StickyAction.LogSet -> {
