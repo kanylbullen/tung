@@ -2008,17 +2008,21 @@ fallback, and only on a tap.
   platform: android|wear|web|ios, app_version, images}`, up to
   `MAX_FEEDBACK_IMAGES` (3) screenshots as base64 or data URLs, each at most
   4 MB decoded and a PNG, JPEG or WebP by its own bytes (`imageType`), stored
-  as `bytea` in `feedback_images`; at most `MAX_FEEDBACK_PER_DAY` (20) per
-  user and day (429 `too_much_feedback`), `MAX_FEEDBACK_ROWS` in all, a body
-  over 18 MB 413 before it is read. The admins list it (`GET
+  as `bytea` in `feedback_images` (with its `size`); at most
+  `MAX_FEEDBACK_PER_DAY` (20) and `MAX_FEEDBACK_BYTES_PER_DAY` (30 MB) per
+  user and day (429 `too_much_feedback`, checked under `lockUser`, and once
+  before the body is read), `MAX_FEEDBACK_ROWS` and
+  `MAX_FEEDBACK_STORED_BYTES` (2 GB) in all (503 `feedback_full`). The body
+  is read only up to 18 MB whether or not it has a Content-Length (413), and
+  at most four at once. The admins list it (`GET
   /api/v1/admin/feedback`, newest first with the open count), fetch a
   screenshot (`…/{id}/images/{imageId}`, `nosniff`), mark it resolved or
   open (`PATCH {resolved}`) and delete it; the rows go with the account
   (`ON DELETE CASCADE`). Clients: the phone's Settings → Feedback, the web's
   Settings → Send feedback (paste with Ctrl+V or pick, scaled in a canvas
   over 1.5 MB or 2000 px, `web/.../feedback/WebFeedback.kt`), and the web's
-  Server admin lists it with the screenshots as object URLs
-  (`ui/AdminFeedback.kt`). The privacy page says so. `FeedbackTest`,
+  Server admin lists it, fetching a row's screenshots as object URLs only
+  on "Show screenshots" (`ui/AdminFeedback.kt`). The privacy page says so. `FeedbackTest`,
   `WebFeedbackTest`, `FeedbackFlowTest`.
 - **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST
   /api/v1/link/start` (write token) gives a six-digit code valid ten minutes,

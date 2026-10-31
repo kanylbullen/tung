@@ -20,6 +20,7 @@ CREATE TABLE feedback_images (
     feedback_id  text    NOT NULL REFERENCES feedback (id) ON DELETE CASCADE,
     position     integer NOT NULL,
     content_type text    NOT NULL,  -- image/png | image/jpeg | image/webp, read from the bytes
+    size         integer NOT NULL,  -- bytes of data, for the storage budgets without reading it
     data         bytea   NOT NULL
 );
 CREATE INDEX feedback_images_by_feedback ON feedback_images (feedback_id, position);

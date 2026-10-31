@@ -8,7 +8,12 @@ import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.OutgoingContent
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.writeFully
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
@@ -140,6 +145,40 @@ class FeedbackTest {
         val over = send(token, """{"kind": "idea", "message": "one more", "platform": "web"}""")
         assertEquals(HttpStatusCode.TooManyRequests, over.status)
         assertEquals("too_much_feedback", over.errorCode())
+    }
+
+    @Test
+    fun aBodyWithoutALengthIsStillCutOff() = feedbackTest {
+        val token = client.register()
+        val response = client.post("/api/v1/feedback") {
+            bearerAuth(token)
+            setBody(object : OutgoingContent.WriteChannelContent() {
+                override val contentType = ContentType.Application.Json
+                override val contentLength: Long? = null
+                override suspend fun writeTo(channel: ByteWriteChannel) {
+                    channel.writeFully("""{"kind":"bug","platform":"web","message":"""".toByteArray())
+                    val chunk = ByteArray(1024 * 1024) { 'a'.code.toByte() }
+                    repeat(20) { channel.writeFully(chunk) }
+                    channel.writeFully("\"}".toByteArray())
+                }
+            })
+        }
+        assertEquals(HttpStatusCode.PayloadTooLarge, response.status)
+        assertEquals("image_too_large", response.errorCode())
+    }
+
+    @Test
+    fun aDayHasAByteBudgetToo() = feedbackTest {
+        val token = client.register()
+        val big = "\"${b64(png + ByteArray(MAX_FEEDBACK_IMAGE_BYTES - png.size))}\""
+        val three = listOf(big, big, big).joinToString()
+        // 12 MB a send: two fit in the day's 30 MB, the third does not.
+        repeat(2) {
+            assertEquals(HttpStatusCode.Created, send(token, """{"kind": "bug", "message": "big $it", "platform": "web", "images": [$three]}""").status)
+        }
+        val over = send(token, """{"kind": "bug", "message": "big 3", "platform": "web", "images": [$three]}""")
+        assertEquals(HttpStatusCode.TooManyRequests, over.status)
+        assertEquals(HttpStatusCode.Created, send(token, """{"kind": "bug", "message": "words only", "platform": "web"}""").status, "words still fit")
     }
 
     @Test

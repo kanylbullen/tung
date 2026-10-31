@@ -51,10 +51,13 @@ class FeedbackViewModel(private val account: SyncAccount, private val appVersion
 
     fun setKind(kind: FeedbackKind) = form.update { it.copy(kind = kind) }
 
-    fun setMessage(text: String) = form.update { it.copy(message = text.take(MAX_FEEDBACK_MESSAGE), outcome = null, unreadable = false) }
+    fun setMessage(text: String) = form.update {
+        if (it.sending) it else it.copy(message = text.take(MAX_FEEDBACK_MESSAGE), outcome = null, unreadable = false)
+    }
 
     /** The screenshots the picker gave, read by the screen; a null is a file that was not an image. */
     fun addScreenshots(read: List<Screenshot?>) = form.update { current ->
+        if (current.sending) return@update current
         val room = MAX_FEEDBACK_SCREENSHOTS - current.screenshots.size
         current.copy(
             screenshots = current.screenshots + read.filterNotNull().take(room),
@@ -64,6 +67,7 @@ class FeedbackViewModel(private val account: SyncAccount, private val appVersion
     }
 
     fun removeScreenshot(index: Int) = form.update { current ->
+        if (current.sending) return@update current
         current.copy(screenshots = current.screenshots.filterIndexed { i, _ -> i != index })
     }
 

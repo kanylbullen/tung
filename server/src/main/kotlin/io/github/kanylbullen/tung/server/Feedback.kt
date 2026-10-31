@@ -5,6 +5,12 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.contentLength
 import io.ktor.server.request.receive
+import io.ktor.server.request.receiveChannel
+import io.ktor.utils.io.readRemaining
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.io.readByteArray
+import kotlinx.serialization.SerializationException
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
@@ -29,14 +35,23 @@ const val MAX_FEEDBACK_IMAGE_BYTES = 4 * 1024 * 1024
 const val MAX_FEEDBACK_PER_DAY = 20
 const val FEEDBACK_WINDOW_MILLIS = 24 * 60 * 60 * 1000L
 
+/** What one user's screenshots may add up to in [FEEDBACK_WINDOW_MILLIS]; more is 429 `too_much_feedback`. */
+const val MAX_FEEDBACK_BYTES_PER_DAY = 30L * 1024 * 1024
+
 /** The most rows kept: past it the server answers 503 `feedback_full` rather than grow without end. */
 const val MAX_FEEDBACK_ROWS = 10_000
+
+/** The most screenshot bytes kept in all, the same 503: the disk is the training data's first. */
+const val MAX_FEEDBACK_STORED_BYTES = 2L * 1024 * 1024 * 1024
+
+/** Uploads read at once: each holds its body, its base64 and its bytes in memory. */
+private const val MAX_FEEDBACK_UPLOADS = 4
 
 /** The most an admin listing carries, newest first. */
 const val MAX_FEEDBACK_LISTED = 500
 
-/** A body bigger than this is refused before it is read: three screenshots in base64 and the text. */
-private const val MAX_FEEDBACK_BODY_BYTES = 18L * 1024 * 1024
+/** A body bigger than this is refused while it is read, whatever Content-Length says: three screenshots in base64 and the text. */
+const val MAX_FEEDBACK_BODY_BYTES = 18L * 1024 * 1024
 
 val FEEDBACK_KINDS = setOf("bug", "idea")
 val FEEDBACK_PLATFORMS = setOf("android", "wear", "web", "ios")
@@ -101,20 +116,12 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
 
         val now = clock()
         val id = UUID.randomUUID().toString()
+        val bytes = images.sumOf { it.bytes.size.toLong() }
         db.tx {
+            // One user's sends one at a time, so two at once cannot both pass the day's limit.
+            lockUser(principal.userId)
             val connection = connection.connection as Connection
-            val total = connection.count("SELECT count(*) FROM feedback")
-            if (total >= MAX_FEEDBACK_ROWS) {
-                throw ApiException(HttpStatusCode.ServiceUnavailable, "feedback_full", "Feedback is full for now. Try again later.")
-            }
-            val recent = connection.prepareStatement("SELECT count(*) FROM feedback WHERE user_id = ? AND created_at > ?").use {
-                it.setString(1, principal.userId)
-                it.setLong(2, now - FEEDBACK_WINDOW_MILLIS)
-                it.executeQuery().use { rows -> rows.next(); rows.getInt(1) }
-            }
-            if (recent >= MAX_FEEDBACK_PER_DAY) {
-                throw ApiException(HttpStatusCode.TooManyRequests, "too_much_feedback", "That is a lot of feedback for one day. Try again tomorrow.")
-            }
+            checkBudgets(connection, principal.userId, now, bytes)
             connection.prepareStatement(
                 "INSERT INTO feedback (id, user_id, kind, message, platform, app_version, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             ).use {
@@ -129,18 +136,50 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
             }
             images.forEachIndexed { position, image ->
                 connection.prepareStatement(
-                    "INSERT INTO feedback_images (id, feedback_id, position, content_type, data) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO feedback_images (id, feedback_id, position, content_type, size, data) VALUES (?, ?, ?, ?, ?, ?)",
                 ).use {
                     it.setString(1, UUID.randomUUID().toString())
                     it.setString(2, id)
                     it.setInt(3, position)
                     it.setString(4, image.contentType)
-                    it.setBytes(5, image.bytes)
+                    it.setInt(5, image.bytes.size)
+                    it.setBytes(6, image.bytes)
                     it.executeUpdate()
                 }
             }
         }
         return FeedbackCreated(id)
+    }
+
+    /**
+     * The limits before a body is read: a user over the day's count or bytes,
+     * or a full table, is refused without the server holding the upload.
+     */
+    suspend fun precheck(principal: TokenPrincipal) {
+        db.tx { checkBudgets(connection.connection as Connection, principal.userId, clock(), 0) }
+    }
+
+    private fun checkBudgets(connection: Connection, userId: String, now: Long, adding: Long) {
+        val (rows, stored) = connection.prepareStatement(
+            "SELECT (SELECT count(*) FROM feedback), (SELECT coalesce(sum(size), 0) FROM feedback_images)",
+        ).use { it.executeQuery().use { r -> r.next(); r.getInt(1) to r.getLong(2) } }
+        if (rows >= MAX_FEEDBACK_ROWS || stored + adding > MAX_FEEDBACK_STORED_BYTES) {
+            throw ApiException(HttpStatusCode.ServiceUnavailable, "feedback_full", "Feedback is full for now. Try again later.")
+        }
+        val (recent, recentBytes) = connection.prepareStatement(
+            """
+            SELECT count(*), coalesce(sum(i.bytes), 0)
+            FROM feedback f LEFT JOIN (SELECT feedback_id, sum(size) AS bytes FROM feedback_images GROUP BY feedback_id) i ON i.feedback_id = f.id
+            WHERE f.user_id = ? AND f.created_at > ?
+            """.trimIndent(),
+        ).use {
+            it.setString(1, userId)
+            it.setLong(2, now - FEEDBACK_WINDOW_MILLIS)
+            it.executeQuery().use { r -> r.next(); r.getInt(1) to r.getLong(2) }
+        }
+        if (recent >= MAX_FEEDBACK_PER_DAY || recentBytes + adding > MAX_FEEDBACK_BYTES_PER_DAY) {
+            throw ApiException(HttpStatusCode.TooManyRequests, "too_much_feedback", "That is a lot of feedback for one day. Try again tomorrow.")
+        }
     }
 
     suspend fun list(principal: TokenPrincipal): FeedbackList {
@@ -179,7 +218,7 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
             }
             if (rows.isNotEmpty()) {
                 connection.prepareStatement(
-                    "SELECT id, feedback_id, content_type, octet_length(data) AS size FROM feedback_images WHERE feedback_id = ANY (?) ORDER BY feedback_id, position",
+                    "SELECT id, feedback_id, content_type, size FROM feedback_images WHERE feedback_id = ANY (?) ORDER BY feedback_id, position",
                 ).use { statement ->
                     statement.setArray(1, connection.createArrayOf("text", rows.map { it.id }.toTypedArray()))
                     statement.executeQuery().use { result ->
@@ -190,7 +229,9 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
                     }
                 }
             }
-            val open = connection.count("SELECT count(*) FROM feedback WHERE resolved_at IS NULL")
+            val open = connection.prepareStatement("SELECT count(*) FROM feedback WHERE resolved_at IS NULL").use {
+                it.executeQuery().use { r -> r.next(); r.getInt(1) }
+            }
             FeedbackList(rows.map { it.copy(images = images[it.id].orEmpty()) }, open)
         }
     }
@@ -234,9 +275,6 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
         }
     }
 
-    private fun Connection.count(sql: String): Int =
-        prepareStatement(sql).use { it.executeQuery().use { rows -> rows.next(); rows.getInt(1) } }
-
     private fun decodeImage(encoded: String): FeedbackImage {
         // A data URL is taken too, since that is what a browser hands over.
         val payload = encoded.substringAfter("base64,", encoded).trim()
@@ -268,14 +306,36 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
     }
 }
 
-/** `POST /feedback` for any signed-in user (a write token), behind the bearer token. */
+private val uploads = Semaphore(MAX_FEEDBACK_UPLOADS)
+
+private fun bodyTooLarge() =
+    ApiException(HttpStatusCode.PayloadTooLarge, "image_too_large", "The feedback is too large. Send fewer or smaller screenshots.")
+
+/**
+ * `POST /feedback` for any signed-in user (a write token), behind the bearer
+ * token. The limits are checked before the body is read, at most
+ * [MAX_FEEDBACK_UPLOADS] bodies are held at once, and a body is read only up
+ * to [MAX_FEEDBACK_BODY_BYTES], with or without a Content-Length.
+ */
 fun Route.feedbackRoutes(store: FeedbackStore) {
     post("/feedback") {
+        val principal = call.user()
         val length = call.request.contentLength()
-        if (length != null && length > MAX_FEEDBACK_BODY_BYTES) {
-            throw ApiException(HttpStatusCode.PayloadTooLarge, "image_too_large", "The feedback is too large. Send fewer or smaller screenshots.")
+        if (length != null && length > MAX_FEEDBACK_BODY_BYTES) throw bodyTooLarge()
+        store.precheck(principal)
+        val created = uploads.withPermit {
+            val bytes = call.receiveChannel().readRemaining(MAX_FEEDBACK_BODY_BYTES + 1).readByteArray()
+            if (bytes.size > MAX_FEEDBACK_BODY_BYTES) throw bodyTooLarge()
+            val input = try {
+                ApiJson.decodeFromString(FeedbackInput.serializer(), bytes.decodeToString())
+            } catch (e: SerializationException) {
+                throw badRequest("The body is not the feedback JSON.")
+            } catch (e: IllegalArgumentException) {
+                throw badRequest("The body is not the feedback JSON.")
+            }
+            store.create(principal, input)
         }
-        call.respond(HttpStatusCode.Created, store.create(call.user(), call.receive()))
+        call.respond(HttpStatusCode.Created, created)
     }
 }
 

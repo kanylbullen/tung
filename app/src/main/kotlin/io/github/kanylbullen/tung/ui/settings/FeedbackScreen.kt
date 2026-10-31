@@ -68,8 +68,13 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenAccount: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val form = state.form
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_FEEDBACK_SCREENSHOTS)) { uris ->
+    // As many as there is room for: the multiple picker needs at least two, so one left is the single picker.
+    val room = MAX_FEEDBACK_SCREENSHOTS - form.screenshots.size
+    val pickMany = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(room.coerceAtLeast(2))) { uris ->
         if (uris.isNotEmpty()) scope.launch { vm.addScreenshots(uris.map { readScreenshot(context, it) }) }
+    }
+    val pickOne = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) scope.launch { vm.addScreenshots(listOf(readScreenshot(context, uri))) }
     }
 
     SettingsPage(title = stringResource(R.string.settings_group_feedback), onBack = onBack) {
@@ -89,6 +94,7 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenAccount: () -> Unit) {
                     onValueChange = vm::setMessage,
                     label = { Text(stringResource(R.string.feedback_message)) },
                     minLines = 5,
+                    enabled = !form.sending,
                     shape = TungCorner,
                     colors = tungFieldColors(),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
@@ -105,6 +111,7 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenAccount: () -> Unit) {
                                 )
                                 IconButton(
                                     onClick = { vm.removeScreenshot(index) },
+                                    enabled = !form.sending,
                                     modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(32.dp).background(Tung.colors.background, CircleShape),
                                 ) {
                                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.feedback_remove_screenshot, index + 1))
@@ -117,7 +124,10 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenAccount: () -> Unit) {
                 SecondaryButton(
                     text = stringResource(R.string.feedback_add_screenshot),
                     enabled = form.canAddScreenshot && !form.sending,
-                    onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    onClick = {
+                        val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        if (room >= 2) pickMany.launch(request) else pickOne.launch(request)
+                    },
                 )
                 PrimaryButton(
                     text = stringResource(if (form.sending) R.string.feedback_sending else R.string.feedback_send),

@@ -29,8 +29,8 @@ import org.w3c.dom.url.URL
 
 /**
  * Server admin's feedback: newest first, each with who sent it, from where,
- * its words and its screenshots (fetched with the token, so they are object
- * URLs, opened full size in a new tab on a click), and Mark resolved /
+ * its words and its screenshots (fetched with the token on "Show
+ * screenshots", so they are object URLs, opened full size in a new tab on a click), and Mark resolved /
  * Reopen and Delete. A resolved one is muted.
  */
 @Composable
@@ -120,9 +120,17 @@ private fun FeedbackRow(item: FeedbackItem, container: WebContainer, account: Ac
     P({ classes("feedback-email") }) { Text(item.email) }
     P({ classes("feedback-message") }) { Text(item.message) }
     if (item.images.isNotEmpty()) {
-        Div({ classes("thumbs") }) {
-            item.images.forEachIndexed { index, image ->
-                key(image.id) { Screenshot(container, account, item.id, image.id, index + 1) }
+        // Fetched only when asked for: up to 500 rows of full-size screenshots would be a lot of memory.
+        var shown by remember(item.id) { mutableStateOf(false) }
+        if (!shown) {
+            Div({ classes("setting-buttons") }) {
+                Button({ classes("text-button"); onClick { shown = true } }) { Text(strings.showScreenshots(item.images.size)) }
+            }
+        } else {
+            Div({ classes("thumbs") }) {
+                item.images.forEachIndexed { index, image ->
+                    key(image.id) { Screenshot(container, account, item.id, image.id, index + 1) }
+                }
             }
         }
     }

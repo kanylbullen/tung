@@ -206,6 +206,7 @@ interface Strings {
     fun screenshotAlt(number: Int): String
     fun removeScreenshot(number: Int): String
     fun openScreenshot(number: Int): String
+    fun showScreenshots(count: Int): String
     val send: String
     val sending: String
     val feedbackSent: String
@@ -471,6 +472,7 @@ object English : Strings {
     override fun screenshotAlt(number: Int): String = "Screenshot $number"
     override fun removeScreenshot(number: Int): String = "Remove screenshot $number"
     override fun openScreenshot(number: Int): String = "Open screenshot $number"
+    override fun showScreenshots(count: Int): String = if (count == 1) "Show screenshot" else "Show $count screenshots"
     override val send = "Send"
     override val sending = "Sending…"
     override val feedbackSent = "Thanks. Your feedback has reached us."
@@ -744,6 +746,7 @@ object Swedish : Strings {
     override fun screenshotAlt(number: Int): String = "Skärmdump $number"
     override fun removeScreenshot(number: Int): String = "Ta bort skärmdump $number"
     override fun openScreenshot(number: Int): String = "Öppna skärmdump $number"
+    override fun showScreenshots(count: Int): String = if (count == 1) "Visa skärmdump" else "Visa $count skärmdumpar"
     override val send = "Skicka"
     override val sending = "Skickar…"
     override val feedbackSent = "Tack. Din feedback har kommit fram."

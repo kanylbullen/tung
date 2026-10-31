@@ -54,12 +54,18 @@ fun FeedbackScreen(container: WebContainer, account: Account) {
     val images = remember { mutableStateListOf<String>() }
     var sending by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<Pair<String, Boolean>?>(null) } // text, is it an error
+    // Screenshots being read: counted at once, so two quick pastes cannot pass the limit together.
+    var pending by remember { mutableStateOf(0) }
 
     fun add(blobs: List<Blob>) {
+        if (sending) return
+        val taken = blobs.take((MAX_FEEDBACK_IMAGES - images.size - pending).coerceAtLeast(0))
+        if (taken.isEmpty()) return
+        pending += taken.size
         scope.launch {
-            for (blob in blobs) {
-                if (images.size >= MAX_FEEDBACK_IMAGES) break
+            for (blob in taken) {
                 val url = screenshotDataUrl(blob)
+                pending--
                 if (url == null) status = strings.feedbackUnreadable to true else images.add(url)
             }
         }
@@ -108,6 +114,7 @@ fun FeedbackScreen(container: WebContainer, account: Account) {
         Label(forId = "feedback-message", attrs = { classes("feedback-label") }) { Text(strings.feedbackMessageLabel) }
         TextArea(value = message) {
             id("feedback-message")
+            if (sending) disabled()
             classes("feedback-text")
             maxLength(MAX_FEEDBACK_MESSAGE)
             attr("rows", "6")
@@ -122,6 +129,7 @@ fun FeedbackScreen(container: WebContainer, account: Account) {
                         Img(src = url, alt = strings.screenshotAlt(index + 1))
                         Button({
                             classes("thumb-remove")
+                            if (sending) disabled()
                             attr("aria-label", strings.removeScreenshot(index + 1))
                             onClick { images.removeAt(index) }
                         }) { Text("×") }
@@ -149,18 +157,20 @@ fun FeedbackScreen(container: WebContainer, account: Account) {
         Div({ classes("setting-buttons", "pad") }) {
             Button({
                 classes("secondary")
-                if (images.size >= MAX_FEEDBACK_IMAGES) disabled()
+                if (sending || images.size + pending >= MAX_FEEDBACK_IMAGES) disabled()
                 onClick { document.getElementById(FILE_INPUT_ID).asDynamic().click() }
             }) { Text(strings.addScreenshot) }
             Button({
                 classes("accent-button")
-                if (sending || message.isBlank()) disabled()
+                if (sending || pending > 0 || message.isBlank()) disabled()
                 onClick { send(scope, container, account, kind, message, images.toList()) { sendingNow, result ->
                     sending = sendingNow
                     if (result == FeedbackResult.SENT) {
                         message = ""
                         images.clear()
                     }
+                    // As a 401 during sync: the session is over, so the page goes to sign-in.
+                    if (result == FeedbackResult.SIGNED_OUT) scope.launch { container.signOut() }
                     status = result?.let { feedbackStatus(it, container) }
                 } }
             }) { Text(if (sending) strings.sending else strings.send) }
