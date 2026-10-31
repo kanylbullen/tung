@@ -13,8 +13,8 @@ import io.github.kanylbullen.tung.core.command.CommandIds
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.ExerciseRef
 import io.github.kanylbullen.tung.web.WebContainer
-import io.github.kanylbullen.tung.web.programs.programRows
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
+import io.github.kanylbullen.tung.web.programs.programRows
 import io.github.kanylbullen.tung.web.routines.RoutineExerciseView
 import io.github.kanylbullen.tung.web.routines.routineRows
 import io.github.kanylbullen.tung.web.routines.routineView
@@ -54,37 +54,94 @@ fun RoutinesScreen(container: WebContainer, account: Account) {
     val scope = rememberCoroutineScope()
     var naming by remember { mutableStateOf(false) }
 
+    // Selection mode (the phone's long press): null when off, else the
+    // chosen ids, of which only routines that still exist count.
+    var selection by remember { mutableStateOf<Set<String>?>(null) }
+    val selected = selection?.let { chosen -> rows.map { it.id }.filter { it in chosen }.toSet() }
+    var deleting by remember { mutableStateOf(false) }
+
     Div({ classes("screen") }) {
-        TopBar(container, account) { H1 { Text(strings.routines) } }
-        val programs = remember(version) { programRows(container.store) }
-        A(href = Route.PROGRAMS.hash, attrs = { classes("card", "card-link") }) {
-            Div({ classes("card-title") }) { Text(strings.programs) }
-            P({ classes("hint") }) { Text(programs.firstOrNull { it.isActive }?.let { strings.programsActive(it.name) } ?: strings.programsHint) }
+        if (selected == null) {
+            TopBar(container, account) { H1 { Text(strings.routines) } }
+            val programs = remember(version) { programRows(container.store) }
+            A(href = Route.PROGRAMS.hash, attrs = { classes("card", "card-link") }) {
+                Div({ classes("card-title") }) { Text(strings.programs) }
+                P({ classes("hint") }) { Text(programs.firstOrNull { it.isActive }?.let { strings.programsActive(it.name) } ?: strings.programsHint) }
+            }
+            Div({ classes("action-row") }) {
+                Button({ classes("secondary"); onClick { naming = true } }) { Text(strings.newRoutine) }
+                if (rows.isNotEmpty()) Button({ classes("secondary"); onClick { selection = emptySet() } }) { Text(strings.select) }
+            }
+        } else {
+            Div({ classes("topbar", "topbar-start", "selection-bar") }) {
+                Button({ classes("text-button"); attr("aria-label", strings.leaveSelection); onClick { selection = null } }) { Text("✕") }
+                H1({ classes("detail-title") }) { Text(strings.selectedCount(selected.size)) }
+                if (selected.size < rows.size) {
+                    Button({ classes("text-button"); onClick { selection = rows.map { it.id }.toSet() } }) { Text(strings.selectAll) }
+                }
+                Button({
+                    classes("text-button", "danger-text")
+                    attr("aria-label", strings.deleteSelected)
+                    if (selected.isEmpty()) disabled()
+                    onClick { deleting = true }
+                }) { Text(strings.delete) }
+            }
         }
-        Button({ classes("secondary", "wide"); onClick { naming = true } }) { Text(strings.newRoutine) }
         if (rows.isEmpty()) {
             P({ classes("empty") }) { Text(strings.routinesAllEmpty) }
         } else {
             Ul({ classes("rows") }) {
                 rows.forEach { routine ->
                     key(routine.id) {
-                        Li({ classes("row") }) {
-                            A(href = routineHash(routine.id), attrs = { classes("main", "row-link") }) {
-                                Div({ classes("title") }) { RoutineTitle(routine.name) }
-                                Div({ classes("details", "numbers") }) { Text(strings.exerciseCount(routine.exerciseCount)) }
-                            }
-                            Button({
-                                classes("secondary", "start")
-                                if (busy || routine.exerciseCount == 0) disabled()
-                                onClick {
-                                    scope.launch {
-                                        if (container.run(Command.StartRoutine(routine.id)) is CommandResult.Done) go(Route.WORKOUT)
+                        if (selected != null) {
+                            val on = routine.id in selected
+                            Li {
+                                Label(attrs = { classes("row", "select-row") }) {
+                                    Div({ classes("main") }) {
+                                        Div({ classes("title") }) { RoutineTitle(routine.name) }
+                                        Div({ classes("details", "numbers") }) { Text(strings.exerciseCount(routine.exerciseCount)) }
+                                    }
+                                    Input(InputType.Checkbox) {
+                                        checked(on)
+                                        // Read the state at the click, not the composition's copy:
+                                        // two quick clicks would otherwise keep only the second.
+                                        onChange {
+                                            val now = selection ?: emptySet()
+                                            selection = if (routine.id in now) now - routine.id else now + routine.id
+                                        }
                                     }
                                 }
-                            }) { Text(strings.start) }
+                            }
+                        } else {
+                            Li({ classes("row") }) {
+                                A(href = routineHash(routine.id), attrs = { classes("main", "row-link") }) {
+                                    Div({ classes("title") }) { RoutineTitle(routine.name) }
+                                    Div({ classes("details", "numbers") }) { Text(strings.exerciseCount(routine.exerciseCount)) }
+                                }
+                                Button({
+                                    classes("secondary", "start")
+                                    if (busy || routine.exerciseCount == 0) disabled()
+                                    onClick {
+                                        scope.launch {
+                                            if (container.run(Command.StartRoutine(routine.id)) is CommandResult.Done) go(Route.WORKOUT)
+                                        }
+                                    }
+                                }) { Text(strings.start) }
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+    if (deleting && selected != null) {
+        val days = remember(version, selected) { container.store.programDays.rows.values.count { it.row.routineId in selected } }
+        val body = listOf(strings.deleteManyBody) + (if (days > 0) listOf(strings.deleteManyDays(days)) else emptyList())
+        Dialog(strings.deleteManyTitle(selected.size), body.joinToString(" "), strings.delete, strings.cancel, onCancel = { deleting = false }) {
+            deleting = false
+            val ids = selected.toList()
+            scope.launch {
+                if (container.run(Command.DeleteRoutines(ids)) is CommandResult.Done) selection = null
             }
         }
     }

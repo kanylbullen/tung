@@ -501,6 +501,7 @@ fun Picker(container: WebContainer, onClose: () -> Unit, onPick: (String) -> Uni
     var query by remember { mutableStateOf("") }
     val order = remember { browseNameOrder(container.locale) }
     val available = container.preferences.equipment.collectAsState().value
+    var creating by remember { mutableStateOf(false) }
     val rows = remember(query, available) {
         pickerRows(container.store, query, { exerciseDisplayName(it, container.catalogueNames, strings.tag) }, order, available)
     }
@@ -529,6 +530,13 @@ fun Picker(container: WebContainer, onClose: () -> Unit, onPick: (String) -> Uni
                     }
                 }
             }
+        }
+        Button({ classes("secondary", "wide"); onClick { creating = true } }) { Text(strings.createExercise) }
+    }
+    if (creating) {
+        CreateExerciseDialog(container, query.trim(), onCancel = { creating = false }) { id ->
+            creating = false
+            onPick(id)
         }
     }
 }
