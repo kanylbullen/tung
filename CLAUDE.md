@@ -270,7 +270,7 @@ column). All in `app/.../ui/settings/`:
 
 | Group | Route | Summary | What is there |
 |---|---|---|---|
-| Account | `settings/account` | "Signed in as …" / "Not signed in" | `AccountScreen` + `AccountViewModel`: the server (default, see "Sync", "Account"), sign-in, sync status, Sync now, Sign out |
+| Account | `settings/account` | "Signed in as …" / "Not signed in" | `AccountScreen` + `AccountViewModel`: the server (default, see "Sync", "Account"), sign-in, sync status, Sync now, Sign out, and "Delete account…" (see "Server", "Account deletion") |
 | Devices | `settings/devices` | the push transport, or "Link a watch once signed in" | `DevicesScreen` + `DevicesViewModel`: "Link a watch" and push (needs an account; signed out, a hint and "Go to Account") |
 | Training | `settings/training` | "Default rest 1:30 · kg" | `TrainingScreen`: the default rest (−/+ 30 s, 0–300 s), the unit (kg), and "My equipment" (`EquipmentSection`, issue #65) |
 | Assistant | `settings/assistant` | the model, or "Not set up" | `AiSection` |
@@ -2026,6 +2026,25 @@ fallback, and only on a tap.
   Server admin lists it, fetching a row's screenshots as object URLs only
   on "Show screenshots" (`ui/AdminFeedback.kt`). The privacy page says so. `FeedbackTest`,
   `WebFeedbackTest`, `FeedbackFlowTest`.
+- **Account deletion** (`Accounts.deleteAccount`, `DELETE /api/v1/me {email}`;
+  Google Play requires it in the app and on the web): one transaction under
+  `lockUser` deletes the `users` row, and `ON DELETE CASCADE` takes every
+  table of the user's (training data, tokens, link codes, push endpoints,
+  OAuth codes and refresh tokens, feedback and its images); a table added
+  later must cascade too. Only a token named `session` (a sign-in from an app
+  or the web) may, any other is 403 `session_required`, so an API, watch or
+  MCP token can never delete an account (`POST /tokens` refuses the names
+  the server keeps, `session`, `watch` and `mcp:…`, as 400 `reserved_name`,
+  so no token can mint itself a session), and the body repeats the account's
+  email (no case, trimmed; another is 400 `email_mismatch`). Clients: the
+  phone's Settings → Account → "Delete account…" (`SyncAccount.deleteAccount`:
+  then signed out like Sign out but with no logout, the push registration
+  forgotten here, local data kept),
+  the web's Settings (`WebContainer.deleteAccount`, the log kept in the
+  browser), and `/delete-account` on the site (`site/delete-account.html`,
+  the link Play's Data safety asks for: the steps, the email way, what goes
+  and what stays). `DeleteAccountTest`, `DeleteAccountFlowTest`,
+  `WebAuthDeleteTest`.
 - **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST
   /api/v1/link/start` (write token) gives a six-digit code valid ten minutes,
   unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)
@@ -2229,10 +2248,11 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   `:web:jsBrowserDistribution` and sets `TUNG_WEB_DIR=/app/web`;
   `routes/SiteRoutes.kt` serves that directory at `/app/` (every path under
   it that is not a file is the shell, `sw.js` and `index.html` revalidated)
-  and the landing page at `/` and the privacy page at `/privacy` (also the
-  policy link Play asks for; `server/src/main/resources/site/`, one
+  and the landing page at `/`, the privacy page at `/privacy` (also the
+  policy link Play asks for) and `/delete-account` (Play's account-deletion
+  link; see "Account deletion"); `server/src/main/resources/site/`, one
   `site.css` and `site.js` (the language: `?lang=`, remembered, else the
-  browser's) for both, the share image `og.png` and the app's screens drawn
+  browser's) for all three, the share image `og.png` and the app's screens drawn
   from `SiteScreensFlowTest` in the light and the dark theme, shown by the
   page's theme, which follows the system until `theme.js`'s toggle picks one; `index.html`,
   English with Swedish swapped in by the browser's language, its font and
@@ -2243,7 +2263,7 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   (`defaultServerUrl()`); elsewhere `DEFAULT_SERVER_URL`. GitHub Pages
   (`.github/workflows/web-pages.yml`, `https://kanylbullen.github.io/tung/`)
   publishes the same site from `main` as well. `OpenApiCoverageTest` leaves
-  `/`, `/privacy`, `/site` and `/app` out: pages, not API. The site has no server of its
+  `/`, `/privacy`, `/delete-account`, `/site` and `/app` out: pages, not API. The site has no server of its
   own: everything relative, so it works under any path.
 
 ## Building

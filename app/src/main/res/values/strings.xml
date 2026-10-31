@@ -366,6 +366,15 @@
     <string name="sync_signed_in_as">Signed in as %1$s</string>
     <string name="sync_sign_out">Sign out</string>
     <string name="sync_sign_out_hint">Signing out keeps your training on this phone.</string>
+    <string name="sync_delete_account">Delete account…</string>
+    <string name="sync_delete_title">Delete your account?</string>
+    <string name="sync_delete_body">This deletes your account on %1$s and everything stored there: workouts, routines, programs and feedback. The workouts on this phone are kept. It cannot be undone.</string>
+    <string name="sync_delete_email">Type your email to confirm</string>
+    <string name="sync_delete_confirm">Delete account</string>
+    <string name="sync_delete_done">Your account is deleted. The workouts on this phone are kept.</string>
+    <string name="sync_delete_error_email">That is not this account\'s email.</string>
+    <string name="sync_delete_error_not_allowed">This sign-in cannot delete the account. Sign out, sign in again and try once more.</string>
+    <string name="sync_delete_error_old_server">This server cannot delete accounts yet. Ask whoever runs it.</string>
     <!-- Push: how the server wakes the phone when another device or an assistant changes something -->
     <string name="push_status_fcm">Push: FCM</string>
     <!-- The UnifiedPush distributor app's name, e.g. "Push: ntfy" -->

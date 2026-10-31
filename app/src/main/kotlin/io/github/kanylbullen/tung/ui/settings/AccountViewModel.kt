@@ -11,6 +11,7 @@ import io.github.kanylbullen.tung.sync.AccountState
 import io.github.kanylbullen.tung.sync.AuthFailure
 import io.github.kanylbullen.tung.sync.AuthMethodsResult
 import io.github.kanylbullen.tung.sync.AuthResult
+import io.github.kanylbullen.tung.sync.DeleteAccountOutcome
 import io.github.kanylbullen.tung.sync.SyncAccount
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,12 +45,23 @@ data class SignInForm(
     val editingServer: Boolean = false,
 )
 
+/** "Delete account…" open: the email typed to confirm, and what the last try gave. */
+data class AccountDeletion(
+    val email: String = "",
+    val busy: Boolean = false,
+    @StringRes val error: Int? = null,
+)
+
 data class AccountUiState(
     /** Null until the account has been read. */
     val account: AccountState? = null,
     val form: SignInForm = SignInForm(),
     /** The server to use when none is stored: `BuildConfig.DEFAULT_SERVER_URL`. */
     val defaultServerUrl: String = "",
+    /** The deletion dialog, while it is open. */
+    val deletion: AccountDeletion? = null,
+    /** The account was just deleted: said above the sign-in form. */
+    val deleted: Boolean = false,
 )
 
 /**
@@ -61,8 +73,12 @@ data class AccountUiState(
 class AccountViewModel(private val account: SyncAccount, private val defaultServerUrl: String) : ViewModel() {
 
     private val form = MutableStateFlow(SignInForm())
+    private val deletion = MutableStateFlow<AccountDeletion?>(null)
+    private val deleted = MutableStateFlow(false)
 
-    val state: StateFlow<AccountUiState> = combine(account.state, form) { a, f -> AccountUiState(a, f, defaultServerUrl) }
+    val state: StateFlow<AccountUiState> = combine(account.state, form, deletion, deleted) { a, f, d, gone ->
+        AccountUiState(a, f, defaultServerUrl, d, gone)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountUiState(defaultServerUrl = defaultServerUrl))
 
     private var methodsJob: Job? = null
@@ -84,7 +100,11 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
             }
             // Whenever the form shows (here, and after signing out), ask its server whether it offers Google.
             account.state.map { it.signedIn }.distinctUntilChanged().collect { signedIn ->
-                if (signedIn == false) lookUpMethods(form.value.serverUrl, waitMillis = 0)
+                if (signedIn == false) {
+                    // Signed out some other way (a 401 in the background): the dialog must not come back at the next sign-in.
+                    deletion.value = null
+                    lookUpMethods(form.value.serverUrl, waitMillis = 0)
+                }
             }
         }
     }
@@ -127,6 +147,7 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
         val clientId = current.googleClientId ?: return
         val url = current.googleServer ?: return
         form.update { it.copy(busy = true, error = null) }
+        deleted.value = false
         viewModelScope.launch {
             val error = when (val got = obtain(clientId)) {
                 is GoogleSignInResult.Token -> when (val result = account.signInWithGoogle(url, got.idToken)) {
@@ -159,6 +180,7 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
             return form.update { it.copy(error = R.string.sync_error_fields) }
         }
         form.update { it.copy(serverUrl = url, busy = true, error = null) }
+        deleted.value = false
         viewModelScope.launch {
             when (val result = account.signIn(url, current.email, current.password, create)) {
                 is AuthResult.Success -> form.update { it.copy(password = "", busy = false) }
@@ -173,6 +195,43 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
 
     fun syncNow() {
         viewModelScope.launch { account.syncNow() }
+    }
+
+    fun openDeletion() = deletion.update { it ?: AccountDeletion() }
+
+    fun onDeletionEmail(value: String) = deletion.update { it?.copy(email = value, error = null) }
+
+    fun cancelDeletion() = deletion.update { if (it?.busy == true) it else null }
+
+    /**
+     * Deletes the account on the server with the email typed in the dialog
+     * ([SyncAccount.deleteAccount]); on success this device is signed out and
+     * the sign-in form says the account is gone. Local data stays.
+     */
+    fun confirmDeletion() {
+        val current = deletion.value ?: return
+        if (current.busy) return
+        if (current.email.isBlank()) return deletion.update { it?.copy(error = R.string.sync_delete_error_email) }
+        deletion.update { it?.copy(busy = true, error = null) }
+        viewModelScope.launch {
+            val outcome = account.deleteAccount(current.email)
+            val error = when (outcome) {
+                DeleteAccountOutcome.DELETED -> null
+                DeleteAccountOutcome.EMAIL_MISMATCH -> R.string.sync_delete_error_email
+                DeleteAccountOutcome.NOT_ALLOWED -> R.string.sync_delete_error_not_allowed
+                DeleteAccountOutcome.NOT_A_SERVER -> R.string.sync_delete_error_old_server
+                DeleteAccountOutcome.NETWORK -> R.string.sync_error_unreachable
+                DeleteAccountOutcome.SERVER -> R.string.sync_error_server_auth
+                // Signed out already: the form says so.
+                DeleteAccountOutcome.SIGNED_OUT, DeleteAccountOutcome.NOT_SIGNED_IN -> null
+            }
+            if (error == null) {
+                deletion.value = null
+                deleted.value = outcome == DeleteAccountOutcome.DELETED
+            } else {
+                deletion.update { it?.copy(busy = false, error = error) }
+            }
+        }
     }
 
     @StringRes

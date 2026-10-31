@@ -296,6 +296,29 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [auth]
+      summary: Delete the account
+      description: >-
+        Deletes the user and everything that is theirs on this server: training data, tokens, link codes, push
+        endpoints, OAuth grants and feedback. Only a session token (from `/auth/login`, `/auth/register` or
+        `/auth/google`) may; any other token is 403 `session_required`. The body repeats the account's email,
+        compared without case; another is 400 `email_mismatch`. Data on the user's devices is not touched.
+      operationId: deleteAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/v1/testers:
     post:
@@ -527,7 +550,9 @@ paths:
     post:
       tags: [tokens]
       summary: Create an API token
-      description: The plaintext token is in this response only; the server keeps its SHA-256.
+      description: >-
+        The plaintext token is in this response only; the server keeps its SHA-256. The names the server gives its
+        own tokens (`session`, `watch`, `mcp:…`, any case) are refused as 400 `reserved_name`.
       operationId: createToken
       requestBody:
         required: true

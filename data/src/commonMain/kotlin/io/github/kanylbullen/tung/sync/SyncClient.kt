@@ -165,6 +165,32 @@ enum class FeedbackOutcome {
     SERVER,
 }
 
+/** What deleting the account on the server gave ([SyncClient.deleteAccount]). */
+enum class DeleteAccountOutcome {
+    DELETED,
+
+    /** No server or token on this device. */
+    NOT_SIGNED_IN,
+
+    /** 400 `email_mismatch`: the typed email is not the account's. */
+    EMAIL_MISMATCH,
+
+    /** 403 `session_required`: this device's token is not a sign-in session. */
+    NOT_ALLOWED,
+
+    /** 401: the token is no longer valid. */
+    SIGNED_OUT,
+
+    /** 404 or 405: a server from before account deletion. */
+    NOT_A_SERVER,
+
+    /** No connection, refused, timed out. */
+    NETWORK,
+
+    /** 5xx, another 4xx, or an answer that is not what the API returns. */
+    SERVER,
+}
+
 /**
  * Talks to tung-server: sign in and out (`/api/v1/auth/…`) and [syncOnce]
  * (`POST /api/v1/sync`, the protocol in `core/sync/SyncProtocol.kt`). Every
@@ -412,6 +438,37 @@ class SyncClient(
         }
 
     /**
+     * `DELETE /api/v1/me {email}` with this device's token: the server deletes
+     * the account and everything of it. Stores nothing; [SyncAccount] signs out.
+     */
+    suspend fun deleteAccount(email: String): DeleteAccountOutcome = withContext(ioDispatcher) {
+        val baseUrl = settings.serverUrl() ?: return@withContext DeleteAccountOutcome.NOT_SIGNED_IN
+        val token = tokens.read() ?: return@withContext DeleteAccountOutcome.NOT_SIGNED_IN
+        try {
+            val response = http.delete(baseUrl + ME_PATH) {
+                bearerAuth(token)
+                contentType(ContentType.Application.Json)
+                setBody(DeleteAccountBody(email.trim()))
+            }
+            val code = if (response.status.isSuccess()) null else runCatching { response.body<ErrorBody>().error.code }.getOrNull()
+            when {
+                response.status.isSuccess() -> DeleteAccountOutcome.DELETED
+                response.status.value == 401 -> DeleteAccountOutcome.SIGNED_OUT
+                code == "email_mismatch" -> DeleteAccountOutcome.EMAIL_MISMATCH
+                code == "session_required" -> DeleteAccountOutcome.NOT_ALLOWED
+                response.status.value == 404 || response.status.value == 405 -> DeleteAccountOutcome.NOT_A_SERVER
+                else -> DeleteAccountOutcome.SERVER
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            DeleteAccountOutcome.NETWORK
+        } catch (e: Exception) {
+            DeleteAccountOutcome.SERVER
+        }
+    }
+
+    /**
      * `POST /api/v1/link/claim {code}` at [baseUrl], without a token: a valid
      * code comes back as a token for its account. Stores nothing; [SyncAccount] does.
      */
@@ -553,6 +610,9 @@ class SyncClient(
 
     @Serializable
     private data class GoogleMethodBody(@SerialName("client_id") val clientId: String)
+
+    @Serializable
+    private data class DeleteAccountBody(val email: String)
 
     @Serializable
     private data class ErrorBody(val error: ErrorDetail)

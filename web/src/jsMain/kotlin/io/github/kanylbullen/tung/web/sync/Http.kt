@@ -58,6 +58,10 @@ suspend fun fetchObjectUrl(url: String, headers: Map<String, String>): String? {
 /** One `DELETE` through `fetch`, as [getJson]. */
 suspend fun deleteRequest(url: String, headers: Map<String, String> = emptyMap()): HttpReply = send("DELETE", url, null, headers)
 
+/** One `DELETE` with a JSON body (`DELETE /api/v1/me`), as [postJson]. */
+suspend fun deleteJson(url: String, body: String, headers: Map<String, String> = emptyMap()): HttpReply =
+    send("DELETE", url, body, headers + ("Content-Type" to "application/json"))
+
 /** The browser's `AbortController`, as far as [postJson] needs it. */
 private external class AbortController {
     val signal: dynamic

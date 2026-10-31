@@ -48,6 +48,8 @@ fun SignInScreen(container: WebContainer) {
         mutableStateOf(if (container.signedOutByServer) strings.syncFailure(SyncFailure.SIGNED_OUT) else null)
     }
     val scope = rememberCoroutineScope()
+    // Said once, right after "Delete account" here.
+    val deleted = remember { container.accountDeleted.also { container.accountDeleted = false } }
 
     // Sign in with Google, when the page is served by the server it signs in
     // to: Google only runs its button on origins the server's client id has
@@ -99,6 +101,7 @@ fun SignInScreen(container: WebContainer) {
     Div({ classes("screen") }) {
         Div({ classes("wordmark") }) { Text(strings.appName) }
         P({ classes("intro") }) { Text(strings.signInIntro) }
+        if (deleted) P({ classes("notice"); attr("role", "status") }) { Text(strings.accountDeleted) }
         val clientId = googleClientId
         val googleUrl = sameOrigin
         if (clientId != null && googleUrl != null) {

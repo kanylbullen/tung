@@ -22,6 +22,13 @@ data class UserDto(
     val isAdmin: Boolean = false,
 )
 
+/**
+ * `DELETE /api/v1/me`: the account's email typed again, so a stray request
+ * cannot delete an account; compared without case or surrounding spaces.
+ */
+@Serializable
+data class DeleteAccountInput(val email: String)
+
 /** `POST /api/v1/auth/google`: a Google ID token (a JWT) from Credential Manager or Google Identity Services. */
 @Serializable
 data class GoogleSignIn(val idToken: String)

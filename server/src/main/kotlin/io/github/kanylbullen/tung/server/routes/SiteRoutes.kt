@@ -19,7 +19,8 @@ private object SiteRoutes
 
 /**
  * What a browser sees outside the API: the landing page at `/` and the
- * privacy page at `/privacy` (with their
+ * privacy page at `/privacy` and how to delete an account at
+ * `/delete-account` (with their
  * font and icon under `/site/`, classpath resources from `site/`), and the
  * web app at `/app/` when [ServerConfig.webDir] is set. The app is one
  * page: every path under `/app/` that is not a file is its `index.html`, and
@@ -33,6 +34,8 @@ fun Route.siteRoutes(config: ServerConfig) {
     page("/", "index.html") { keepBlocks(it, if (config.testerSignups) "testers" else "no-testers", if (config.testerSignups) "no-testers" else "testers") }
     // What the site and the apps store; also the privacy policy Google Play asks for.
     page("/privacy", "privacy.html")
+    // How to delete an account, and what goes; the deletion link Google Play asks for.
+    page("/delete-account", "delete-account.html")
     staticResources("/site", "site")
 
     val webDir = config.webDir ?: return

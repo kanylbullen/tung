@@ -9,6 +9,30 @@ const val LOGIN_PATH = "/api/v1/auth/login"
 const val LOGOUT_PATH = "/api/v1/auth/logout"
 const val GOOGLE_PATH = "/api/v1/auth/google"
 const val METHODS_PATH = "/api/v1/auth/methods"
+const val ACCOUNT_PATH = "/api/v1/me"
+
+/** What deleting the account gave, as the phone's `DeleteAccountOutcome` names it. */
+enum class DeleteAccountResult {
+    DELETED,
+
+    /** 400 `email_mismatch`: the typed email is not the account's. */
+    EMAIL_MISMATCH,
+
+    /** 403 `session_required`: this token is not a sign-in session. */
+    NOT_ALLOWED,
+
+    /** 401: the token is no longer valid. */
+    SIGNED_OUT,
+
+    /** 404 or 405: a server from before account deletion. */
+    NOT_A_SERVER,
+
+    /** No connection, refused, blocked. */
+    NETWORK,
+
+    /** 5xx, another 4xx, or an answer that is not what the API returns. */
+    SERVER,
+}
 
 /** Why a sign-in failed, as the phone's `AuthFailure` names it. */
 enum class AuthFailure {
@@ -56,6 +80,7 @@ class WebAuth(
     private val json: Json = AuthJson,
     private val post: PostJson = ::postJson,
     private val get: GetJson = { getJson(it) },
+    private val delete: PostJson = ::deleteJson,
 ) {
 
     /**
@@ -139,6 +164,34 @@ class WebAuth(
         }
     }
 
+    /** `DELETE /api/v1/me {email}`: the server deletes the account and everything of it. Stores nothing. */
+    suspend fun deleteAccount(baseUrl: String, token: String, email: String): DeleteAccountResult {
+        val reply = try {
+            delete(
+                baseUrl + ACCOUNT_PATH,
+                json.encodeToString(Confirmation.serializer(), Confirmation(email.trim())),
+                mapOf("Authorization" to "Bearer $token"),
+            )
+        } catch (e: HttpUnreachable) {
+            return DeleteAccountResult.NETWORK
+        }
+        if (reply.isSuccess) return DeleteAccountResult.DELETED
+        val code = try {
+            json.decodeFromString(ErrorBody.serializer(), reply.body).error.code
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        return when {
+            reply.status == 401 -> DeleteAccountResult.SIGNED_OUT
+            code == "email_mismatch" -> DeleteAccountResult.EMAIL_MISMATCH
+            code == "session_required" -> DeleteAccountResult.NOT_ALLOWED
+            reply.status == 404 || reply.status == 405 -> DeleteAccountResult.NOT_A_SERVER
+            else -> DeleteAccountResult.SERVER
+        }
+    }
+
     private fun failureOf(status: Int): AuthFailure = when (status) {
         401 -> AuthFailure.INVALID_CREDENTIALS
         429 -> AuthFailure.RATE_LIMITED
@@ -149,6 +202,9 @@ class WebAuth(
 
     @Serializable
     private data class Credentials(val email: String, val password: String)
+
+    @Serializable
+    private data class Confirmation(val email: String)
 
     @Serializable
     private data class GoogleToken(@SerialName("id_token") val idToken: String)

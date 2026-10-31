@@ -150,6 +150,34 @@ class SyncAccount(
         if (url != null && token != null) client.logout(url, token)
     }
 
+    /**
+     * Deletes the account on the server ([SyncClient.deleteAccount], with
+     * [email] typed again), then signs this device out as [signOut] does,
+     * without the server calls: the token and the push endpoint went with
+     * the account. A 401 signs out as during sync. Local data stays.
+     */
+    suspend fun deleteAccount(email: String): DeleteAccountOutcome {
+        val (url, token) = withContext(ioDispatcher) { settings.serverUrl() to tokens.read() }
+        val result = client.deleteAccount(email)
+        when (result) {
+            DeleteAccountOutcome.DELETED -> {
+                scheduler.cancel()
+                // The endpoint went with the account; this forgets it here (and UnifiedPush's registration).
+                if (url != null && token != null) beforeSignOut(url, token)
+                withContext(ioDispatcher) { tokens.write(null) }
+                signedIn.value = false
+                settings.signedOut(failure = null)
+            }
+            DeleteAccountOutcome.SIGNED_OUT -> {
+                withContext(ioDispatcher) { tokens.write(null) }
+                settings.signedOut(SyncFailure.SIGNED_OUT)
+                signedOutByServer()
+            }
+            else -> Unit
+        }
+        return result
+    }
+
     /** The server answered 401 during a sync; [SyncClient] has already cleared the token. */
     fun signedOutByServer() {
         signedIn.value = false

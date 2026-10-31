@@ -330,7 +330,7 @@ class SyncTest {
     @Test
     fun aReadTokenMayPullButNotPush() = tungTest {
         val session = client.register()
-        val read = client.post("/api/v1/tokens") { bearerAuth(session); jsonBody("""{"name": "watch", "scope": "read"}""") }.json()["token"]!!.str
+        val read = client.post("/api/v1/tokens") { bearerAuth(session); jsonBody("""{"name": "reader", "scope": "read"}""") }.json()["token"]!!.str
         val graph = Graph()
         client.synced(session, 0, graph.changes)
 
