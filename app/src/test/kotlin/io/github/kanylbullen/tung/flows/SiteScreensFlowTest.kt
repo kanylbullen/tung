@@ -6,6 +6,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.ui.resources.Res
+import io.github.kanylbullen.tung.ui.resources.routine_start_description
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.WorkoutRepository
@@ -95,7 +97,7 @@ class SiteScreensFlowTest : FlowTest() {
         waitForText(str(R.string.home_this_week))
         screenshot("1-home")
 
-        clickDescription(str(R.string.routine_start_description, "Push day"))
+        clickDescription(str(Res.string.routine_start_description, "Push day"))
         waitForText(str(R.string.workout_finish))
         waitForText(str(R.string.ex_bench_press))
         // Started 38 minutes ago, so the clock and the summary's duration read like a real workout.
