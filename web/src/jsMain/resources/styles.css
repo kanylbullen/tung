@@ -390,7 +390,7 @@ a.text-button { text-decoration: none; display: inline-flex; align-items: center
 .chips { display: flex; gap: 8px; padding: 8px 20px; overflow-x: auto; }
 .chip { min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised); white-space: nowrap; font-size: 15px; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
-.bottom-bar .tab { flex-basis: 140px; font-size: 15px; }
+.bottom-bar .tab { flex: 1 1 0; max-width: 140px; }
 .chips { scrollbar-width: none; } .chips::-webkit-scrollbar { display: none; }
 
 /* --- Settings --- */
@@ -527,9 +527,6 @@ a.chip { display: inline-flex; align-items: center; color: inherit; text-decorat
   display: inline-flex; align-items: center; justify-content: center;
 }
 .mic.on { background: var(--accent); color: var(--on-accent); }
-.mic-glyph { position: relative; display: block; width: 12px; height: 18px; margin-top: -6px; border: 2.5px solid currentColor; border-radius: 7px; }
-.mic-glyph::after { content: ""; position: absolute; left: 50%; top: 21px; width: 2.5px; height: 6px; margin-left: -1.25px; background: currentColor; }
-.mic-glyph::before { content: ""; position: absolute; left: -7px; right: -7px; top: 6px; height: 12px; border: 2.5px solid currentColor; border-top: 0; border-radius: 0 0 12px 12px; }
 .voice-echo {
   position: fixed; left: 0; right: 0; z-index: 5;
   bottom: calc(80px + env(safe-area-inset-bottom));
@@ -538,3 +535,27 @@ a.chip { display: inline-flex; align-items: center; color: inherit; text-decorat
   padding: 8px 14px; border-radius: var(--radius);
   background: var(--raised); border: 1px solid var(--border); font-size: 15px;
 }
+
+/* --- Icons: the tabs' as on the phone, Sync and Settings in the top bar --- */
+.icon { display: inline-flex; width: 24px; height: 24px; flex: none; }
+.icon svg { display: block; }
+.bottom-bar .tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; line-height: 1.2; min-height: 56px; padding: 4px 0; font-size: 12px; min-width: 0; }
+.bottom-bar .tab .tab-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.top-icon { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; color: var(--accent-text); text-decoration: none; border: 0; background: none; }
+.top-icon:disabled { color: var(--muted); }
+.top-icon.spinning .icon { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(-360deg); } }
+@media (prefers-reduced-motion: reduce) { .top-icon.spinning .icon { animation: none; } }
+.mic .icon { width: 26px; height: 26px; }
+.mic .icon svg { width: 26px; height: 26px; }
+
+/* --- A routine's muscles: a mini body on its row, a larger one on its page --- */
+.muscle-mini, .muscle-routine { flex: none; }
+.muscle-mini svg, .muscle-routine svg { display: block; width: 100%; height: 100%; }
+.muscle-mini { width: 50px; height: 44px; margin-right: 12px; }
+.muscle-mini-space { flex: none; width: 50px; margin-right: 12px; }
+.muscle-routine { width: 151px; height: 140px; margin: 8px auto 0; }
+.muscle-mini .body, .muscle-routine .body { fill: var(--raised); stroke: var(--border); stroke-width: 1; }
+.muscle-mini .rest, .muscle-routine .rest { fill: var(--border); }
+.muscle-mini .worked, .muscle-routine .worked { fill: var(--accent); }
+.hint.center { text-align: center; }

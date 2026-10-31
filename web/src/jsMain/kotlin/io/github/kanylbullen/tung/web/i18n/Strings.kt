@@ -160,6 +160,7 @@ interface Strings {
     val summaryTitle: String
     val newRecord: String
     val musclesWorked: String
+    fun routineMuscles(muscles: String): String
     fun musclesWorkedDescription(muscles: String): String
     fun muscleName(muscle: Muscle): String
     fun uncountedSets(count: Int): String
@@ -600,6 +601,7 @@ object English : Strings {
     override val summaryTitle = "Workout done"
     override val newRecord = "New record"
     override val musclesWorked = "Muscles worked"
+    override fun routineMuscles(muscles: String) = "Muscles: $muscles"
     override fun musclesWorkedDescription(muscles: String) = "Muscles worked: $muscles"
     override fun muscleName(muscle: Muscle): String = when (muscle) {
         Muscle.CHEST -> "chest"
@@ -1124,6 +1126,7 @@ object Swedish : Strings {
     override val summaryTitle = "Pass klart"
     override val newRecord = "Nytt rekord"
     override val musclesWorked = "Tränade muskler"
+    override fun routineMuscles(muscles: String) = "Muskler: $muscles"
     override fun musclesWorkedDescription(muscles: String) = "Tränade muskler: $muscles"
     override fun muscleName(muscle: Muscle): String = when (muscle) {
         Muscle.CHEST -> "bröst"

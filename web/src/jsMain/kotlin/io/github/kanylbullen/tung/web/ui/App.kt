@@ -14,6 +14,7 @@ import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Nav
 import org.jetbrains.compose.web.dom.P
+import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.events.Event
 
@@ -112,19 +113,22 @@ private fun BottomBar(current: Route, container: WebContainer) {
     val strings = container.strings
     Nav({ classes("bottom-bar") }) {
         listOf(
-            Route.HOME to strings.home,
-            Route.ROUTINES to strings.routines,
-            Route.EXERCISES to strings.exercises,
-            Route.HISTORY to strings.history,
-            Route.PROGRESS to strings.progress,
-        ).forEach { (route, label) ->
+            Triple(Route.HOME, strings.home, Icons.HOME),
+            Triple(Route.ROUTINES, strings.routines, Icons.LIST),
+            Triple(Route.EXERCISES, strings.exercises, Icons.DUMBBELL),
+            Triple(Route.HISTORY, strings.history, Icons.HISTORY),
+            Triple(Route.PROGRESS, strings.progress, Icons.TRENDING_UP),
+        ).forEach { (route, label, icon) ->
             A(href = route.hash, attrs = {
                 classes("tab")
                 if (route == current) {
                     classes("current")
                     attr("aria-current", "page")
                 }
-            }) { Text(label) }
+            }) {
+                Icon(icon)
+                Span({ classes("tab-label") }) { Text(label) }
+            }
         }
     }
 }

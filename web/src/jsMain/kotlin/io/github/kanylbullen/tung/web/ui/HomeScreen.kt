@@ -20,6 +20,7 @@ import io.github.kanylbullen.tung.web.home.homeModel
 import io.github.kanylbullen.tung.web.programs.ProgramDayView
 import io.github.kanylbullen.tung.web.programs.TodayView
 import io.github.kanylbullen.tung.web.programs.todayView
+import io.github.kanylbullen.tung.web.routines.routineMuscles
 import io.github.kanylbullen.tung.web.sync.Account
 import kotlin.js.Date
 import kotlinx.coroutines.launch
@@ -54,6 +55,8 @@ fun HomeScreen(container: WebContainer, account: Account) {
     }
     val now = Date.now().toLong()
     val scope = rememberCoroutineScope()
+    val catalogue = container.catalogue.collectAsState().value
+    val routineMuscles = remember(version, catalogue) { routineMuscles(container.store, catalogue.muscles) }
 
     Div({ classes("screen") }) {
         TopBar(container, account) { Div({ classes("wordmark", "small") }) { Text(strings.appName) } }
@@ -82,6 +85,7 @@ fun HomeScreen(container: WebContainer, account: Account) {
                 model.routines.forEach { routine ->
                     key(routine.id) {
                         Li({ classes("row") }) {
+                            RoutineMuscles(routineMuscles[routine.id], strings)
                             RoutineRow(routine, container)
                             Button({
                                 classes("secondary", "start")
