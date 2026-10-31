@@ -108,6 +108,17 @@ fun HomeScreen(container: WebContainer, account: Account) {
             }
             A(href = "#/history", attrs = { classes("text-button", "show-all") }) { Text(strings.showAll) }
         }
+        // The Assistant's row, last on Home as on the phone.
+        Ul({ classes("rows") }) {
+            Li {
+                A(href = Route.ASSISTANT.hash, attrs = { classes("row", "row-link") }) {
+                    Div({ classes("main") }) {
+                        Div({ classes("title") }) { Span({ classes("plain") }) { Text(strings.assistant) } }
+                        Div({ classes("details") }) { Text(strings.aiEntryHint) }
+                    }
+                }
+            }
+        }
     }
 }
 

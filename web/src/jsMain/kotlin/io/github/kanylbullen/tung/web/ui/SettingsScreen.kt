@@ -103,6 +103,8 @@ fun SettingsScreen(container: WebContainer, account: Account) {
             }
         }
 
+        AssistantSettings(container)
+
         DataSection(container)
 
         H2({ classes("section") }) { Text(strings.account) }
