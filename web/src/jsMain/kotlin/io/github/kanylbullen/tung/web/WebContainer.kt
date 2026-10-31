@@ -110,7 +110,7 @@ class WebContainer(
             sync = WebSync(store, db, settings)
             val executor = CommandExecutor(
                 WebCommandStore(store, persist = { db.write(it) }, clock = { Date.now().toLong() }),
-                WebExerciseResolver(store) { catalogueNames },
+                WebExerciseResolver(store, { catalogueNames }) { _catalogue.value.extended },
                 startedBy = StartedBy.WEB,
             )
             commands = object : CommandHandler {

@@ -431,3 +431,16 @@ a.text-button { text-decoration: none; display: inline-flex; align-items: center
 .bottom-actions button { flex: 1; max-width: 220px; min-height: 52px; }
 .detail-head .details.accent { color: var(--accent-text); font-weight: 600; }
 .summary-chart .hint { margin-left: 0; margin-right: 0; }
+
+/* --- The Exercises tab and an exercise's page --- */
+.wide-search { width: 100%; margin: 4px 0; }
+a.chip { display: inline-flex; align-items: center; color: inherit; text-decoration: none; }
+.legend { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 0 20px 8px; font-size: 14px; color: var(--muted); }
+.legend .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--accent); }
+.legend .swatch-secondary { opacity: 0.4; margin-left: 12px; }
+.action-row { display: flex; gap: 12px; padding: 8px 20px; }
+.action-row button { flex: 1; min-height: 48px; }
+.instructions { margin: 0 20px; padding-left: 1.4em; color: var(--muted); }
+.instructions li { margin: 0 0 8px; }
+.pad-link { display: inline-block; margin: 4px 8px; line-height: 48px; text-decoration: none; }
+.hint.accent { color: var(--accent-text); }

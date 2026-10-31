@@ -2144,9 +2144,9 @@ summary, History, Routines, Progress and Settings.
   `Done`, or a throw, is undone in memory from the transaction's inverse
   log and writes nothing, as the server's store rolls back. A `Done` asks
   for a sync. The resolver (`WebExerciseResolver`) is the store's exercises
-  with the core catalogue's names in every language; the resolver does
-  not read the extended catalogue, so an extended entry without a row
-  does not resolve. Both catalogue files are shipped and precached
+  with the core catalogue's names in every language and the extended
+  catalogue's entries not picked yet, so a command naming one makes its
+  row. Both catalogue files are shipped and precached
   (`container.catalogue`, `WebCatalogue`: the muscles and the exercise
   pages), `extended.json` read after the log is on screen. **`started_by = "web"` needs a server that knows it**
   (`StartedBy.WEB`, `SyncValidation`): an older one refuses the sync with a

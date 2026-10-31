@@ -27,6 +27,7 @@ enum class Route(val hash: String) {
     SETTINGS("#/settings"),
     ADMIN("#/settings/admin"),
     SUMMARY("#/summary"),
+    EXERCISES("#/exercises"),
     ;
 
     companion object {
@@ -65,10 +66,13 @@ private fun SignedIn(container: WebContainer, account: Account) {
     }
     val detailId = hash.removePrefix("#/history/").takeIf { hash.startsWith("#/history/") && it.isNotEmpty() }
     val routineId = hash.removePrefix("#/routines/").takeIf { hash.startsWith("#/routines/") && it.isNotEmpty() }
+    val exerciseRoute = hash.removePrefix("#/exercises/").takeIf { hash.startsWith("#/exercises/") && it.isNotEmpty() }
     val summaryId = hash.removePrefix("#/summary/").takeIf { hash.startsWith("#/summary/") && it.isNotEmpty() }
     val progressId = hash.removePrefix("#/progress/").takeIf { hash.startsWith("#/progress/") && it.isNotEmpty() }
     when {
         summaryId != null -> SummaryScreen(container, summaryId)
+        exerciseRoute != null -> ExercisePageScreen(container, exerciseRoute)
+        route == Route.EXERCISES -> ExercisesScreen(container, account)
         progressId != null -> ExerciseProgressScreen(container, progressId)
         route == Route.PROGRESS -> ProgressScreen(container, account)
         route == Route.ADMIN -> AdminScreen(container, account)
@@ -98,6 +102,7 @@ private fun BottomBar(current: Route, container: WebContainer) {
         listOf(
             Route.HOME to strings.home,
             Route.ROUTINES to strings.routines,
+            Route.EXERCISES to strings.exercises,
             Route.HISTORY to strings.history,
             Route.PROGRESS to strings.progress,
         ).forEach { (route, label) ->
