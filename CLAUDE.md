@@ -2071,8 +2071,9 @@ everything else. Package `io.github.kanylbullen.tung.web`, UI in Compose
 HTML (DOM elements as composables with the Compose runtime; the
 `org.jetbrains.compose.runtime:runtime` and `org.jetbrains.compose.html:html-core`
 libraries, no `org.jetbrains.compose` plugin). Build and layout:
-`web/README.md`. What runs today: sign in, sync, Home, the workout, its
-summary, History, Routines, Progress and Settings.
+`web/README.md`. What runs today: sign in, sync, Home with Today, the
+workout, its summary, History, Routines, programs, Exercises with each
+exercise's page, Progress and Settings.
 
 - **The log lives in memory and is persisted to IndexedDB**
   (`store/TungStore.kt`, `store/IndexedDb.kt`). The eight tables hold the
