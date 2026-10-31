@@ -15,16 +15,24 @@ const val MAX_ADMIN_USERS = 1_000
  * The server's admins: the accounts whose email is in `TUNG_ADMIN_EMAILS`.
  * The one place that decides it, for `/me`'s `is_admin`, the account list
  * and the test sign-ups.
+ *
+ * Registering with a password proves nothing about the email, so on a server
+ * with Sign in with Google ([requireGoogleLink]) an admin's account must also
+ * be linked to Google, which verified the address. Otherwise anyone could
+ * register an admin's address before its owner first signs in, and be admin.
+ * A server without Google has no way to verify an email; there the admins
+ * should register their accounts before the server is opened to others.
  */
-class Admins(private val db: Db, private val emails: Set<String>) {
+class Admins(private val db: Db, private val emails: Set<String>, private val requireGoogleLink: Boolean = false) {
 
     suspend fun isAdmin(userId: String): Boolean {
         if (emails.isEmpty()) return false
-        val email = db.tx { Users.selectAll().where { Users.id eq userId }.singleOrNull()?.get(Users.email) }
-        return email != null && isAdminEmail(email)
+        val row = db.tx { Users.selectAll().where { Users.id eq userId }.singleOrNull() } ?: return false
+        return isAdmin(row[Users.email], googleLinked = row[Users.googleSub] != null)
     }
 
-    fun isAdminEmail(email: String): Boolean = email.lowercase() in emails
+    fun isAdmin(email: String, googleLinked: Boolean): Boolean =
+        email.lowercase() in emails && (googleLinked || !requireGoogleLink)
 
     /**
      * Only a write token: a `read` token is what an admin hands an assistant
@@ -36,7 +44,14 @@ class Admins(private val db: Db, private val emails: Set<String>) {
             throw forbidden("insufficient_scope", "A read-only token cannot use the admin routes. Sign in to use them.")
         }
         if (!isAdmin(principal.userId)) {
-            throw forbidden("not_admin", "Only the server's admins (TUNG_ADMIN_EMAILS) may see this.")
+            throw forbidden(
+                "not_admin",
+                if (requireGoogleLink) {
+                    "Only the server's admins (TUNG_ADMIN_EMAILS, signed in with Google once) may see this."
+                } else {
+                    "Only the server's admins (TUNG_ADMIN_EMAILS) may see this."
+                },
+            )
         }
     }
 }
@@ -93,7 +108,7 @@ class AdminStore(private val db: Db, private val admins: Admins, private val tes
                                     createdAt = rows.getLong("created_at"),
                                     hasPassword = rows.getBoolean("has_password"),
                                     googleLinked = rows.getBoolean("google_linked"),
-                                    isAdmin = admins.isAdminEmail(email),
+                                    isAdmin = admins.isAdmin(email, googleLinked = rows.getBoolean("google_linked")),
                                     lastSeenAt = rows.getLong("last_seen_at").takeUnless { rows.wasNull() },
                                     activeTokens = rows.getInt("active_tokens"),
                                     workouts = rows.getInt("workouts"),

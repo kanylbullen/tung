@@ -37,7 +37,6 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
-import io.ktor.server.plugins.forwardedheaders.ForwardedHeaders
 import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
 import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.ratelimit.RateLimit
@@ -136,8 +135,11 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     install(ContentNegotiation) { json(ApiJson) }
     if (config.trustProxy) {
         // The last hop is the address our proxy saw; earlier entries come from the client and can be forged.
+        // Only X-Forwarded-For: the proxies in front (Traefik, cloudflared, Caddy) append to it, but pass an
+        // RFC 7239 `Forwarded` header from the client through untouched. Ktor's ForwardedHeaders, installed
+        // after this one, would take the address from that header instead, and a client could pick a new
+        // address for every request and walk past every per-address rate limit.
         install(XForwardedHeaders) { useLastProxy() }
-        install(ForwardedHeaders) { useLastValue() }
     }
     install(CallLogging) {
         level = Level.INFO

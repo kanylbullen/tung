@@ -36,7 +36,7 @@ data class ServerConfig(
      * form is not on the page and `/api/v1/testers` is 404 `not_configured`.
      */
     val testerSignups: Boolean = false,
-    /** Behind a reverse proxy: take the client address from X-Forwarded-For / Forwarded, for the rate limit and the log. */
+    /** Behind a reverse proxy: take the client address from the last X-Forwarded-For entry, for the rate limit and the log. The RFC 7239 `Forwarded` header is ignored: proxies pass a client's copy through. */
     val trustProxy: Boolean = false,
     /** Requests per minute and client address to register and login. */
     val authRequestsPerMinute: Int = DEFAULT_AUTH_REQUESTS_PER_MINUTE,

@@ -162,8 +162,10 @@ paths:
         issued by Google, for one of the configured client ids, unexpired
         (60 s leeway) and signed with a key from Google's JWK set. The user is
         the one already linked to the Google account; else, when Google says
-        the email is verified, the account with that email, which is linked
-        and keeps its password; else a new account without a password. An
+        the email is verified, the account with that email, which is linked;
+        its password is removed and its other tokens, OAuth grants, link
+        codes and push endpoints are revoked, since the password sign-up
+        never verified the address. Else a new account without a password. An
         unverified email that is linked to nothing is refused. Rate-limited
         per client address like login. Without `TUNG_GOOGLE_CLIENT_ID` the
         route answers 404 `not_configured`.
@@ -262,7 +264,9 @@ paths:
         of that user (scope `write`, name `watch`, listed and revocable under
         `/api/v1/tokens`) and the user. A code works once: an unknown,
         expired or already claimed code is 404 `invalid_code`. No auth. At
-        most 10 attempts a minute per client address.
+        most 10 attempts a minute per client address, and at most 50 failed
+        claims from all clients together in ten minutes; past either, 429
+        `rate_limited`.
       operationId: linkClaim
       security: []
       requestBody:
@@ -332,7 +336,7 @@ paths:
     get:
       tags: [testers]
       summary: The sign-ups, oldest first
-      description: Only for an account whose email is in `TUNG_ADMIN_EMAILS`; anyone else gets 403 `not_admin`.
+      description: Only for an account whose email is in `TUNG_ADMIN_EMAILS` (on a server with Sign in with Google, also linked to Google); anyone else gets 403 `not_admin`.
       operationId: listTesters
       responses:
         "200":

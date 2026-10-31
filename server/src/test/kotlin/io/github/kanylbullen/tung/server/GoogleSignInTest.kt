@@ -195,34 +195,67 @@ class GoogleSignInTest {
     }
 
     @Test
-    fun anExistingPasswordUserWithAVerifiedEmailIsLinkedAndKeepsThePassword() = googleTest {
+    fun linkingAPasswordAccountHandsItToTheGoogleOwnerAndShutsOutThePassword() = googleTest {
+        // Someone registers an address they do not own, with a password of theirs...
         val email = uniqueEmail()
-        val passwordToken = client.register(email, "the right password")
-        val userId = me(passwordToken)["id"]!!.str
-        assertFalse(me(passwordToken)["google_linked"]!!.jsonPrimitive.boolean)
+        val squatter = client.register(email, "the squatter's password")
+        val userId = me(squatter)["id"]!!.str
+        assertFalse(me(squatter)["google_linked"]!!.jsonPrimitive.boolean)
+        val apiToken = client.post("/api/v1/tokens") {
+            bearerAuth(squatter)
+            jsonBody("""{"name": "kept for later", "scope": "read"}""")
+        }.json()["token"]!!.str
+        val linkCode = client.post("/api/v1/link/start") { bearerAuth(squatter) }.json()["code"]!!.str
 
+        // ...and the address's owner signs in with Google, which verified it.
         val sub = UUID.randomUUID().toString()
         val linked = signIn(google.token(sub = sub, email = email.uppercase()))
         assertEquals(HttpStatusCode.OK, linked.status, linked.bodyAsText())
         val user = linked.json()["user"]!!.jsonObject
-        assertEquals(userId, user["id"]!!.str)
-        assertTrue(user["has_password"]!!.jsonPrimitive.boolean)
+        assertEquals(userId, user["id"]!!.str, "the same account, so data made before the link is kept")
+        assertFalse(user["has_password"]!!.jsonPrimitive.boolean)
         assertTrue(user["google_linked"]!!.jsonPrimitive.boolean)
-        assertTrue(me(passwordToken)["google_linked"]!!.jsonPrimitive.boolean)
+        val owner = linked.json()["token"]!!.str
+        assertEquals(userId, me(owner)["id"]!!.str)
 
-        val password = login(email, "the right password")
-        assertEquals(HttpStatusCode.OK, password.status)
-        assertEquals(userId, password.json()["user"]!!.jsonObject["id"]!!.str)
+        // Every way in that did not come from Google is closed.
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/api/v1/me") { bearerAuth(squatter) }.status)
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/api/v1/me") { bearerAuth(apiToken) }.status)
+        val password = login(email, "the squatter's password")
+        assertEquals(HttpStatusCode.Unauthorized, password.status)
+        assertEquals("invalid_credentials", password.errorCode())
+        val claim = client.post("/api/v1/link/claim") { jsonBody("""{"code": "$linkCode"}""") }
+        assertEquals(HttpStatusCode.NotFound, claim.status)
 
         // Linked by sub from now on: even an unverified token with another email reaches the account.
         val bySub = signIn(google.token(sub = sub, email = uniqueEmail(), verified = false))
         assertEquals(HttpStatusCode.OK, bySub.status)
         assertEquals(userId, bySub.json()["user"]!!.jsonObject["id"]!!.str)
+        // Signing in again does not end the sessions the owner already has.
+        assertEquals(userId, me(owner)["id"]!!.str)
 
         // Another Google account with the same verified email is not linked over the first.
         val other = signIn(google.token(email = email))
         assertEquals(HttpStatusCode.Conflict, other.status)
         assertEquals("google_account_mismatch", other.errorCode())
+    }
+
+    @Test
+    fun anAdminAddressRegisteredWithAPasswordIsNoAdminUntilGoogleVerifiesIt() = testApplication {
+        val admin = uniqueEmail()
+        environment { config = MapApplicationConfig() }
+        application {
+            module(TestDatabase.config().copy(googleClientIds = listOf(CLIENT_ID), googleJwksUrl = google.jwksUrl, adminEmails = setOf(admin)))
+        }
+        val squatter = client.register(admin, "the squatter's password")
+        assertFalse(me(squatter)["is_admin"]!!.jsonPrimitive.boolean)
+        val refused = client.get("/api/v1/admin/users") { bearerAuth(squatter) }
+        assertEquals(HttpStatusCode.Forbidden, refused.status)
+        assertEquals("not_admin", refused.errorCode())
+
+        val owner = signIn(google.token(email = admin)).json()["token"]!!.str
+        assertTrue(me(owner)["is_admin"]!!.jsonPrimitive.boolean)
+        assertEquals(HttpStatusCode.OK, client.get("/api/v1/admin/users") { bearerAuth(owner) }.status)
     }
 
     @Test
@@ -240,8 +273,9 @@ class GoogleSignInTest {
         assertEquals(HttpStatusCode.Unauthorized, noEmail.status)
 
         // Nothing was stored for that sub: a later verified sign-in links the password account, not a new one.
+        val userId = me(passwordToken)["id"]!!.str
         val verified = signIn(google.token(sub = sub, email = email))
-        assertEquals(me(passwordToken)["id"]!!.str, verified.json()["user"]!!.jsonObject["id"]!!.str)
+        assertEquals(userId, verified.json()["user"]!!.jsonObject["id"]!!.str)
     }
 
     @Test
@@ -345,6 +379,7 @@ class GoogleSignInTest {
 
         val email = uniqueEmail()
         val passwordUser = oauth.http.register(email, "the right password")
+        val passwordUserId = me(passwordUser)["id"]!!.str
 
         suspend fun postGoogle(credential: String, csrfCookie: String = "gcsrf-1", csrfField: String = "gcsrf-1", state: String = "x") =
             oauth.http.post("/oauth/google") {
@@ -404,9 +439,10 @@ class GoogleSignInTest {
         val exchanged = oauth.exchange(clientId, code, pkce.verifier)
         assertEquals(HttpStatusCode.OK, exchanged.status, exchanged.bodyAsText())
         val access = exchanged.json()["access_token"]!!.str
-        // The grant is the password user's account, now linked.
+        // The grant is the password user's account, now linked, and the password's session is over.
         val granted = oauth.http.get("/api/v1/me") { bearerAuth(access) }.json()
-        assertEquals(me(passwordUser)["id"]!!.str, granted["id"]!!.str)
+        assertEquals(passwordUserId, granted["id"]!!.str)
         assertTrue(granted["google_linked"]!!.jsonPrimitive.boolean)
+        assertEquals(HttpStatusCode.Unauthorized, oauth.http.get("/api/v1/me") { bearerAuth(passwordUser) }.status)
     }
 }
