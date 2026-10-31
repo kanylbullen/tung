@@ -18,6 +18,8 @@ data class UserDto(
     val hasPassword: Boolean,
     /** A Google account is linked: signing in with Google reaches this user. */
     val googleLinked: Boolean,
+    /** The account is one of the server's admins (`TUNG_ADMIN_EMAILS`). Only `/me` says so; elsewhere false. */
+    val isAdmin: Boolean = false,
 )
 
 /** `POST /api/v1/auth/google`: a Google ID token (a JWT) from Credential Manager or Google Identity Services. */

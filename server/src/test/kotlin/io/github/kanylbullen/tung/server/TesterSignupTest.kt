@@ -16,14 +16,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Sign-ups to test the Android app: anyone may sign up once, only the owner sees the list. */
+/** Sign-ups to test the Android app: anyone may sign up once, only an admin sees the list, and only where the server runs the test. */
 class TesterSignupTest {
 
     private val owner = uniqueEmail()
 
     private fun testersTest(block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
         environment { config = MapApplicationConfig() }
-        application { module(TestDatabase.config().copy(adminEmails = setOf(owner))) }
+        application { module(TestDatabase.config().copy(adminEmails = setOf(owner), testerSignups = true)) }
         block()
     }
 
@@ -69,5 +69,32 @@ class TesterSignupTest {
         val botAnswer = signUp("""{"email": "$bot", "consent": true, "website": "https://spam.example"}""")
         assertEquals(HttpStatusCode.Accepted, botAnswer.status, "a bot is answered as anyone else")
         assertTrue(bot !in listed(client.register(owner)), "and stored as no one")
+    }
+
+    @Test
+    fun theFormIsOnTheLandingPage() = testersTest {
+        val html = client.get("/").bodyAsText()
+        assertTrue("""id="signup"""" in html)
+        assertTrue("Sign up below." in html)
+        assertFalse("testers:" in html, "no marker is left in the page")
+    }
+
+    @Test
+    fun aServerWithoutTheTestHasNoSignUps() = testApplication {
+        val owner = uniqueEmail()
+        environment { config = MapApplicationConfig() }
+        application { module(TestDatabase.config().copy(adminEmails = setOf(owner))) }
+
+        val signUp = client.post("/api/v1/testers") { jsonBody("""{"email": "x-${id()}@example.org", "consent": true}""") }
+        assertEquals(HttpStatusCode.NotFound, signUp.status)
+        assertEquals("not_configured", signUp.errorCode())
+        val list = client.get("/api/v1/testers") { bearerAuth(client.register(owner)) }
+        assertEquals(HttpStatusCode.NotFound, list.status, "not even for an admin")
+
+        val html = client.get("/").bodyAsText()
+        assertFalse("""id="signup"""" in html, "no form")
+        assertFalse("Sign up below." in html)
+        assertTrue("In a test on Google Play." in html, "Android is still listed")
+        assertFalse("testers:" in html, "no marker is left in the page")
     }
 }

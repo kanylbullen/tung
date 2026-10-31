@@ -55,7 +55,7 @@ sealed interface AuthResult {
 class WebAuth(
     private val json: Json = AuthJson,
     private val post: PostJson = ::postJson,
-    private val get: GetJson = ::getJson,
+    private val get: GetJson = { getJson(it) },
 ) {
 
     /**

@@ -23,30 +23,11 @@ typealias PostJson = suspend (url: String, body: String, headers: Map<String, St
 /** A `GET`, for the few reads before signing in (`/api/v1/auth/methods`); a test hands in its own. */
 typealias GetJson = suspend (url: String) -> HttpReply
 
-/** One `GET` through `fetch`, with [postJson]'s timeout; no answer at all is [HttpUnreachable]. */
-suspend fun getJson(url: String): HttpReply {
-    val controller = AbortController()
-    val timeout = window.setTimeout({ controller.abort() }, REQUEST_TIMEOUT_MILLIS)
-    try {
-        val response = try {
-            window.fetch(url, RequestInit(method = "GET").also { it.asDynamic().signal = controller.signal }).await()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            throw HttpUnreachable(e)
-        }
-        val text = try {
-            response.text().await()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            throw HttpUnreachable(e)
-        }
-        return HttpReply(response.status.toInt(), text)
-    } finally {
-        window.clearTimeout(timeout)
-    }
-}
+/** One `GET` through `fetch`, with [postJson]'s timeout and the caller's [headers]; no answer at all is [HttpUnreachable]. */
+suspend fun getJson(url: String, headers: Map<String, String> = emptyMap()): HttpReply = send("GET", url, null, headers)
+
+/** One `DELETE` through `fetch`, as [getJson]. */
+suspend fun deleteRequest(url: String, headers: Map<String, String> = emptyMap()): HttpReply = send("DELETE", url, null, headers)
 
 /** The browser's `AbortController`, as far as [postJson] needs it. */
 private external class AbortController {
@@ -60,16 +41,20 @@ private external class AbortController {
  * server at all, or a request that takes longer than [REQUEST_TIMEOUT_MILLIS],
  * is [HttpUnreachable], and any answer is returned as it came.
  */
-suspend fun postJson(url: String, body: String, headers: Map<String, String> = emptyMap()): HttpReply {
-    val requestHeaders = Headers().apply {
-        append("Content-Type", "application/json")
-        headers.forEach { (name, value) -> append(name, value) }
-    }
+suspend fun postJson(url: String, body: String, headers: Map<String, String> = emptyMap()): HttpReply =
+    send("POST", url, body, headers + ("Content-Type" to "application/json"))
+
+private suspend fun send(method: String, url: String, body: String?, headers: Map<String, String>): HttpReply {
+    val requestHeaders = Headers().apply { headers.forEach { (name, value) -> append(name, value) } }
     val controller = AbortController()
     val timeout = window.setTimeout({ controller.abort() }, REQUEST_TIMEOUT_MILLIS)
     try {
+        val init = RequestInit(method = method, headers = requestHeaders).also {
+            if (body != null) it.body = body
+            it.asDynamic().signal = controller.signal
+        }
         val response = try {
-            window.fetch(url, RequestInit(method = "POST", headers = requestHeaders, body = body).also { it.asDynamic().signal = controller.signal }).await()
+            window.fetch(url, init).await()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
