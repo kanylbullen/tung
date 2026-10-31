@@ -2077,7 +2077,9 @@ exercise's page, Progress, Settings and the Jefit import (`importing/`:
 core's adapter in the browser, `WebImporter` the one bulk write as on the
 phone, the last import in localStorage) and the Assistant (`ai/`: core
 builds and reads every request, the key and settings in localStorage,
-Anthropic asked for `anthropic-dangerous-direct-browser-access`).
+Anthropic asked for `anthropic-dangerous-direct-browser-access`), and voice
+(`voice/`: the browser's `SpeechRecognition` where there is one, core's
+grammar, the phone's `voiceAction` rules; no hands-free mode yet).
 
 - **The log lives in memory and is persisted to IndexedDB**
   (`store/TungStore.kt`, `store/IndexedDb.kt`). The eight tables hold the

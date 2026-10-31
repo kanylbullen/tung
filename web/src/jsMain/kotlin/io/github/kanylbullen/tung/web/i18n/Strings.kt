@@ -319,6 +319,26 @@ interface Strings {
     fun plateauSince(date: String): String
     fun aiFailure(failure: AiFailure): String
     fun providerSays(message: String): String
+
+    // Voice
+    val voiceMic: String
+    val voiceStop: String
+    val voiceListening: String
+    fun voiceValues(weight: String, reps: Int): String
+    fun voiceLogged(weight: String, reps: Int): String
+    fun voiceNext(name: String, set: Int): String
+    fun voiceSetAdded(name: String): String
+    val voiceRest: String
+    fun voiceRestOff(name: String): String
+    val voiceNoSet: String
+    val voiceNoPrevious: String
+    val voiceNoNext: String
+    fun voiceNotUnderstood(text: String): String
+    val voiceHeardNothing: String
+    val voicePermission: String
+    val voiceNetwork: String
+    val voiceFailed: String
+    val askAssistant: String
     fun weeksSummary(volumes: String): String
 
     // Settings
@@ -765,6 +785,25 @@ object English : Strings {
     override fun targetSets(count: Int) = if (count == 1) "1 set" else "$count sets"
     override fun plateauSince(date: String) = "Since $date"
     override fun providerSays(message: String) = "The provider says: $message"
+
+    override val voiceMic = "Say weight and reps"
+    override val voiceStop = "Stop listening"
+    override val voiceListening = "Listening…"
+    override fun voiceValues(weight: String, reps: Int) = "$weight × $reps"
+    override fun voiceLogged(weight: String, reps: Int) = "$weight × $reps logged"
+    override fun voiceNext(name: String, set: Int) = "Next: $name, set $set"
+    override fun voiceSetAdded(name: String) = "Set added to $name"
+    override val voiceRest = "Rest started"
+    override fun voiceRestOff(name: String) = "The rest timer is off for $name"
+    override val voiceNoSet = "There is no set to log"
+    override val voiceNoPrevious = "There is no earlier set to copy"
+    override val voiceNoNext = "There is no other set to move to"
+    override fun voiceNotUnderstood(text: String) = "Didn't catch that: '$text'"
+    override val voiceHeardNothing = "Didn't hear anything"
+    override val voicePermission = "Tung needs the microphone to hear you. Allow it for this site in the browser."
+    override val voiceNetwork = "Speech recognition in this browser needs a network"
+    override val voiceFailed = "Speech recognition failed. Try again."
+    override val askAssistant = "Ask the assistant"
     override fun aiFailure(failure: AiFailure): String = when (failure) {
         AiFailure.NOT_CONFIGURED -> aiNotConfigured
         AiFailure.NETWORK -> "Could not reach the provider. Check the address and your connection; a local server must allow this page's origin."
@@ -1236,6 +1275,25 @@ object Swedish : Strings {
     override fun targetSets(count: Int) = "$count set"
     override fun plateauSince(date: String) = "Sedan $date"
     override fun providerSays(message: String) = "Leverantören säger: $message"
+
+    override val voiceMic = "Säg vikt och reps"
+    override val voiceStop = "Sluta lyssna"
+    override val voiceListening = "Lyssnar…"
+    override fun voiceValues(weight: String, reps: Int) = "$weight × $reps"
+    override fun voiceLogged(weight: String, reps: Int) = "$weight × $reps loggat"
+    override fun voiceNext(name: String, set: Int) = "Nästa: $name, set $set"
+    override fun voiceSetAdded(name: String) = "Set tillagt i $name"
+    override val voiceRest = "Vilan har startat"
+    override fun voiceRestOff(name: String) = "Vilotimern är av för $name"
+    override val voiceNoSet = "Det finns inget set att logga"
+    override val voiceNoPrevious = "Det finns inget tidigare set att kopiera"
+    override val voiceNoNext = "Det finns inget annat set att gå till"
+    override fun voiceNotUnderstood(text: String) = "Uppfattade inte: ”$text”"
+    override val voiceHeardNothing = "Hörde ingenting"
+    override val voicePermission = "Tung behöver mikrofonen för att höra dig. Tillåt den för den här sidan i webbläsaren."
+    override val voiceNetwork = "Taligenkänningen i den här webbläsaren behöver nätverk"
+    override val voiceFailed = "Taligenkänningen misslyckades. Försök igen."
+    override val askAssistant = "Fråga assistenten"
     override fun aiFailure(failure: AiFailure): String = when (failure) {
         AiFailure.NOT_CONFIGURED -> aiNotConfigured
         AiFailure.NETWORK -> "Kunde inte nå leverantören. Kontrollera adressen och din anslutning; en lokal server måste tillåta den här sidans ursprung."
