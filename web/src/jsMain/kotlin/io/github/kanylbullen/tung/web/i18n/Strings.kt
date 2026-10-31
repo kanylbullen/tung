@@ -214,6 +214,19 @@ interface Strings {
     val chooseAnother: String
     val chooseDay: String
     val dayGone: String
+
+    // Selecting routines, creating exercises
+    val select: String
+    val selectAll: String
+    val leaveSelection: String
+    fun selectedCount(count: Int): String
+    val deleteSelected: String
+    fun deleteManyTitle(count: Int): String
+    val deleteManyBody: String
+    fun deleteManyDays(count: Int): String
+    val createExercise: String
+    val muscleGroup: String
+    val equipment: String
     fun weeksSummary(volumes: String): String
 
     // Settings
@@ -535,6 +548,19 @@ object English : Strings {
     override val chooseAnother = "Choose another"
     override val chooseDay = "Choose a day"
     override val dayGone = "That day is no longer in the program."
+
+    override val select = "Select"
+    override val selectAll = "Select all"
+    override val leaveSelection = "Leave selection"
+    override fun selectedCount(count: Int) = "$count selected"
+    override val deleteSelected = "Delete selected routines"
+    override fun deleteManyTitle(count: Int) = if (count == 1) "Delete 1 routine?" else "Delete $count routines?"
+    override val deleteManyBody = "Your workout history is kept."
+    override fun deleteManyDays(count: Int) =
+        if (count == 1) "1 program day that uses them goes too." else "$count program days that use them go too."
+    override val createExercise = "Create exercise"
+    override val muscleGroup = "Muscle group"
+    override val equipment = "Equipment"
     override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
     override val settings = "Settings"
     override val training = "Training"
@@ -867,6 +893,19 @@ object Swedish : Strings {
     override val chooseAnother = "Välj en annan"
     override val chooseDay = "Välj en dag"
     override val dayGone = "Den dagen finns inte längre i programmet."
+
+    override val select = "Välj"
+    override val selectAll = "Välj alla"
+    override val leaveSelection = "Avsluta urval"
+    override fun selectedCount(count: Int) = if (count == 1) "1 vald" else "$count valda"
+    override val deleteSelected = "Radera valda rutiner"
+    override fun deleteManyTitle(count: Int) = if (count == 1) "Radera 1 rutin?" else "Radera $count rutiner?"
+    override val deleteManyBody = "Din träningshistorik finns kvar."
+    override fun deleteManyDays(count: Int) =
+        if (count == 1) "1 programdag som använder dem försvinner också." else "$count programdagar som använder dem försvinner också."
+    override val createExercise = "Skapa övning"
+    override val muscleGroup = "Muskelgrupp"
+    override val equipment = "Utrustning"
     override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
     override val settings = "Inställningar"
     override val training = "Träning"

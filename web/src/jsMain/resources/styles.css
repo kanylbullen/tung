@@ -457,3 +457,10 @@ a.chip { display: inline-flex; align-items: center; color: inherit; text-decorat
 .weekdays .chip { min-width: 44px; padding: 0 8px; }
 .today .action-row { padding: 8px 20px 0; }
 .today .card-title { font-size: 18px; }
+
+/* --- Selecting routines --- */
+.selection-bar { gap: 4px; }
+.selection-bar .detail-title { flex: 1; }
+.select-row { display: flex; align-items: center; cursor: pointer; }
+.select-row input { width: 22px; height: 22px; margin: 0 4px 0 12px; accent-color: var(--accent); flex: none; }
+.dialog select { font: inherit; min-height: 44px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--background); color: var(--text); }

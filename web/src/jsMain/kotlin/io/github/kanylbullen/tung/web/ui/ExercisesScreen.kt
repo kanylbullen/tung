@@ -8,6 +8,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.command.CommandIds
+import org.jetbrains.compose.web.attributes.disabled
+import org.jetbrains.compose.web.attributes.selected
+import org.jetbrains.compose.web.dom.Label
+import org.jetbrains.compose.web.dom.Option
+import org.jetbrains.compose.web.dom.Select
 import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.catalog.EquipmentFilter
@@ -23,6 +30,7 @@ import io.github.kanylbullen.tung.web.exercises.browseItemsOf
 import io.github.kanylbullen.tung.web.exercises.exercisePage
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.sync.Account
+import kotlinx.browser.window
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -62,6 +70,7 @@ fun ExercisesScreen(container: WebContainer, account: Account) {
     var group by remember { mutableStateOf<MuscleGroup?>(null) }
     val groups = remember(items, available) { browseGroups(items, available) }
     val sections = remember(items, group, query, available) { browse(items, group, query, order, available) }
+    var creating by remember { mutableStateOf(false) }
 
     Div({ classes("screen") }) {
         TopBar(container, account) { H1 { Text(strings.exercises) } }
@@ -91,10 +100,7 @@ fun ExercisesScreen(container: WebContainer, account: Account) {
                 Text(strings.equipmentFilter(available.size.takeIf { available != EquipmentFilter.ALL }))
             }
         }
-        if (sections.isEmpty()) {
-            P({ classes("empty") }) { Text(strings.noMatches) }
-            return@Div
-        }
+        if (sections.isEmpty()) P({ classes("empty") }) { Text(strings.noMatches) }
         sections.forEach { section ->
             key(section.group) {
                 H2({ classes("section") }) { Text(strings.groupLabel(section.group)) }
@@ -115,6 +121,13 @@ fun ExercisesScreen(container: WebContainer, account: Account) {
                     }
                 }
             }
+        }
+        Button({ classes("secondary", "wide"); onClick { creating = true } }) { Text(strings.createExercise) }
+    }
+    if (creating) {
+        CreateExerciseDialog(container, query.trim(), onCancel = { creating = false }) { id ->
+            creating = false
+            window.location.hash = exerciseHash(ExercisePageRef.Library(id))
         }
     }
 }
@@ -243,3 +256,59 @@ fun ExercisePageScreen(container: WebContainer, route: String) {
     }
 }
 
+
+/**
+ * A custom exercise, the phone's create dialog: a name (the search's text
+ * to begin with), its muscle group and its equipment. Save runs
+ * `create_exercise` and hands back the new exercise's id.
+ */
+@Composable
+fun CreateExerciseDialog(container: WebContainer, initialName: String, onCancel: () -> Unit, onCreated: (String) -> Unit) {
+    val strings = container.strings
+    val scope = rememberCoroutineScope()
+    var name by remember { mutableStateOf(initialName) }
+    var group by remember { mutableStateOf(MuscleGroup.CHEST) }
+    var equipment by remember { mutableStateOf(Equipment.BARBELL) }
+    Div({ classes("sheet-backdrop"); onClick { onCancel() } })
+    Div({ classes("dialog"); attr("role", "dialog"); attr("aria-modal", "true"); attr("aria-label", strings.createExercise) }) {
+        H2 { Text(strings.createExercise) }
+        Label(attrs = { classes("field", "dialog-field") }) {
+            Span { Text(strings.routineName) }
+            Input(InputType.Text) {
+                value(name)
+                attr("autofocus", "")
+                attr("maxlength", "200")
+                onInput { name = it.value }
+            }
+        }
+        Label(attrs = { classes("field", "dialog-field") }) {
+            Span { Text(strings.muscleGroup) }
+            Select({ onChange { event -> event.value?.let { group = MuscleGroup.fromKey(it) } } }) {
+                MuscleGroup.entries.forEach { g ->
+                    Option(g.key, { if (g == group) selected() }) { Text(strings.groupLabel(g)) }
+                }
+            }
+        }
+        Label(attrs = { classes("field", "dialog-field") }) {
+            Span { Text(strings.equipment) }
+            Select({ onChange { event -> event.value?.let { equipment = Equipment.fromKey(it) } } }) {
+                Equipment.entries.forEach { e ->
+                    Option(e.key, { if (e == equipment) selected() }) { Text(strings.equipmentLabel(e)) }
+                }
+            }
+        }
+        Div({ classes("dialog-actions") }) {
+            Button({ classes("secondary"); onClick { onCancel() } }) { Text(strings.cancel) }
+            Button({
+                classes("accent-button")
+                if (name.isBlank()) disabled()
+                onClick {
+                    scope.launch {
+                        val result = container.commands.execute(Command.CreateExercise(name.trim(), group, equipment))
+                        (result as? CommandResult.Done)?.ids?.get(CommandIds.EXERCISE_ID)?.let(onCreated)
+                    }
+                }
+            }) { Text(strings.save) }
+        }
+    }
+}
