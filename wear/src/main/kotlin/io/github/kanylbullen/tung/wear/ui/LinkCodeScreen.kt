@@ -5,16 +5,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Button
@@ -45,9 +49,11 @@ fun LinkCodeScreen(link: LinkUi, onDigit: (Char) -> Unit, onDelete: () -> Unit, 
     val diameter = screenDiameter()
     val gap = diameter * 0.012f
     val key = DpSize(width = diameter * 0.22f, height = diameter * 0.105f)
+    // The keys' labels are sized with the keys, not by the font scale, or a larger font would not fit the key.
+    val label = with(LocalDensity.current) { (diameter * 0.075f).toSp() }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(gap)) {
-            Box(Modifier.size(width = diameter * 0.6f, height = 28.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.width(diameter * 0.6f).heightIn(min = 28.dp), contentAlignment = Alignment.Center) {
                 Text(
                     text = link.error?.let { stringResource(it) }
                         ?: link.server?.let { stringResource(R.string.link_title_server, serverLabel(it)) }
@@ -77,7 +83,7 @@ fun LinkCodeScreen(link: LinkUi, onDigit: (Char) -> Unit, onDelete: () -> Unit, 
             }
             KEYS.forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    row.forEach { char -> Key(char, key, link, onDigit, onDelete, onSubmit) }
+                    row.forEach { char -> Key(char, key, label, link, onDigit, onDelete, onSubmit) }
                 }
             }
         }
@@ -85,7 +91,7 @@ fun LinkCodeScreen(link: LinkUi, onDigit: (Char) -> Unit, onDelete: () -> Unit, 
 }
 
 @Composable
-private fun Key(key: Char, size: DpSize, link: LinkUi, onDigit: (Char) -> Unit, onDelete: () -> Unit, onSubmit: () -> Unit) {
+private fun Key(key: Char, size: DpSize, label: TextUnit, link: LinkUi, onDigit: (Char) -> Unit, onDelete: () -> Unit, onSubmit: () -> Unit) {
     val modifier = Modifier.size(size)
     when (key) {
         DELETE -> {
@@ -95,7 +101,7 @@ private fun Key(key: Char, size: DpSize, link: LinkUi, onDigit: (Char) -> Unit, 
                 enabled = !link.busy && link.input.digits.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(backgroundColor = TungColors.background, contentColor = TungColors.muted),
                 modifier = modifier.semantics { contentDescription = description },
-            ) { Text(stringResource(R.string.link_delete_symbol), fontSize = 15.sp) }
+            ) { Text(stringResource(R.string.link_delete_symbol), fontSize = label * 0.9f) }
         }
         SUBMIT -> {
             val description = stringResource(R.string.link_submit)
@@ -104,13 +110,13 @@ private fun Key(key: Char, size: DpSize, link: LinkUi, onDigit: (Char) -> Unit, 
                 enabled = !link.busy && link.input.isComplete,
                 colors = ButtonDefaults.buttonColors(backgroundColor = TungColors.accent, contentColor = TungColors.background),
                 modifier = modifier.semantics { contentDescription = description },
-            ) { Text(stringResource(R.string.link_submit_symbol), fontSize = 15.sp) }
+            ) { Text(stringResource(R.string.link_submit_symbol), fontSize = label * 0.9f) }
         }
         else -> Button(
             onClick = { onDigit(key) },
             enabled = !link.busy,
             colors = ButtonDefaults.buttonColors(backgroundColor = TungColors.raised, contentColor = TungColors.text),
             modifier = modifier,
-        ) { Text(key.toString(), style = numberStyle(17.sp)) }
+        ) { Text(key.toString(), style = numberStyle(label)) }
     }
 }
