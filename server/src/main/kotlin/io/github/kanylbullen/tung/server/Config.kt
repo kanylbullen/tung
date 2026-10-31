@@ -27,8 +27,15 @@ data class ServerConfig(
      * The Docker image sets `TUNG_WEB_DIR=/app/web`.
      */
     val webDir: File? = null,
-    /** Accounts (by email, lower case) that may list and delete the Play test sign-ups (`TUNG_ADMIN_EMAILS`). */
+    /** Accounts (by email, lower case) that are the server's admins (`TUNG_ADMIN_EMAILS`): they see every account, and the test sign-ups when those are on. */
     val adminEmails: Set<String> = emptySet(),
+    /**
+     * `TUNG_TESTER_SIGNUPS`: the landing page asks for addresses to invite to
+     * the Android app's test on Google Play, and the admins list them. Only
+     * the instance that runs the Play test wants it (tung.xuper.fun); off, the
+     * form is not on the page and `/api/v1/testers` is 404 `not_configured`.
+     */
+    val testerSignups: Boolean = false,
     /** Behind a reverse proxy: take the client address from X-Forwarded-For / Forwarded, for the rate limit and the log. */
     val trustProxy: Boolean = false,
     /** Requests per minute and client address to register and login. */
@@ -87,6 +94,11 @@ data class ServerConfig(
                 "true", "1", "yes" -> true
                 else -> throw ConfigException("TUNG_PUSH_ALLOW_PRIVATE must be true or false, got '$raw'.")
             }
+            val testerSignups = when (val raw = value("TUNG_TESTER_SIGNUPS")?.lowercase()) {
+                null, "false", "0", "no" -> false
+                "true", "1", "yes" -> true
+                else -> throw ConfigException("TUNG_TESTER_SIGNUPS must be true or false, got '$raw'.")
+            }
             return ServerConfig(
                 databaseUrl = url,
                 databaseUser = value("DATABASE_USER"),
@@ -101,6 +113,7 @@ data class ServerConfig(
                 },
                 adminEmails = value("TUNG_ADMIN_EMAILS")
                     ?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.toSet().orEmpty(),
+                testerSignups = testerSignups,
                 googleClientIds = value("TUNG_GOOGLE_CLIENT_ID")
                     ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty(),
             )

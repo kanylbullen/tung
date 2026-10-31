@@ -59,7 +59,11 @@ tags:
   - name: export
     description: All of the user's data in one document.
   - name: testers
-    description: Sign-ups to test the Android app on Google Play, from the landing page; listed for the server's owner.
+    description: >-
+      Sign-ups to test the Android app on Google Play, from the landing page; listed for the server's admins. Only on a
+      server with `TUNG_TESTER_SIGNUPS=true`; elsewhere every operation is 404 `not_configured`.
+  - name: admin
+    description: For the server's admins (`TUNG_ADMIN_EMAILS`) only.
   - name: meta
     description: This specification.
   - name: commands
@@ -356,6 +360,33 @@ paths:
           schema: { type: string }
       responses:
         "204": { description: Removed. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/admin/users:
+    get:
+      tags: [admin]
+      summary: Every account, newest first
+      description: >-
+        How each account signs in and whether it uses the server, without any training content. At most 1000 rows;
+        `user_count` is the total. Admins only; anyone else gets 403 `not_admin`.
+      operationId: adminUsers
+      responses:
+        "200":
+          description: The accounts.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_count, users, tester_signups]
+                properties:
+                  user_count: { type: integer }
+                  users:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminUser" }
+                  tester_signups:
+                    type: boolean
+                    description: The server takes test sign-ups (`TUNG_TESTER_SIGNUPS`), so `/api/v1/testers` has a list.
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
@@ -1453,7 +1484,7 @@ components:
 
     User:
       type: object
-      required: [id, email, created_at, has_password, google_linked]
+      required: [id, email, created_at, has_password, google_linked, is_admin]
       properties:
         id: { $ref: "#/components/schemas/Uuid" }
         email: { type: string }
@@ -1464,6 +1495,34 @@ components:
         google_linked:
           type: boolean
           description: A Google account is linked, so Sign in with Google reaches this user.
+        is_admin:
+          type: boolean
+          description: The account is one of the server's admins (`TUNG_ADMIN_EMAILS`). Only `/me` sets it; elsewhere it is false.
+
+    AdminUser:
+      type: object
+      required: [id, email, created_at, has_password, google_linked, is_admin, last_seen_at, active_tokens, workouts, last_workout_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        email: { type: string }
+        created_at: { $ref: "#/components/schemas/Millis" }
+        has_password: { type: boolean }
+        google_linked: { type: boolean }
+        is_admin: { type: boolean }
+        last_seen_at:
+          type: [integer, "null"]
+          format: int64
+          description: The latest use of any of the account's tokens; null when none was used.
+        active_tokens:
+          type: integer
+          description: Tokens that still work (sessions, devices, assistants).
+        workouts:
+          type: integer
+          description: Finished workouts that are not deleted.
+        last_workout_at:
+          type: [integer, "null"]
+          format: int64
+          description: When the latest of them started.
 
     GoogleSignIn:
       type: object

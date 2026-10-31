@@ -170,6 +170,29 @@ interface Strings {
     val catalogueText: String
     val privacy: String
 
+    // Server admin (Settings, for the server's admins only)
+    val serverAdmin: String
+    val serverAdminHint: String
+    fun accountCount(count: Int): String
+    fun accountsShown(shown: Int, total: Int): String
+    fun joined(date: String): String
+    val signInGoogle: String
+    val signInPassword: String
+    val adminBadge: String
+    fun lastSeen(date: String): String
+    val neverSeen: String
+    fun lastWorkout(date: String): String
+    val testerSignups: String
+    val testerSignupsHint: String
+    val testersEmpty: String
+    val copyAddresses: String
+    val copied: String
+    fun removeTester(email: String): String
+    val removeTesterBody: String
+    val adminFailed: String
+    val adminNotAdmin: String
+    val tryAgain: String
+
     // History
     val history: String
     val historyEmpty: String
@@ -383,6 +406,28 @@ object English : Strings {
     override val sourceCode = "Source code"
     override val catalogueText = "Open data: Tung's own exercise catalogue is CC0 1.0."
     override val privacy = "Privacy"
+
+    override val serverAdmin = "Server admin"
+    override val serverAdminHint = "Every account on this server"
+    override fun accountCount(count: Int): String = if (count == 1) "1 account" else "$count accounts"
+    override fun accountsShown(shown: Int, total: Int): String = "The newest $shown of $total."
+    override fun joined(date: String): String = "Joined $date"
+    override val signInGoogle = "Google"
+    override val signInPassword = "Password"
+    override val adminBadge = "Admin"
+    override fun lastSeen(date: String): String = "Last seen $date"
+    override val neverSeen = "Never seen since signing up"
+    override fun lastWorkout(date: String): String = "latest $date"
+    override val testerSignups = "Test sign-ups"
+    override val testerSignupsHint = "Addresses left on the front page for the Android test on Google Play. Add them to the testers' list in the Play Console, then remove them here."
+    override val testersEmpty = "No one is waiting for an invitation."
+    override val copyAddresses = "Copy addresses"
+    override val copied = "Copied"
+    override fun removeTester(email: String): String = "Remove $email"
+    override val removeTesterBody = "Do it once the address is invited in the Play Console."
+    override val adminFailed = "Could not reach the server. Check your connection and try again."
+    override val adminNotAdmin = "This account is not an admin of the server."
+    override val tryAgain = "Try again"
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -599,6 +644,28 @@ object Swedish : Strings {
     override val sourceCode = "Källkod"
     override val catalogueText = "Öppna data: Tungs egen övningskatalog är CC0 1.0."
     override val privacy = "Integritet"
+
+    override val serverAdmin = "Serveradmin"
+    override val serverAdminHint = "Alla konton på den här servern"
+    override fun accountCount(count: Int): String = if (count == 1) "1 konto" else "$count konton"
+    override fun accountsShown(shown: Int, total: Int): String = "De $shown senaste av $total."
+    override fun joined(date: String): String = "Skapat $date"
+    override val signInGoogle = "Google"
+    override val signInPassword = "Lösenord"
+    override val adminBadge = "Admin"
+    override fun lastSeen(date: String): String = "Senast sedd $date"
+    override val neverSeen = "Inte sedd sedan kontot skapades"
+    override fun lastWorkout(date: String): String = "senaste $date"
+    override val testerSignups = "Testanmälningar"
+    override val testerSignupsHint = "Adresser från startsidan till Android-testet på Google Play. Lägg in dem i testarlistan i Play Console och ta sedan bort dem här."
+    override val testersEmpty = "Ingen väntar på en inbjudan."
+    override val copyAddresses = "Kopiera adresser"
+    override val copied = "Kopierat"
+    override fun removeTester(email: String): String = "Ta bort $email"
+    override val removeTesterBody = "Gör det när adressen är inbjuden i Play Console."
+    override val adminFailed = "Det gick inte att nå servern. Kontrollera uppkopplingen och försök igen."
+    override val adminNotAdmin = "Det här kontot är inte admin på servern."
+    override val tryAgain = "Försök igen"
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"
