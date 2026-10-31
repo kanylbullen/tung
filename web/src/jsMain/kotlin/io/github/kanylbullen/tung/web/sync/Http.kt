@@ -26,6 +26,35 @@ typealias GetJson = suspend (url: String) -> HttpReply
 /** One `GET` through `fetch`, with [postJson]'s timeout and the caller's [headers]; no answer at all is [HttpUnreachable]. */
 suspend fun getJson(url: String, headers: Map<String, String> = emptyMap()): HttpReply = send("GET", url, null, headers)
 
+/** One `PATCH` with a JSON body, as [postJson]. */
+suspend fun patchJson(url: String, body: String, headers: Map<String, String> = emptyMap()): HttpReply =
+    send("PATCH", url, body, headers + ("Content-Type" to "application/json"))
+
+/**
+ * A `GET` of a file the page shows but cannot link (the request needs the
+ * token), as an object URL (`blob:`) for an `<img>`; null when the server
+ * answered no file. The caller revokes it with `URL.revokeObjectURL`.
+ */
+suspend fun fetchObjectUrl(url: String, headers: Map<String, String>): String? {
+    val requestHeaders = Headers().apply { headers.forEach { (name, value) -> append(name, value) } }
+    val response = try {
+        window.fetch(url, RequestInit(method = "GET", headers = requestHeaders)).await()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        throw HttpUnreachable(e)
+    }
+    if (!response.ok) return null
+    val blob = try {
+        response.blob().await()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        throw HttpUnreachable(e)
+    }
+    return org.w3c.dom.url.URL.createObjectURL(blob)
+}
+
 /** One `DELETE` through `fetch`, as [getJson]. */
 suspend fun deleteRequest(url: String, headers: Map<String, String> = emptyMap()): HttpReply = send("DELETE", url, null, headers)
 

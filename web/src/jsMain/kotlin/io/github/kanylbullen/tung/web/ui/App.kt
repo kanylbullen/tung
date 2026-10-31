@@ -26,6 +26,7 @@ enum class Route(val hash: String) {
     PROGRESS("#/progress"),
     SETTINGS("#/settings"),
     ADMIN("#/settings/admin"),
+    FEEDBACK("#/settings/feedback"),
     ;
 
     companion object {
@@ -69,6 +70,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
         progressId != null -> ExerciseProgressScreen(container, progressId)
         route == Route.PROGRESS -> ProgressScreen(container, account)
         route == Route.ADMIN -> AdminScreen(container, account)
+        route == Route.FEEDBACK -> FeedbackScreen(container, account)
         route == Route.SETTINGS -> SettingsScreen(container, account)
         detailId != null -> WorkoutDetailScreen(container, detailId)
         routineId != null -> RoutineScreen(container, routineId)
@@ -84,7 +86,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
         progressId != null -> Route.PROGRESS
         else -> route
     }
-    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.ADMIN) BottomBar(tab, container)
+    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.ADMIN && route != Route.FEEDBACK) BottomBar(tab, container)
 }
 
 /** Home · History, the phone's bottom bar; the current one in the accent, announced as the current page. */

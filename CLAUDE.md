@@ -276,6 +276,7 @@ column). All in `app/.../ui/settings/`:
 | Assistant | `settings/assistant` | the model, or "Not set up" | `AiSection` |
 | Health Connect | `settings/health` | "Writing workouts", "Off", … | `HealthConnectSection` |
 | Data | `settings/data` | "Last import 21 Oct" | `ImportSection` (import's `onDone` pops back here): import, "Undo last import", "Delete routines from the last import (N)" |
+| Feedback | `settings/feedback` | "Report a bug or suggest a feature" | `FeedbackScreen` + `FeedbackViewModel`: Bug or Idea, the text, up to three screenshots from the photo picker (`readScreenshot` in `Screenshots.kt` scales one over 1.5 MB or 2000 px to JPEG), Send through `SyncAccount.sendFeedback`; signed out, a hint and "Go to Account". `FeedbackFlowTest` |
 | About | `settings/about` | "Version 0.1.0 · dogfood" | `AboutScreen` in `SettingsGroups.kt`: version and build type (`BuildConfig`), AGPL-3.0 with the source link, the catalogue's credit (core CC0, free-exercise-db Unlicense) |
 
 A section's own composable keeps its logic and has no title of its own: the
@@ -1981,17 +1982,44 @@ fallback, and only on a tap.
   and client) that `POST /oauth/authorize` takes instead of the password.
   Tests: `GoogleSignInTest` (a test RSA key and a JWK set on a JDK
   `HttpServer`; `ServerConfig.clock` exists for expiry).
-- **Play test sign-ups** (`routes/TesterRoutes.kt`, `V12__tester_signups.sql`):
-  the landing page's form posts `POST /api/v1/testers {email, consent,
+- **Admins** (`Admin.kt`): the accounts whose email is in
+  `TUNG_ADMIN_EMAILS` (`Admins`, the one place that decides it; a `read`
+  token is refused, 403 `insufficient_scope`). `/me` says `is_admin`;
+  `GET /api/v1/admin/users` lists every account with how it signs in, when
+  it was last seen, its working tokens and its finished workouts, never
+  training content. The web app's Settings → Server admin shows it
+  (`web/.../ui/AdminScreen.kt`). `AdminTest`.
+- **Play test sign-ups** (`routes/TesterRoutes.kt`, `V12__tester_signups.sql`),
+  only with `TUNG_TESTER_SIGNUPS=true` (tung.xuper.fun; a self-hosted server
+  runs no Play test, so off by default: every route 404 `not_configured`, and
+  the landing page drops its `<!-- testers:begin -->` blocks, `keepBlocks` in
+  `SiteRoutes.kt`): the landing page's form posts `POST /api/v1/testers {email, consent,
   language, website}` (public, under the auth rate limit; no consent is 400
   `consent_required`; `website` is a honeypot people never see, answered
   like anyone and stored as nothing; the answer is the same for a new and a
   known address, so nobody learns who signed up; at most
-  `MAX_TESTER_SIGNUPS`, then 503 `list_full`). Only an account whose email
-  is in `TUNG_ADMIN_EMAILS` may `GET /api/v1/testers` (to copy into the Play
-  Console) and `DELETE /api/v1/testers/{email}` (once invited); anyone else
-  gets 403 `not_admin`. The table holds the address, when and the page's
-  language, nothing else, linked to no account. `TesterSignupTest`.
+  `MAX_TESTER_SIGNUPS`, then 503 `list_full`). Only an admin may
+  `GET /api/v1/testers` (to copy into the Play Console) and
+  `DELETE /api/v1/testers/{email}` (once invited); anyone else gets 403
+  `not_admin`. The table holds the address, when and the page's language,
+  nothing else, linked to no account. `TesterSignupTest`.
+- **Feedback** (`Feedback.kt`, `V13__feedback.sql`): any signed-in user
+  (a write token) sends `POST /api/v1/feedback {kind: bug|idea, message,
+  platform: android|wear|web|ios, app_version, images}`, up to
+  `MAX_FEEDBACK_IMAGES` (3) screenshots as base64 or data URLs, each at most
+  4 MB decoded and a PNG, JPEG or WebP by its own bytes (`imageType`), stored
+  as `bytea` in `feedback_images`; at most `MAX_FEEDBACK_PER_DAY` (20) per
+  user and day (429 `too_much_feedback`), `MAX_FEEDBACK_ROWS` in all, a body
+  over 18 MB 413 before it is read. The admins list it (`GET
+  /api/v1/admin/feedback`, newest first with the open count), fetch a
+  screenshot (`…/{id}/images/{imageId}`, `nosniff`), mark it resolved or
+  open (`PATCH {resolved}`) and delete it; the rows go with the account
+  (`ON DELETE CASCADE`). Clients: the phone's Settings → Feedback, the web's
+  Settings → Send feedback (paste with Ctrl+V or pick, scaled in a canvas
+  over 1.5 MB or 2000 px, `web/.../feedback/WebFeedback.kt`), and the web's
+  Server admin lists it with the screenshots as object URLs
+  (`ui/AdminFeedback.kt`). The privacy page says so. `FeedbackTest`,
+  `WebFeedbackTest`, `FeedbackFlowTest`.
 - **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST
   /api/v1/link/start` (write token) gives a six-digit code valid ten minutes,
   unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)

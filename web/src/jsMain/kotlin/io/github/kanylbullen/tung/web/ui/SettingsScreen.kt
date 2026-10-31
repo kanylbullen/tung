@@ -129,6 +129,17 @@ fun SettingsScreen(container: WebContainer, account: Account) {
             }
         }
 
+        Ul({ classes("rows") }) {
+            Li {
+                A(href = Route.FEEDBACK.hash, attrs = { classes("row", "row-link") }) {
+                    Div({ classes("main") }) {
+                        Div({ classes("title") }) { Span({ classes("plain") }) { Text(strings.sendFeedback) } }
+                        Div({ classes("details") }) { Text(strings.sendFeedbackHint) }
+                    }
+                }
+            }
+        }
+
         H2({ classes("section") }) { Text(strings.about) }
         Div({ classes("setting", "column") }) {
             P({ classes("hint", "flush") }) { Text(strings.licenceText) }

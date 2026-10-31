@@ -51,6 +51,7 @@ enum class SettingsGroup(val route: String, @StringRes val title: Int) {
     ASSISTANT("settings/assistant", R.string.settings_group_assistant),
     HEALTH_CONNECT("settings/health", R.string.settings_group_health),
     DATA("settings/data", R.string.settings_group_data),
+    FEEDBACK("settings/feedback", R.string.settings_group_feedback),
     ABOUT("settings/about", R.string.settings_group_about),
 }
 
@@ -95,6 +96,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenGroup: (SettingsGroup) -> Unit) {
                 )
                 SettingsGroup.DATA -> summary.lastImport?.let { stringResource(R.string.settings_summary_last_import, shortDate(it.at)) }
                     ?: stringResource(R.string.settings_summary_data)
+                SettingsGroup.FEEDBACK -> stringResource(R.string.settings_summary_feedback)
                 SettingsGroup.ABOUT -> stringResource(R.string.settings_summary_about, BuildConfig.VERSION_NAME, BuildConfig.BUILD_TYPE)
             }
             GroupRow(stringResource(group.title), line.orEmpty()) { onOpenGroup(group) }

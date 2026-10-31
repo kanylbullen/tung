@@ -8,6 +8,7 @@ import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.admin.WebAdmin
+import io.github.kanylbullen.tung.web.feedback.WebFeedback
 import io.github.kanylbullen.tung.web.i18n.Strings
 import io.github.kanylbullen.tung.web.settings.WebPreferences
 import io.github.kanylbullen.tung.web.store.IndexedDbStore
@@ -68,6 +69,9 @@ class WebContainer(
 
     /** The server-admin reads, for Settings → Server admin. */
     val admin = WebAdmin()
+
+    /** Feedback with screenshots, from Settings → Send feedback. */
+    val feedback = WebFeedback()
 
     /** The browser's own settings: the default rest and "My equipment". */
     val preferences = WebPreferences()

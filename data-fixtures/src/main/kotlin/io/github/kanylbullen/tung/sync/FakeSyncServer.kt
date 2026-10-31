@@ -45,6 +45,12 @@ class FakeSyncServer : Dispatcher() {
     /** Whether [linkCode] has been claimed. */
     @Volatile var linkClaimed = false
 
+    /** Every `POST /api/v1/feedback` body the server took, as JSON text. */
+    val feedback = CopyOnWriteArrayList<String>()
+
+    /** What `/api/v1/feedback` answers; 201 unless a test sets another status (413, 429, …). */
+    @Volatile var feedbackStatus = 201
+
     /** The Google client id `/auth/methods` names; null: the server does not offer Google (and `/auth/google` is 404). */
     @Volatile var googleClientId: String? = null
 
@@ -187,6 +193,17 @@ class FakeSyncServer : Dispatcher() {
                 json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
             } else {
                 json(201, """{"code":"$linkCode","expires_at":${System.currentTimeMillis() + 10 * 60_000L}}""")
+            }
+        }
+        "/api/v1/feedback" -> {
+            authPaths += request.path
+            if (request.getHeader("Authorization") != "Bearer $token") {
+                json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
+            } else if (feedbackStatus != 201) {
+                json(feedbackStatus, """{"error":{"code":"refused","message":"Refused."}}""")
+            } else {
+                feedback += request.body.readUtf8()
+                json(201, """{"id":"f-${feedback.size}"}""")
             }
         }
         "/api/v1/link/claim" -> {
