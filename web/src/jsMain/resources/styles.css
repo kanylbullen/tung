@@ -464,3 +464,17 @@ a.chip { display: inline-flex; align-items: center; color: inherit; text-decorat
 .select-row { display: flex; align-items: center; cursor: pointer; }
 .select-row input { width: 22px; height: 22px; margin: 0 4px 0 12px; accent-color: var(--accent); flex: none; }
 .dialog select { font: inherit; min-height: 44px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--background); color: var(--text); }
+
+/* --- Import --- */
+.file-button { position: relative; display: block; margin: 16px 20px 0; min-height: 52px; line-height: 52px; text-align: center; border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font-weight: 700; cursor: pointer; }
+.file-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.file-button:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+.plain-list { margin: 0 20px; padding-left: 1.2em; color: var(--muted); font-size: 15px; }
+.import-rows { list-style: none; margin: 8px 0 0; padding: 0; }
+.import-row { padding: 12px 20px; border-top: 1px solid var(--border); }
+.import-row .decided { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.import-row .decided .accent { color: var(--accent-text); font-weight: 600; }
+.import-row .chips { padding-top: 8px; }
+.action-row.flush { padding-left: 0; padding-right: 0; }
+.import-row .title { font-weight: 600; }
+.import-row .details { color: var(--muted); font-size: 14px; }
