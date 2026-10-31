@@ -64,6 +64,8 @@ tags:
       server with `TUNG_TESTER_SIGNUPS=true`; elsewhere every operation is 404 `not_configured`.
   - name: admin
     description: For the server's admins (`TUNG_ADMIN_EMAILS`) only.
+  - name: feedback
+    description: A bug or an idea from a signed-in user, with up to three screenshots; listed for the admins.
   - name: meta
     description: This specification.
   - name: commands
@@ -389,6 +391,125 @@ paths:
                     description: The server takes test sign-ups (`TUNG_TESTER_SIGNUPS`), so `/api/v1/testers` has a list.
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/feedback:
+    post:
+      tags: [feedback]
+      summary: Send feedback
+      description: >-
+        A bug or an idea, with up to 3 screenshots as base64 (a data URL is taken too). Each may be at most 4 MB
+        decoded and must be a PNG, JPEG or WebP image, read from its bytes. At most 20 per user and day
+        (429 `too_much_feedback`); a full table is 503 `feedback_full`.
+      operationId: sendFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeedbackInput" }
+      responses:
+        "201":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { $ref: "#/components/schemas/Uuid" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "413":
+          description: A screenshot or the whole body is too large (`image_too_large`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          description: Too much feedback from this account today (`too_much_feedback`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: The table is full (`feedback_full`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/admin/feedback:
+    get:
+      tags: [admin, feedback]
+      summary: All feedback, newest first
+      description: At most 500 rows, each with its screenshots' ids. Admins only; a read token gets 403.
+      operationId: adminFeedback
+      responses:
+        "200":
+          description: The feedback.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feedback, open_count]
+                properties:
+                  feedback:
+                    type: array
+                    items: { $ref: "#/components/schemas/Feedback" }
+                  open_count:
+                    type: integer
+                    description: Feedback not marked resolved, of all there is.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/admin/feedback/{id}:
+    patch:
+      tags: [admin, feedback]
+      summary: Mark feedback resolved or open again
+      operationId: resolveFeedback
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolved]
+              properties:
+                resolved: { type: boolean }
+      responses:
+        "204": { description: Changed. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [admin, feedback]
+      summary: Delete feedback and its screenshots
+      description: A missing id is no error.
+      operationId: deleteFeedback
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/admin/feedback/{id}/images/{imageId}:
+    get:
+      tags: [admin, feedback]
+      summary: One screenshot
+      operationId: feedbackImage
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: imageId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The image as it was sent.
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/tokens:
     get:
@@ -1498,6 +1619,42 @@ components:
         is_admin:
           type: boolean
           description: The account is one of the server's admins (`TUNG_ADMIN_EMAILS`). Only `/me` sets it; elsewhere it is false.
+
+    FeedbackInput:
+      type: object
+      required: [kind, message, platform]
+      properties:
+        kind: { type: string, enum: [bug, idea] }
+        message: { type: string, minLength: 1, maxLength: 5000 }
+        platform: { type: string, enum: [android, wear, web, ios] }
+        app_version: { type: [string, "null"], maxLength: 64 }
+        images:
+          type: array
+          maxItems: 3
+          items: { type: string, description: "Base64, or a data URL." }
+
+    Feedback:
+      type: object
+      required: [id, kind, message, platform, app_version, created_at, resolved_at, user_id, email, images]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        kind: { type: string, enum: [bug, idea] }
+        message: { type: string }
+        platform: { type: string, enum: [android, wear, web, ios] }
+        app_version: { type: [string, "null"] }
+        created_at: { $ref: "#/components/schemas/Millis" }
+        resolved_at: { type: [integer, "null"], format: int64 }
+        user_id: { $ref: "#/components/schemas/Uuid" }
+        email: { type: string }
+        images:
+          type: array
+          items:
+            type: object
+            required: [id, content_type, size]
+            properties:
+              id: { $ref: "#/components/schemas/Uuid" }
+              content_type: { type: string }
+              size: { type: integer }
 
     AdminUser:
       type: object

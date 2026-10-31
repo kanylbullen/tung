@@ -99,6 +99,7 @@ fun Route.apiRoutes(
     val admins = Admins(db, config.adminEmails)
     val testers = Testers(db, admins, config.testerSignups, config.clock)
     val adminStore = AdminStore(db, admins, config.testerSignups, config.clock)
+    val feedback = FeedbackStore(db, admins, config.clock)
     route("/api/v1") {
         linkRoutes(db, accounts)
         rateLimit(AUTH_RATE_LIMIT) {
@@ -127,6 +128,8 @@ fun Route.apiRoutes(
 
             testerAdminRoutes(testers)
             adminRoutes(adminStore)
+            feedbackRoutes(feedback)
+            adminFeedbackRoutes(feedback)
 
             route("/tokens") {
                 get { call.respond(accounts.listTokens(call.user())) }

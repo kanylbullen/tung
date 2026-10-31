@@ -27,5 +27,10 @@ fun NavGraphBuilder.settingsGraph(nav: NavController, onImportFile: (Uri) -> Uni
     composable(SettingsGroup.ASSISTANT.route) { AssistantSettingsScreen(onBack = back) }
     composable(SettingsGroup.HEALTH_CONNECT.route) { HealthConnectSettingsScreen(onBack = back) }
     composable(SettingsGroup.DATA.route) { DataSettingsScreen(onBack = back, onImportFile = onImportFile) }
+    composable(SettingsGroup.FEEDBACK.route) {
+        FeedbackScreen(onBack = back, onOpenAccount = {
+            nav.navigate(SettingsGroup.ACCOUNT.route) { popUpTo(SETTINGS_ROUTE) }
+        })
+    }
     composable(SettingsGroup.ABOUT.route) { AboutScreen(onBack = back) }
 }

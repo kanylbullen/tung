@@ -108,6 +108,20 @@ class SyncAccount(
         return result
     }
 
+    /**
+     * Feedback from this device's account ([SyncClient.sendFeedback]); a 401
+     * signs this device out, as during sync.
+     */
+    suspend fun sendFeedback(kind: String, message: String, images: List<ByteArray>, platform: String, appVersion: String?): FeedbackOutcome {
+        val result = client.sendFeedback(kind, message, images, platform, appVersion)
+        if (result == FeedbackOutcome.SIGNED_OUT) {
+            withContext(ioDispatcher) { tokens.write(null) }
+            settings.signedOut(SyncFailure.SIGNED_OUT)
+            signedOutByServer()
+        }
+        return result
+    }
+
     /** A code for another device to sign in with ([signInWithCode] there); this device must be signed in. */
     suspend fun startLink(): LinkStartResult {
         val result = client.startLink()

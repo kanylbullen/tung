@@ -38,7 +38,7 @@ private sealed interface AdminView {
 
 /**
  * Settings → Server admin, for an account in the server's
- * `TUNG_ADMIN_EMAILS`: every account on the server, newest first, with how
+ * `TUNG_ADMIN_EMAILS`: the feedback users sent ([FeedbackSection]), every account on the server, newest first, with how
  * it signs in, when it was last seen and how many workouts it has, and, on
  * a server that takes them (`TUNG_TESTER_SIGNUPS`, tung.xuper.fun), the
  * addresses left on the front page for the Play test, to copy into the Play
@@ -91,6 +91,7 @@ fun AdminScreen(container: WebContainer, account: Account) {
                 }
             }
             is AdminView.Ready -> {
+                FeedbackSection(container, account, now)
                 val testers = current.testers
                 if (current.users.testerSignups) {
                     H2({ classes("section") }) { Text(strings.testerSignups) }

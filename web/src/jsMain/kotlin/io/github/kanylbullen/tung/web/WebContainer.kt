@@ -12,6 +12,7 @@ import io.github.kanylbullen.tung.web.admin.WebAdmin
 import io.github.kanylbullen.tung.web.ai.WebAi
 import io.github.kanylbullen.tung.web.ai.WebAiSettings
 import io.github.kanylbullen.tung.web.catalog.WebCatalogue
+import io.github.kanylbullen.tung.web.feedback.WebFeedback
 import io.github.kanylbullen.tung.web.i18n.Strings
 import io.github.kanylbullen.tung.web.importing.WebImporter
 import io.github.kanylbullen.tung.web.settings.WebPreferences
@@ -74,6 +75,9 @@ class WebContainer(
 
     /** The server-admin reads, for Settings → Server admin. */
     val admin = WebAdmin()
+
+    /** Feedback with screenshots, from Settings → Send feedback. */
+    val feedback = WebFeedback()
 
     /** The browser's own settings: the default rest and "My equipment". */
     val preferences = WebPreferences()

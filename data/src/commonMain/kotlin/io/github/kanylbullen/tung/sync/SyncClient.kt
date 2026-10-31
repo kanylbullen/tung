@@ -139,6 +139,32 @@ enum class LinkFailure {
     SERVER,
 }
 
+/** What sending feedback gave ([SyncClient.sendFeedback]). */
+enum class FeedbackOutcome {
+    SENT,
+
+    /** No server or token on this device: feedback goes with an account. */
+    NOT_SIGNED_IN,
+
+    /** 401: the token is no longer valid. */
+    SIGNED_OUT,
+
+    /** 413: a screenshot, or all of them, too large. */
+    TOO_LARGE,
+
+    /** 429: the account's feedback for today is used up. */
+    TOO_MANY_TODAY,
+
+    /** 404 or 405: a server from before feedback. */
+    NOT_A_SERVER,
+
+    /** No connection, refused, timed out. */
+    NETWORK,
+
+    /** 5xx, another 4xx, or an answer that is not what the API returns. */
+    SERVER,
+}
+
 /**
  * Talks to tung-server: sign in and out (`/api/v1/auth/…`) and [syncOnce]
  * (`POST /api/v1/sync`, the protocol in `core/sync/SyncProtocol.kt`). Every
@@ -352,6 +378,40 @@ class SyncClient(
     }
 
     /**
+     * `POST /api/v1/feedback` with this device's token: a bug or an idea and
+     * up to three screenshots, as the server's admins read them. [images]
+     * are the files' bytes (PNG, JPEG or WebP), sent as base64.
+     */
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    suspend fun sendFeedback(kind: String, message: String, images: List<ByteArray>, platform: String, appVersion: String?): FeedbackOutcome =
+        withContext(ioDispatcher) {
+            val baseUrl = settings.serverUrl() ?: return@withContext FeedbackOutcome.NOT_SIGNED_IN
+            val token = tokens.read() ?: return@withContext FeedbackOutcome.NOT_SIGNED_IN
+            val body = FeedbackBody(kind, message.trim(), platform, appVersion, images.map { kotlin.io.encoding.Base64.Default.encode(it) })
+            try {
+                val response = http.post(baseUrl + FEEDBACK_PATH) {
+                    bearerAuth(token)
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }
+                when {
+                    response.status.isSuccess() -> FeedbackOutcome.SENT
+                    response.status.value == 401 -> FeedbackOutcome.SIGNED_OUT
+                    response.status.value == 413 -> FeedbackOutcome.TOO_LARGE
+                    response.status.value == 429 -> FeedbackOutcome.TOO_MANY_TODAY
+                    response.status.value == 404 || response.status.value == 405 -> FeedbackOutcome.NOT_A_SERVER
+                    else -> FeedbackOutcome.SERVER
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                FeedbackOutcome.NETWORK
+            } catch (e: Exception) {
+                FeedbackOutcome.SERVER
+            }
+        }
+
+    /**
      * `POST /api/v1/link/claim {code}` at [baseUrl], without a token: a valid
      * code comes back as a token for its account. Stores nothing; [SyncAccount] does.
      */
@@ -460,6 +520,15 @@ class SyncClient(
     private data class Credentials(val email: String, val password: String)
 
     @Serializable
+    private data class FeedbackBody(
+        val kind: String,
+        val message: String,
+        val platform: String,
+        @SerialName("app_version") val appVersion: String?,
+        val images: List<String>,
+    )
+
+    @Serializable
     private data class LinkCodeBody(val code: String, @SerialName("expires_at") val expiresAt: Long)
 
     @Serializable
@@ -499,6 +568,7 @@ class SyncClient(
         const val METHODS_PATH = "/api/v1/auth/methods"
         const val ME_PATH = "/api/v1/me"
         const val LINK_START_PATH = "/api/v1/link/start"
+        const val FEEDBACK_PATH = "/api/v1/feedback"
         const val LINK_CLAIM_PATH = "/api/v1/link/claim"
     }
 }

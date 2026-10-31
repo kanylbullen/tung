@@ -26,6 +26,7 @@ enum class Route(val hash: String) {
     PROGRESS("#/progress"),
     SETTINGS("#/settings"),
     ADMIN("#/settings/admin"),
+    FEEDBACK("#/settings/feedback"),
     SUMMARY("#/summary"),
     EXERCISES("#/exercises"),
     PROGRAMS("#/programs"),
@@ -84,6 +85,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
         progressId != null -> ExerciseProgressScreen(container, progressId)
         route == Route.PROGRESS -> ProgressScreen(container, account)
         route == Route.ADMIN -> AdminScreen(container, account)
+        route == Route.FEEDBACK -> FeedbackScreen(container, account)
         route == Route.IMPORT -> ImportScreen(container)
         route == Route.ASSISTANT -> AssistantScreen(container)
         route == Route.SETTINGS -> SettingsScreen(container, account)
@@ -101,7 +103,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
         else -> route
     }
     // The workout and the summary have their own bottom, as on the phone.
-    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.ADMIN && route != Route.SUMMARY && route != Route.IMPORT && route != Route.ASSISTANT && spoken == null) BottomBar(tab, container)
+    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.ADMIN && route != Route.FEEDBACK && route != Route.SUMMARY && route != Route.IMPORT && route != Route.ASSISTANT && spoken == null) BottomBar(tab, container)
 }
 
 /** Home · History, the phone's bottom bar; the current one in the accent, announced as the current page. */

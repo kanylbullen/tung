@@ -382,6 +382,35 @@ interface Strings {
     val adminNotAdmin: String
     val tryAgain: String
 
+    // Feedback (Settings → Send feedback, and its list on Server admin)
+    val sendFeedback: String
+    val sendFeedbackHint: String
+    val feedbackBug: String
+    val feedbackIdea: String
+    val feedbackMessageLabel: String
+    val feedbackScreenshotsHint: String
+    val feedbackScreenshotNotice: String
+    val addScreenshot: String
+    fun screenshotAlt(number: Int): String
+    fun removeScreenshot(number: Int): String
+    fun openScreenshot(number: Int): String
+    fun showScreenshots(count: Int): String
+    val sending: String
+    val feedbackSent: String
+    val feedbackTooLarge: String
+    val feedbackTooManyToday: String
+    val feedbackUnreadable: String
+    val feedbackFailed: String
+    val feedbackSignedOut: String
+    fun feedbackHeading(open: Int): String
+    val feedbackEmpty: String
+    val markResolved: String
+    val reopen: String
+    val resolved: String
+    val deleteFeedbackTitle: String
+    val deleteFeedbackBody: String
+    fun platformName(platform: String): String
+
     // History
     val history: String
     val historyEmpty: String
@@ -869,6 +898,40 @@ object English : Strings {
     override val adminFailed = "Could not reach the server. Check your connection and try again."
     override val adminNotAdmin = "This account is not an admin of the server."
     override val tryAgain = "Try again"
+
+    override val sendFeedback = "Send feedback"
+    override val sendFeedbackHint = "Report a bug or suggest a feature"
+    override val feedbackBug = "Bug"
+    override val feedbackIdea = "Idea"
+    override val feedbackMessageLabel = "What happened, or what would you like?"
+    override val feedbackScreenshotsHint = "Paste screenshots with Ctrl+V, or add them. At most 3."
+    override val feedbackScreenshotNotice = "A screenshot shows whatever was on your screen. Look it over before you send it."
+    override val addScreenshot = "Add screenshot"
+    override fun screenshotAlt(number: Int): String = "Screenshot $number"
+    override fun removeScreenshot(number: Int): String = "Remove screenshot $number"
+    override fun openScreenshot(number: Int): String = "Open screenshot $number"
+    override fun showScreenshots(count: Int): String = if (count == 1) "Show screenshot" else "Show $count screenshots"
+    override val sending = "Sending…"
+    override val feedbackSent = "Thanks. Your feedback has reached us."
+    override val feedbackTooLarge = "The screenshots are too large. Remove one and try again."
+    override val feedbackTooManyToday = "That is a lot of feedback for one day. Try again tomorrow."
+    override val feedbackUnreadable = "That file could not be read as an image."
+    override val feedbackFailed = "Could not send it. Check your connection and try again."
+    override val feedbackSignedOut = "Your session has ended. Sign in again to send feedback."
+    override fun feedbackHeading(open: Int): String = if (open == 0) "Feedback" else "Feedback ($open open)"
+    override val feedbackEmpty = "No feedback yet."
+    override val markResolved = "Mark resolved"
+    override val reopen = "Reopen"
+    override val resolved = "Resolved"
+    override val deleteFeedbackTitle = "Delete this feedback?"
+    override val deleteFeedbackBody = "Its screenshots are deleted too."
+    override fun platformName(platform: String): String = when (platform) {
+        "android" -> "Android"
+        "wear" -> "Wear OS"
+        "web" -> "Web"
+        "ios" -> "iPhone"
+        else -> platform
+    }
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -1359,6 +1422,40 @@ object Swedish : Strings {
     override val adminFailed = "Det gick inte att nå servern. Kontrollera uppkopplingen och försök igen."
     override val adminNotAdmin = "Det här kontot är inte admin på servern."
     override val tryAgain = "Försök igen"
+
+    override val sendFeedback = "Skicka feedback"
+    override val sendFeedbackHint = "Rapportera en bugg eller föreslå en funktion"
+    override val feedbackBug = "Bugg"
+    override val feedbackIdea = "Idé"
+    override val feedbackMessageLabel = "Vad hände, eller vad vill du ha?"
+    override val feedbackScreenshotsHint = "Klistra in skärmdumpar med Ctrl+V, eller lägg till dem. Högst 3."
+    override val feedbackScreenshotNotice = "En skärmdump visar allt som var på skärmen. Titta igenom den innan du skickar."
+    override val addScreenshot = "Lägg till skärmdump"
+    override fun screenshotAlt(number: Int): String = "Skärmdump $number"
+    override fun removeScreenshot(number: Int): String = "Ta bort skärmdump $number"
+    override fun openScreenshot(number: Int): String = "Öppna skärmdump $number"
+    override fun showScreenshots(count: Int): String = if (count == 1) "Visa skärmdump" else "Visa $count skärmdumpar"
+    override val sending = "Skickar…"
+    override val feedbackSent = "Tack. Din feedback har kommit fram."
+    override val feedbackTooLarge = "Skärmdumparna är för stora. Ta bort en och försök igen."
+    override val feedbackTooManyToday = "Det är mycket feedback för en dag. Försök igen i morgon."
+    override val feedbackUnreadable = "Filen gick inte att läsa som en bild."
+    override val feedbackFailed = "Det gick inte att skicka. Kontrollera uppkopplingen och försök igen."
+    override val feedbackSignedOut = "Sessionen har tagit slut. Logga in igen för att skicka feedback."
+    override fun feedbackHeading(open: Int): String = if (open == 0) "Feedback" else "Feedback ($open öppna)"
+    override val feedbackEmpty = "Ingen feedback än."
+    override val markResolved = "Markera som klar"
+    override val reopen = "Öppna igen"
+    override val resolved = "Klar"
+    override val deleteFeedbackTitle = "Ta bort den här feedbacken?"
+    override val deleteFeedbackBody = "Skärmdumparna tas också bort."
+    override fun platformName(platform: String): String = when (platform) {
+        "android" -> "Android"
+        "wear" -> "Wear OS"
+        "web" -> "Webb"
+        "ios" -> "iPhone"
+        else -> platform
+    }
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"

@@ -2,7 +2,10 @@ package io.github.kanylbullen.tung.web.admin
 
 import io.github.kanylbullen.tung.web.sync.HttpReply
 import io.github.kanylbullen.tung.web.sync.HttpUnreachable
+import io.github.kanylbullen.tung.web.sync.PostJson
 import io.github.kanylbullen.tung.web.sync.deleteRequest
+import io.github.kanylbullen.tung.web.sync.fetchObjectUrl
+import io.github.kanylbullen.tung.web.sync.patchJson
 import io.github.kanylbullen.tung.web.sync.getJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.KSerializer
@@ -13,6 +16,7 @@ import kotlinx.serialization.json.Json
 const val ME_PATH = "/api/v1/me"
 const val ADMIN_USERS_PATH = "/api/v1/admin/users"
 const val TESTERS_PATH = "/api/v1/testers"
+const val ADMIN_FEEDBACK_PATH = "/api/v1/admin/feedback"
 
 /** A request with a token: the method's URL and headers, so a test hands in its own. */
 typealias AuthedRequest = suspend (url: String, headers: Map<String, String>) -> HttpReply
@@ -48,6 +52,30 @@ data class TesterSignup(
     val language: String? = null,
 )
 
+/** One screenshot of a feedback, fetched with the token ([WebAdmin.imageUrl]). */
+@Serializable
+data class FeedbackImage(val id: String, @SerialName("content_type") val contentType: String, val size: Int = 0)
+
+/** One feedback as the admins see it, `GET /api/v1/admin/feedback`. */
+@Serializable
+data class FeedbackItem(
+    val id: String,
+    val kind: String,
+    val message: String,
+    val platform: String,
+    @SerialName("app_version") val appVersion: String? = null,
+    @SerialName("created_at") val createdAt: Long,
+    @SerialName("resolved_at") val resolvedAt: Long? = null,
+    val email: String,
+    val images: List<FeedbackImage> = emptyList(),
+)
+
+@Serializable
+data class FeedbackList(val feedback: List<FeedbackItem>, @SerialName("open_count") val openCount: Int = 0)
+
+@Serializable
+private data class ResolvedBody(val resolved: Boolean)
+
 @Serializable
 private data class TesterList(val testers: List<TesterSignup>)
 
@@ -77,6 +105,7 @@ sealed interface AdminResult<out T> {
 class WebAdmin(
     private val get: AuthedRequest = { url, headers -> getJson(url, headers) },
     private val delete: AuthedRequest = { url, headers -> deleteRequest(url, headers) },
+    private val patch: PostJson = { url, body, headers -> patchJson(url, body, headers) },
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
 
@@ -100,6 +129,37 @@ class WebAdmin(
         delete(baseUrl + TESTERS_PATH + "/" + encodeURIComponent(email), bearer(token)).isSuccess
     } catch (e: HttpUnreachable) {
         false
+    }
+
+    suspend fun feedback(baseUrl: String, token: String): AdminResult<FeedbackList> =
+        read(baseUrl + ADMIN_FEEDBACK_PATH, token, FeedbackList.serializer())
+
+    /** Marks feedback resolved, or open again; true when the server took it. */
+    suspend fun setResolved(baseUrl: String, token: String, feedbackId: String, resolved: Boolean): Boolean = try {
+        patch(
+            baseUrl + ADMIN_FEEDBACK_PATH + "/" + encodeURIComponent(feedbackId),
+            json.encodeToString(ResolvedBody.serializer(), ResolvedBody(resolved)),
+            bearer(token),
+        ).isSuccess
+    } catch (e: HttpUnreachable) {
+        false
+    }
+
+    /** Deletes feedback and its screenshots; true when the server took it. */
+    suspend fun deleteFeedback(baseUrl: String, token: String, feedbackId: String): Boolean = try {
+        delete(baseUrl + ADMIN_FEEDBACK_PATH + "/" + encodeURIComponent(feedbackId), bearer(token)).isSuccess
+    } catch (e: HttpUnreachable) {
+        false
+    }
+
+    /** A screenshot as an object URL for an `<img>`, or null; the caller revokes it. */
+    suspend fun imageUrl(baseUrl: String, token: String, feedbackId: String, imageId: String): String? = try {
+        fetchObjectUrl(
+            baseUrl + ADMIN_FEEDBACK_PATH + "/" + encodeURIComponent(feedbackId) + "/images/" + encodeURIComponent(imageId),
+            bearer(token),
+        )
+    } catch (e: HttpUnreachable) {
+        null
     }
 
     private suspend fun <T> read(url: String, token: String, serializer: KSerializer<T>): AdminResult<T> {
