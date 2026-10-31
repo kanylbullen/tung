@@ -31,10 +31,12 @@ fun loadGoogleIdentity(ready: () -> Unit, failed: () -> Unit) {
 /**
  * Renders Google's "Sign in with Google" button into [container] for [clientId]:
  * a popup, never a redirect, so the app's page and its state stay. [onCredential]
- * gets the ID token for `POST /api/v1/auth/google`. [locale] and [dark] dress the
- * button for the page.
+ * gets the ID token for `POST /api/v1/auth/google`. [locale] is the button's
+ * language. The button is Google's white one on both themes: on the dark page
+ * the black one read as a strip of account details, not as a button (Google
+ * personalises it, "Continue as Johan", when the browser has a Google session).
  */
-fun renderGoogleButton(container: HTMLElement, clientId: String, locale: String, dark: Boolean, onCredential: (String) -> Unit) {
+fun renderGoogleButton(container: HTMLElement, clientId: String, locale: String, onCredential: (String) -> Unit) {
     val id = window.asDynamic().google.accounts.id
     val config: dynamic = js("({})")
     config.client_id = clientId
@@ -44,15 +46,13 @@ fun renderGoogleButton(container: HTMLElement, clientId: String, locale: String,
     id.initialize(config)
     val options: dynamic = js("({})")
     options.type = "standard"
-    options.theme = if (dark) "filled_black" else "outline"
+    options.theme = "outline"
     options.size = "large"
-    options.text = "signin_with"
+    options.text = "continue_with"
+    options.logo_alignment = "left"
     options.shape = "rectangular"
     options.locale = locale
     options.width = minOf(400, container.offsetWidth.takeIf { it > 0 } ?: 320)
     container.innerHTML = ""
     id.renderButton(container, options)
 }
-
-/** True when the page's colour scheme is dark, for the button's theme. */
-fun prefersDark(): Boolean = window.matchMedia("(prefers-color-scheme: dark)").matches

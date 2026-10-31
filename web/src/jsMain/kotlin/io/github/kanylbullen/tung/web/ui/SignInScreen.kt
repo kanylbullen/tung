@@ -107,13 +107,14 @@ fun SignInScreen(container: WebContainer) {
                 ref { element ->
                     loadGoogleIdentity(
                         ready = {
-                            renderGoogleButton(element, clientId, strings.tag, prefersDark()) { token -> signInWithGoogle(googleUrl, token) }
+                            renderGoogleButton(element, clientId, strings.tag) { token -> signInWithGoogle(googleUrl, token) }
                         },
                         failed = { error = strings.authFailure(AuthFailure.GOOGLE_FAILED) },
                     )
                     onDispose { }
                 }
             })
+            P({ classes("google-hint") }) { Text(strings.googleHint) }
             P({ classes("or") }) { Text(strings.orWithEmail) }
         }
         Form(attrs = {

@@ -30,6 +30,7 @@ interface Strings {
     val signingIn: String
 
     /** Under the Google button, above the email form. */
+    val googleHint: String
     val orWithEmail: String
     val errorFields: String
     val errorUrl: String
@@ -206,6 +207,7 @@ object English : Strings {
     override val useAnotherServer = "Use another server"
     override val signIn = "Sign in"
     override val signingIn = "Signing in…"
+    override val googleHint = "Choose your Google account in the window that opens."
     override val orWithEmail = "Or with email and password"
     override val errorFields = "Enter your email and password."
     override val errorUrl = "Enter the server address, for example https://tung.example.org."
@@ -422,6 +424,7 @@ object Swedish : Strings {
     override val useAnotherServer = "Använd en annan server"
     override val signIn = "Logga in"
     override val signingIn = "Loggar in…"
+    override val googleHint = "Välj ditt Google-konto i fönstret som öppnas."
     override val orWithEmail = "Eller med e-post och lösenord"
     override val errorFields = "Ange e-post och lösenord."
     override val errorUrl = "Ange serverns adress, till exempel https://tung.example.org."
