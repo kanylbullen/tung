@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
@@ -22,7 +23,7 @@ class RoutineStartFlowTest : FlowTest() {
     fun startFromTheRoutinesPageThenDisabledWhileThatWorkoutIsInProgress() {
         val source = seedFinishedWorkout(System.currentTimeMillis() - 3 * DAY, bench(), 60.0, 8)
         val routineId = checkNotNull(runBlocking { RoutineRepository(db).saveFromWorkout(source, "Push day") })
-        val start = hasContentDescription(str(R.string.routine_start_description, "Push day"))
+        val start = hasContentDescription(str(Res.string.routine_start_description, "Push day"))
 
         waitForText("Push day")
         clickText("Push day")
@@ -35,7 +36,7 @@ class RoutineStartFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL AND routineId = '$routineId'"))
 
         // Back lands on Home, since the page was popped under the workout; opened again, Start is disabled.
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.home_resume_workout))
         clickText("Push day")
         waitFor(start and isNotEnabled())
@@ -47,8 +48,8 @@ class RoutineStartFlowTest : FlowTest() {
         runBlocking { RoutineRepository(db).create("Empty") }
         waitForText("Empty")
         clickText("Empty")
-        waitFor(hasContentDescription(str(R.string.routine_start_description, "Empty")) and isNotEnabled())
-        assertShown(hasText(str(R.string.routine_empty_hint)))
+        waitFor(hasContentDescription(str(Res.string.routine_start_description, "Empty")) and isNotEnabled())
+        assertShown(hasText(str(Res.string.routine_empty_hint)))
         screenshot("1-empty")
     }
 

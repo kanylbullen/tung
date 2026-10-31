@@ -33,9 +33,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -43,12 +42,9 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.ui.resources.*
 import io.github.kanylbullen.tung.data.RoutineSummaryRow
-import io.github.kanylbullen.tung.ui.common.ExerciseNames
-import io.github.kanylbullen.tung.ui.common.WorkoutReport
 import io.github.kanylbullen.tung.ui.common.lastUsedText
-import io.github.kanylbullen.tung.ui.common.localWeekday
 import io.github.kanylbullen.tung.ui.common.RoutineName
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
@@ -80,11 +76,11 @@ fun RoutineRow(
     muscles: MuscleBreakdown? = null,
 ) {
     val details = listOf(
-        pluralStringResource(R.plurals.exercise_count, row.exerciseCount, row.exerciseCount),
+        pluralStringResource(Res.plurals.exercise_count, row.exerciseCount, row.exerciseCount),
         lastUsedText(row.lastUsedAt, now),
-    ).joinToString(stringResource(R.string.row_separator))
+    ).joinToString(stringResource(Res.string.row_separator))
     val base = Modifier.fillMaxWidth()
-    val selectLabel = stringResource(R.string.routines_select)
+    val selectLabel = stringResource(Res.string.routines_select)
     val interaction = when {
         selected != null && onClick != null -> base.selectable(selected = selected, role = Role.Checkbox, onClick = onClick)
         onClick != null && onLongClick != null -> base.combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = selectLabel)
@@ -99,10 +95,10 @@ fun RoutineRow(
     ) {
         if (muscles != null && !muscles.isEmpty) {
             // What kind of day it is, at a glance: the most worked muscles named for a screen reader.
-            val named = muscles.muscles.take(ROW_MUSCLES).map { muscleLabel(it.muscle) }.joinToString(stringResource(R.string.list_separator))
+            val named = muscles.muscles.take(ROW_MUSCLES).map { muscleLabel(it.muscle) }.joinToString(stringResource(Res.string.list_separator))
             MuscleHeatMap(
                 intensity = muscles::intensity,
-                description = stringResource(R.string.routine_muscles_description, named),
+                description = stringResource(Res.string.routine_muscles_description, named),
                 height = ROW_BODY_HEIGHT,
             )
             Spacer(Modifier.width(12.dp))
@@ -125,7 +121,7 @@ fun RoutineRow(
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
         } else {
-            val description = stringResource(R.string.routine_start_description, row.name)
+            val description = stringResource(Res.string.routine_start_description, row.name)
             val enabled = startEnabled && row.exerciseCount > 0
             if (compact) {
                 Button(
@@ -143,7 +139,7 @@ fun RoutineRow(
                     contentPadding = PaddingValues(horizontal = 14.dp),
                     modifier = Modifier.heightIn(min = 40.dp).semantics { contentDescription = description },
                 ) {
-                    Text(stringResource(R.string.routine_start), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(Res.string.routine_start), style = MaterialTheme.typography.labelLarge)
                 }
             } else {
                 Button(
@@ -159,7 +155,7 @@ fun RoutineRow(
                     elevation = null,
                     modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = description },
                 ) {
-                    Text(stringResource(R.string.routine_start), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(Res.string.routine_start), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -174,20 +170,6 @@ private val ROW_BODY_HEIGHT = 44.dp
 private const val ROW_MUSCLES = 3
 
 /**
- * The name a routine saved from [report] is offered: the weekday and the first
- * two exercises, "Monday: Bench press, Barbell row".
- */
-@Composable
-fun defaultRoutineName(report: WorkoutReport): String {
-    val context = LocalContext.current
-    val weekday = localWeekday(report.workout.startedAt)
-    val names = report.exercises.take(2).joinToString(stringResource(R.string.list_separator)) {
-        ExerciseNames.resolve(context, it.nameKey, it.name)
-    }
-    return if (names.isEmpty()) weekday else stringResource(R.string.routine_default_name, weekday, names)
-}
-
-/**
  * Asks for a name; used to save a workout as a routine, to create an empty
  * routine and to rename a routine or a program. [errorText] is shown when Save is tapped with no name.
  */
@@ -198,7 +180,7 @@ fun RoutineNameDialog(
     confirmLabel: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
-    errorText: String = stringResource(R.string.routine_error_name),
+    errorText: String = stringResource(Res.string.routine_error_name),
 ) {
     var name by rememberSaveable { mutableStateOf(initialName) }
     var showError by remember { mutableStateOf(false) }
@@ -218,7 +200,7 @@ fun RoutineNameDialog(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it; showError = false },
-                label = { Text(stringResource(R.string.routine_name)) },
+                label = { Text(stringResource(Res.string.routine_name)) },
                 singleLine = true,
                 isError = showError,
                 supportingText = if (showError) {
@@ -239,7 +221,7 @@ fun RoutineNameDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
             }
         },
     )

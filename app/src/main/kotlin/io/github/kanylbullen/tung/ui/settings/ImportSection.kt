@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.settings
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -161,7 +163,7 @@ fun ImportSection(onImportFile: (Uri) -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = vm::dismissUndo) {
-                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                    Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
                 }
             },
         )

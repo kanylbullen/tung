@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
@@ -60,7 +61,7 @@ class FeedbackFlowTest : FlowTest() {
         fill(str(R.string.sync_password), "correct horse battery")
         clickText(str(R.string.sync_sign_in))
         waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         clickText(str(R.string.settings_group_feedback))
 
         clickText(str(R.string.feedback_idea))

@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -16,7 +17,7 @@ import org.junit.Test
 class NumberSheetFlowTest : FlowTest() {
 
     private val field get() = compose.onNode(hasContentDescription(str(R.string.input_field_weight)))
-    private val done get() = compose.onNode(hasText(str(R.string.input_done)))
+    private val done get() = compose.onNode(hasText(str(Res.string.input_done)))
 
     private fun savedWeight(): Double =
         db.openHelper.readableDatabase.query("SELECT weightKg FROM set_entry").use { c ->
@@ -51,7 +52,7 @@ class NumberSheetFlowTest : FlowTest() {
 
         field.performTextReplacement("82,5")
         field.assert(hasText("82,5"))
-        assertShown(hasText(str(R.string.input_hint)))
+        assertShown(hasText(str(Res.string.input_hint)))
         done.assertIsEnabled()
         screenshot("1-typed-82-5")
         done.performClick()
@@ -112,9 +113,9 @@ class NumberSheetFlowTest : FlowTest() {
         assertTrue(compose.onAllNodes(hasText("8082", substring = true)).fetchSemanticsNodes().isEmpty())
         assertTrue(compose.onAllNodes(hasContentDescription("8082", substring = true)).fetchSemanticsNodes().isEmpty())
 
-        val repsField = compose.onNode(hasContentDescription(str(R.string.input_field_reps)))
+        val repsField = compose.onNode(hasContentDescription(str(Res.string.input_field_reps)))
         clickDescription(str(R.string.workout_edit_reps, "8"))
-        waitForDescription(str(R.string.input_field_reps))
+        waitForDescription(str(Res.string.input_field_reps))
         repsField.assert(hasText("8"))
         repsField.performClick()
         repsField.performTextInput("10")

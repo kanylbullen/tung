@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
@@ -54,7 +55,7 @@ class LinkWatchFlowTest : FlowTest() {
         waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
 
         // The watch is in Devices, next to Account.
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         clickText(str(R.string.settings_group_devices))
         scrollAndClick(str(R.string.link_watch))
         waitForText("042 917")

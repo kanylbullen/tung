@@ -1,5 +1,8 @@
 package io.github.kanylbullen.tung.ui.common
 
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,9 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,52 +25,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.kanylbullen.tung.ui.theme.Tung
-import io.github.kanylbullen.tung.ui.theme.TungCorner
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.data.WorkoutSummaryRow
-
-/** The one loud button. Accent fill, 12dp corners, no elevation. */
-@Composable
-fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp),
-        shape = TungCorner,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Tung.colors.accent,
-            contentColor = Tung.colors.onAccent,
-            disabledContainerColor = Tung.colors.border,
-            disabledContentColor = Tung.colors.muted,
-        ),
-        elevation = null,
-    ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
-    }
-}
-
-/** A quieter full-width button on the raised surface. */
-@Composable
-fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp),
-        shape = TungCorner,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Tung.colors.raised,
-            contentColor = Tung.colors.text,
-            disabledContainerColor = Tung.colors.raised,
-            disabledContentColor = Tung.colors.muted,
-        ),
-        elevation = null,
-    ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
-    }
-}
 
 /**
  * A finished workout as one list row (Home's Recent, History): titled with
@@ -81,10 +40,10 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
  */
 @Composable
 fun WorkoutRow(row: WorkoutSummaryRow, onClick: () -> Unit) {
-    val sep = stringResource(R.string.row_separator)
+    val sep = stringResource(Res.string.row_separator)
     val details = listOf(
         durationText((row.endedAt ?: row.startedAt) - row.startedAt),
-        pluralStringResource(R.plurals.exercise_count, row.exerciseCount, row.exerciseCount),
+        pluralStringResource(Res.plurals.exercise_count, row.exerciseCount, row.exerciseCount),
     ).joinToString(sep)
     val volume = buildAnnotatedString {
         withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Tung.colors.text)) { append(localVolume(row.volumeKg)) }
@@ -123,7 +82,7 @@ private fun WorkoutRowTitle(row: WorkoutSummaryRow) {
         row.secondExerciseName?.let { exerciseDisplayName(row.secondExerciseKey, it) },
     )
     Text(
-        if (names.isEmpty()) stringResource(R.string.workout_row_untitled) else names.joinToString(stringResource(R.string.list_separator)),
+        if (names.isEmpty()) stringResource(R.string.workout_row_untitled) else names.joinToString(stringResource(Res.string.list_separator)),
         style = MaterialTheme.typography.titleMedium,
         color = Tung.colors.text,
         maxLines = 1,
@@ -151,23 +110,3 @@ fun StatRow(content: @Composable androidx.compose.foundation.layout.RowScope.() 
         content = content,
     )
 }
-
-/** Text field colours on the raised surface, shared by every dialog with a text field. */
-@Composable
-fun tungFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = Tung.colors.raised,
-    unfocusedContainerColor = Tung.colors.raised,
-    focusedBorderColor = Tung.colors.muted,
-    unfocusedBorderColor = Tung.colors.border,
-    focusedTextColor = Tung.colors.text,
-    unfocusedTextColor = Tung.colors.text,
-    cursorColor = Tung.colors.accent,
-    focusedLeadingIconColor = Tung.colors.muted,
-    unfocusedLeadingIconColor = Tung.colors.muted,
-    focusedTrailingIconColor = Tung.colors.muted,
-    unfocusedTrailingIconColor = Tung.colors.muted,
-    focusedPlaceholderColor = Tung.colors.muted,
-    unfocusedPlaceholderColor = Tung.colors.muted,
-    focusedLabelColor = Tung.colors.muted,
-    unfocusedLabelColor = Tung.colors.muted,
-)

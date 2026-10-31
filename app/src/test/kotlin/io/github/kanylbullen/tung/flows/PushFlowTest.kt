@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import android.os.Bundle
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -70,7 +71,7 @@ class PushFlowTest : FlowTest() {
 
     /** From one Settings group to another, through the list. */
     private fun switchGroup(group: Int) {
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         clickText(str(group))
     }
 

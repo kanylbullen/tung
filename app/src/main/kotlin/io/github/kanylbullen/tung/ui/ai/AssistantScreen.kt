@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.ai
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,14 +97,14 @@ fun AssistantScreen(
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 title = { Text(stringResource(R.string.ai_title)) },
                 actions = {
                     Box {
                         IconButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_more))
                         }
                         DropdownMenu(
                             expanded = menuOpen,
@@ -238,7 +240,7 @@ private fun ProgramProposal(proposal: AiProposal.Program, defaultName: String) {
 @Composable
 private fun WorkoutProposal(proposal: AiProposal.NextWorkout) {
     Rationale(proposal.rationale)
-    val separator = stringResource(R.string.list_separator)
+    val separator = stringResource(Res.string.list_separator)
     val noWeight = stringResource(R.string.ai_set_from_last_time)
     proposal.exercises.forEach { e ->
         val sets = e.sets.map { set ->
@@ -312,7 +314,7 @@ internal fun PayloadSheet(prepared: AiPrepared, onSend: () -> Unit, onCancel: ()
                 }
             }
             PrimaryButton(text = stringResource(R.string.ai_payload_send), onClick = onSend)
-            SecondaryButton(text = stringResource(R.string.action_cancel), onClick = onCancel)
+            SecondaryButton(text = stringResource(Res.string.action_cancel), onClick = onCancel)
         }
     }
 }

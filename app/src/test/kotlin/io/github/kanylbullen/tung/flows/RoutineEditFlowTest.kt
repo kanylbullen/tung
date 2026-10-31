@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
@@ -21,7 +22,7 @@ class RoutineEditFlowTest : FlowTest() {
 
     private val benchPress get() = str(R.string.ex_bench_press)
     private val barbellRow get() = str(R.string.ex_barbell_row)
-    private fun targetReps(n: Int) = plural(R.plurals.routine_target_reps, n, n)
+    private fun targetReps(n: Int) = plural(Res.plurals.routine_target_reps, n, n)
 
     /**
      * "Push day" has Bench press, 1 set of 8. Its owner opens it, taps
@@ -45,11 +46,11 @@ class RoutineEditFlowTest : FlowTest() {
         screenshot("1-routine")
 
         // + Exercise opens the workout's picker; a tap adds to the routine and comes back.
-        clickText(str(R.string.routine_add_exercise))
+        clickText(str(Res.string.routine_add_exercise))
         searchPicker("barbell row")
         screenshot("2-picker")
         clickText(barbellRow)
-        waitForText(str(R.string.routine_add_exercise))
+        waitForText(str(Res.string.routine_add_exercise))
         waitForText(barbellRow)
         waitUntil { count("SELECT COUNT(*) FROM routine_exercise") == 2 }
         val row = catalogExerciseId("barbell_row")
@@ -58,34 +59,34 @@ class RoutineEditFlowTest : FlowTest() {
             1,
             count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '$row' AND position = 1 AND targetSets = 3 AND targetReps IS NULL"),
         )
-        assertShown(hasText(str(R.string.routine_no_target_reps)))
+        assertShown(hasText(str(Res.string.routine_no_target_reps)))
         screenshot("3-added")
 
         // Target reps in the reps sheet: 0 is not a target, 10 is.
-        clickDescription(str(R.string.routine_edit_target_reps, barbellRow))
-        val field = hasContentDescription(str(R.string.input_field_reps))
+        clickDescription(str(Res.string.routine_edit_target_reps, barbellRow))
+        val field = hasContentDescription(str(Res.string.input_field_reps))
         waitFor(field)
-        assertShown(hasText(str(R.string.routine_target_reps_title, barbellRow)))
+        assertShown(hasText(str(Res.string.routine_target_reps_title, barbellRow)))
         compose.onNode(field).performTextReplacement("0")
-        waitForText(str(R.string.routine_error_target_reps))
-        compose.onNode(hasText(str(R.string.input_done)) and isEnabled()).assertDoesNotExist()
+        waitForText(str(Res.string.routine_error_target_reps))
+        compose.onNode(hasText(str(Res.string.input_done)) and isEnabled()).assertDoesNotExist()
         screenshot("4-reps-sheet")
         compose.onNode(field).performTextReplacement("10")
-        clickText(str(R.string.input_done))
+        clickText(str(Res.string.input_done))
         waitGone(field)
         waitUntil { count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '$row' AND targetReps = 10") == 1 }
         assertShown(hasText(targetReps(10)))
 
         // The bench press row's menu: clear its target, then remove it.
-        clickDescription(str(R.string.routine_exercise_menu, benchPress))
-        clickText(str(R.string.routine_clear_target_reps))
+        clickDescription(str(Res.string.routine_exercise_menu, benchPress))
+        clickText(str(Res.string.routine_clear_target_reps))
         waitUntil { count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '${bench()}' AND targetReps IS NULL") == 1 }
-        assertShown(hasText(str(R.string.routine_no_target_reps)))
+        assertShown(hasText(str(Res.string.routine_no_target_reps)))
 
         val benchRow = string("SELECT id FROM routine_exercise WHERE exerciseId = '${bench()}'")
-        clickDescription(str(R.string.routine_exercise_menu, benchPress))
+        clickDescription(str(Res.string.routine_exercise_menu, benchPress))
         screenshot("5-row-menu")
-        clickText(str(R.string.routine_remove_exercise))
+        clickText(str(Res.string.routine_remove_exercise))
         waitGone(hasText(benchPress))
         waitUntil { count("SELECT COUNT(*) FROM routine_exercise") == 1 }
         assertEquals("the gap is closed", 1, count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '$row' AND position = 0"))

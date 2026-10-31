@@ -11,7 +11,8 @@ import java.io.File
 /**
  * Checks the string resources as files. `values/` is English, the default
  * locale; every translation in `values-<lang>/` carries the same names. Gradle
- * runs unit tests with `app/` as working directory.
+ * runs unit tests with `app/` as working directory. The screens in `ui/` have
+ * their own strings, as Compose Resources, checked the same way.
  */
 class ResourcesTest {
 
@@ -20,6 +21,19 @@ class ResourcesTest {
             ?: error("$path not found from ${File(".").absolutePath}")
 
     private fun strings(dir: String): String = repoFile("app/src/main/res/$dir/strings.xml").readText()
+
+    private fun uiStrings(dir: String): String = repoFile("ui/src/commonMain/composeResources/$dir/strings.xml").readText()
+
+    private val element = Regex("""<(string|plurals) name="([^"]+)"[^>]*>(.*?)</\1>""", RegexOption.DOT_MATCHES_ALL)
+
+    /** Compose Resources shows quotes as text, so a quote may only be part of a string there, never around it. */
+    @Test
+    fun noUiStringIsWrappedInQuotes() {
+        for (dir in listOf("values", "values-sv")) {
+            val quoted = element.findAll(uiStrings(dir)).filter { it.groupValues[3].startsWith("\"") }.map { it.groupValues[2] }
+            assertEquals(dir, emptyList<String>(), quoted.toList())
+        }
+    }
 
     private val nameAttr = Regex("""<(?:string|plurals) name="([^"]+)"""")
     private val exString = Regex("""<string name="ex_([a-z0-9_]+)">(.*?)</string>""")
@@ -43,6 +57,39 @@ class ResourcesTest {
         val english = names(strings("values"))
         assertEquals(english.size, english.toSet().size)
         assertEquals(english.sorted(), names(strings("values-sv")).sorted())
+    }
+
+    @Test
+    fun theSharedScreensHaveTheSameNamesInSwedish() {
+        val english = names(uiStrings("values"))
+        assertEquals(english.size, english.toSet().size)
+        assertEquals(english.sorted(), names(uiStrings("values-sv")).sorted())
+    }
+
+    /**
+     * A string lives in one module: a screen in `ui/` owns its strings, and
+     * `app/` code that needs one reads it from there (`Res.string.…`), so a
+     * wording is never changed in one copy and not the other.
+     */
+    @Test
+    fun aStringLivesInAppOrInUiNotBoth() {
+        for (dir in listOf("values", "values-sv")) {
+            val both = names(strings(dir)).toSet() intersect names(uiStrings(dir)).toSet()
+            assertEquals(dir, emptySet<String>(), both)
+        }
+    }
+
+    /**
+     * No Android escapes in `ui/`: an apostrophe or a quote is written as
+     * itself there, since Compose Resources need no `\'` and an escape that
+     * Android would undo could show as a backslash on screen.
+     */
+    @Test
+    fun uiStringsCarryNoBackslashEscapes() {
+        for (dir in listOf("values", "values-sv")) {
+            val escaped = element.findAll(uiStrings(dir)).filter { '\\' in it.groupValues[3] }.map { it.groupValues[2] }
+            assertEquals(dir, emptyList<String>(), escaped.toList())
+        }
     }
 
     @Test

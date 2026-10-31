@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -22,10 +23,10 @@ class RoutineFlowTest : FlowTest() {
 
     private val benchPress get() = str(R.string.ex_bench_press)
 
-    private fun exerciseCount(n: Int): String = app.resources.getQuantityString(R.plurals.exercise_count, n, n)
+    private fun exerciseCount(n: Int): String = plural(Res.plurals.exercise_count, n, n)
 
     private fun routineDetails(exercises: Int, last: String): String =
-        exerciseCount(exercises) + str(R.string.row_separator) + last
+        exerciseCount(exercises) + str(Res.string.row_separator) + last
 
     /**
      * Someone benches 80 × 8 twice, finishes, taps "Save as routine" on the
@@ -38,7 +39,7 @@ class RoutineFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", benchPress)
         enterInSheet(str(R.string.workout_edit_weight, "0"), str(R.string.input_field_weight), "80", str(R.string.workout_edit_weight, "80"))
-        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(R.string.input_field_reps), "8", str(R.string.workout_edit_reps, "8"))
+        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(Res.string.input_field_reps), "8", str(R.string.workout_edit_reps, "8"))
         clickDescription(str(R.string.workout_mark_done, 1))
         clickDescription(str(R.string.workout_add_set_description, benchPress))
         // The second set copies the first: 80 × 8.
@@ -70,7 +71,7 @@ class RoutineFlowTest : FlowTest() {
         waitForText("Push day")
         // Home's Routines section: its title is also the tab's label, so look for its "All".
         assertShown(hasText(str(R.string.routines_all)))
-        assertShown(hasText(routineDetails(1, str(R.string.routine_never))))
+        assertShown(hasText(routineDetails(1, str(Res.string.routine_never))))
         assertShown(hasText(str(R.string.home_recent)))
         screenshot("3-home-with-routine")
 
@@ -97,10 +98,10 @@ class RoutineFlowTest : FlowTest() {
         val routineId = runBlocking { RoutineRepository(db).saveFromWorkout(source, "Push day") }
 
         waitForText("Push day")
-        assertShown(hasText(routineDetails(1, str(R.string.routine_never))))
+        assertShown(hasText(routineDetails(1, str(Res.string.routine_never))))
         screenshot("1-home")
 
-        val start = hasContentDescription(str(R.string.routine_start_description, "Push day")) and isEnabled()
+        val start = hasContentDescription(str(Res.string.routine_start_description, "Push day")) and isEnabled()
         waitFor(start)
         compose.onNode(start).performClick()
 
@@ -123,10 +124,10 @@ class RoutineFlowTest : FlowTest() {
         )
         assertEquals(1, count("SELECT COUNT(*) FROM routine WHERE lastUsedAt IS NOT NULL"))
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.home_resume_workout))
-        assertShown(hasText(routineDetails(1, str(R.string.routine_last, str(R.string.routine_today)))))
-        assertShown(hasContentDescription(str(R.string.routine_start_description, "Push day")) and isNotEnabled())
+        assertShown(hasText(routineDetails(1, str(Res.string.routine_last, str(Res.string.routine_today)))))
+        assertShown(hasContentDescription(str(Res.string.routine_start_description, "Push day")) and isNotEnabled())
         screenshot("3-home-in-progress")
     }
 
@@ -149,19 +150,19 @@ class RoutineFlowTest : FlowTest() {
 
         clickText("Push day")
         waitForText(benchPress)
-        assertShown(hasText(app.resources.getQuantityString(R.plurals.routine_target_reps, 8, 8)))
-        clickDescription(str(R.string.routine_more_sets, benchPress))
+        assertShown(hasText(plural(Res.plurals.routine_target_reps, 8, 8)))
+        clickDescription(str(Res.string.routine_more_sets, benchPress))
         waitUntil(5_000) { count("SELECT targetSets FROM routine_exercise") == 3 }
         assertShown(hasText("3"))
         screenshot("2-routine")
 
-        clickDescription(str(R.string.action_more))
-        clickText(str(R.string.routine_delete))
-        assertShown(hasText(str(R.string.routine_delete_body)))
+        clickDescription(str(Res.string.action_more))
+        clickText(str(Res.string.routine_delete))
+        assertShown(hasText(str(Res.string.routine_delete_body)))
         screenshot("3-delete-dialog")
-        clickInDialog(str(R.string.routine_delete_confirm))
+        clickInDialog(str(Res.string.routine_delete_confirm))
 
-        waitForText(str(R.string.routines_empty))
+        waitForText(str(Res.string.routines_empty))
         screenshot("4-routines-empty")
 
         assertEquals(0, count("SELECT COUNT(*) FROM routine"))

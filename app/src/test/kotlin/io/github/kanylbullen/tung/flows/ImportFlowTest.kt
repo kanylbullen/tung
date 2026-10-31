@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -60,7 +61,7 @@ class ImportFlowTest : FlowTest() {
         plural(R.plurals.import_workouts, workouts, workouts),
         plural(R.plurals.import_sets, sets, sets),
         plural(R.plurals.import_routines, routines, routines),
-    ).joinToString(str(R.string.row_separator))
+    ).joinToString(str(Res.string.row_separator))
 
     /** Settings' Data group is a scrolling column. */
     private fun scrollToInSettings(text: String) {
@@ -222,10 +223,10 @@ class ImportFlowTest : FlowTest() {
 
         compose.onNode(hasText(str(R.string.import_delete_routines, 2))).performClick()
         waitFor(isDialog())
-        assertShown(hasText(plural(R.plurals.routines_delete_many_title, 2, 2)))
+        assertShown(hasText(plural(Res.plurals.routines_delete_many_title, 2, 2)))
         assertShown(hasText(str(R.string.import_delete_routines_body)))
         screenshot("2-confirm")
-        clickInDialog(str(R.string.routine_delete_confirm))
+        clickInDialog(str(Res.string.routine_delete_confirm))
         waitUntil { count("SELECT COUNT(*) FROM routine") == 1 }
         assertEquals(1, count("SELECT COUNT(*) FROM routine WHERE name = 'Mine'"))
         waitGone(hasText(str(R.string.import_delete_routines, 2)))

@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -46,7 +47,7 @@ class ProgramFlowTest : FlowTest() {
         waitForText("Push day")
         clickText(str(R.string.routines_all))
         waitGone(hasText(str(R.string.home_recent)))
-        clickText(str(R.string.programs_title))
+        clickText(str(Res.string.programs_title))
         clickText(str(R.string.program_new))
         val field = hasSetTextAction() and hasAnyAncestor(isDialog())
         waitFor(field)
@@ -74,10 +75,10 @@ class ProgramFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$push' AND position = 0"))
         assertEquals(1, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$pull' AND position = 1"))
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.program_new))
-        clickDescription(str(R.string.action_back))
-        waitForText(str(R.string.programs_entry_active, "Push pull"))
+        clickDescription(str(Res.string.action_back))
+        waitForText(str(Res.string.programs_entry_active, "Push pull"))
         // Routines is a tab now, with no back arrow: Home is the tab next to it.
         clickText(str(R.string.nav_home))
         waitForText(rotatingLine(1, 2, "Push day"))
@@ -138,7 +139,7 @@ class ProgramFlowTest : FlowTest() {
 
         clickText(str(R.string.routines_all))
         waitGone(hasText(str(R.string.home_recent)))
-        clickText(str(R.string.programs_title))
+        clickText(str(Res.string.programs_title))
         clickText("Weekly")
         waitForText(str(R.string.program_active))
         val toggle = str(R.string.program_weekday_description, "Push day", weekdayFull(weekday))
@@ -147,10 +148,10 @@ class ProgramFlowTest : FlowTest() {
         assertShown(hasContentDescription(toggle) and isOn())
         screenshot("2-program-wednesday")
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.program_new))
-        clickDescription(str(R.string.action_back))
-        waitForText(str(R.string.programs_entry_active, "Weekly"))
+        clickDescription(str(Res.string.action_back))
+        waitForText(str(Res.string.programs_entry_active, "Weekly"))
         // Routines is a tab now, with no back arrow: Home is the tab next to it.
         clickText(str(R.string.nav_home))
         waitForText(str(R.string.today_fixed, "Push day"))
@@ -249,7 +250,7 @@ class ProgramFlowTest : FlowTest() {
         waitForText("Push day")
         clickText(str(R.string.routines_all))
         waitGone(hasText(str(R.string.home_recent)))
-        clickText(str(R.string.programs_title))
+        clickText(str(Res.string.programs_title))
         clickText("Split")
         waitForText(str(R.string.program_mode_title))
         waitForText(dayOf(1, 1))

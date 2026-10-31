@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import android.app.AlarmManager
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -179,7 +180,7 @@ class LogSetFlowTest : FlowTest() {
         screenshot("1-rest-sheet")
         clickDescription(str(R.string.rest_shorter))
         waitForText("1:00")
-        clickText(str(R.string.input_done))
+        clickText(str(Res.string.input_done))
         waitGone(hasContentDescription(str(R.string.rest_shorter)))
 
         waitUntil(5_000) { count("SELECT COUNT(*) FROM exercise WHERE id = '${bench()}' AND restSeconds = 60") == 1 }
@@ -208,7 +209,7 @@ class LogSetFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", benchPress)
         clickText(logSet("0", str(R.string.workout_reps_empty)))
-        waitForDescription(str(R.string.input_field_reps))
+        waitForDescription(str(Res.string.input_field_reps))
         screenshot("1-reps-sheet")
         compose.onNode(countdown).assertDoesNotExist()
         assertEquals(0, activeSets("s.completed = 1"))

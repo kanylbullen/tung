@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.settings
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -125,7 +127,7 @@ private fun Push(push: PushStatus, onChoose: (String) -> Unit) {
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { choosing = false }) {
-                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                    Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
                 }
             },
         )

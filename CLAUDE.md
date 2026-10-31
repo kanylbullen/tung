@@ -57,7 +57,7 @@ Eight Gradle modules:
 | `core/` | Kotlin Multiplatform (JVM, JS, iOS klibs) | — | Domain rules, commands, sync and watch protocols |
 | `data/` | Kotlin Multiplatform (Android, iOS klibs) | `core` | Room, repositories, the CommandHandler, sync client, settings, rest timer, `TungContainer` |
 | `data-fixtures/` | Android library (tests only) | `core`, `data` | The test doubles of data's seams: `FakeSyncServer`, `MemoryTokenStore`, `FakePushEnvironment`, `FakeHealthConnect` |
-| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | — | The screens every client shares, moved from `app/` a piece at a time: so far the theme (`ui/theme/`: colour tokens, typography, `TungTheme`, `Tung`) and the Archivo font as a Compose Resource |
+| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); the buttons, `RoutineName`, the labels and `exerciseDisplayName` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
 | `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
 | `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
 | `server/` | Ktor server | `core` | tung-server |
@@ -202,7 +202,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the input sheet, the rest sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet, and `MuscleMap` with `MuscleHeatMap`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (the Routines tab, one routine, the row and the name dialog that Home, summary, the tab and detail share; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the rest sheet; the input sheet is in `ui/`), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (`RoutinesRoute` and `RoutineDetailRoute` around the `ui/` screens, `defaultRoutineName`; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -318,7 +318,9 @@ routine's exercises in one query for the lists, computed on
 reader hears "Muscles: quads, glutes, chest" (the row's top three; the page
 names them all with percentages). `RoutineMusclesFlowTest`.
 
-**The Routines tab** (`Routes.ROUTINES`, `ui/routines/RoutinesScreen.kt`) is
+**The Routines tab** (`Routes.ROUTINES`, `RoutinesScreen` in the `ui/` module,
+made by app's `RoutinesRoute` with its ViewModel and back handling; the
+routine page is `RoutineDetailScreen` the same way, via `RoutineDetailRoute`) is
 the second of the bottom bar's tabs, Home · Routines · Exercises · History ·
 Progress,
 switched with `navigateToTab` (`saveState`/`restoreState`, like the others):
@@ -2336,7 +2338,8 @@ part of `./gradlew test`. Only them:
   MockWebServer), and `SyncFlowTest` installs WorkManager's test
   instance (`WorkManagerTestInitHelper`) before it signs in.
 - Assertions are on semantics, with text from the English string resources
-  (`str(R.string.…)`), never on pixels. Room works on its own threads, so wait
+  (`str(R.string.…)`, or `str(Res.string.…)` and `plural(Res.plurals.…)` for a
+  screen in `ui/`), never on pixels. Room works on its own threads, so wait
   (`waitForText`, `assertShown`) rather than assert right after a tap.
 - **Wait with `FlowTest.waitUntil`, never `compose.waitUntil`** (issue #28).
   Under Robolectric the test thread is the main thread and the main looper
@@ -2457,7 +2460,21 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
 - **Strings only in resources.** No hard-coded strings in composables;
   everything goes in `res/values/strings.xml` (English, the default) and
   `res/values-sv/strings.xml` (Swedish), with the same names in both. The
-  exercise names too — see "Exercise names are resources".
+  exercise names too — see "Exercise names are resources". A screen in `ui/`
+  uses Compose Resources instead (`ui/src/commonMain/composeResources/values{,-sv}/strings.xml`,
+  `stringResource(Res.string.…)` from `org.jetbrains.compose.resources`), with
+  positional placeholders only (`%1$d`, never `%d`), no quotes around a text
+  (Compose Resources shows them: Android's `", "` is `, ` there) and no
+  escapes. **A string lives in one module**: `app/` code that needs one of
+  ui's strings reads it from `Res` (both `stringResource`s can be imported
+  side by side; overloads pick by type), and `ResourcesTest` fails on a name
+  in both, a quoted or escaped ui string, or a missing Swedish name. Moving a
+  screen: its strings go with it, and `app/` reads any it still uses from
+  `Res`. Compose Resources pick the language from the process's
+  default locale, not from the configuration: on a phone Android sets both
+  from the app's language, but a flow test on another language than English
+  sets `Locale.setDefault` itself (`SwedishFlowTest`), since `FlowTest`
+  forces English.
 - **The font is a Compose Resource** (`ui/src/commonMain/composeResources/font/archivo_variable.ttf`,
   read with `Res.font.archivo_variable` inside `ui/`; the APK carries it under
   `assets/composeResources/`). The OFL licence stays in app's `assets/licenses/`.

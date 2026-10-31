@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,7 +34,7 @@ fun DiscardWorkoutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
             }
         },
     )

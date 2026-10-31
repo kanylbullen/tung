@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.exercises
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -145,7 +147,7 @@ fun ExercisesScreen(
                         IconButton(onClick = onBack) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.action_back),
+                                contentDescription = stringResource(Res.string.action_back),
                             )
                         }
                     }
@@ -289,7 +291,7 @@ private fun ExerciseRow(exercise: NamedExercise, onClick: (() -> Unit)?) {
     val detail = buildList {
         add(equipmentLabel(Equipment.fromKey(exercise.exercise.equipment)))
         if (exercise.exercise.isCustom) add(stringResource(R.string.exercises_custom))
-    }.joinToString(stringResource(R.string.row_separator))
+    }.joinToString(stringResource(Res.string.row_separator))
     NameRow(exercise.displayName, detail, onClick)
 }
 
@@ -326,7 +328,7 @@ private fun BrowseRow(item: BrowseItem, onClick: () -> Unit) {
     val detail = buildList {
         add(equipmentLabel(item.equipment))
         if (item.isCustom) add(stringResource(R.string.exercises_custom))
-    }.joinToString(stringResource(R.string.row_separator))
+    }.joinToString(stringResource(Res.string.row_separator))
     NameRow(item.name, detail, onClick)
 }
 
@@ -363,7 +365,7 @@ private fun ExtendedRow(entry: ExtendedExercise, onClick: () -> Unit) {
     val detail = listOf(
         muscleGroupLabel(MuscleGroup.fromKey(entry.muscleGroup)),
         equipmentLabel(Equipment.fromKey(entry.equipment)),
-    ).joinToString(stringResource(R.string.row_separator))
+    ).joinToString(stringResource(Res.string.row_separator))
     NameRow(entry.displayName, detail, onClick)
 }
 
@@ -446,7 +448,7 @@ private fun CreateExerciseDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
             }
         },
     )

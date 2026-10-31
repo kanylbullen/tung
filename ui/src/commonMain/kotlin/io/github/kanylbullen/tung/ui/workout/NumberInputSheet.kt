@@ -37,7 +37,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.ui.resources.*
 import io.github.kanylbullen.tung.core.RulerScale
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.theme.Tung
@@ -65,9 +65,9 @@ data class NumberInputSpec(
     val keyboardType: KeyboardType,
     val fieldDescription: String,
     /** What − does, for screen readers, given the current text: the step can depend on the value. */
-    val minusDescription: (text: String) -> String,
+    val minusDescription: @Composable (text: String) -> String,
     /** What + does, for screen readers, given the current text. */
-    val plusDescription: (text: String) -> String,
+    val plusDescription: @Composable (text: String) -> String,
     val hint: String,
     val errorText: String,
     val doneText: String,
@@ -87,7 +87,7 @@ data class NumberInputSpec(
     val fromValue: (Double) -> String,
     val rulerDescription: String,
     /** What the ruler points at, for screen readers: "82.5 kilos". */
-    val rulerState: (Double) -> String,
+    val rulerState: @Composable (Double) -> String,
 )
 
 /**
@@ -237,7 +237,7 @@ private fun ApplyToAllRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            stringResource(R.string.input_apply_all),
+            stringResource(Res.string.input_apply_all),
             style = MaterialTheme.typography.bodyLarge,
             color = Tung.colors.text,
             modifier = Modifier.weight(1f),
@@ -258,7 +258,7 @@ private fun ApplyToAllRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) 
 }
 
 @Composable
-internal fun StepButton(
+fun StepButton(
     symbol: String,
     description: String,
     modifier: Modifier,

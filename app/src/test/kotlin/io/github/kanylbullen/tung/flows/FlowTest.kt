@@ -1,5 +1,10 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.PluralStringResource
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.getPluralString
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
@@ -76,6 +81,12 @@ abstract class FlowTest {
 
     protected fun plural(@PluralsRes id: Int, quantity: Int, vararg args: Any): String =
         app.resources.getQuantityString(id, quantity, *args)
+
+    /** A string of a screen in `ui/` (Compose Resources), as that screen writes it. */
+    protected fun str(res: StringResource, vararg args: Any): String = runBlocking { getString(res, *args) }
+
+    protected fun plural(res: PluralStringResource, quantity: Int, vararg args: Any): String =
+        runBlocking { getPluralString(res, quantity, *args) }
 
     // --- waiting: Room works on its own threads, so the UI catches up asynchronously ---
 
@@ -188,9 +199,9 @@ abstract class FlowTest {
 
     /** From a Settings group back to Home: the group's back, then the list's. */
     protected fun leaveSettings() {
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.settings_group_about))
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
     }
 
     /** On Account, signed out: "Use another server" and [url] in the field it reveals. */
@@ -276,7 +287,7 @@ abstract class FlowTest {
         clickDescription(cellDescription)
         waitForDescription(fieldDescription)
         compose.onNode(hasContentDescription(fieldDescription)).performTextReplacement(text)
-        compose.onNode(hasText(str(R.string.input_done))).performClick()
+        compose.onNode(hasText(str(Res.string.input_done))).performClick()
         waitGone(hasContentDescription(fieldDescription))
         waitForDescription(cellAfter)
     }

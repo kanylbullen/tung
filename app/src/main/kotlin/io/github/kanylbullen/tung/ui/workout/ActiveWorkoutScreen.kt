@@ -1,7 +1,8 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.view.HapticFeedbackConstants
@@ -114,13 +115,11 @@ import io.github.kanylbullen.tung.ui.progress.ProgressSheet
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.painterResource
 import io.github.kanylbullen.tung.TungApp
-import io.github.kanylbullen.tung.core.REPS_RULER
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
-import io.github.kanylbullen.tung.core.stepReps
 import io.github.kanylbullen.tung.core.stepWeight
 import io.github.kanylbullen.tung.core.voice.VoiceLanguage
 import io.github.kanylbullen.tung.core.voice.parseUtterance
@@ -351,7 +350,7 @@ fun ActiveWorkoutScreen(
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 title = {
@@ -384,7 +383,7 @@ fun ActiveWorkoutScreen(
                         // thumb aiming at Finish cannot land on it.
                         Box {
                             IconButton(onClick = { menuOpen = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_more))
                             }
                             DropdownMenu(
                                 expanded = menuOpen,
@@ -626,7 +625,7 @@ fun ActiveWorkoutScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmRemoveId = null }) {
-                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                    Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
                 }
             },
         )
@@ -1117,7 +1116,7 @@ private fun SetRow(
                 Text(stringResource(R.string.times_sign), style = Tung.numbers.inline, color = Tung.colors.muted)
                 NumberCell(
                     value = reps,
-                    unit = stringResource(R.string.workout_unit_reps),
+                    unit = stringResource(Res.string.workout_unit_reps),
                     description = stringResource(R.string.workout_edit_reps, reps),
                     actions = deleteAction,
                     onClick = onEditReps,
@@ -1203,14 +1202,14 @@ private fun DoneCheck(
 private val CURRENT_BAR_WIDTH = 3.dp
 
 /** "Increase by 1 kilo", "Increase by 2.5 kilos": a whole step picks its plural, a fraction is "other". */
-private fun stepDescription(context: Context, @PluralsRes id: Int, stepKg: Double): String {
+@Composable
+private fun stepDescription(@PluralsRes id: Int, stepKg: Double): String {
     val quantity = if (stepKg % 1.0 == 0.0) stepKg.toInt() else 2
-    return context.resources.getQuantityString(id, quantity, localWeight(stepKg))
+    return pluralStringResource(id, quantity, localWeight(stepKg))
 }
 
 @Composable
 private fun weightSpec(initial: String): NumberInputSpec {
-    val context = LocalContext.current
     return NumberInputSpec(
         title = stringResource(R.string.input_weight_title),
         unit = stringResource(R.string.workout_unit_kg),
@@ -1218,16 +1217,16 @@ private fun weightSpec(initial: String): NumberInputSpec {
         keyboardType = KeyboardType.Decimal,
         fieldDescription = stringResource(R.string.input_field_weight),
         minusDescription = { text ->
-            stepDescription(context, R.plurals.input_minus_weight, WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0))
+            stepDescription(R.plurals.input_minus_weight, WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0))
         },
         plusDescription = { text ->
-            stepDescription(context, R.plurals.input_plus_weight, WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0))
+            stepDescription(R.plurals.input_plus_weight, WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0))
         },
-        hint = stringResource(R.string.input_hint),
+        hint = stringResource(Res.string.input_hint),
         errorText = stringResource(R.string.input_error_weight),
-        doneText = stringResource(R.string.input_done),
-        minusText = stringResource(R.string.input_minus),
-        plusText = stringResource(R.string.input_plus),
+        doneText = stringResource(Res.string.input_done),
+        minusText = stringResource(Res.string.input_minus),
+        plusText = stringResource(Res.string.input_plus),
         isValid = { parseWeight(it) != null },
         step = { text, steps -> localWeight(stepWeight(parseWeight(text) ?: 0.0, steps)) },
         sanitize = { text -> text.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
@@ -1235,44 +1234,7 @@ private fun weightSpec(initial: String): NumberInputSpec {
         toValue = ::parseWeight,
         fromValue = ::localWeight,
         rulerDescription = stringResource(R.string.input_ruler_weight),
-        rulerState = { context.getString(R.string.input_ruler_weight_state, localWeight(it)) },
+        rulerState = { stringResource(R.string.input_ruler_weight_state, localWeight(it)) },
     )
 }
 
-/**
- * The reps sheet. A set takes 0 and up; a routine's target reps ([minimum] 1,
- * with its own [title] and [errorText]) use the same sheet.
- */
-@Composable
-internal fun repsSpec(
-    initial: String,
-    title: String = stringResource(R.string.input_reps_title),
-    minimum: Int = 0,
-    errorText: String = stringResource(R.string.input_error_reps),
-): NumberInputSpec {
-    val context = LocalContext.current
-    val minusReps = stringResource(R.string.input_minus_reps)
-    val plusReps = stringResource(R.string.input_plus_reps)
-    return NumberInputSpec(
-        title = title,
-        unit = stringResource(R.string.workout_unit_reps),
-        initialText = initial,
-        keyboardType = KeyboardType.Number,
-        fieldDescription = stringResource(R.string.input_field_reps),
-        minusDescription = { _ -> minusReps },
-        plusDescription = { _ -> plusReps },
-        hint = stringResource(R.string.input_hint),
-        errorText = errorText,
-        doneText = stringResource(R.string.input_done),
-        minusText = stringResource(R.string.input_minus),
-        plusText = stringResource(R.string.input_plus),
-        isValid = { text -> parseReps(text)?.let { it >= minimum } == true },
-        step = { text, steps -> stepReps(parseReps(text) ?: 0, steps).coerceAtLeast(minimum).toString() },
-        sanitize = { text -> text.filter { it.isDigit() }.take(3) },
-        ruler = REPS_RULER,
-        toValue = { parseReps(it)?.toDouble() },
-        fromValue = { it.roundToInt().toString() },
-        rulerDescription = stringResource(R.string.input_ruler_reps),
-        rulerState = { it.roundToInt().let { n -> context.resources.getQuantityString(R.plurals.input_ruler_reps_state, n, n) } },
-    )
-}

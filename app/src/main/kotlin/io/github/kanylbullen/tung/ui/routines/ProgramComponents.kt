@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.routines
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -62,7 +64,7 @@ fun programDayPlace(mode: ProgramMode, number: Int, count: Int, weekdays: Set<In
         if (weekdays.isEmpty()) {
             stringResource(R.string.program_no_weekdays)
         } else {
-            ISO_WEEKDAYS.filter { it in weekdays }.joinToString(stringResource(R.string.list_separator)) { weekdayShort(it) }
+            ISO_WEEKDAYS.filter { it in weekdays }.joinToString(stringResource(Res.string.list_separator)) { weekdayShort(it) }
         }
 }
 

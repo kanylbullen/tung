@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.StringResource
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
@@ -34,7 +36,7 @@ class SummaryFlowTest : FlowTest() {
     private fun at(date: String): Long = LocalDate.parse(date).atTime(10, 0).atZone(zone).toInstant().toEpochMilli()
 
     /** A muscle as its row writes it: the label with a capital, "Chest". */
-    private fun muscleRow(id: Int) = str(id).replaceFirstChar { it.uppercase() }
+    private fun muscleRow(id: StringResource) = str(id).replaceFirstChar { it.uppercase() }
 
     private fun chart(metric: Int, from: String, to: String) =
         str(R.string.progress_chart_summary, str(metric), str(R.string.progress_range_3m_long), from, to)
@@ -46,7 +48,7 @@ class SummaryFlowTest : FlowTest() {
         seedFinishedWorkout(at("2026-09-30"), bench(), 90.0, 5)
         startWorkoutFromHome()
         addExercise("bench", benchPress)
-        enterInSheet(str(R.string.workout_edit_reps, "5"), str(R.string.input_field_reps), "6", str(R.string.workout_edit_reps, "6"))
+        enterInSheet(str(R.string.workout_edit_reps, "5"), str(Res.string.input_field_reps), "6", str(R.string.workout_edit_reps, "6"))
         clickDescription(str(R.string.workout_mark_done, 1))
         waitForDescription(str(R.string.workout_mark_undone, 1))
         finishWorkout()
@@ -57,7 +59,7 @@ class SummaryFlowTest : FlowTest() {
     @Test
     fun theSummaryShowsExercisesMusclesAndProgress() {
         finishBenchWorkout()
-        val sep = str(R.string.row_separator)
+        val sep = str(Res.string.row_separator)
         val details = listOf(
             plural(R.plurals.summary_sets, 1, 1),
             str(R.string.volume_kg, "540"),
@@ -74,16 +76,16 @@ class SummaryFlowTest : FlowTest() {
         val map = str(
             R.string.summary_muscles_description,
             listOf(
-                str(R.string.summary_muscle_item, str(R.string.muscle_name_chest), "50%"),
-                str(R.string.summary_muscle_item, str(R.string.muscle_name_front_delts), "25%"),
-                str(R.string.summary_muscle_item, str(R.string.muscle_name_triceps), "25%"),
+                str(Res.string.summary_muscle_item, str(Res.string.muscle_name_chest), "50%"),
+                str(Res.string.summary_muscle_item, str(Res.string.muscle_name_front_delts), "25%"),
+                str(Res.string.summary_muscle_item, str(Res.string.muscle_name_triceps), "25%"),
             ).joinToString(", "),
         )
         list.performScrollToNode(hasContentDescription(map))
         assertShown(hasContentDescription(map))
-        list.performScrollToNode(hasText(muscleRow(R.string.muscle_name_triceps)) and hasText("25%"))
-        assertShown(hasText(muscleRow(R.string.muscle_name_chest)) and hasText("50%"))
-        assertShown(hasText(muscleRow(R.string.muscle_name_front_delts)) and hasText("25%"))
+        list.performScrollToNode(hasText(muscleRow(Res.string.muscle_name_triceps)) and hasText("25%"))
+        assertShown(hasText(muscleRow(Res.string.muscle_name_chest)) and hasText("50%"))
+        assertShown(hasText(muscleRow(Res.string.muscle_name_front_delts)) and hasText("25%"))
         screenshot("2-muscles")
 
         // The chart has the two earlier sessions and this one, the last point.
@@ -106,7 +108,7 @@ class SummaryFlowTest : FlowTest() {
         // The chart's exercise opens its progress; back returns to the summary.
         compose.onNode(hasText(benchPress) and hasClickAction()).performClick()
         waitFor(hasTestTag(EXERCISE_PROGRESS_TAG))
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitFor(hasTestTag(SUMMARY_LIST_TAG))
 
         clickText(str(R.string.summary_done))
@@ -120,7 +122,7 @@ class SummaryFlowTest : FlowTest() {
         finishBenchWorkout()
         screenshot("1-exercises")
         val list = compose.onNode(hasTestTag(SUMMARY_LIST_TAG))
-        list.performScrollToNode(hasText(muscleRow(R.string.muscle_name_chest)) and hasText("50%"))
+        list.performScrollToNode(hasText(muscleRow(Res.string.muscle_name_chest)) and hasText("50%"))
         screenshot("2-muscles")
         list.performScrollToNode(hasContentDescription(chart(R.string.progress_metric_e1rm_long, "98", "108")))
         screenshot("3-progress")

@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -70,7 +71,7 @@ class ProgressFlowTest : FlowTest() {
     }
 
     private val benchRow get() =
-        "${str(R.string.progress_e1rm_value, "112")}${str(R.string.row_separator)}${str(R.string.progress_change_3m, str(R.string.progress_change_up, "14"))}"
+        "${str(R.string.progress_e1rm_value, "112")}${str(Res.string.row_separator)}${str(R.string.progress_change_3m, str(R.string.progress_change_up, "14"))}"
 
     /**
      * The tab's overview says 5 workouts in the last 12 weeks, 2 this week;
@@ -122,7 +123,7 @@ class ProgressFlowTest : FlowTest() {
         seedFinishedWorkout(at("2026-08-21"), bench(), 96.0, 5)
         openTab()
 
-        val sep = str(R.string.row_separator)
+        val sep = str(Res.string.row_separator)
         val threeMonths = "${str(R.string.progress_e1rm_value, "112")}$sep${plural(R.plurals.progress_sessions_3m, 1, 1)}"
         val twelveMonths = "${str(R.string.progress_e1rm_value, "112")}$sep${str(R.string.progress_change_12m, str(R.string.progress_change_up, "14"))}"
         val sparkline12 = summary(R.string.progress_metric_e1rm_long, R.string.progress_range_12m_long, "98", "112")
@@ -179,7 +180,7 @@ class ProgressFlowTest : FlowTest() {
         val bars = hasContentDescription(str(R.string.progress_volume_summary, "1,625", "875"))
         assertShown(bars)
 
-        val sep = str(R.string.row_separator)
+        val sep = str(Res.string.row_separator)
         val perSession = "${str(R.string.progress_session_volume_value, "450")}$sep${str(R.string.progress_change_3m, str(R.string.progress_change_up, "100"))}"
         val perWeek = "${str(R.string.progress_weekly_volume_value, "875")}$sep${str(R.string.progress_change_3m, str(R.string.progress_change_up, "525"))}"
         val list = compose.onNode(hasTestTag(PROGRESS_LIST_TAG))
@@ -281,7 +282,7 @@ class ProgressFlowTest : FlowTest() {
         dismissSheet(chart)
         assertShown(hasContentDescription(str(R.string.workout_edit_weight, "96")))
 
-        enterInSheet(str(R.string.workout_edit_reps, "5"), str(R.string.input_field_reps), "7", str(R.string.workout_edit_reps, "7"))
+        enterInSheet(str(R.string.workout_edit_reps, "5"), str(Res.string.input_field_reps), "7", str(R.string.workout_edit_reps, "7"))
         clickDescription(progressFor)
         assertShown(hasText(str(R.string.progress_beats_e1rm, "96", 7)))
         screenshot("2-sheet-record")
@@ -327,9 +328,9 @@ class ProgressFlowTest : FlowTest() {
         assertShown(hasContentDescription(str(R.string.workout_edit_weight, "96")))
         check(count("SELECT COUNT(*) FROM set_entry s JOIN workout_exercise we ON s.workoutExerciseId = we.id JOIN workout w ON we.workoutId = w.id WHERE w.endedAt IS NULL AND s.completed = 1") == 0)
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         openTab()
-        val sep = str(R.string.row_separator)
+        val sep = str(Res.string.row_separator)
         val row = "${str(R.string.progress_weekly_volume_value, "930")}$sep${str(R.string.progress_change_12m, str(R.string.progress_change_up, "570"))}"
         val list = compose.onNode(hasTestTag(PROGRESS_LIST_TAG))
         waitFor(hasText(row))

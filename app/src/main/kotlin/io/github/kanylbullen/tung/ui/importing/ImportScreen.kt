@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.importing
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -83,7 +85,7 @@ fun ImportScreen(vm: ImportViewModel, onBack: () -> Unit, onPick: () -> Unit, on
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 title = { Text(stringResource(R.string.import_title)) },
@@ -238,7 +240,7 @@ private fun counts(workouts: Int, sets: Int, routines: Int): String = listOf(
     pluralStringResource(R.plurals.import_workouts, workouts, workouts),
     pluralStringResource(R.plurals.import_sets, sets, sets),
     pluralStringResource(R.plurals.import_routines, routines, routines),
-).joinToString(stringResource(R.string.row_separator))
+).joinToString(stringResource(Res.string.row_separator))
 
 /** "In 12 workouts" or "Only in routines" under a review name. */
 @Composable

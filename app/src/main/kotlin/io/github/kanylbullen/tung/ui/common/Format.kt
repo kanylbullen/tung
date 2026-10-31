@@ -1,25 +1,15 @@
 package io.github.kanylbullen.tung.ui.common
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.Equipment
-import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
-import io.github.kanylbullen.tung.core.daysAgo
 import io.github.kanylbullen.tung.core.formatWeight
-import kotlinx.coroutines.delay
 import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
-import kotlinx.datetime.TimeZone
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToLong
@@ -79,19 +69,6 @@ fun clockText(millis: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
-/** Current time, refreshed every [intervalMillis]. */
-@Composable
-fun rememberNow(intervalMillis: Long = 1_000L): Long {
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(intervalMillis) {
-        while (true) {
-            now = System.currentTimeMillis()
-            delay(intervalMillis)
-        }
-    }
-    return now
-}
-
 @Composable
 fun muscleGroupLabel(group: MuscleGroup): String = stringResource(
     when (group) {
@@ -104,34 +81,6 @@ fun muscleGroupLabel(group: MuscleGroup): String = stringResource(
         MuscleGroup.GLUTES -> R.string.muscle_glutes
         MuscleGroup.CORE -> R.string.muscle_core
         MuscleGroup.FULLBODY -> R.string.muscle_fullbody
-    }
-)
-
-/** A muscle's name in lower case, for use inside a sentence ("Pairs with triceps"). */
-@Composable
-fun muscleLabel(muscle: Muscle): String = stringResource(
-    when (muscle) {
-        Muscle.CHEST -> R.string.muscle_name_chest
-        Muscle.LATS -> R.string.muscle_name_lats
-        Muscle.UPPER_BACK -> R.string.muscle_name_upper_back
-        Muscle.LOWER_BACK -> R.string.muscle_name_lower_back
-        Muscle.TRAPS -> R.string.muscle_name_traps
-        Muscle.FRONT_DELTS -> R.string.muscle_name_front_delts
-        Muscle.SIDE_DELTS -> R.string.muscle_name_side_delts
-        Muscle.REAR_DELTS -> R.string.muscle_name_rear_delts
-        Muscle.BICEPS -> R.string.muscle_name_biceps
-        Muscle.TRICEPS -> R.string.muscle_name_triceps
-        Muscle.FOREARMS -> R.string.muscle_name_forearms
-        Muscle.QUADS -> R.string.muscle_name_quads
-        Muscle.HAMSTRINGS -> R.string.muscle_name_hamstrings
-        Muscle.GLUTES -> R.string.muscle_name_glutes
-        Muscle.CALVES -> R.string.muscle_name_calves
-        Muscle.ADDUCTORS -> R.string.muscle_name_adductors
-        Muscle.ABDUCTORS -> R.string.muscle_name_abductors
-        Muscle.ABS -> R.string.muscle_name_abs
-        Muscle.OBLIQUES -> R.string.muscle_name_obliques
-        Muscle.HIP_FLEXORS -> R.string.muscle_name_hip_flexors
-        Muscle.NECK -> R.string.muscle_name_neck
     }
 )
 
@@ -158,23 +107,4 @@ fun localWeekday(epochMillis: Long): String {
     val text = DateTimeFormatter.ofPattern("EEEE", locale)
         .format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
     return text.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
-}
-
-/** "Last: 3 days ago", "Last: yesterday", "Last: today", or "Never" for a routine never started. */
-@Composable
-fun lastUsedText(lastUsedAt: Long?, now: Long): String {
-    if (lastUsedAt == null) return stringResource(R.string.routine_never)
-    val ago = when (val days = daysAgo(lastUsedAt, now, TimeZone.currentSystemDefault()).toInt()) {
-        0 -> stringResource(R.string.routine_today)
-        1 -> stringResource(R.string.routine_yesterday)
-        else -> pluralStringResource(R.plurals.routine_days_ago, days, days)
-    }
-    return stringResource(R.string.routine_last, ago)
-}
-
-/** "50%" as the locale writes it, or "<1%" for a muscle with a sliver of the work (the summary's and Home's muscle lines). */
-@Composable
-fun percentText(percent: Int): String {
-    val format = NumberFormat.getPercentInstance()
-    return if (percent > 0) format.format(percent / 100.0) else stringResource(R.string.summary_muscle_less_than, format.format(0.01))
 }

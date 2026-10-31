@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.routines
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -75,10 +77,10 @@ fun ProgramsScreen(onBack: () -> Unit, onOpenProgram: (String) -> Unit) {
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
-                title = { Text(stringResource(R.string.programs_title)) },
+                title = { Text(stringResource(Res.string.programs_title)) },
             )
         },
     ) { padding ->
@@ -123,7 +125,7 @@ private fun ProgramRow(row: ProgramSummaryRow, onClick: () -> Unit, onActivate: 
     val details = listOf(
         programModeLabel(ProgramMode.fromKey(row.mode)),
         pluralStringResource(R.plurals.program_day_count, row.dayCount, row.dayCount),
-    ).joinToString(stringResource(R.string.row_separator))
+    ).joinToString(stringResource(Res.string.row_separator))
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -203,7 +205,7 @@ private fun NewProgramDialog(onDismiss: () -> Unit, onCreate: (String, ProgramMo
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
             }
         },
     )

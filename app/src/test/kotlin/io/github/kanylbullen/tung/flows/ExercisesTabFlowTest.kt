@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -98,13 +99,13 @@ class ExercisesTabFlowTest : FlowTest() {
         openPage("bench", benchPress)
 
         val map = str(
-            R.string.exercise_map_description,
-            str(R.string.muscle_name_chest),
-            listOf(str(R.string.muscle_name_triceps), str(R.string.muscle_name_front_delts)).joinToString(", "),
+            Res.string.exercise_map_description,
+            str(Res.string.muscle_name_chest),
+            listOf(str(Res.string.muscle_name_triceps), str(Res.string.muscle_name_front_delts)).joinToString(", "),
         )
         assertShown(hasContentDescription(map))
-        assertShown(hasText(str(R.string.exercise_map_primary)))
-        assertShown(hasText(str(R.string.exercise_map_secondary)))
+        assertShown(hasText(str(Res.string.exercise_map_primary)))
+        assertShown(hasText(str(Res.string.exercise_map_secondary)))
         compose.onNode(hasText(str(R.string.exercise_add_to_workout))).assertDoesNotExist()
         screenshot("1-page")
 
@@ -151,7 +152,7 @@ class ExercisesTabFlowTest : FlowTest() {
         assertShown(hasText(str(R.string.exercise_not_logged)))
         screenshot("2-added")
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         clickText(str(R.string.nav_home))
         clickText(str(R.string.routines_all))
         waitGone(hasText(str(R.string.home_recent)))

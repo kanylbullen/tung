@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasText
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.catalogExerciseId
@@ -39,7 +40,7 @@ class HistoryFlowTest : FlowTest() {
         compose.onNode(hasText(str(R.string.ex_back_squat))).assertDoesNotExist()
         screenshot("2-detail")
 
-        clickDescription(str(R.string.action_more))
+        clickDescription(str(Res.string.action_more))
         clickText(str(R.string.detail_delete))
         assertShown(hasText(str(R.string.detail_delete_body)))
         screenshot("3-delete-dialog")

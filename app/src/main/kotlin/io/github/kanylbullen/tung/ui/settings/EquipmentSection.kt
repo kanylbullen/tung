@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.settings
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -85,7 +87,7 @@ fun EquipmentSection() {
 private fun equipmentSummary(available: Set<Equipment>): String = when {
     !EquipmentFilter.isNarrowed(available) -> stringResource(R.string.my_equipment_everything)
     available.size <= 3 -> Equipment.entries.filter { it in available }.map { equipmentLabel(it) }
-        .joinToString(stringResource(R.string.row_separator))
+        .joinToString(stringResource(Res.string.row_separator))
     else -> stringResource(R.string.my_equipment_some, available.size, Equipment.entries.size)
 }
 

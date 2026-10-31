@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.progress
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -161,7 +163,7 @@ private fun <T> ChoiceMenu(options: List<T>, selected: T, label: @Composable (T)
 /** One session: its date, muted, then the sets as "80 × 8 · 80 × 8 · 85 × 5". */
 @Composable
 internal fun SessionLine(date: String, sets: List<LoggedSet>) {
-    val sep = stringResource(R.string.row_separator)
+    val sep = stringResource(Res.string.row_separator)
     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp).semantics(mergeDescendants = true) {}) {
         Text(date, style = Tung.numbers.inline, color = Tung.colors.muted, maxLines = 1, modifier = Modifier.width(112.dp))
         Text(
