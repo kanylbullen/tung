@@ -11,6 +11,7 @@ import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.admin.WebAdmin
 import io.github.kanylbullen.tung.web.catalog.WebCatalogue
 import io.github.kanylbullen.tung.web.i18n.Strings
+import io.github.kanylbullen.tung.web.importing.WebImporter
 import io.github.kanylbullen.tung.web.settings.WebPreferences
 import io.github.kanylbullen.tung.web.store.IndexedDbStore
 import io.github.kanylbullen.tung.web.store.TungStore
@@ -92,6 +93,14 @@ class WebContainer(
     lateinit var commands: CommandHandler
         private set
 
+    /** The exercises by name and reference, the commands' and the import's resolver. */
+    lateinit var resolver: WebExerciseResolver
+        private set
+
+    /** The import's one bulk write (CLAUDE.md, "Import"). */
+    lateinit var importer: WebImporter
+        private set
+
     /** The core catalogue's names by key and language, for the exercise names on screen. */
     var catalogueNames: Map<String, Map<String, String>> = emptyMap()
         private set
@@ -108,9 +117,11 @@ class WebContainer(
             settings = WebSettings(db).also { it.load() }
             db.loadInto(store)
             sync = WebSync(store, db, settings)
+            resolver = WebExerciseResolver(store, { catalogueNames }) { _catalogue.value.extended }
+            importer = WebImporter(store, persist = { db.write(it) }, extended = { _catalogue.value.extended }, clock = { Date.now().toLong() })
             val executor = CommandExecutor(
                 WebCommandStore(store, persist = { db.write(it) }, clock = { Date.now().toLong() }),
-                WebExerciseResolver(store, { catalogueNames }) { _catalogue.value.extended },
+                resolver,
                 startedBy = StartedBy.WEB,
             )
             commands = object : CommandHandler {

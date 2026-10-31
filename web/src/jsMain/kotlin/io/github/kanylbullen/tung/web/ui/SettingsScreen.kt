@@ -1,5 +1,12 @@
 package io.github.kanylbullen.tung.web.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import kotlin.js.Date
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.web.importing.undoImport
+import io.github.kanylbullen.tung.web.importing.ImportMemory
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -96,6 +103,8 @@ fun SettingsScreen(container: WebContainer, account: Account) {
             }
         }
 
+        DataSection(container)
+
         H2({ classes("section") }) { Text(strings.account) }
         Div({ classes("setting", "column") }) {
             Span { Text(strings.signedInAs(account.email)) }
@@ -135,6 +144,66 @@ fun SettingsScreen(container: WebContainer, account: Account) {
             P({ classes("hint", "flush") }) { Text(strings.catalogueText) }
             A(href = "https://github.com/kanylbullen/tung", attrs = { classes("text-button", "flush-link") }) { Text(strings.sourceCode) }
             A(href = "/privacy", attrs = { classes("text-button", "flush-link") }) { Text(strings.privacy) }
+        }
+    }
+}
+
+/**
+ * Settings → Data, the phone's: Import from Jefit, and while this browser
+ * remembers the last import, Undo last import and "Delete routines from
+ * the last import (N)" (N counting those that still exist).
+ */
+@Composable
+private fun DataSection(container: WebContainer) {
+    val strings = container.strings
+    val version = container.store.version.collectAsState().value
+    val scope = rememberCoroutineScope()
+    var last by remember { mutableStateOf(ImportMemory.load()) }
+    var confirming by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val batchWorkouts = remember(version, last) {
+        last?.let { l -> container.store.workouts.rows.values.count { it.row.importBatchId == l.batchId } } ?: 0
+    }
+    val routines = remember(version, last) { last?.routineIds?.filter { container.store.routines.rows.containsKey(it) }.orEmpty() }
+
+    H2({ classes("section") }) { Text(strings.data) }
+    Ul({ classes("rows") }) {
+        Li {
+            A(href = Route.IMPORT.hash, attrs = { classes("row", "row-link") }) {
+                Div({ classes("main") }) {
+                    Div({ classes("title") }) { Span({ classes("plain") }) { Text(strings.importJefit) } }
+                    last?.let { Div({ classes("details") }) { Text(strings.lastImport(it.workouts, shortDate(it.at, container.locale, Date.now().toLong()))) } }
+                }
+            }
+        }
+    }
+    if (last != null && (batchWorkouts > 0 || routines.isNotEmpty())) {
+        Div({ classes("setting-buttons", "pad") }) {
+            if (batchWorkouts > 0) Button({ classes("secondary"); onClick { confirming = "undo" } }) { Text(strings.undoLastImport) }
+            if (routines.isNotEmpty()) Button({ classes("secondary"); onClick { confirming = "routines" } }) { Text(strings.deleteImportRoutines(routines.size)) }
+        }
+    }
+    message?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(it) } }
+
+    val current = last
+    when (confirming) {
+        "undo" -> if (current != null) {
+            Dialog(strings.undoImportTitle(batchWorkouts), strings.undoImportBody, strings.remove, strings.cancel, onCancel = { confirming = null }) {
+                confirming = null
+                scope.launch {
+                    message = strings.importUndone(undoImport(container.store, container.commands, current.batchId, current.routineIds))
+                    ImportMemory.forget()
+                    last = null
+                }
+            }
+        }
+        "routines" -> {
+            val days = container.store.programDays.rows.values.count { it.row.routineId in routines }
+            val body = listOf(strings.deleteImportRoutinesBody) + (if (days > 0) listOf(strings.deleteManyDays(days)) else emptyList())
+            Dialog(strings.deleteManyTitle(routines.size), body.joinToString(" "), strings.delete, strings.cancel, onCancel = { confirming = null }) {
+                confirming = null
+                scope.launch { container.run(Command.DeleteRoutines(routines)) }
+            }
         }
     }
 }

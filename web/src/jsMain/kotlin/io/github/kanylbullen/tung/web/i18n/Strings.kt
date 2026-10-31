@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.web.i18n
 
 import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.importing.SkipReason
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 
@@ -227,6 +228,46 @@ interface Strings {
     val createExercise: String
     val muscleGroup: String
     val equipment: String
+
+    // Import
+    val data: String
+    val importJefit: String
+    val importJefitHint: String
+    val importReading: String
+    val importNotRecognised: String
+    val importUnreadable: String
+    val importEmpty: String
+    fun importCounts(workouts: Int, sets: Int, routines: Int): String
+    val reviewTitle: String
+    val reviewHint: String
+    val choose: String
+    val createChoice: String
+    fun decidedCount(decided: Int, total: Int): String
+    fun decidedUse(name: String): String
+    fun decidedCreate(name: String): String
+    val decidedSkip: String
+    val change: String
+    fun usedInWorkouts(count: Int): String
+    val onlyInRoutines: String
+    val createRemaining: String
+    val skipRemaining: String
+    fun setTypeNote(type: String, count: Int): String
+    val skippedTitle: String
+    fun skipReason(reason: SkipReason, count: Int): String
+    val importAction: String
+    val decideFirst: String
+    val importing: String
+    val importDoneTitle: String
+    fun importDoneAdded(what: String): String
+    fun importDoneAlready(count: Int): String
+    val undoImport: String
+    fun importUndone(count: Int): String
+    fun lastImport(workouts: Int, date: String): String
+    val undoLastImport: String
+    fun undoImportTitle(count: Int): String
+    val undoImportBody: String
+    fun deleteImportRoutines(count: Int): String
+    val deleteImportRoutinesBody: String
     fun weeksSummary(volumes: String): String
 
     // Settings
@@ -561,6 +602,70 @@ object English : Strings {
     override val createExercise = "Create exercise"
     override val muscleGroup = "Muscle group"
     override val equipment = "Equipment"
+
+    override val data = "Data"
+    override val importJefit = "Import from Jefit"
+    override val importJefitHint = "Export your data on jefit.com (My Jefit → Settings → Data Controls → Export Data), then choose the CSV file here."
+    override val importReading = "Reading the file…"
+    override val importNotRecognised = "This is not a Jefit export. Choose the CSV file from Jefit's Export Data."
+    override val importUnreadable = "The file could not be read. Choose it again."
+    override val importEmpty = "The file has no workouts or routines to import."
+    override fun importCounts(workouts: Int, sets: Int, routines: Int) = listOf(
+        if (workouts == 1) "1 workout" else "$workouts workouts",
+        if (sets == 1) "1 set" else "$sets sets",
+        if (routines == 1) "1 routine" else "$routines routines",
+    ).joinToString(" · ")
+    override val reviewTitle = "Exercises to check"
+    override val reviewHint = "These names have no exact match in Tung. Choose an exercise, create one with the Jefit name, or skip it."
+    override val choose = "Choose"
+    override val createChoice = "Create"
+    override fun decidedCount(decided: Int, total: Int) = "$decided of $total decided"
+    override fun decidedUse(name: String) = "✓ $name"
+    override fun decidedCreate(name: String) = "✓ Create “$name”"
+    override val decidedSkip = "✓ Skipped"
+    override val change = "Change"
+    override fun usedInWorkouts(count: Int) = if (count == 1) "In 1 workout" else "In $count workouts"
+    override val onlyInRoutines = "Only in routines"
+    override val createRemaining = "Create all remaining"
+    override val skipRemaining = "Skip all remaining"
+    override fun setTypeNote(type: String, count: Int) = when (type) {
+        "warm-up" -> if (count == 1) "1 warm-up set imported as a normal set" else "$count warm-up sets imported as normal sets"
+        "drop" -> if (count == 1) "1 drop set imported as a normal set" else "$count drop sets imported as normal sets"
+        "failure" -> if (count == 1) "1 failure set imported as a normal set" else "$count failure sets imported as normal sets"
+        else -> if (count == 1) "1 $type set imported as a normal set" else "$count $type sets imported as normal sets"
+    }
+    override val skippedTitle = "Not imported"
+    override fun skipReason(reason: SkipReason, count: Int): String {
+        val (one, many) = when (reason) {
+            SkipReason.SESSION_WITHOUT_EXERCISES -> "session without exercises" to "sessions without exercises"
+            SkipReason.SESSION_WITHOUT_TIME -> "session without a time" to "sessions without a time"
+            SkipReason.CARDIO -> "cardio exercise" to "cardio exercises"
+            SkipReason.CARDIO_LOG -> "cardio log entry" to "cardio log entries"
+            SkipReason.LOG_WITHOUT_SETS -> "exercise without logged sets" to "exercises without logged sets"
+            SkipReason.SET_WITHOUT_REPS -> "set without reps" to "sets without reps"
+            SkipReason.SET_UNREADABLE -> "set that could not be read" to "sets that could not be read"
+            SkipReason.SET_WITHOUT_LOG -> "set without its exercise" to "sets without their exercise"
+            SkipReason.STRAY_HEADER -> "repeated header row" to "repeated header rows"
+            SkipReason.ROUTINE_WITHOUT_EXERCISES -> "routine day without exercises" to "routine days without exercises"
+            SkipReason.DUPLICATE_ROUTINE -> "duplicate routine day" to "duplicate routine days"
+        }
+        return "$count " + if (count == 1) one else many
+    }
+    override val importAction = "Import"
+    override val decideFirst = "Decide on each exercise above to import."
+    override val importing = "Importing…"
+    override val importDoneTitle = "Import finished"
+    override fun importDoneAdded(what: String) = "Added $what"
+    override fun importDoneAlready(count: Int) =
+        if (count == 1) "1 workout was already here and was left as it is" else "$count workouts were already here and were left as they are"
+    override val undoImport = "Undo import"
+    override fun importUndone(count: Int) = if (count == 1) "Import undone: 1 workout removed" else "Import undone: $count workouts removed"
+    override fun lastImport(workouts: Int, date: String) = if (workouts == 1) "Last import: 1 workout, $date" else "Last import: $workouts workouts, $date"
+    override val undoLastImport = "Undo last import"
+    override fun undoImportTitle(count: Int) = if (count == 1) "Remove 1 imported workout?" else "Remove $count imported workouts?"
+    override val undoImportBody = "Workouts you logged in Tung are kept."
+    override fun deleteImportRoutines(count: Int) = "Delete routines from the last import ($count)"
+    override val deleteImportRoutinesBody = "The import's workouts are kept."
     override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
     override val settings = "Settings"
     override val training = "Training"
@@ -906,6 +1011,70 @@ object Swedish : Strings {
     override val createExercise = "Skapa övning"
     override val muscleGroup = "Muskelgrupp"
     override val equipment = "Utrustning"
+
+    override val data = "Data"
+    override val importJefit = "Importera från Jefit"
+    override val importJefitHint = "Exportera dina data på jefit.com (My Jefit → Settings → Data Controls → Export Data) och välj sedan CSV-filen här."
+    override val importReading = "Läser filen …"
+    override val importNotRecognised = "Det här är ingen Jefit-export. Välj CSV-filen från Jefits Export Data."
+    override val importUnreadable = "Filen gick inte att läsa. Välj den igen."
+    override val importEmpty = "Filen har inga pass eller rutiner att importera."
+    override fun importCounts(workouts: Int, sets: Int, routines: Int) = listOf(
+        "$workouts pass",
+        "$sets set",
+        if (routines == 1) "1 rutin" else "$routines rutiner",
+    ).joinToString(" · ")
+    override val reviewTitle = "Övningar att kontrollera"
+    override val reviewHint = "De här namnen har ingen exakt motsvarighet i Tung. Välj en övning, skapa en med namnet från Jefit eller hoppa över den."
+    override val choose = "Välj"
+    override val createChoice = "Skapa"
+    override fun decidedCount(decided: Int, total: Int) = "$decided av $total bestämda"
+    override fun decidedUse(name: String) = "✓ $name"
+    override fun decidedCreate(name: String) = "✓ Skapa ”$name”"
+    override val decidedSkip = "✓ Hoppas över"
+    override val change = "Ändra"
+    override fun usedInWorkouts(count: Int) = "I $count pass"
+    override val onlyInRoutines = "Bara i rutiner"
+    override val createRemaining = "Skapa alla återstående"
+    override val skipRemaining = "Hoppa över alla återstående"
+    override fun setTypeNote(type: String, count: Int) = when (type) {
+        "warm-up" -> if (count == 1) "1 uppvärmningsset importerat som vanligt set" else "$count uppvärmningsset importerade som vanliga set"
+        "drop" -> if (count == 1) "1 dropset importerat som vanligt set" else "$count dropset importerade som vanliga set"
+        "failure" -> if (count == 1) "1 set till utmattning importerat som vanligt set" else "$count set till utmattning importerade som vanliga set"
+        else -> if (count == 1) "1 $type-set importerat som vanligt set" else "$count $type-set importerade som vanliga set"
+    }
+    override val skippedTitle = "Importeras inte"
+    override fun skipReason(reason: SkipReason, count: Int): String {
+        val (one, many) = when (reason) {
+            SkipReason.SESSION_WITHOUT_EXERCISES -> "pass utan övningar" to "pass utan övningar"
+            SkipReason.SESSION_WITHOUT_TIME -> "pass utan tid" to "pass utan tid"
+            SkipReason.CARDIO -> "konditionsövning" to "konditionsövningar"
+            SkipReason.CARDIO_LOG -> "rad i konditionsloggen" to "rader i konditionsloggen"
+            SkipReason.LOG_WITHOUT_SETS -> "övning utan loggade set" to "övningar utan loggade set"
+            SkipReason.SET_WITHOUT_REPS -> "set utan repetitioner" to "set utan repetitioner"
+            SkipReason.SET_UNREADABLE -> "set som inte gick att läsa" to "set som inte gick att läsa"
+            SkipReason.SET_WITHOUT_LOG -> "set utan sin övning" to "set utan sin övning"
+            SkipReason.STRAY_HEADER -> "upprepad rubrikrad" to "upprepade rubrikrader"
+            SkipReason.ROUTINE_WITHOUT_EXERCISES -> "rutindag utan övningar" to "rutindagar utan övningar"
+            SkipReason.DUPLICATE_ROUTINE -> "dubblerad rutindag" to "dubblerade rutindagar"
+        }
+        return "$count " + if (count == 1) one else many
+    }
+    override val importAction = "Importera"
+    override val decideFirst = "Bestäm dig för varje övning ovan för att importera."
+    override val importing = "Importerar …"
+    override val importDoneTitle = "Importen är klar"
+    override fun importDoneAdded(what: String) = "Tillagt: $what"
+    override fun importDoneAlready(count: Int) =
+        if (count == 1) "1 pass fanns redan och lämnades som det var" else "$count pass fanns redan och lämnades som de var"
+    override val undoImport = "Ångra importen"
+    override fun importUndone(count: Int) = if (count == 1) "Importen ångrad: 1 pass borttaget" else "Importen ångrad: $count pass borttagna"
+    override fun lastImport(workouts: Int, date: String) = "Senaste importen: $workouts pass, $date"
+    override val undoLastImport = "Ångra senaste importen"
+    override fun undoImportTitle(count: Int) = if (count == 1) "Ta bort 1 importerat pass?" else "Ta bort $count importerade pass?"
+    override val undoImportBody = "Pass du loggat i Tung behålls."
+    override fun deleteImportRoutines(count: Int) = "Radera rutiner från senaste importen ($count)"
+    override val deleteImportRoutinesBody = "Importens pass finns kvar."
     override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
     override val settings = "Inställningar"
     override val training = "Träning"
