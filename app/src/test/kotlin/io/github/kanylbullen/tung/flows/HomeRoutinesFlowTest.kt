@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasText
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.command.Command
@@ -38,7 +39,7 @@ class HomeRoutinesFlowTest : FlowTest() {
         clickText(names.first())
         waitForText(str(R.string.ex_bench_press))
         screenshot("2-detail")
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
 
         clickText(str(R.string.routines_all))
         names.forEach { waitForText(it) }

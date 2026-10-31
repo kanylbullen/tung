@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -131,7 +132,7 @@ class AssistantFlowTest : FlowTest() {
         assertTrue(compose.onAllNodes(hasText("Moon walk")).fetchSemanticsNodes().isEmpty())
 
         scrollAndClick(str(R.string.ai_save_program))
-        waitForText(str(R.string.programs_title))
+        waitForText(str(Res.string.programs_title))
         waitForText("Heavy day")
         waitForText("Volume day")
         screenshot("5-routines")
@@ -154,17 +155,17 @@ class AssistantFlowTest : FlowTest() {
         openAssistantFromHome()
 
         // "Show what is sent" in the menu: the next request is shown first, and Cancel sends nothing.
-        clickDescription(str(R.string.action_more))
+        clickDescription(str(Res.string.action_more))
         clickText(str(R.string.ai_show_payload))
         waitForAlwaysShowPayload(true)
         ask(R.string.ai_ask_plateaus)
         waitForText(str(R.string.ai_payload_title))
-        clickText(str(R.string.action_cancel))
+        clickText(str(Res.string.action_cancel))
         waitGone(hasText(str(R.string.ai_payload_title)))
         assertEquals(0, server.requestCount)
 
         // Off again: with the first review done, a tap sends at once.
-        clickDescription(str(R.string.action_more))
+        clickDescription(str(Res.string.action_more))
         clickText(str(R.string.ai_show_payload))
         waitForAlwaysShowPayload(false)
         ask(R.string.ai_ask_next)

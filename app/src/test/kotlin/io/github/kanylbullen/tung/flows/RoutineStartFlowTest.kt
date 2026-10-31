@@ -36,7 +36,7 @@ class RoutineStartFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL AND routineId = '$routineId'"))
 
         // Back lands on Home, since the page was popped under the workout; opened again, Start is disabled.
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.home_resume_workout))
         clickText("Push day")
         waitFor(start and isNotEnabled())

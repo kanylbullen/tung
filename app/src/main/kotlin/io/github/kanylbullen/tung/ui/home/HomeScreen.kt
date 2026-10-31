@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.home
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -220,7 +222,7 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                stringResource(R.string.routines_title),
+                                stringResource(Res.string.routines_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = Tung.colors.muted,
                                 modifier = Modifier.weight(1f),
@@ -315,7 +317,7 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
     val counts = listOf(
         pluralStringResource(R.plurals.home_week_workouts, totals.workouts, totals.workouts),
         pluralStringResource(R.plurals.home_week_sets, totals.sets, totals.sets),
-    ).joinToString(stringResource(R.string.row_separator))
+    ).joinToString(stringResource(Res.string.row_separator))
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.Top) {
             Column(
@@ -373,8 +375,8 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                     intensity = week.muscles::intensity,
                     description = stringResource(
                         R.string.home_muscles_description,
-                        week.muscles.muscles.map { stringResource(R.string.summary_muscle_item, muscleLabel(it.muscle), percentText(it.percent)) }
-                            .joinToString(stringResource(R.string.list_separator)),
+                        week.muscles.muscles.map { stringResource(Res.string.summary_muscle_item, muscleLabel(it.muscle), percentText(it.percent)) }
+                            .joinToString(stringResource(Res.string.list_separator)),
                     ),
                     height = 112.dp,
                 )

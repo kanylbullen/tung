@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.work.Configuration
@@ -65,7 +66,7 @@ class SettingsFlowTest : FlowTest() {
             clickText(str(group))
             waitForText(shows)
             screenshot("2-${app.resources.getResourceEntryName(group)}")
-            clickDescription(str(R.string.action_back))
+            clickDescription(str(Res.string.action_back))
             waitForText(str(R.string.settings_group_about))
         }
         // Signed out, Devices points to Account.
@@ -100,7 +101,7 @@ class SettingsFlowTest : FlowTest() {
         clickText(str(R.string.sync_google_sign_in))
         waitForText(str(R.string.sync_signed_in_as, fake.googleEmail))
         assertEquals(listOf("/api/v1/auth/google"), fake.authPaths)
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.sync_signed_in_as, fake.googleEmail))
         screenshot("3-groups-signed-in")
     }
@@ -128,7 +129,7 @@ class SettingsFlowTest : FlowTest() {
         clickDescription(str(R.string.rest_longer))
         waitForRestDefault(30)
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.settings_summary_training, "0:30"))
         clickText(str(R.string.settings_group_training))
         waitForText("0:30")

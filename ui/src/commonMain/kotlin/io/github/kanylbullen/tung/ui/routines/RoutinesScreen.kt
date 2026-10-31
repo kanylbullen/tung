@@ -38,16 +38,13 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 /**
- * The Routines tab: every routine, most recently used first; tap one to edit
- * it, or start it. "+ New routine" in the top bar asks for a name and opens the
- * empty routine. Programs are one step further, from the row on top.
- * A long press starts selection mode (issue #79): taps toggle rows, the top
- * bar selects all or deletes the selection in one `DeleteRoutines`.
- */
-/**
- * The Routines tab: the Programs row, then every routine by last use, each
- * with Start; a long press starts selection mode. [vm] is made by the
- * platform (app/'s `RoutinesRoute`), which also leaves selection mode on back.
+ * The Routines tab: the Programs row on top, then every routine, most
+ * recently used first; tap one to edit it, or start it. "+ New routine" in
+ * the top bar asks for a name and opens the empty routine. A long press
+ * starts selection mode (issue #79): taps toggle rows, the top bar selects
+ * all or deletes the selection in one `DeleteRoutines`. [vm] is made by the
+ * platform (app/'s `RoutinesRoute`), and so is [backHandler], which leaves
+ * selection mode on back before the tab is left.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,11 +53,14 @@ fun RoutinesScreen(
     onOpenRoutine: (String) -> Unit,
     onOpenWorkout: (String) -> Unit,
     onShowPrograms: () -> Unit,
+    backHandler: @Composable (enabled: Boolean, onBack: () -> Unit) -> Unit = { _, _ -> },
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val confirm by vm.confirm.collectAsStateWithLifecycle()
     val now = rememberNow(intervalMillis = 60_000L)
     var creating by rememberSaveable { mutableStateOf(false) }
+
+    backHandler(state.selecting) { vm.clearSelection() }
 
     Scaffold(
         containerColor = Tung.colors.background,

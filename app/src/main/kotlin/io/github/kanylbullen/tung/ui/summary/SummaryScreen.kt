@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.summary
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -231,7 +233,7 @@ private fun ExerciseRow(exercise: ExerciseReport) {
         pluralStringResource(R.plurals.summary_sets, exercise.sets.size, exercise.sets.size),
         stringResource(R.string.volume_kg, localVolume(exercise.volumeKg)),
         exercise.e1rmKg?.let { stringResource(R.string.progress_e1rm_value, metricText(ProgressMetric.E1RM, it)) },
-    ).joinToString(stringResource(R.string.row_separator))
+    ).joinToString(stringResource(Res.string.row_separator))
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -259,7 +261,7 @@ private fun ExerciseRow(exercise: ExerciseReport) {
 
 /** "Chest 50%", for the map's description. */
 @Composable
-private fun muscleItem(work: MuscleWork): String = stringResource(R.string.summary_muscle_item, muscleLabel(work.muscle), percentText(work.percent))
+private fun muscleItem(work: MuscleWork): String = stringResource(Res.string.summary_muscle_item, muscleLabel(work.muscle), percentText(work.percent))
 
 /** A muscle: its name (capitalised: the labels are written for inside a sentence) and percentage, and under them a bar as long as its work against the most worked muscle's. */
 @Composable

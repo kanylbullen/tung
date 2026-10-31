@@ -26,16 +26,6 @@ class ResourcesTest {
 
     private val element = Regex("""<(string|plurals) name="([^"]+)"[^>]*>(.*?)</\1>""", RegexOption.DOT_MATCHES_ALL)
 
-    /**
-     * Each string's text as shown, by name: whitespace folded, placeholders
-     * positional (`%d` is `%1$d`), and Android's outer quotes taken off (its
-     * `", "` is Compose Resources' `, `, which shows quotes as text).
-     */
-    private fun texts(xml: String): Map<String, String> = element.findAll(xml).associate { m ->
-        val text = m.groupValues[3].replace(Regex("""\s+"""), " ").replace(Regex("""%([ds])""")) { "%1\$" + it.groupValues[1] }
-        m.groupValues[2] to text.removeSurrounding("\"")
-    }
-
     /** Compose Resources shows quotes as text, so a quote may only be part of a string there, never around it. */
     @Test
     fun noUiStringIsWrappedInQuotes() {
@@ -77,18 +67,28 @@ class ResourcesTest {
     }
 
     /**
-     * A string both app/ and ui/ carry (a screen in each still uses it) reads
-     * the same in both, in every language, until the last app/ screen using it
-     * moves and it leaves app/.
+     * A string lives in one module: a screen in `ui/` owns its strings, and
+     * `app/` code that needs one reads it from there (`Res.string.…`), so a
+     * wording is never changed in one copy and not the other.
      */
     @Test
-    fun aStringInBothAppAndUiIsTheSameText() {
+    fun aStringLivesInAppOrInUiNotBoth() {
         for (dir in listOf("values", "values-sv")) {
-            val app = texts(strings(dir))
-            val ui = texts(uiStrings(dir))
-            for (name in app.keys intersect ui.keys) {
-                assertEquals("$dir/$name", app.getValue(name), ui.getValue(name))
-            }
+            val both = names(strings(dir)).toSet() intersect names(uiStrings(dir)).toSet()
+            assertEquals(dir, emptySet<String>(), both)
+        }
+    }
+
+    /**
+     * No Android escapes in `ui/`: an apostrophe or a quote is written as
+     * itself there, since Compose Resources need no `\'` and an escape that
+     * Android would undo could show as a backslash on screen.
+     */
+    @Test
+    fun uiStringsCarryNoBackslashEscapes() {
+        for (dir in listOf("values", "values-sv")) {
+            val escaped = element.findAll(uiStrings(dir)).filter { '\\' in it.groupValues[3] }.map { it.groupValues[2] }
+            assertEquals(dir, emptyList<String>(), escaped.toList())
         }
     }
 

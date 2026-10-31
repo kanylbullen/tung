@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import io.github.kanylbullen.tung.R
@@ -32,7 +33,7 @@ class HomeWeekFlowTest : FlowTest() {
         waitForText(str(R.string.home_this_week))
         screenshot("1-home-this-week")
         assertShown(hasText("640"))
-        val sep = str(R.string.row_separator)
+        val sep = str(Res.string.row_separator)
         assertShown(hasText(plural(R.plurals.home_week_workouts, 1, 1) + sep + plural(R.plurals.home_week_sets, 1, 1)))
 
         val weekday = LocalDate.now(app.container.clock).dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())

@@ -69,10 +69,10 @@ class RoutineEditFlowTest : FlowTest() {
         assertShown(hasText(str(Res.string.routine_target_reps_title, barbellRow)))
         compose.onNode(field).performTextReplacement("0")
         waitForText(str(Res.string.routine_error_target_reps))
-        compose.onNode(hasText(str(R.string.input_done)) and isEnabled()).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.input_done)) and isEnabled()).assertDoesNotExist()
         screenshot("4-reps-sheet")
         compose.onNode(field).performTextReplacement("10")
-        clickText(str(R.string.input_done))
+        clickText(str(Res.string.input_done))
         waitGone(field)
         waitUntil { count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '$row' AND targetReps = 10") == 1 }
         assertShown(hasText(targetReps(10)))

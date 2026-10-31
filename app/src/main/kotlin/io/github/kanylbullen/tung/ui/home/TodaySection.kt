@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.home
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -77,7 +79,7 @@ fun TodaySection(
                     elevation = null,
                     modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = description },
                 ) {
-                    Text(stringResource(R.string.routine_start), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(Res.string.routine_start), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }

@@ -152,7 +152,7 @@ class ExercisesTabFlowTest : FlowTest() {
         assertShown(hasText(str(R.string.exercise_not_logged)))
         screenshot("2-added")
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         clickText(str(R.string.nav_home))
         clickText(str(R.string.routines_all))
         waitGone(hasText(str(R.string.home_recent)))

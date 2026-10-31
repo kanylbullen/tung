@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.home
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -46,7 +48,7 @@ fun WeekStrip(days: List<WeekDay>, today: LocalDate, modifier: Modifier = Modifi
     val listed = if (trained.isEmpty()) {
         stringResource(R.string.home_week_days_none)
     } else {
-        trained.joinToString(stringResource(R.string.list_separator)) { day ->
+        trained.joinToString(stringResource(Res.string.list_separator)) { day ->
             context.getString(R.string.home_week_day_volume, day.date.dayOfWeek.getDisplayName(TextStyle.FULL, locale), localVolume(day.volumeKg))
         }
     }

@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -48,7 +50,7 @@ class HealthPermissionsActivity : ComponentActivity() {
                             colors = TopAppBarDefaults.topAppBarColors(containerColor = Tung.colors.background),
                             navigationIcon = {
                                 IconButton(onClick = ::finish) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                                 }
                             },
                             title = { Text(stringResource(R.string.health_rationale_title)) },

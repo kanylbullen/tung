@@ -180,7 +180,7 @@ class LogSetFlowTest : FlowTest() {
         screenshot("1-rest-sheet")
         clickDescription(str(R.string.rest_shorter))
         waitForText("1:00")
-        clickText(str(R.string.input_done))
+        clickText(str(Res.string.input_done))
         waitGone(hasContentDescription(str(R.string.rest_shorter)))
 
         waitUntil(5_000) { count("SELECT COUNT(*) FROM exercise WHERE id = '${bench()}' AND restSeconds = 60") == 1 }

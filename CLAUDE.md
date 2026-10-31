@@ -2462,11 +2462,18 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
   exercise names too — see "Exercise names are resources". A screen in `ui/`
   uses Compose Resources instead (`ui/src/commonMain/composeResources/values{,-sv}/strings.xml`,
   `stringResource(Res.string.…)` from `org.jetbrains.compose.resources`), with
-  positional placeholders only (`%1$d`, never `%d`: Compose Resources fills in
-  no other form). A string a screen in each module still uses lives in both
-  files until its last `app/` user moves; `ResourcesTest` keeps the two texts
-  equal and the Swedish names complete. Moving a screen: its strings go with
-  it, and those no `app/` code names any more leave `app/`.
+  positional placeholders only (`%1$d`, never `%d`), no quotes around a text
+  (Compose Resources shows them: Android's `", "` is `, ` there) and no
+  escapes. **A string lives in one module**: `app/` code that needs one of
+  ui's strings reads it from `Res` (both `stringResource`s can be imported
+  side by side; overloads pick by type), and `ResourcesTest` fails on a name
+  in both, a quoted or escaped ui string, or a missing Swedish name. Moving a
+  screen: its strings go with it, and `app/` reads any it still uses from
+  `Res`. Compose Resources pick the language from the process's
+  default locale, not from the configuration: on a phone Android sets both
+  from the app's language, but a flow test on another language than English
+  sets `Locale.setDefault` itself (`SwedishFlowTest`), since `FlowTest`
+  forces English.
 - **The font is a Compose Resource** (`ui/src/commonMain/composeResources/font/archivo_variable.ttf`,
   read with `Res.font.archivo_variable` inside `ui/`; the APK carries it under
   `assets/composeResources/`). The OFL licence stays in app's `assets/licenses/`.

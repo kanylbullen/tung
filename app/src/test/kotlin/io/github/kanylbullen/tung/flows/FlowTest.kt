@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.PluralStringResource
 import org.jetbrains.compose.resources.getString
@@ -198,9 +199,9 @@ abstract class FlowTest {
 
     /** From a Settings group back to Home: the group's back, then the list's. */
     protected fun leaveSettings() {
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.settings_group_about))
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
     }
 
     /** On Account, signed out: "Use another server" and [url] in the field it reveals. */
@@ -286,7 +287,7 @@ abstract class FlowTest {
         clickDescription(cellDescription)
         waitForDescription(fieldDescription)
         compose.onNode(hasContentDescription(fieldDescription)).performTextReplacement(text)
-        compose.onNode(hasText(str(R.string.input_done))).performClick()
+        compose.onNode(hasText(str(Res.string.input_done))).performClick()
         waitGone(hasContentDescription(fieldDescription))
         waitForDescription(cellAfter)
     }

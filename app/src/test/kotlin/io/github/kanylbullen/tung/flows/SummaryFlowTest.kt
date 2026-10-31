@@ -59,7 +59,7 @@ class SummaryFlowTest : FlowTest() {
     @Test
     fun theSummaryShowsExercisesMusclesAndProgress() {
         finishBenchWorkout()
-        val sep = str(R.string.row_separator)
+        val sep = str(Res.string.row_separator)
         val details = listOf(
             plural(R.plurals.summary_sets, 1, 1),
             str(R.string.volume_kg, "540"),
@@ -76,9 +76,9 @@ class SummaryFlowTest : FlowTest() {
         val map = str(
             R.string.summary_muscles_description,
             listOf(
-                str(R.string.summary_muscle_item, str(Res.string.muscle_name_chest), "50%"),
-                str(R.string.summary_muscle_item, str(Res.string.muscle_name_front_delts), "25%"),
-                str(R.string.summary_muscle_item, str(Res.string.muscle_name_triceps), "25%"),
+                str(Res.string.summary_muscle_item, str(Res.string.muscle_name_chest), "50%"),
+                str(Res.string.summary_muscle_item, str(Res.string.muscle_name_front_delts), "25%"),
+                str(Res.string.summary_muscle_item, str(Res.string.muscle_name_triceps), "25%"),
             ).joinToString(", "),
         )
         list.performScrollToNode(hasContentDescription(map))
@@ -108,7 +108,7 @@ class SummaryFlowTest : FlowTest() {
         // The chart's exercise opens its progress; back returns to the summary.
         compose.onNode(hasText(benchPress) and hasClickAction()).performClick()
         waitFor(hasTestTag(EXERCISE_PROGRESS_TAG))
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitFor(hasTestTag(SUMMARY_LIST_TAG))
 
         clickText(str(R.string.summary_done))

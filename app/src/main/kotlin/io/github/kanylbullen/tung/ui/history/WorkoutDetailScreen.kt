@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.history
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -77,14 +79,14 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 title = { state.report?.let { Text(localDate(it.workout.startedAt)) } },
                 actions = {
                     Box {
                         IconButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_more))
                         }
                         DropdownMenu(
                             expanded = menuOpen,
@@ -189,7 +191,7 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }) {
-                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                    Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
                 }
             },
         )

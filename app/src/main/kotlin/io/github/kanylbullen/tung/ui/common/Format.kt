@@ -1,25 +1,15 @@
 package io.github.kanylbullen.tung.ui.common
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.Equipment
-import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
-import io.github.kanylbullen.tung.core.daysAgo
 import io.github.kanylbullen.tung.core.formatWeight
-import kotlinx.coroutines.delay
 import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
-import kotlinx.datetime.TimeZone
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToLong

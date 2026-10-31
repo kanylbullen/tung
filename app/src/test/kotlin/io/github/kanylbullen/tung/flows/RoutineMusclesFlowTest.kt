@@ -37,7 +37,7 @@ class RoutineMusclesFlowTest : FlowTest() {
                 ),
             )
         }
-        val sep = str(R.string.list_separator)
+        val sep = str(Res.string.list_separator)
         val top = listOf(Res.string.muscle_name_quads, Res.string.muscle_name_glutes, Res.string.muscle_name_chest).joinToString(sep) { str(it) }
         val rowDescription = str(Res.string.routine_muscles_description, top)
 

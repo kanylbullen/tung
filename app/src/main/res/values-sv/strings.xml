@@ -6,10 +6,7 @@
     <string name="nav_home">Hem</string>
     <string name="nav_history">Historik</string>
     <string name="nav_exercises">Övningar</string>
-    <string name="action_back">Tillbaka</string>
     <string name="action_close">Stäng</string>
-    <string name="action_more">Fler val</string>
-    <string name="action_cancel">Avbryt</string>
 
     <!-- Home -->
     <string name="home_start_workout">Starta pass</string>
@@ -41,11 +38,6 @@
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_minutes">%1$d min</string>
     <string name="volume_kg">%1$s kg</string>
-    <string name="row_separator">" · "</string>
-    <plurals name="exercise_count">
-        <item quantity="one">%d övning</item>
-        <item quantity="other">%d övningar</item>
-    </plurals>
     <string name="stat_duration">Varaktighet</string>
     <string name="stat_sets">Set</string>
     <string name="stat_volume">Volym, kg</string>
@@ -60,7 +52,6 @@
     <string name="workout_exercise_menu">Val för %1$s</string>
     <string name="workout_previous">Förra: %1$s × %2$d</string>
     <string name="workout_unit_kg">kg</string>
-    <string name="workout_unit_reps">reps</string>
     <string name="workout_reps_empty">–</string>
     <string name="workout_set_number_description">Set %1$d</string>
     <string name="workout_edit_weight">Ändra vikt, %1$s kilo</string>
@@ -134,10 +125,6 @@
         <item quantity="one">Öka med %1$s kilo</item>
         <item quantity="other">Öka med %1$s kilo</item>
     </plurals>
-    <string name="input_minus">−</string>
-    <string name="input_plus">+</string>
-    <string name="input_done">Klar</string>
-    <string name="input_hint">Tryck på talet för att skriva.</string>
     <string name="input_error_weight">Skriv en vikt mellan 0 och 999, till exempel 82,5.</string>
     <string name="input_field_weight">Vikt i kilo</string>
     <string name="input_ruler_weight">Viktlinjal</string>
@@ -238,7 +225,6 @@
     </plurals>
     <string name="summary_muscles">Tränade muskler</string>
     <string name="summary_muscles_description">Tränade muskler: %1$s</string>
-    <string name="summary_muscle_item">%1$s %2$s</string>
     <plurals name="summary_muscles_uncounted">
         <item quantity="one">%d set av en egen övning räknas inte: egna övningar har inga muskler</item>
         <item quantity="other">%d set av egna övningar räknas inte: egna övningar har inga muskler</item>
@@ -249,22 +235,14 @@
     <string name="set_value">%1$s × %2$d</string>
 
     <!-- Routines -->
-    <string name="routines_title">Rutiner</string>
     <string name="routines_all">Alla</string>
-    <string name="routine_start">Starta</string>
     <string name="routine_save_as">Spara som rutin</string>
     <string name="routine_save">Spara</string>
     <string name="routine_saved">Sparat som rutin: %1$s</string>
     <string name="routine_default_name">%1$s: %2$s</string>
-    <string name="list_separator">", "</string>
-    <string name="routine_rename">Byt namn</string>
-    <string name="routine_delete_confirm">Radera</string>
-    <string name="routine_move_up">Flytta upp</string>
-    <string name="routine_move_down">Flytta ner</string>
     <string name="nav_routines">Rutiner</string>
 
     <!-- Programs -->
-    <string name="programs_title">Program</string>
     <string name="programs_empty">Inga program. Ett program lägger dina rutiner på fasta veckodagar eller i rullande ordning, och Hem visar dagens.</string>
     <string name="program_new">Nytt program</string>
     <string name="program_create">Skapa</string>

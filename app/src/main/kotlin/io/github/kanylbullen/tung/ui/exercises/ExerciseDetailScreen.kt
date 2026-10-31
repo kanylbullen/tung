@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.exercises
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -122,7 +124,7 @@ fun ExerciseDetailScreen(
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 title = { Text(state.name, maxLines = 1) },
@@ -140,7 +142,7 @@ fun ExerciseDetailScreen(
                     state.equipment?.let { equipmentLabel(it) },
                     state.muscleGroup?.let { muscleGroupLabel(it) },
                     if (state.isCustom) stringResource(R.string.exercises_custom) else null,
-                ).joinToString(stringResource(R.string.row_separator))
+                ).joinToString(stringResource(Res.string.row_separator))
                 Muted(kind)
             }
             if (state.primary.isNotEmpty()) {

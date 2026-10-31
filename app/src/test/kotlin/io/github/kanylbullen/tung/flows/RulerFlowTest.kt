@@ -27,7 +27,7 @@ class RulerFlowTest : FlowTest() {
 
     private val field get() = compose.onNode(hasContentDescription(str(R.string.input_field_weight)))
     private val ruler get() = compose.onNode(hasContentDescription(str(R.string.input_ruler_weight)))
-    private val done get() = compose.onNode(hasText(str(R.string.input_done)))
+    private val done get() = compose.onNode(hasText(str(Res.string.input_done)))
     private val applyToAll get() = compose.onNode(hasText(str(Res.string.input_apply_all)))
 
     private fun fieldText(): String =

@@ -20,8 +20,10 @@ actual fun rememberTickHaptic(): () -> Unit {
     return remember(generator) { { generator.selectionChanged() } }
 }
 
-actual fun localPercent(fraction: Double): String {
-    val format = NSNumberFormatter()
-    format.numberStyle = NSNumberFormatterPercentStyle
-    return format.stringFromNumber(NSNumber(fraction)) ?: "${(fraction * 100).toInt()}%"
+/** One formatter in the current locale, made once: they are costly to create, and safe to share. */
+private val percentFormat: NSNumberFormatter by lazy {
+    NSNumberFormatter().apply { numberStyle = NSNumberFormatterPercentStyle }
 }
+
+actual fun localPercent(fraction: Double): String =
+    percentFormat.stringFromNumber(NSNumber(fraction)) ?: "${(fraction * 100).toInt()}%"

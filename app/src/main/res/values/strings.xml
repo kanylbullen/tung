@@ -6,10 +6,7 @@
     <string name="nav_home">Home</string>
     <string name="nav_history">History</string>
     <string name="nav_exercises">Exercises</string>
-    <string name="action_back">Back</string>
     <string name="action_close">Close</string>
-    <string name="action_more">More options</string>
-    <string name="action_cancel">Cancel</string>
 
     <!-- Home -->
     <string name="home_start_workout">Start workout</string>
@@ -45,11 +42,6 @@
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_minutes">%1$d min</string>
     <string name="volume_kg">%1$s kg</string>
-    <string name="row_separator">" · "</string>
-    <plurals name="exercise_count">
-        <item quantity="one">%d exercise</item>
-        <item quantity="other">%d exercises</item>
-    </plurals>
     <string name="stat_duration">Duration</string>
     <string name="stat_sets">Sets</string>
     <string name="stat_volume">Volume, kg</string>
@@ -64,7 +56,6 @@
     <string name="workout_exercise_menu">Options for %1$s</string>
     <string name="workout_previous">Last: %1$s × %2$d</string>
     <string name="workout_unit_kg">kg</string>
-    <string name="workout_unit_reps">reps</string>
     <string name="workout_reps_empty">–</string>
     <string name="workout_set_number_description">Set %1$d</string>
     <string name="workout_edit_weight">Change weight, %1$s kilos</string>
@@ -145,10 +136,6 @@
         <item quantity="one">Increase by %1$s kilo</item>
         <item quantity="other">Increase by %1$s kilos</item>
     </plurals>
-    <string name="input_minus">−</string>
-    <string name="input_plus">+</string>
-    <string name="input_done">Done</string>
-    <string name="input_hint">Tap the number to type.</string>
     <string name="input_error_weight">Enter a weight between 0 and 999, for example 82.5.</string>
     <string name="input_field_weight">Weight in kilos</string>
     <string name="input_ruler_weight">Weight ruler</string>
@@ -253,7 +240,6 @@
     <string name="summary_muscles">Muscles worked</string>
     <!-- The muscle map for a screen reader: "Muscles worked: Chest 50%, Triceps 25%, Front delts 25%". -->
     <string name="summary_muscles_description">Muscles worked: %1$s</string>
-    <string name="summary_muscle_item">%1$s %2$s</string>
     <plurals name="summary_muscles_uncounted">
         <item quantity="one">%d set of a custom exercise is not counted: custom exercises have no muscles</item>
         <item quantity="other">%d sets of custom exercises are not counted: custom exercises have no muscles</item>
@@ -264,22 +250,14 @@
     <string name="set_value">%1$s × %2$d</string>
 
     <!-- Routines -->
-    <string name="routines_title">Routines</string>
     <string name="routines_all">All</string>
-    <string name="routine_start">Start</string>
     <string name="routine_save_as">Save as routine</string>
     <string name="routine_save">Save</string>
     <string name="routine_saved">Saved as routine: %1$s</string>
     <string name="routine_default_name">%1$s: %2$s</string>
-    <string name="list_separator">", "</string>
-    <string name="routine_rename">Rename</string>
-    <string name="routine_delete_confirm">Delete</string>
-    <string name="routine_move_up">Move up</string>
-    <string name="routine_move_down">Move down</string>
     <string name="nav_routines">Routines</string>
 
     <!-- Programs -->
-    <string name="programs_title">Programs</string>
     <string name="programs_empty">No programs. A program puts your routines on fixed weekdays or in a rotation, and Home shows the one for today.</string>
     <string name="program_new">New program</string>
     <string name="program_create">Create</string>

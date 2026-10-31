@@ -1,5 +1,8 @@
 package io.github.kanylbullen.tung.ui.routines
 
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -91,7 +94,7 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 title = { if (!state.missing) Text(state.name) },
@@ -99,7 +102,7 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
                     if (!state.loading && !state.missing) {
                         Box {
                             IconButton(onClick = { menuOpen = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_more))
                             }
                             DropdownMenu(
                                 expanded = menuOpen,
@@ -108,7 +111,7 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
                                 shape = TungCorner,
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.routine_rename)) },
+                                    text = { Text(stringResource(Res.string.routine_rename)) },
                                     onClick = { menuOpen = false; renaming = true },
                                 )
                                 if (state.isActive) {
@@ -203,7 +206,7 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
         RoutineNameDialog(
             title = stringResource(R.string.program_rename_title),
             initialName = state.name,
-            confirmLabel = stringResource(R.string.routine_rename),
+            confirmLabel = stringResource(Res.string.routine_rename),
             errorText = stringResource(R.string.program_error_name),
             onDismiss = { renaming = false },
             onConfirm = { name ->
@@ -227,12 +230,12 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
                     deleting = true
                     vm.delete(onBack)
                 }) {
-                    Text(stringResource(R.string.routine_delete_confirm), color = Tung.colors.accentText)
+                    Text(stringResource(Res.string.routine_delete_confirm), color = Tung.colors.accentText)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }) {
-                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                    Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
                 }
             },
         )
@@ -245,7 +248,7 @@ private fun ProgramStatus(state: ProgramDetailUiState, onActivate: () -> Unit) {
     val details = listOf(
         programModeLabel(state.mode),
         pluralStringResource(R.plurals.program_day_count, state.days.size, state.days.size),
-    ).joinToString(stringResource(R.string.row_separator))
+    ).joinToString(stringResource(Res.string.row_separator))
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 20.dp, end = 16.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -295,12 +298,12 @@ private fun ProgramDayRow(
                     shape = TungCorner,
                 ) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.routine_move_up)) },
+                        text = { Text(stringResource(Res.string.routine_move_up)) },
                         enabled = canMoveUp,
                         onClick = { menuOpen = false; onMove(-1) },
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.routine_move_down)) },
+                        text = { Text(stringResource(Res.string.routine_move_down)) },
                         enabled = canMoveDown,
                         onClick = { menuOpen = false; onMove(1) },
                     )
@@ -386,7 +389,7 @@ private fun RoutinePickerSheet(routines: List<RoutineSummaryRow>, onDismiss: () 
             routines.forEach { routine ->
                 ProgramDayChoiceRow(
                     routineName = routine.name,
-                    place = pluralStringResource(R.plurals.exercise_count, routine.exerciseCount, routine.exerciseCount),
+                    place = pluralStringResource(Res.plurals.exercise_count, routine.exerciseCount, routine.exerciseCount),
                     onClick = { onPick(routine.id) },
                 )
             }

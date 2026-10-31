@@ -68,7 +68,7 @@ class RoutinesTabFlowTest : FlowTest() {
         waitForRoutinesTab()
         waitGone(hasText(str(R.string.home_recent)))
         assertShown(hasText("Push day"))
-        assertShown(hasText(str(R.string.programs_title)))
+        assertShown(hasText(str(Res.string.programs_title)))
         assertShown(hasContentDescription(str(Res.string.routine_start_description, "Push day")) and isEnabled())
         screenshot("2-routines-tab")
 
@@ -116,7 +116,7 @@ class RoutinesTabFlowTest : FlowTest() {
         assertEquals(0, count("SELECT COUNT(*) FROM routine_exercise"))
         screenshot("3-empty-routine")
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForRoutinesTab()
         val start = hasContentDescription(str(Res.string.routine_start_description, "Legs"))
         assertShown(start and isNotEnabled())
@@ -131,7 +131,7 @@ class RoutinesTabFlowTest : FlowTest() {
         waitUntil { count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '${bench()}' AND position = 0 AND targetSets = 3") == 1 }
         screenshot("4-filled-routine")
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForRoutinesTab()
         waitFor(start and isEnabled())
         screenshot("5-tab-start-enabled")
@@ -208,7 +208,7 @@ class RoutinesTabFlowTest : FlowTest() {
         assertShown(hasText(str(Res.string.routines_delete_many_body)))
         assertShown(hasText(plural(Res.plurals.routines_delete_many_days, 1, 1)))
         screenshot("2-confirm")
-        clickInDialog(str(R.string.routine_delete_confirm))
+        clickInDialog(str(Res.string.routine_delete_confirm))
         waitGone(isDialog())
 
         waitUntil { count("SELECT COUNT(*) FROM routine") == 1 }
@@ -254,7 +254,7 @@ class RoutinesTabFlowTest : FlowTest() {
         waitFor(isDialog())
         assertShown(hasText(plural(Res.plurals.routines_delete_many_title, 3, 3)))
         compose.onNode(hasText(plural(Res.plurals.routines_delete_many_days, 0, 0))).assertDoesNotExist()
-        clickInDialog(str(R.string.routine_delete_confirm))
+        clickInDialog(str(Res.string.routine_delete_confirm))
         waitForText(str(Res.string.routines_empty))
         assertEquals(0, count("SELECT COUNT(*) FROM routine"))
         assertEquals(3, count("SELECT COUNT(*) FROM workout"))

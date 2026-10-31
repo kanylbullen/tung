@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.progress
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -195,7 +197,7 @@ private fun ExerciseRow(
     val details = listOfNotNull(
         trend.latest?.let { latestText(metric, it) },
         changeText(trend, metric, range),
-    ).joinToString(stringResource(R.string.row_separator))
+    ).joinToString(stringResource(Res.string.row_separator))
     val spark = trend.values
     val open = stringResource(R.string.progress_open_exercise, name)
     Row(
@@ -232,7 +234,7 @@ private fun RecentRecordRow(recent: RecentRecord, row: Exercise?, onClick: () ->
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(name, style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
             Text(
-                listOf(recordLabel(record.kind), mediumDate(record.date)).joinToString(stringResource(R.string.row_separator)),
+                listOf(recordLabel(record.kind), mediumDate(record.date)).joinToString(stringResource(Res.string.row_separator)),
                 style = Tung.numbers.inline,
                 color = Tung.colors.muted,
             )

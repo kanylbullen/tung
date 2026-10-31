@@ -1,7 +1,8 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.view.HapticFeedbackConstants
@@ -114,13 +115,11 @@ import io.github.kanylbullen.tung.ui.progress.ProgressSheet
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.painterResource
 import io.github.kanylbullen.tung.TungApp
-import io.github.kanylbullen.tung.core.REPS_RULER
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
-import io.github.kanylbullen.tung.core.stepReps
 import io.github.kanylbullen.tung.core.stepWeight
 import io.github.kanylbullen.tung.core.voice.VoiceLanguage
 import io.github.kanylbullen.tung.core.voice.parseUtterance
@@ -351,7 +350,7 @@ fun ActiveWorkoutScreen(
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 title = {
@@ -384,7 +383,7 @@ fun ActiveWorkoutScreen(
                         // thumb aiming at Finish cannot land on it.
                         Box {
                             IconButton(onClick = { menuOpen = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_more))
                             }
                             DropdownMenu(
                                 expanded = menuOpen,
@@ -626,7 +625,7 @@ fun ActiveWorkoutScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmRemoveId = null }) {
-                    Text(stringResource(R.string.action_cancel), color = Tung.colors.text)
+                    Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
                 }
             },
         )
@@ -1117,7 +1116,7 @@ private fun SetRow(
                 Text(stringResource(R.string.times_sign), style = Tung.numbers.inline, color = Tung.colors.muted)
                 NumberCell(
                     value = reps,
-                    unit = stringResource(R.string.workout_unit_reps),
+                    unit = stringResource(Res.string.workout_unit_reps),
                     description = stringResource(R.string.workout_edit_reps, reps),
                     actions = deleteAction,
                     onClick = onEditReps,
@@ -1223,11 +1222,11 @@ private fun weightSpec(initial: String): NumberInputSpec {
         plusDescription = { text ->
             stepDescription(R.plurals.input_plus_weight, WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0))
         },
-        hint = stringResource(R.string.input_hint),
+        hint = stringResource(Res.string.input_hint),
         errorText = stringResource(R.string.input_error_weight),
-        doneText = stringResource(R.string.input_done),
-        minusText = stringResource(R.string.input_minus),
-        plusText = stringResource(R.string.input_plus),
+        doneText = stringResource(Res.string.input_done),
+        minusText = stringResource(Res.string.input_minus),
+        plusText = stringResource(Res.string.input_plus),
         isValid = { parseWeight(it) != null },
         step = { text, steps -> localWeight(stepWeight(parseWeight(text) ?: 0.0, steps)) },
         sanitize = { text -> text.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },

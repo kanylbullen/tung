@@ -23,10 +23,10 @@ class RoutineFlowTest : FlowTest() {
 
     private val benchPress get() = str(R.string.ex_bench_press)
 
-    private fun exerciseCount(n: Int): String = app.resources.getQuantityString(R.plurals.exercise_count, n, n)
+    private fun exerciseCount(n: Int): String = plural(Res.plurals.exercise_count, n, n)
 
     private fun routineDetails(exercises: Int, last: String): String =
-        exerciseCount(exercises) + str(R.string.row_separator) + last
+        exerciseCount(exercises) + str(Res.string.row_separator) + last
 
     /**
      * Someone benches 80 × 8 twice, finishes, taps "Save as routine" on the
@@ -124,7 +124,7 @@ class RoutineFlowTest : FlowTest() {
         )
         assertEquals(1, count("SELECT COUNT(*) FROM routine WHERE lastUsedAt IS NOT NULL"))
 
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.home_resume_workout))
         assertShown(hasText(routineDetails(1, str(Res.string.routine_last, str(Res.string.routine_today)))))
         assertShown(hasContentDescription(str(Res.string.routine_start_description, "Push day")) and isNotEnabled())
@@ -156,11 +156,11 @@ class RoutineFlowTest : FlowTest() {
         assertShown(hasText("3"))
         screenshot("2-routine")
 
-        clickDescription(str(R.string.action_more))
+        clickDescription(str(Res.string.action_more))
         clickText(str(Res.string.routine_delete))
         assertShown(hasText(str(Res.string.routine_delete_body)))
         screenshot("3-delete-dialog")
-        clickInDialog(str(R.string.routine_delete_confirm))
+        clickInDialog(str(Res.string.routine_delete_confirm))
 
         waitForText(str(Res.string.routines_empty))
         screenshot("4-routines-empty")

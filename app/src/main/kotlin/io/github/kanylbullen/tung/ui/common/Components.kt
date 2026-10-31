@@ -1,5 +1,8 @@
 package io.github.kanylbullen.tung.ui.common
 
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,9 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.kanylbullen.tung.ui.theme.Tung
-import io.github.kanylbullen.tung.ui.theme.TungCorner
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -41,10 +40,10 @@ import io.github.kanylbullen.tung.data.WorkoutSummaryRow
  */
 @Composable
 fun WorkoutRow(row: WorkoutSummaryRow, onClick: () -> Unit) {
-    val sep = stringResource(R.string.row_separator)
+    val sep = stringResource(Res.string.row_separator)
     val details = listOf(
         durationText((row.endedAt ?: row.startedAt) - row.startedAt),
-        pluralStringResource(R.plurals.exercise_count, row.exerciseCount, row.exerciseCount),
+        pluralStringResource(Res.plurals.exercise_count, row.exerciseCount, row.exerciseCount),
     ).joinToString(sep)
     val volume = buildAnnotatedString {
         withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Tung.colors.text)) { append(localVolume(row.volumeKg)) }
@@ -83,7 +82,7 @@ private fun WorkoutRowTitle(row: WorkoutSummaryRow) {
         row.secondExerciseName?.let { exerciseDisplayName(row.secondExerciseKey, it) },
     )
     Text(
-        if (names.isEmpty()) stringResource(R.string.workout_row_untitled) else names.joinToString(stringResource(R.string.list_separator)),
+        if (names.isEmpty()) stringResource(R.string.workout_row_untitled) else names.joinToString(stringResource(Res.string.list_separator)),
         style = MaterialTheme.typography.titleMedium,
         color = Tung.colors.text,
         maxLines = 1,

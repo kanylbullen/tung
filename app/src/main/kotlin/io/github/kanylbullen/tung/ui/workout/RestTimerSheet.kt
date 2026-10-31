@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -96,7 +98,7 @@ fun RestTimerSheet(
                 }
             }
             Spacer(Modifier.height(12.dp))
-            PrimaryButton(text = stringResource(R.string.input_done), onClick = { onConfirm(seconds) })
+            PrimaryButton(text = stringResource(Res.string.input_done), onClick = { onConfirm(seconds) })
         }
     }
 }

@@ -47,7 +47,7 @@ class AddExerciseFlowTest : FlowTest() {
         // The weight sheet opens by itself for set 1.
         type(weightField, "60")
         screenshot("1-weight")
-        compose.onNode(hasText(str(R.string.input_done))).performClick()
+        compose.onNode(hasText(str(Res.string.input_done))).performClick()
 
         // Done leads to the reps sheet, which in this flow asks for the number of sets too.
         waitGone(hasContentDescription(weightField))
@@ -60,7 +60,7 @@ class AddExerciseFlowTest : FlowTest() {
         compose.onNode(chip(4)).performClick()
         compose.onNode(chip(4)).assertIsSelected()
         screenshot("2-reps-and-sets")
-        compose.onNode(hasText(str(R.string.input_done))).performClick()
+        compose.onNode(hasText(str(Res.string.input_done))).performClick()
         waitGone(hasContentDescription(repsField))
 
         waitUntil { activeSets() == List(4) { 60.0 to 8 } }
@@ -89,7 +89,7 @@ class AddExerciseFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExerciseFirstTime("bench", str(R.string.ex_bench_press))
         type(weightField, "60")
-        compose.onNode(hasText(str(R.string.input_done))).performClick()
+        compose.onNode(hasText(str(Res.string.input_done))).performClick()
         waitForDescription(repsField)
         dismissSheet(repsField)
         waitUntil { activeSets() == listOf(60.0 to 0) }

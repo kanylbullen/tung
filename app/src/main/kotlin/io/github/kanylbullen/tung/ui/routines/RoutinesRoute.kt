@@ -2,8 +2,6 @@ package io.github.kanylbullen.tung.ui.routines
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -36,7 +34,7 @@ fun RoutinesRoute(
             }
         }
     )
-    val state by vm.state.collectAsStateWithLifecycle()
-    BackHandler(enabled = state.selecting) { vm.clearSelection() }
-    RoutinesScreen(vm, onOpenRoutine, onOpenWorkout, onShowPrograms)
+    RoutinesScreen(vm, onOpenRoutine, onOpenWorkout, onShowPrograms) { enabled, onBack ->
+        BackHandler(enabled = enabled, onBack = onBack)
+    }
 }

@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The strings of the screens in ui/, as Compose Resources: the same names and
-  texts as app/'s res/values/strings.xml had, with every placeholder
-  positional (%1$d), the only form Compose Resources fills in, and no quotes
-  around a text that keeps its outer spaces (", " in app/ is , here: Compose
-  Resources keeps quotes as text, and keeps the spaces). A string still
-  used by a screen in app/ is in both files until that screen moves too;
-  app's SharedStringsTest keeps the two texts equal.
+  The strings of the screens in ui/, as Compose Resources. app/ reads the ones
+  it needs from here (Res.string.…), so each string lives in one module;
+  ResourcesTest checks that, and the Swedish names. Compose Resources fill in
+  positional placeholders only (%1$d, never %d), show quotes as text (write
+  ", " as , and keep the spaces) and need no escapes (an apostrophe is ').
 -->
 <resources>
     <string name="action_back">Back</string>

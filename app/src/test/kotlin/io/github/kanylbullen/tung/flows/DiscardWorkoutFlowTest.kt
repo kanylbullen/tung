@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import io.github.kanylbullen.tung.R
@@ -25,16 +26,16 @@ class DiscardWorkoutFlowTest : FlowTest() {
         addExercise("bench", str(R.string.ex_bench_press))
         assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))
 
-        clickDescription(str(R.string.action_more))
+        clickDescription(str(Res.string.action_more))
         clickText(str(R.string.workout_discard))
         waitFor(isDialog())
         screenshot("1-dialog")
-        clickInDialog(str(R.string.action_cancel))
+        clickInDialog(str(Res.string.action_cancel))
         waitGone(isDialog())
         assertShown(hasText(str(R.string.workout_finish)))
         assertEquals("cancel keeps the workout", 1, count("SELECT COUNT(*) FROM workout"))
 
-        clickDescription(str(R.string.action_more))
+        clickDescription(str(Res.string.action_more))
         clickText(str(R.string.workout_discard))
         waitFor(isDialog())
         clickInDialog(str(R.string.workout_discard_confirm))
@@ -52,7 +53,7 @@ class DiscardWorkoutFlowTest : FlowTest() {
         startWorkoutFromHome()
         val workoutId = string("SELECT id FROM workout WHERE endedAt IS NULL")
         runBlocking { app.container.restTimer.set(workoutId, RestTimer.start(System.currentTimeMillis(), 90)) }
-        clickDescription(str(R.string.action_back))
+        clickDescription(str(Res.string.action_back))
         waitForText(str(R.string.home_resume_workout))
         screenshot("1-home")
         clickDescription(str(R.string.home_workout_menu))
