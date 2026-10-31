@@ -86,7 +86,8 @@ android {
     }
 
     testOptions {
-        // LocalWatchCommandsTest runs the shared data layer (Room, DataStore, assets, ex_* strings) under Robolectric.
+        // LocalWatchCommandsTest runs the shared data layer (Room, DataStore, assets, ex_* strings) under Robolectric,
+        // and the round-screen tests draw the screens there.
         unitTests.isIncludeAndroidResources = true
     }
 }
@@ -94,6 +95,27 @@ android {
 // A release is packaged only past the root's releaseGate: with the release key and a build number.
 tasks.matching { it.name == "packageRelease" || it.name == "packageReleaseBundle" }
     .configureEach { dependsOn(rootProject.tasks.named("releaseGate")) }
+
+/**
+ * Where the round-screen tests (RoundScreensTest) save their screenshots, handed
+ * to the test JVM as a system property, as app/'s flow tests do. Declared as an
+ * output so a test task restored from the build cache restores the PNGs too.
+ */
+abstract class RoundScreenshotsDir : CommandLineArgumentProvider {
+    @get:OutputDirectory
+    abstract val dir: DirectoryProperty
+
+    override fun asArguments(): List<String> = listOf("-Dtung.roundScreenshots=${dir.get().asFile.absolutePath}")
+}
+
+// Debug only: the release variant runs the same tests, and two tasks cannot share one output directory.
+tasks.withType<Test>().configureEach {
+    if (name == "testDebugUnitTest") {
+        jvmArgumentProviders += objects.newInstance<RoundScreenshotsDir>().apply {
+            dir.set(layout.buildDirectory.dir("reports/round-screenshots"))
+        }
+    }
+}
 
 dependencies {
     implementation(project(":core"))
@@ -136,6 +158,9 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core-ktx:1.6.1")
     testImplementation(project(":data-fixtures"))
+    // The round-screen tests (RoundScreensTest): the screens under Robolectric at round qualifiers.
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
 }
 
 kotlin {

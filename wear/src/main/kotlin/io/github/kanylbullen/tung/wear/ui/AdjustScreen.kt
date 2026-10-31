@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,11 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Button
@@ -49,6 +53,10 @@ fun AdjustScreen(field: AdjustField, initial: Double, onDone: (Double) -> Unit) 
     val stepper = remember { RotaryStepper() }
     val view = LocalView.current
     val focusRequester = remember { FocusRequester() }
+    // Sized by the screen, not the font scale: the row of −, the number and + must fit across the circle.
+    val diameter = screenDiameter()
+    val button = diameter * 0.21f
+    val valueSize = with(LocalDensity.current) { (diameter * 0.15f).toSp() }
 
     fun step(steps: Int) {
         val next = field.step(value, steps)
@@ -70,12 +78,12 @@ fun AdjustScreen(field: AdjustField, initial: Double, onDone: (Double) -> Unit) 
             .focusable(),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 16.dp)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = stringResource(if (field == AdjustField.Weight) R.string.input_weight_title else R.string.input_reps_title),
                 color = TungColors.muted,
             )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(diameter * 0.02f)) {
                 val minusDescription = when (field) {
                     AdjustField.Weight -> stepDescription(R.plurals.input_minus_weight, field.stepBelow(value))
                     AdjustField.Reps -> stringResource(R.string.input_minus_reps)
@@ -88,17 +96,18 @@ fun AdjustScreen(field: AdjustField, initial: Double, onDone: (Double) -> Unit) 
                     onClick = { step(-1) },
                     enabled = field.canStepDown(value),
                     colors = ButtonDefaults.secondaryButtonColors(),
-                    modifier = Modifier.semantics { contentDescription = minusDescription },
+                    modifier = Modifier.size(button).semantics { contentDescription = minusDescription },
                 ) { Text(stringResource(R.string.input_minus), style = numberStyle(24.sp)) }
                 Text(
                     text = if (field == AdjustField.Weight) localWeight(value) else value.roundToInt().toString(),
-                    style = numberStyle(40.sp),
+                    style = numberStyle(valueSize),
+                    maxLines = 1,
                 )
                 Button(
                     onClick = { step(1) },
                     enabled = field.canStepUp(value),
                     colors = ButtonDefaults.secondaryButtonColors(),
-                    modifier = Modifier.semantics { contentDescription = plusDescription },
+                    modifier = Modifier.size(button).semantics { contentDescription = plusDescription },
                 ) { Text(stringResource(R.string.input_plus), style = numberStyle(24.sp)) }
             }
             Text(
@@ -106,11 +115,12 @@ fun AdjustScreen(field: AdjustField, initial: Double, onDone: (Double) -> Unit) 
                 color = TungColors.muted,
                 style = MaterialTheme.typography.caption1,
             )
+            // Not full width: low on a round screen, a full-width chip's ends would leave the circle.
             Chip(
-                label = { Text(stringResource(R.string.input_done)) },
+                label = { Text(stringResource(R.string.input_done), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
                 onClick = { onDone(value) },
                 colors = accentChipColors(),
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                modifier = Modifier.width(diameter * 0.55f).padding(top = 6.dp),
             )
         }
     }
