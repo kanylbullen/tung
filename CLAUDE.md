@@ -2036,7 +2036,11 @@ fallback, and only on a tap.
   unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)
   claims it once and answers a new `write` token named `watch` and the user,
   else 404 `invalid_code`. 5 codes a minute per user, 10 claims a minute per
-  address, counted in that file rather than by the RateLimit plugin.
+  address, and at most `LINK_CLAIM_FAILURES_PER_TTL` (50) failed claims from
+  all clients together per ten minutes, after which every claim is 429 until
+  the window moves on (many addresses must not add up to guessing a
+  six-digit code; the watch's keypad fixes the length). Counted in that file
+  rather than by the RateLimit plugin.
 - **The server-side command handler** (`command/ServerCommandHandler.kt`,
   built per user by `CommandService`) is core's `CommandExecutor` over
   `command/ExposedCommandStore` (see "Commands", "One rule, in core"):
