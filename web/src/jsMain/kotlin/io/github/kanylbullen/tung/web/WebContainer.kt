@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.web
 
 import io.github.kanylbullen.tung.core.CoreCatalog
+import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandExecutor
@@ -8,6 +9,7 @@ import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.admin.WebAdmin
+import io.github.kanylbullen.tung.web.catalog.WebCatalogue
 import io.github.kanylbullen.tung.web.feedback.WebFeedback
 import io.github.kanylbullen.tung.web.i18n.Strings
 import io.github.kanylbullen.tung.web.settings.WebPreferences
@@ -98,6 +100,11 @@ class WebContainer(
     var catalogueNames: Map<String, Map<String, String>> = emptyMap()
         private set
 
+    private val _catalogue = MutableStateFlow(WebCatalogue.EMPTY)
+
+    /** Both catalogue files, for muscles and exercise pages; the extended one arrives after start. */
+    val catalogue: StateFlow<WebCatalogue> = _catalogue.asStateFlow()
+
     /** Opens IndexedDB, loads the log, seeds the catalogue and, when signed in, starts a sync. */
     suspend fun start() {
         try {
@@ -107,7 +114,7 @@ class WebContainer(
             sync = WebSync(store, db, settings)
             val executor = CommandExecutor(
                 WebCommandStore(store, persist = { db.write(it) }, clock = { Date.now().toLong() }),
-                WebExerciseResolver(store) { catalogueNames },
+                WebExerciseResolver(store, { catalogueNames }) { _catalogue.value.extended },
                 startedBy = StartedBy.WEB,
             )
             commands = object : CommandHandler {
@@ -128,6 +135,7 @@ class WebContainer(
         try {
             val catalogue = CoreCatalog.parse(window.fetch("catalog/core.json").await().text().await())
             catalogueNames = catalogue.associate { it.key to it.name }
+            _catalogue.value = WebCatalogue(catalogue, emptyList())
             val journal = ArrayList<Write>()
             store.seedCatalogue(catalogue, journal)
             db.write(journal)
@@ -139,6 +147,7 @@ class WebContainer(
         store.bump()
         _phase.value = Phase.Ready
         if (settings.account.value != null) syncInBackground()
+        scope.launch { loadExtendedCatalogue() }
         // The phone syncs when it comes to the foreground; the browser when
         // the page is shown again or the connection comes back.
         window.addEventListener("online", { syncInBackground() })
@@ -149,6 +158,22 @@ class WebContainer(
             isSignedIn = { settings.account.value != null },
             sync = { sync.syncOnce() },
         ).start(scope)
+    }
+
+    /**
+     * The extended catalogue (~600 exercises, 110 kB compressed), read after
+     * the log is on screen. Without it the muscles of the extended entries
+     * already picked are unknown and their sets count as uncounted.
+     */
+    private suspend fun loadExtendedCatalogue() {
+        try {
+            val extended = ExtendedCatalog.parse(window.fetch("catalog/extended.json").await().text().await())
+            _catalogue.value = WebCatalogue(_catalogue.value.core, extended)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            console.warn("The extended catalogue could not be read", e)
+        }
     }
 
     /** Signs in and, on success, pulls the account's log. */

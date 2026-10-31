@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.web.WebContainer
+import io.github.kanylbullen.tung.web.history.DetailExercise
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.history.workoutDetail
 import kotlinx.coroutines.launch
@@ -73,29 +74,7 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
         if (vitals.isNotEmpty()) P({ classes("hint") }) { Text(vitals.joinToString(strings.separator)) }
 
         detail.exercises.forEachIndexed { index, exercise ->
-            key(index) {
-                Div({ classes("detail-exercise") }) {
-                    Div({ classes("detail-head") }) {
-                        Div {
-                            H2 { Text(exercise.name) }
-                            P({ classes("details", "numbers") }) {
-                                Text(strings.bestSetLine(exercise.sets.size, wholeNumber(exercise.volumeKg, locale), exercise.e1rmKg?.let { wholeNumber(it, locale) }))
-                            }
-                        }
-                        exercise.best?.let { best ->
-                            Div({ classes("best", "numbers") }) { Text(weightText(best.weightKg, locale) + " × " + best.reps) }
-                        }
-                    }
-                    Ul({ classes("detail-sets", "numbers") }) {
-                        exercise.sets.forEachIndexed { n, set ->
-                            Li {
-                                Span({ classes("muted") }) { Text("${n + 1}") }
-                                Span { Text(weightText(set.weightKg, locale) + " kg × " + set.reps) }
-                            }
-                        }
-                    }
-                }
-            }
+            key(index) { DetailExerciseBlock(container, exercise, record = false) }
         }
 
         saved?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(strings.savedAsRoutine(it)) } }
@@ -122,9 +101,42 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
     }
 }
 
+/**
+ * One exercise of a finished workout: its name, sets, volume and estimated
+ * 1RM, the best set in large numbers, "New record" when [record], and every
+ * logged set.
+ */
+@Composable
+fun DetailExerciseBlock(container: WebContainer, exercise: DetailExercise, record: Boolean) {
+    val strings = container.strings
+    val locale = container.locale
+    Div({ classes("detail-exercise") }) {
+        Div({ classes("detail-head") }) {
+            Div {
+                H2 { Text(exercise.name) }
+                P({ classes("details", "numbers") }) {
+                    Text(strings.bestSetLine(exercise.sets.size, wholeNumber(exercise.volumeKg, locale), exercise.e1rmKg?.let { wholeNumber(it, locale) }))
+                }
+                if (record) P({ classes("details", "accent") }) { Text(strings.newRecord) }
+            }
+            exercise.best?.let { best ->
+                Div({ classes("best", "numbers") }) { Text(weightText(best.weightKg, locale) + " × " + best.reps) }
+            }
+        }
+        Ul({ classes("detail-sets", "numbers") }) {
+            exercise.sets.forEachIndexed { n, set ->
+                Li {
+                    Span({ classes("muted") }) { Text("${n + 1}") }
+                    Span { Text(weightText(set.weightKg, locale) + " kg × " + set.reps) }
+                }
+            }
+        }
+    }
+}
+
 /** A labelled big number, as the phone's `Stat`. */
 @Composable
-private fun Stat(value: String, label: String) {
+fun Stat(value: String, label: String) {
     Div({ classes("stat") }) {
         Div({ classes("stat-value", "numbers") }) { Text(value) }
         Div({ classes("stat-label") }) { Text(label) }

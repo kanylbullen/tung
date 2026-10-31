@@ -27,6 +27,9 @@ enum class Route(val hash: String) {
     SETTINGS("#/settings"),
     ADMIN("#/settings/admin"),
     FEEDBACK("#/settings/feedback"),
+    SUMMARY("#/summary"),
+    EXERCISES("#/exercises"),
+    PROGRAMS("#/programs"),
     ;
 
     companion object {
@@ -65,8 +68,16 @@ private fun SignedIn(container: WebContainer, account: Account) {
     }
     val detailId = hash.removePrefix("#/history/").takeIf { hash.startsWith("#/history/") && it.isNotEmpty() }
     val routineId = hash.removePrefix("#/routines/").takeIf { hash.startsWith("#/routines/") && it.isNotEmpty() }
+    val programId = hash.removePrefix("#/programs/").takeIf { hash.startsWith("#/programs/") && it.isNotEmpty() }
+    val exerciseRoute = hash.removePrefix("#/exercises/").takeIf { hash.startsWith("#/exercises/") && it.isNotEmpty() }
+    val summaryId = hash.removePrefix("#/summary/").takeIf { hash.startsWith("#/summary/") && it.isNotEmpty() }
     val progressId = hash.removePrefix("#/progress/").takeIf { hash.startsWith("#/progress/") && it.isNotEmpty() }
     when {
+        summaryId != null -> SummaryScreen(container, summaryId)
+        exerciseRoute != null -> ExercisePageScreen(container, exerciseRoute)
+        programId != null -> ProgramScreen(container, programId)
+        route == Route.PROGRAMS -> ProgramsScreen(container)
+        route == Route.EXERCISES -> ExercisesScreen(container, account)
         progressId != null -> ExerciseProgressScreen(container, progressId)
         route == Route.PROGRESS -> ProgressScreen(container, account)
         route == Route.ADMIN -> AdminScreen(container, account)
@@ -79,14 +90,14 @@ private fun SignedIn(container: WebContainer, account: Account) {
         route == Route.HISTORY -> HistoryScreen(container, account)
         route == Route.WORKOUT -> WorkoutScreen(container)
     }
-    // The workout has its own top and bottom, as on the phone.
     val tab = when {
         detailId != null -> Route.HISTORY
-        routineId != null -> Route.ROUTINES
+        routineId != null || route == Route.PROGRAMS -> Route.ROUTINES
         progressId != null -> Route.PROGRESS
         else -> route
     }
-    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.ADMIN && route != Route.FEEDBACK) BottomBar(tab, container)
+    // The workout and the summary have their own bottom, as on the phone.
+    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.ADMIN && route != Route.FEEDBACK && route != Route.SUMMARY) BottomBar(tab, container)
 }
 
 /** Home · History, the phone's bottom bar; the current one in the accent, announced as the current page. */
@@ -97,6 +108,7 @@ private fun BottomBar(current: Route, container: WebContainer) {
         listOf(
             Route.HOME to strings.home,
             Route.ROUTINES to strings.routines,
+            Route.EXERCISES to strings.exercises,
             Route.HISTORY to strings.history,
             Route.PROGRESS to strings.progress,
         ).forEach { (route, label) ->

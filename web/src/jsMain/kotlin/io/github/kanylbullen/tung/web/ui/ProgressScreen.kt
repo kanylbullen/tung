@@ -195,7 +195,7 @@ fun ExerciseProgressScreen(container: WebContainer, exerciseId: String) {
 
 /** One line of choices, the chosen one in the accent; the phone's `ChoiceChips`. */
 @Composable
-private fun <T> Chips(options: List<T>, chosen: T, label: (T) -> String, onChoose: (T) -> Unit) {
+internal fun <T> Chips(options: List<T>, chosen: T, label: (T) -> String, onChoose: (T) -> Unit) {
     Div({ classes("chips"); attr("role", "radiogroup") }) {
         options.forEach { option ->
             Button({

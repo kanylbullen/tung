@@ -2,9 +2,13 @@ package io.github.kanylbullen.tung.web.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.progress.ThisWeek
@@ -13,6 +17,9 @@ import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.home.HomeModel
 import io.github.kanylbullen.tung.web.home.HomeRoutine
 import io.github.kanylbullen.tung.web.home.homeModel
+import io.github.kanylbullen.tung.web.programs.ProgramDayView
+import io.github.kanylbullen.tung.web.programs.TodayView
+import io.github.kanylbullen.tung.web.programs.todayView
 import io.github.kanylbullen.tung.web.sync.Account
 import kotlin.js.Date
 import kotlinx.coroutines.launch
@@ -65,6 +72,8 @@ fun HomeScreen(container: WebContainer, account: Account) {
                 onClick { scope.launch { if (container.run(Command.StartWorkout()) is CommandResult.Done) go(Route.WORKOUT) } }
             }) { Text(strings.startWorkout) }
         }
+        val today = remember(version) { todayView(container.store, Clock.System.todayIn(zone)) }
+        if (today != null) TodayCard(container, today, busy = inProgress != null)
         H2({ classes("section") }) { Text(strings.routines) }
         if (model.routines.isEmpty()) {
             P({ classes("hint") }) { Text(strings.routinesEmpty) }
@@ -158,6 +167,73 @@ private fun WeekStrip(week: ThisWeek, container: WebContainer) {
                     })
                 }
                 Div({ classes("label"); attr("aria-hidden", "true") }) { Text(weekdayName(day.date, container.locale).take(1).uppercase()) }
+            }
+        }
+    }
+}
+
+/**
+ * The active program's day, the phone's "Today": "Today: Push" (fixed) or
+ * "Day 2 of 3: Push" (rotating) with Start, "Rest day" with no Start, and
+ * "Choose another" for any other day of the program. Starting records the
+ * day, so a rotating program goes on from it; a day removed elsewhere
+ * meanwhile starts nothing and says so.
+ */
+@Composable
+private fun TodayCard(container: WebContainer, today: TodayView, busy: Boolean) {
+    val strings = container.strings
+    val scope = rememberCoroutineScope()
+    var choosing by remember { mutableStateOf(false) }
+    var gone by remember { mutableStateOf(false) }
+    fun start(day: ProgramDayView) {
+        scope.launch {
+            when (container.run(Command.StartRoutine(day.routineId, day.id))) {
+                is CommandResult.Done -> go(Route.WORKOUT)
+                else -> gone = true
+            }
+        }
+    }
+    fun title(day: ProgramDayView): String = when (today.mode) {
+        ProgramMode.FIXED -> strings.todayFixed(day.routineName)
+        ProgramMode.ROTATING -> dayLabel(day, today.mode, today.days.size, today.days.indexOf(day), container) + ": " + day.routineName
+    }
+    Div({ classes("card", "today") }) {
+        Div({ classes("card-title") }) { Text(today.day?.let(::title) ?: strings.restDay) }
+        P({ classes("hint") }) { Text(today.programName) }
+        if (gone) P({ classes("hint", "accent"); attr("role", "status") }) { Text(strings.dayGone) }
+        Div({ classes("action-row") }) {
+            today.day?.let { day ->
+                Button({
+                    classes("accent-button")
+                    attr("aria-label", strings.start + ", " + day.routineName)
+                    if (busy) disabled()
+                    onClick { start(day) }
+                }) { Text(strings.start) }
+            }
+            Button({ classes("secondary"); if (busy) disabled(); onClick { choosing = true } }) { Text(strings.chooseAnother) }
+        }
+    }
+    if (choosing) {
+        Div({ classes("sheet-backdrop"); onClick { choosing = false } })
+        Div({ classes("sheet"); attr("role", "dialog"); attr("aria-modal", "true"); attr("aria-label", strings.chooseDay) }) {
+            Div({ classes("sheet-head") }) {
+                H2 { Text(strings.chooseDay) }
+                Button({ classes("text-button"); onClick { choosing = false } }) { Text(strings.close) }
+            }
+            Ul({ classes("picker") }) {
+                today.days.forEachIndexed { index, day ->
+                    key(day.id) {
+                        Li {
+                            Button({
+                                classes("picker-row")
+                                onClick {
+                                    choosing = false
+                                    start(day)
+                                }
+                            }) { Text(dayLabel(day, today.mode, today.days.size, index, container) + strings.separator + day.routineName) }
+                        }
+                    }
+                }
             }
         }
     }

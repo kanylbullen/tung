@@ -1,6 +1,9 @@
 package io.github.kanylbullen.tung.web
 
 import io.github.kanylbullen.tung.core.CoreExercise
+import io.github.kanylbullen.tung.core.ExtendedExercise
+import io.github.kanylbullen.tung.core.ExtendedName
+import io.github.kanylbullen.tung.core.extendedExerciseId
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.core.command.Command
@@ -35,7 +38,9 @@ class WebCommandsTest {
         )
         val executor = CommandExecutor(
             WebCommandStore(store, persist = { persisted += it }, clock = { now++ }),
-            WebExerciseResolver(store) { names },
+            WebExerciseResolver(store, { names }) {
+                listOf(ExtendedExercise("Zercher_Squats", ExtendedName("Zercher Squats"), "legs", listOf("quads"), emptyList(), "barbell", source = "test"))
+            },
             startedBy = StartedBy.WEB,
         )
 
@@ -50,6 +55,16 @@ class WebCommandsTest {
         }
 
         suspend fun run(command: Command): CommandResult.Done = assertIs(executor.execute(command))
+    }
+
+    @Test
+    fun anExtendedEntryGetsItsRowTheFirstTimeACommandNamesIt() = runTest {
+        val rig = Rig()
+        val workoutId = assertNotNull(rig.run(Command.StartWorkout()).ids[CommandIds.WORKOUT_ID])
+        rig.run(Command.AddExercise(workoutId, ExerciseRef.Extended("Zercher_Squats")))
+        val row = assertNotNull(rig.store.exercises.get(extendedExerciseId("Zercher_Squats")))
+        assertEquals("Zercher Squats", row.name)
+        assertEquals("legs", row.muscleGroup)
     }
 
     @Test
@@ -146,7 +161,7 @@ class WebCommandsTest {
             val store = TungStore()
             val executor = CommandExecutor(
                 WebCommandStore(store, persist = { db.write(it) }, clock = { 5_000L }),
-                WebExerciseResolver(store) { emptyMap() },
+                WebExerciseResolver(store, { emptyMap() }),
                 startedBy = StartedBy.WEB,
             )
             val workoutId = assertNotNull(assertIs<CommandResult.Done>(executor.execute(Command.StartWorkout())).ids[CommandIds.WORKOUT_ID])
@@ -165,7 +180,7 @@ class WebCommandsTest {
         val store = TungStore()
         val executor = CommandExecutor(
             WebCommandStore(store, persist = { error("quota exceeded") }, clock = { 1L }),
-            WebExerciseResolver(store) { emptyMap() },
+            WebExerciseResolver(store, { emptyMap() }),
             startedBy = StartedBy.WEB,
         )
         val thrown = runCatching { executor.execute(Command.StartWorkout()) }

@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.web.i18n
 
+import io.github.kanylbullen.tung.core.Muscle
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 
@@ -151,6 +153,67 @@ interface Strings {
     fun noChangeIn(range: String): String
     fun sessionsIn(count: Int, range: String): String
     fun chartSummary(metric: String, range: String, from: String, to: String): String
+
+    // Summary
+    val summaryTitle: String
+    val newRecord: String
+    val musclesWorked: String
+    fun musclesWorkedDescription(muscles: String): String
+    fun muscleName(muscle: Muscle): String
+    fun uncountedSets(count: Int): String
+
+    // Exercises
+    val all: String
+    fun groupLabel(group: MuscleGroup): String
+    val custom: String
+    fun equipmentFilter(count: Int?): String
+    val addToRoutine: String
+    val addToWorkout: String
+    val chooseRoutine: String
+    val noRoutinesYet: String
+    fun addedToRoutine(name: String): String
+    val notLogged: String
+    fun lastTime(date: String): String
+    val bestSetKg: String
+    fun inWorkouts(count: Int): String
+    val howTo: String
+    val primary: String
+    val secondary: String
+    fun mapDescription(primary: String, secondary: String?): String
+    val exerciseNotFound: String
+
+    // Programs
+    val programs: String
+    val programsHint: String
+    fun programsActive(name: String): String
+    val programsEmpty: String
+    val newProgram: String
+    val create: String
+    val modeFixed: String
+    val modeFixedHint: String
+    val modeRotating: String
+    val modeRotatingHint: String
+    val mode: String
+    val active: String
+    val activate: String
+    val deactivate: String
+    fun dayCount(count: Int): String
+    fun dayOf(number: Int, count: Int): String
+    val noWeekdays: String
+    val programDaysEmpty: String
+    val addDay: String
+    val chooseRoutineForDay: String
+    val removeDay: String
+    val renameProgram: String
+    val deleteProgram: String
+    val deleteProgramTitle: String
+    val deleteProgramBody: String
+    val programNotFound: String
+    fun todayFixed(routine: String): String
+    val restDay: String
+    val chooseAnother: String
+    val chooseDay: String
+    val dayGone: String
     fun weeksSummary(volumes: String): String
 
     // Settings
@@ -409,6 +472,99 @@ object English : Strings {
     override fun noChangeIn(range: String): String = "No change in $range"
     override fun sessionsIn(count: Int, range: String): String = if (count == 1) "1 session in $range" else "$count sessions in $range"
     override fun chartSummary(metric: String, range: String, from: String, to: String): String = "$metric, $range: from $from to $to kg"
+
+    override val summaryTitle = "Workout done"
+    override val newRecord = "New record"
+    override val musclesWorked = "Muscles worked"
+    override fun musclesWorkedDescription(muscles: String) = "Muscles worked: $muscles"
+    override fun muscleName(muscle: Muscle): String = when (muscle) {
+        Muscle.CHEST -> "chest"
+        Muscle.LATS -> "lats"
+        Muscle.UPPER_BACK -> "upper back"
+        Muscle.LOWER_BACK -> "lower back"
+        Muscle.TRAPS -> "traps"
+        Muscle.FRONT_DELTS -> "front delts"
+        Muscle.SIDE_DELTS -> "side delts"
+        Muscle.REAR_DELTS -> "rear delts"
+        Muscle.BICEPS -> "biceps"
+        Muscle.TRICEPS -> "triceps"
+        Muscle.FOREARMS -> "forearms"
+        Muscle.QUADS -> "quads"
+        Muscle.HAMSTRINGS -> "hamstrings"
+        Muscle.GLUTES -> "glutes"
+        Muscle.CALVES -> "calves"
+        Muscle.ADDUCTORS -> "adductors"
+        Muscle.ABDUCTORS -> "abductors"
+        Muscle.ABS -> "abs"
+        Muscle.OBLIQUES -> "obliques"
+        Muscle.HIP_FLEXORS -> "hip flexors"
+        Muscle.NECK -> "neck"
+    }
+    override fun uncountedSets(count: Int) =
+        if (count == 1) "1 set of a custom exercise is not counted: custom exercises have no muscles"
+        else "$count sets of custom exercises are not counted: custom exercises have no muscles"
+
+    override val all = "All"
+    override fun groupLabel(group: MuscleGroup): String = when (group) {
+        MuscleGroup.CHEST -> "Chest"
+        MuscleGroup.BACK -> "Back"
+        MuscleGroup.SHOULDERS -> "Shoulders"
+        MuscleGroup.BICEPS -> "Biceps"
+        MuscleGroup.TRICEPS -> "Triceps"
+        MuscleGroup.LEGS -> "Legs"
+        MuscleGroup.GLUTES -> "Glutes"
+        MuscleGroup.CORE -> "Core"
+        MuscleGroup.FULLBODY -> "Full body"
+    }
+    override val custom = "Custom"
+    override fun equipmentFilter(count: Int?) = "Equipment: " + (count?.toString() ?: "All")
+    override val addToRoutine = "Add to routine"
+    override val addToWorkout = "Add to workout"
+    override val chooseRoutine = "Add to which routine?"
+    override val noRoutinesYet = "No routines yet. Create one in the Routines tab with “+ New routine”, or save a finished workout as one."
+    override fun addedToRoutine(name: String) = "Added to $name"
+    override val notLogged = "Not logged yet."
+    override fun lastTime(date: String) = "Last time, $date"
+    override val bestSetKg = "Best set, kg"
+    override fun inWorkouts(count: Int) = if (count == 1) "In 1 workout" else "In $count workouts"
+    override val howTo = "How to do it"
+    override val primary = "Primary"
+    override val secondary = "Secondary"
+    override fun mapDescription(primary: String, secondary: String?) =
+        if (secondary == null) "Muscles worked. Primary: $primary." else "Muscles worked. Primary: $primary. Secondary: $secondary."
+    override val exerciseNotFound = "This exercise no longer exists."
+
+    override val programs = "Programs"
+    override val programsHint = "Routines on fixed weekdays or in rotation"
+    override fun programsActive(name: String) = "Active: $name"
+    override val programsEmpty = "No programs. A program puts your routines on fixed weekdays or in a rotation, and Home shows the one for today."
+    override val newProgram = "New program"
+    override val create = "Create"
+    override val modeFixed = "Fixed days"
+    override val modeFixedHint = "Each routine on the weekdays you pick"
+    override val modeRotating = "Rotating"
+    override val modeRotatingHint = "Day 1, 2, 3 in order, whatever the date"
+    override val mode = "Mode"
+    override val active = "Active"
+    override val activate = "Activate"
+    override val deactivate = "Deactivate"
+    override fun dayCount(count: Int) = if (count == 1) "1 day" else "$count days"
+    override fun dayOf(number: Int, count: Int) = "Day $number of $count"
+    override val noWeekdays = "No weekdays"
+    override val programDaysEmpty = "No days yet. Add your routines in the order you train them."
+    override val addDay = "Add day"
+    override val chooseRoutineForDay = "Choose a routine"
+    override val removeDay = "Remove day"
+    override val renameProgram = "Rename program"
+    override val deleteProgram = "Delete program"
+    override val deleteProgramTitle = "Delete program?"
+    override val deleteProgramBody = "The program will be deleted. Its routines, and the workouts you did from it, are kept."
+    override val programNotFound = "This program no longer exists."
+    override fun todayFixed(routine: String) = "Today: $routine"
+    override val restDay = "Rest day"
+    override val chooseAnother = "Choose another"
+    override val chooseDay = "Choose a day"
+    override val dayGone = "That day is no longer in the program."
     override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
     override val settings = "Settings"
     override val training = "Training"
@@ -683,6 +839,99 @@ object Swedish : Strings {
     override fun noChangeIn(range: String): String = "Ingen ändring på $range"
     override fun sessionsIn(count: Int, range: String): String = if (count == 1) "1 pass på $range" else "$count pass på $range"
     override fun chartSummary(metric: String, range: String, from: String, to: String): String = "$metric, $range: från $from till $to kg"
+
+    override val summaryTitle = "Pass klart"
+    override val newRecord = "Nytt rekord"
+    override val musclesWorked = "Tränade muskler"
+    override fun musclesWorkedDescription(muscles: String) = "Tränade muskler: $muscles"
+    override fun muscleName(muscle: Muscle): String = when (muscle) {
+        Muscle.CHEST -> "bröst"
+        Muscle.LATS -> "lats"
+        Muscle.UPPER_BACK -> "övre rygg"
+        Muscle.LOWER_BACK -> "ländrygg"
+        Muscle.TRAPS -> "trapezius"
+        Muscle.FRONT_DELTS -> "främre axlar"
+        Muscle.SIDE_DELTS -> "sidoaxlar"
+        Muscle.REAR_DELTS -> "bakre axlar"
+        Muscle.BICEPS -> "biceps"
+        Muscle.TRICEPS -> "triceps"
+        Muscle.FOREARMS -> "underarmar"
+        Muscle.QUADS -> "framsida lår"
+        Muscle.HAMSTRINGS -> "baksida lår"
+        Muscle.GLUTES -> "säte"
+        Muscle.CALVES -> "vader"
+        Muscle.ADDUCTORS -> "insida lår"
+        Muscle.ABDUCTORS -> "utsida höft"
+        Muscle.ABS -> "mage"
+        Muscle.OBLIQUES -> "sneda magmuskler"
+        Muscle.HIP_FLEXORS -> "höftböjare"
+        Muscle.NECK -> "nacke"
+    }
+    override fun uncountedSets(count: Int) =
+        if (count == 1) "1 set av en egen övning räknas inte: egna övningar har inga muskler"
+        else "$count set av egna övningar räknas inte: egna övningar har inga muskler"
+
+    override val all = "Alla"
+    override fun groupLabel(group: MuscleGroup): String = when (group) {
+        MuscleGroup.CHEST -> "Bröst"
+        MuscleGroup.BACK -> "Rygg"
+        MuscleGroup.SHOULDERS -> "Axlar"
+        MuscleGroup.BICEPS -> "Biceps"
+        MuscleGroup.TRICEPS -> "Triceps"
+        MuscleGroup.LEGS -> "Ben"
+        MuscleGroup.GLUTES -> "Säte"
+        MuscleGroup.CORE -> "Bål"
+        MuscleGroup.FULLBODY -> "Helkropp"
+    }
+    override val custom = "Egen"
+    override fun equipmentFilter(count: Int?) = "Utrustning: " + (count?.toString() ?: "Alla")
+    override val addToRoutine = "Lägg till i rutin"
+    override val addToWorkout = "Lägg till i passet"
+    override val chooseRoutine = "Till vilken rutin?"
+    override val noRoutinesYet = "Inga rutiner än. Skapa en i fliken Rutiner med ”+ Ny rutin”, eller spara ett avslutat pass som en."
+    override fun addedToRoutine(name: String) = "Tillagd i $name"
+    override val notLogged = "Inte loggad än."
+    override fun lastTime(date: String) = "Senast, $date"
+    override val bestSetKg = "Bästa set, kg"
+    override fun inWorkouts(count: Int) = "I $count pass"
+    override val howTo = "Så gör du"
+    override val primary = "Primär"
+    override val secondary = "Sekundär"
+    override fun mapDescription(primary: String, secondary: String?) =
+        if (secondary == null) "Muskler som arbetar. Primär: $primary." else "Muskler som arbetar. Primär: $primary. Sekundär: $secondary."
+    override val exerciseNotFound = "Övningen finns inte längre."
+
+    override val programs = "Program"
+    override val programsHint = "Rutiner på fasta veckodagar eller rullande"
+    override fun programsActive(name: String) = "Aktivt: $name"
+    override val programsEmpty = "Inga program. Ett program lägger dina rutiner på fasta veckodagar eller i rullande ordning, och Hem visar dagens."
+    override val newProgram = "Nytt program"
+    override val create = "Skapa"
+    override val modeFixed = "Fasta dagar"
+    override val modeFixedHint = "Varje rutin på de veckodagar du väljer"
+    override val modeRotating = "Rullande"
+    override val modeRotatingHint = "Dag 1, 2, 3 i tur och ordning, oavsett datum"
+    override val mode = "Läge"
+    override val active = "Aktivt"
+    override val activate = "Aktivera"
+    override val deactivate = "Avaktivera"
+    override fun dayCount(count: Int) = if (count == 1) "1 dag" else "$count dagar"
+    override fun dayOf(number: Int, count: Int) = "Dag $number av $count"
+    override val noWeekdays = "Inga veckodagar"
+    override val programDaysEmpty = "Inga dagar än. Lägg till dina rutiner i den ordning du tränar dem."
+    override val addDay = "Lägg till dag"
+    override val chooseRoutineForDay = "Välj en rutin"
+    override val removeDay = "Ta bort dagen"
+    override val renameProgram = "Byt namn på program"
+    override val deleteProgram = "Radera program"
+    override val deleteProgramTitle = "Radera program?"
+    override val deleteProgramBody = "Programmet raderas. Dess rutiner, och passen du har gjort från det, finns kvar."
+    override val programNotFound = "Programmet finns inte längre."
+    override fun todayFixed(routine: String) = "Idag: $routine"
+    override val restDay = "Vilodag"
+    override val chooseAnother = "Välj en annan"
+    override val chooseDay = "Välj en dag"
+    override val dayGone = "Den dagen finns inte längre i programmet."
     override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
     override val settings = "Inställningar"
     override val training = "Träning"
