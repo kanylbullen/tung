@@ -66,7 +66,7 @@ tasks.named<ProcessResources>("jsProcessResources") {
     // The typeface itself is fonts/archivo_latin.woff2, a Latin subset of the
     // app's archivo_variable.ttf (web/README.md, "The typeface").
     from(rootProject.file("catalog")) {
-        include("core.json")
+        include("core.json", "extended.json")
         into("catalog")
     }
     from(rootProject.file("app/src/main/assets/licenses")) {

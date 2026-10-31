@@ -2070,7 +2070,8 @@ everything else. Package `io.github.kanylbullen.tung.web`, UI in Compose
 HTML (DOM elements as composables with the Compose runtime; the
 `org.jetbrains.compose.runtime:runtime` and `org.jetbrains.compose.html:html-core`
 libraries, no `org.jetbrains.compose` plugin). Build and layout:
-`web/README.md`. What runs today: sign in, sync, Home and History.
+`web/README.md`. What runs today: sign in, sync, Home, the workout, its
+summary, History, Routines, Progress and Settings.
 
 - **The log lives in memory and is persisted to IndexedDB**
   (`store/TungStore.kt`, `store/IndexedDb.kt`). The eight tables hold the
@@ -2142,9 +2143,11 @@ libraries, no `org.jetbrains.compose` plugin). Build and layout:
   `Done`, or a throw, is undone in memory from the transaction's inverse
   log and writes nothing, as the server's store rolls back. A `Done` asks
   for a sync. The resolver (`WebExerciseResolver`) is the store's exercises
-  with the core catalogue's names in every language; the extended
-  catalogue is not shipped to the web, so an extended entry without a row
-  does not resolve. **`started_by = "web"` needs a server that knows it**
+  with the core catalogue's names in every language; the resolver does
+  not read the extended catalogue, so an extended entry without a row
+  does not resolve. Both catalogue files are shipped and precached
+  (`container.catalogue`, `WebCatalogue`: the muscles and the exercise
+  pages), `extended.json` read after the log is on screen. **`started_by = "web"` needs a server that knows it**
   (`StartedBy.WEB`, `SyncValidation`): an older one refuses the sync with a
   4xx until it is redeployed. `WebCommandsTest`.
 - **Strings** are Kotlin (`i18n/Strings.kt`: `English`, `Swedish`,

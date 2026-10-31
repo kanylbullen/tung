@@ -9,6 +9,8 @@ import io.github.kanylbullen.tung.web.store.TungStore
 
 /** One exercise of a finished workout: its logged sets, the best one and the best estimated 1RM. */
 data class DetailExercise(
+    /** The exercise's id; null for a row whose exercise is missing. */
+    val exerciseId: String?,
     val name: String,
     val sets: List<LoggedSet>,
     val best: LoggedSet?,
@@ -51,6 +53,7 @@ fun workoutDetail(store: TungStore, id: String, displayName: (SyncExercise) -> S
             if (sets.isEmpty()) return@mapNotNull null
             val name = we.exerciseId?.let { store.exercises.get(it) }?.let(displayName) ?: we.exerciseId ?: we.id
             DetailExercise(
+                exerciseId = we.exerciseId,
                 name = name,
                 sets = sets,
                 best = bestSet(sets),

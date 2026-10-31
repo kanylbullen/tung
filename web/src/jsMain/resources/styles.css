@@ -405,3 +405,28 @@ a.text-button { text-decoration: none; display: inline-flex; align-items: center
 .check { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .check input { width: 20px; height: 20px; accent-color: var(--accent); }
 .flush-link { padding-left: 0; }
+
+/* --- The workout summary --- */
+.muscle-map { margin: 8px auto; padding: 0 20px; max-width: 280px; }
+.muscle-map svg { display: block; width: 100%; height: auto; }
+.muscle-map .body { fill: var(--raised); stroke: var(--border); stroke-width: 1; }
+.muscle-map .rest { fill: var(--border); }
+.muscle-map .worked { fill: var(--accent); }
+.muscle-rows { list-style: none; margin: 8px 0 0; padding: 0 20px; }
+.muscle-row { display: grid; grid-template-columns: 9rem 1fr 3rem; align-items: center; gap: 12px; min-height: 32px; }
+.muscle-row .numbers { text-align: right; }
+.muscle-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+.muscle-bar span { display: block; height: 100%; background: var(--accent); }
+.summary-chart { margin-top: 12px; }
+.chart-title { display: inline-block; font-weight: 600; color: inherit; text-decoration: none; min-height: 32px; }
+.chart-title:hover { text-decoration: underline; }
+.with-actions { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.bottom-actions {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; gap: 12px; justify-content: center;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  background: var(--raised); border-top: 1px solid var(--border);
+}
+.bottom-actions button { flex: 1; max-width: 220px; min-height: 52px; }
+.detail-head .details.accent { color: var(--accent-text); font-weight: 600; }
+.summary-chart .hint { margin-left: 0; margin-right: 0; }

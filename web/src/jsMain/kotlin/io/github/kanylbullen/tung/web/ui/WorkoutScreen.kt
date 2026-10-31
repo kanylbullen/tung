@@ -267,9 +267,11 @@ fun WorkoutScreen(container: WebContainer) {
             onCancel = { confirming = null },
         ) {
             confirming = null
+            // A workout with nothing logged is deleted by Finish: back to Home.
+            val anyLogged = workout.loggedSets > 0
             scope.launch {
                 container.run(Command.FinishWorkout(workout.id))
-                go(Route.HISTORY)
+                if (anyLogged) window.location.hash = summaryHash(workout.id) else go(Route.HOME)
             }
         }
         Confirm.DISCARD -> Dialog(

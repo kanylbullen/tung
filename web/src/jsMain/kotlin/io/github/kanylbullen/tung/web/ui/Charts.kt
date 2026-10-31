@@ -14,7 +14,7 @@ import org.jetbrains.compose.web.dom.Div
 // data, the border colour for grid lines, labels muted, no chart library.
 // Each chart is one node with its summary as the accessible name.
 
-private fun esc(text: String) = text.replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;")
+internal fun esc(text: String) = text.replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;")
 
 /** At most four "nice" y values (steps of 1, 2, 2.5 or 5 × 10ⁿ) covering [min]..[max], the phone's `niceTicks`. */
 fun niceTicks(min: Double, max: Double, count: Int = 4): List<Double> {
@@ -35,7 +35,7 @@ fun niceTicks(min: Double, max: Double, count: Int = 4): List<Double> {
 
 /** Puts [svg] markup into the page as one image named [summary]. */
 @Composable
-private fun SvgBox(svg: String, summary: String, className: String) {
+internal fun SvgBox(svg: String, summary: String, className: String) {
     key(svg) {
         Div({
             classes("chart", className)
