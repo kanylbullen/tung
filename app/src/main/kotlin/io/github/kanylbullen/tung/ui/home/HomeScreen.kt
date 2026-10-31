@@ -326,9 +326,11 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                 // A week is four digits most of the time; a big one must still fit beside the body
                 // at the owner's font scale, so the hero shrinks with its length rather than ellipsise.
                 val volumeText = localVolume(totals.volumeKg)
+                // "18,190 kg" at 52 sp pushed the unit onto a line of its own beside the body.
                 val heroSize = when {
                     volumeText.length <= 4 -> 64.sp
-                    volumeText.length <= 6 -> 52.sp
+                    volumeText.length == 5 -> 54.sp
+                    volumeText.length == 6 -> 46.sp
                     else -> 40.sp
                 }
                 Row {
@@ -345,6 +347,8 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                         stringResource(R.string.workout_unit_kg),
                         style = MaterialTheme.typography.titleLarge,
                         color = Tung.colors.muted,
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.alignByBaseline(),
                     )
                 }

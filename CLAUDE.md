@@ -2231,7 +2231,8 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   policy link Play asks for; `server/src/main/resources/site/`, one
   `site.css` and `site.js` (the language: `?lang=`, remembered, else the
   browser's) for both, the share image `og.png` and the app's screens drawn
-  from the flow tests' screenshots; `index.html`,
+  from `SiteScreensFlowTest` in the light and the dark theme, shown by the
+  page's theme, which follows the system until `theme.js`'s toggle picks one; `index.html`,
   English with Swedish swapped in by the browser's language, its font and
   icon copied from the repository's one copy into `site/` by the server's
   `processResources`). The service worker is served from `/app/`, so it
