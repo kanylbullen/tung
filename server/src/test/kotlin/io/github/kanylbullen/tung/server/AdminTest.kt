@@ -3,6 +3,8 @@ package io.github.kanylbullen.tung.server
 import io.github.kanylbullen.tung.server.routes.keepBlocks
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
@@ -79,6 +81,21 @@ class AdminTest {
         assertEquals("not_admin", refused.errorCode())
         assertEquals(HttpStatusCode.Unauthorized, client.get("/api/v1/admin/users").status)
         assertTrue(client.get("/api/v1/admin/users") { bearerAuth(adminToken) }.json()["tester_signups"]!!.jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun aReadTokenOfAnAdminGetsNoAccounts() = adminTest(testerSignups = true) {
+        val adminToken = client.register(admin)
+        val created = client.post("/api/v1/tokens") {
+            bearerAuth(adminToken)
+            jsonBody("""{"name": "assistant", "scope": "read"}""")
+        }
+        assertEquals(HttpStatusCode.Created, created.status, created.bodyAsText())
+        val readToken = created.json()["token"]!!.str
+        val users = client.get("/api/v1/admin/users") { bearerAuth(readToken) }
+        assertEquals(HttpStatusCode.Forbidden, users.status)
+        assertEquals("insufficient_scope", users.errorCode())
+        assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/testers") { bearerAuth(readToken) }.status)
     }
 
     @Test

@@ -53,11 +53,17 @@ fun AdminScreen(container: WebContainer, account: Account) {
     var reload by remember { mutableStateOf(0) }
     var removing by remember { mutableStateOf<String?>(null) }
     var copied by remember { mutableStateOf(false) }
+    var removeFailed by remember { mutableStateOf(false) }
     val now = Date.now().toLong()
 
     LaunchedEffect(account, reload) {
         view = AdminView.Loading
-        val token = container.settings.token ?: return@LaunchedEffect
+        copied = false
+        val token = container.settings.token
+        if (token == null) {
+            view = AdminView.Failed(strings.adminFailed)
+            return@LaunchedEffect
+        }
         view = when (val users = container.admin.users(account.serverUrl, token)) {
             is AdminResult.Ok -> {
                 val testers = if (!users.value.testerSignups) null else {
@@ -81,7 +87,7 @@ fun AdminScreen(container: WebContainer, account: Account) {
             is AdminView.Failed -> {
                 P({ classes("error"); attr("role", "alert") }) { Text(current.message) }
                 Div({ classes("setting-buttons", "pad") }) {
-                    Button({ classes("secondary"); onClick { reload++ } }) { Text(strings.tryAgain) }
+                    Button({ classes("secondary"); onClick { removeFailed = false; reload++ } }) { Text(strings.tryAgain) }
                 }
             }
             is AdminView.Ready -> {
@@ -93,6 +99,7 @@ fun AdminScreen(container: WebContainer, account: Account) {
                         testers == null -> P({ classes("error") }) { Text(strings.adminFailed) }
                         testers.isEmpty() -> P({ classes("hint") }) { Text(strings.testersEmpty) }
                         else -> {
+                            if (removeFailed) P({ classes("error"); attr("role", "alert") }) { Text(strings.adminFailed) }
                             Div({ classes("setting-buttons", "pad") }) {
                                 Button({
                                     classes("secondary")
@@ -118,7 +125,7 @@ fun AdminScreen(container: WebContainer, account: Account) {
                                             Button({
                                                 classes("text-button")
                                                 attr("aria-label", strings.removeTester(tester.email))
-                                                onClick { removing = tester.email }
+                                                onClick { removeFailed = false; removing = tester.email }
                                             }) { Text(strings.remove) }
                                         }
                                     }
@@ -153,9 +160,11 @@ fun AdminScreen(container: WebContainer, account: Account) {
                 removing = null
                 scope.launch {
                     val token = container.settings.token ?: return@launch
-                    container.admin.removeTester(account.serverUrl, token, email)
-                    copied = false
-                    reload++
+                    if (container.admin.removeTester(account.serverUrl, token, email)) {
+                        reload++
+                    } else {
+                        removeFailed = true
+                    }
                 }
             },
         )

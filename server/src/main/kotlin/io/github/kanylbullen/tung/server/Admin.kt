@@ -26,7 +26,15 @@ class Admins(private val db: Db, private val emails: Set<String>) {
 
     fun isAdminEmail(email: String): Boolean = email.lowercase() in emails
 
+    /**
+     * Only a write token: a `read` token is what an admin hands an assistant
+     * to look at their own training, and it must not carry every account's
+     * email with it.
+     */
     suspend fun require(principal: TokenPrincipal) {
+        if (principal.scope == "read") {
+            throw forbidden("insufficient_scope", "A read-only token cannot use the admin routes. Sign in to use them.")
+        }
         if (!isAdmin(principal.userId)) {
             throw forbidden("not_admin", "Only the server's admins (TUNG_ADMIN_EMAILS) may see this.")
         }
