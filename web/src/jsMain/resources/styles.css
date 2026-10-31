@@ -444,3 +444,16 @@ a.chip { display: inline-flex; align-items: center; color: inherit; text-decorat
 .instructions li { margin: 0 0 8px; }
 .pad-link { display: inline-block; margin: 4px 8px; line-height: 48px; text-decoration: none; }
 .hint.accent { color: var(--accent-text); }
+
+/* --- Programs --- */
+.badge { align-self: center; padding: 2px 10px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-size: 13px; font-weight: 700; }
+.mode-choice { display: grid; gap: 4px; padding: 0 20px 8px; }
+.mode-row { display: flex; gap: 12px; align-items: flex-start; min-height: 48px; padding: 8px 0; cursor: pointer; }
+.mode-row input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+.mode-title { display: block; font-weight: 600; }
+.mode-hint { display: block; font-size: 14px; color: var(--muted); }
+.weekdays { padding-top: 4px; }
+.weekdays { flex-wrap: wrap; overflow: visible; gap: 6px; }
+.weekdays .chip { min-width: 44px; padding: 0 8px; }
+.today .action-row { padding: 8px 20px 0; }
+.today .card-title { font-size: 18px; }

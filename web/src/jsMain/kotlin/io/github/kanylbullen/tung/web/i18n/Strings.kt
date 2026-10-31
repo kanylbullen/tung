@@ -181,6 +181,39 @@ interface Strings {
     val secondary: String
     fun mapDescription(primary: String, secondary: String?): String
     val exerciseNotFound: String
+
+    // Programs
+    val programs: String
+    val programsHint: String
+    fun programsActive(name: String): String
+    val programsEmpty: String
+    val newProgram: String
+    val create: String
+    val modeFixed: String
+    val modeFixedHint: String
+    val modeRotating: String
+    val modeRotatingHint: String
+    val mode: String
+    val active: String
+    val activate: String
+    val deactivate: String
+    fun dayCount(count: Int): String
+    fun dayOf(number: Int, count: Int): String
+    val noWeekdays: String
+    val programDaysEmpty: String
+    val addDay: String
+    val chooseRoutineForDay: String
+    val removeDay: String
+    val renameProgram: String
+    val deleteProgram: String
+    val deleteProgramTitle: String
+    val deleteProgramBody: String
+    val programNotFound: String
+    fun todayFixed(routine: String): String
+    val restDay: String
+    val chooseAnother: String
+    val chooseDay: String
+    val dayGone: String
     fun weeksSummary(volumes: String): String
 
     // Settings
@@ -470,6 +503,38 @@ object English : Strings {
     override fun mapDescription(primary: String, secondary: String?) =
         if (secondary == null) "Muscles worked. Primary: $primary." else "Muscles worked. Primary: $primary. Secondary: $secondary."
     override val exerciseNotFound = "This exercise no longer exists."
+
+    override val programs = "Programs"
+    override val programsHint = "Routines on fixed weekdays or in rotation"
+    override fun programsActive(name: String) = "Active: $name"
+    override val programsEmpty = "No programs. A program puts your routines on fixed weekdays or in a rotation, and Home shows the one for today."
+    override val newProgram = "New program"
+    override val create = "Create"
+    override val modeFixed = "Fixed days"
+    override val modeFixedHint = "Each routine on the weekdays you pick"
+    override val modeRotating = "Rotating"
+    override val modeRotatingHint = "Day 1, 2, 3 in order, whatever the date"
+    override val mode = "Mode"
+    override val active = "Active"
+    override val activate = "Activate"
+    override val deactivate = "Deactivate"
+    override fun dayCount(count: Int) = if (count == 1) "1 day" else "$count days"
+    override fun dayOf(number: Int, count: Int) = "Day $number of $count"
+    override val noWeekdays = "No weekdays"
+    override val programDaysEmpty = "No days yet. Add your routines in the order you train them."
+    override val addDay = "Add day"
+    override val chooseRoutineForDay = "Choose a routine"
+    override val removeDay = "Remove day"
+    override val renameProgram = "Rename program"
+    override val deleteProgram = "Delete program"
+    override val deleteProgramTitle = "Delete program?"
+    override val deleteProgramBody = "The program will be deleted. Its routines, and the workouts you did from it, are kept."
+    override val programNotFound = "This program no longer exists."
+    override fun todayFixed(routine: String) = "Today: $routine"
+    override val restDay = "Rest day"
+    override val chooseAnother = "Choose another"
+    override val chooseDay = "Choose a day"
+    override val dayGone = "That day is no longer in the program."
     override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
     override val settings = "Settings"
     override val training = "Training"
@@ -770,6 +835,38 @@ object Swedish : Strings {
     override fun mapDescription(primary: String, secondary: String?) =
         if (secondary == null) "Muskler som arbetar. Primär: $primary." else "Muskler som arbetar. Primär: $primary. Sekundär: $secondary."
     override val exerciseNotFound = "Övningen finns inte längre."
+
+    override val programs = "Program"
+    override val programsHint = "Rutiner på fasta veckodagar eller rullande"
+    override fun programsActive(name: String) = "Aktivt: $name"
+    override val programsEmpty = "Inga program. Ett program lägger dina rutiner på fasta veckodagar eller i rullande ordning, och Hem visar dagens."
+    override val newProgram = "Nytt program"
+    override val create = "Skapa"
+    override val modeFixed = "Fasta dagar"
+    override val modeFixedHint = "Varje rutin på de veckodagar du väljer"
+    override val modeRotating = "Rullande"
+    override val modeRotatingHint = "Dag 1, 2, 3 i tur och ordning, oavsett datum"
+    override val mode = "Läge"
+    override val active = "Aktivt"
+    override val activate = "Aktivera"
+    override val deactivate = "Avaktivera"
+    override fun dayCount(count: Int) = if (count == 1) "1 dag" else "$count dagar"
+    override fun dayOf(number: Int, count: Int) = "Dag $number av $count"
+    override val noWeekdays = "Inga veckodagar"
+    override val programDaysEmpty = "Inga dagar än. Lägg till dina rutiner i den ordning du tränar dem."
+    override val addDay = "Lägg till dag"
+    override val chooseRoutineForDay = "Välj en rutin"
+    override val removeDay = "Ta bort dagen"
+    override val renameProgram = "Byt namn på program"
+    override val deleteProgram = "Radera program"
+    override val deleteProgramTitle = "Radera program?"
+    override val deleteProgramBody = "Programmet raderas. Dess rutiner, och passen du har gjort från det, finns kvar."
+    override val programNotFound = "Programmet finns inte längre."
+    override fun todayFixed(routine: String) = "Idag: $routine"
+    override val restDay = "Vilodag"
+    override val chooseAnother = "Välj en annan"
+    override val chooseDay = "Välj en dag"
+    override val dayGone = "Den dagen finns inte längre i programmet."
     override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
     override val settings = "Inställningar"
     override val training = "Träning"

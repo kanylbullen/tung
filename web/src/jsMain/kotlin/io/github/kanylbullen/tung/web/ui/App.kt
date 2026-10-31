@@ -28,6 +28,7 @@ enum class Route(val hash: String) {
     ADMIN("#/settings/admin"),
     SUMMARY("#/summary"),
     EXERCISES("#/exercises"),
+    PROGRAMS("#/programs"),
     ;
 
     companion object {
@@ -66,12 +67,15 @@ private fun SignedIn(container: WebContainer, account: Account) {
     }
     val detailId = hash.removePrefix("#/history/").takeIf { hash.startsWith("#/history/") && it.isNotEmpty() }
     val routineId = hash.removePrefix("#/routines/").takeIf { hash.startsWith("#/routines/") && it.isNotEmpty() }
+    val programId = hash.removePrefix("#/programs/").takeIf { hash.startsWith("#/programs/") && it.isNotEmpty() }
     val exerciseRoute = hash.removePrefix("#/exercises/").takeIf { hash.startsWith("#/exercises/") && it.isNotEmpty() }
     val summaryId = hash.removePrefix("#/summary/").takeIf { hash.startsWith("#/summary/") && it.isNotEmpty() }
     val progressId = hash.removePrefix("#/progress/").takeIf { hash.startsWith("#/progress/") && it.isNotEmpty() }
     when {
         summaryId != null -> SummaryScreen(container, summaryId)
         exerciseRoute != null -> ExercisePageScreen(container, exerciseRoute)
+        programId != null -> ProgramScreen(container, programId)
+        route == Route.PROGRAMS -> ProgramsScreen(container)
         route == Route.EXERCISES -> ExercisesScreen(container, account)
         progressId != null -> ExerciseProgressScreen(container, progressId)
         route == Route.PROGRESS -> ProgressScreen(container, account)
@@ -86,7 +90,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
     }
     val tab = when {
         detailId != null -> Route.HISTORY
-        routineId != null -> Route.ROUTINES
+        routineId != null || route == Route.PROGRAMS -> Route.ROUTINES
         progressId != null -> Route.PROGRESS
         else -> route
     }
