@@ -43,6 +43,19 @@ const val LINK_START_PER_MINUTE = 5
 /** Claims one client address may try per minute: ten guesses at a one-in-a-million code. */
 const val LINK_CLAIM_PER_MINUTE = 10
 
+/**
+ * Failed claims, from every client together, per [LINK_CODE_TTL_MS]; past
+ * that every claim is refused until the window moves on. The per-address
+ * limit alone does not bound guessing: an attacker with many addresses (an
+ * IPv6 /64 is enough) gets ten guesses a minute from each, against a code
+ * space of a million. With this budget, one code's ten-minute life allows at
+ * most this many guesses in all, so a guess hits a live code with a chance
+ * of about [LINK_CLAIM_FAILURES_PER_TTL] in a million per window. The price:
+ * someone guessing on purpose can keep linking refused for everyone while
+ * they keep at it.
+ */
+const val LINK_CLAIM_FAILURES_PER_TTL = 50
+
 /** The name of the token a claim creates, as listed under /api/v1/tokens. */
 const val LINK_TOKEN_NAME = "watch"
 
@@ -72,7 +85,9 @@ data class LinkClaim(val code: String)
  *   marked claimed and answered with a new `write` token named
  *   [LINK_TOKEN_NAME] and the user; anything else is 404 `invalid_code`,
  *   whether the code never existed, expired or was claimed already.
- *   [LINK_CLAIM_PER_MINUTE] per client address.
+ *   [LINK_CLAIM_PER_MINUTE] per client address, and at most
+ *   [LINK_CLAIM_FAILURES_PER_TTL] failed claims from all clients together
+ *   per code lifetime.
  *
  * The limits are counted here, per application instance, not by Ktor's
  * RateLimit plugin, whose limiters are all registered in Application.kt.
@@ -81,6 +96,7 @@ data class LinkClaim(val code: String)
 fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::currentTimeMillis) {
     val startLimit = SlidingWindowLimiter(LINK_START_PER_MINUTE, WINDOW_MS, clock)
     val claimLimit = SlidingWindowLimiter(LINK_CLAIM_PER_MINUTE, WINDOW_MS, clock)
+    val claimFailures = SlidingWindowLimiter(LINK_CLAIM_FAILURES_PER_TTL, LINK_CODE_TTL_MS, clock)
     val random = SecureRandom()
 
     authenticate(BEARER) {
@@ -97,6 +113,7 @@ fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::cur
 
     post("/link/claim") {
         if (!claimLimit.tryAcquire(call.request.origin.remoteAddress)) throw rateLimited()
+        if (claimFailures.isExhausted(ALL_CLIENTS)) throw rateLimited()
         val code = call.receive<LinkClaim>().code.trim()
         if (!CODE_PATTERN.matches(code)) throw invalidCode()
         val now = clock()
@@ -117,7 +134,11 @@ fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::cur
                 it[createdAt] = now
             }
             userId to token
-        } ?: throw invalidCode()
+        } ?: run {
+            // A guess that missed counts against everyone's budget; see LINK_CLAIM_FAILURES_PER_TTL.
+            claimFailures.tryAcquire(ALL_CLIENTS)
+            throw invalidCode()
+        }
         call.respond(SessionDto(claimed.second, accounts.me(claimed.first)))
     }
 }
@@ -150,6 +171,7 @@ private suspend fun startCode(db: Db, userId: String, random: SecureRandom, now:
 private val CODE_PATTERN = Regex("^[0-9]{6}$")
 private const val MAX_ATTEMPTS = 20
 private const val WINDOW_MS = 60_000L
+private const val ALL_CLIENTS = "*"
 
 private fun invalidCode() =
     ApiException(HttpStatusCode.NotFound, "invalid_code", "That code is not valid. A code works once, for ten minutes; ask for a new one.")
@@ -178,6 +200,16 @@ internal class SlidingWindowLimiter(
             if (times.size >= limit) return false
             times.addLast(now)
             return true
+        }
+    }
+
+    /** True when [key] has no acquisition left in the current window; acquires nothing. */
+    fun isExhausted(key: String): Boolean {
+        val now = clock()
+        val times = hits[key] ?: return false
+        synchronized(times) {
+            while (times.isNotEmpty() && times.peekFirst() <= now - windowMillis) times.pollFirst()
+            return times.size >= limit
         }
     }
 

@@ -1968,8 +1968,11 @@ fallback, and only on a tap.
   `max-age`, else 1 h; an unknown kid refetches, at most once a minute);
   failures are 401 `invalid_google_token`, an unreachable key set 503.
   **Linking rule:** by `users.google_sub`; else, only when `email_verified`,
-  the user with that email gets the `google_sub` (and keeps the password);
-  else a new user with `password_hash NULL`. An unverified email linked to
+  the user with that email gets the `google_sub`, and loses its password:
+  a password sign-up never verified the address, so whoever registered it
+  may not be its owner, and `evictUnverifiedHolders` also revokes the
+  account's tokens, refresh tokens, unused OAuth codes, link codes and push
+  endpoints before the Google session is made; else a new user with `password_hash NULL`. An unverified email linked to
   nothing is 401 `email_not_verified`; never link on it. A null
   `password_hash` refuses password login after the same Argon2 work as a
   wrong password (`verifyCredentials`). `POST /api/v1/auth/google` answers
@@ -1986,7 +1989,9 @@ fallback, and only on a tap.
   `HttpServer`; `ServerConfig.clock` exists for expiry).
 - **Admins** (`Admin.kt`): the accounts whose email is in
   `TUNG_ADMIN_EMAILS` (`Admins`, the one place that decides it; a `read`
-  token is refused, 403 `insufficient_scope`). `/me` says `is_admin`;
+  token is refused, 403 `insufficient_scope`). With Sign in with Google
+  configured, the account must also be linked to Google, the only way the
+  server knows the address is its owner's. `/me` says `is_admin`;
   `GET /api/v1/admin/users` lists every account with how it signs in, when
   it was last seen, its working tokens and its finished workouts, never
   training content. The web app's Settings → Server admin shows it
@@ -2031,7 +2036,11 @@ fallback, and only on a tap.
   unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)
   claims it once and answers a new `write` token named `watch` and the user,
   else 404 `invalid_code`. 5 codes a minute per user, 10 claims a minute per
-  address, counted in that file rather than by the RateLimit plugin.
+  address, and at most `LINK_CLAIM_FAILURES_PER_TTL` (50) failed claims from
+  all clients together per ten minutes, after which every claim is 429 until
+  the window moves on (many addresses must not add up to guessing a
+  six-digit code; the watch's keypad fixes the length). Counted in that file
+  rather than by the RateLimit plugin.
 - **The server-side command handler** (`command/ServerCommandHandler.kt`,
   built per user by `CommandService`) is core's `CommandExecutor` over
   `command/ExposedCommandStore` (see "Commands", "One rule, in core"):

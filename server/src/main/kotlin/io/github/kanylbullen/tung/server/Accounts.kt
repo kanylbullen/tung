@@ -7,9 +7,11 @@ import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
@@ -17,6 +19,9 @@ import org.jetbrains.exposed.sql.update
 import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.server.auth.GoogleIdTokens
 import io.github.kanylbullen.tung.server.auth.GoogleIdentity
+import io.github.kanylbullen.tung.server.oauth.OAuthCodes
+import io.github.kanylbullen.tung.server.oauth.OAuthRefreshTokens
+import io.github.kanylbullen.tung.server.routes.LinkCodes
 import org.jetbrains.exposed.sql.ResultRow
 
 private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+$")
@@ -91,8 +96,16 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
     /**
      * The user a verified Google identity signs in as. By `google_sub` first;
      * else, when Google says the email is verified, the account with that
-     * email, which gets the `google_sub` (the link: its password keeps
-     * working); else a new account without a password. An unverified email
+     * email, which gets the `google_sub` (the link); else a new account
+     * without a password.
+     *
+     * A password account's email was never verified: anyone could have
+     * registered someone else's address and waited for its owner to sign in
+     * with Google. So the link hands the account to the verified owner and
+     * shuts out whoever else may hold it: the password is removed, and every
+     * token, OAuth grant and link code of the account is revoked
+     * ([evictUnverifiedHolders]). The owner signs in with Google from then on,
+     * and signs the other devices in again. An unverified email
      * that matches no linked account is refused: it proves nothing about who
      * owns the address. The consent page and `POST /auth/google` both use it.
      */
@@ -122,8 +135,13 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
             if (existing[Users.googleSub] != null) {
                 throw conflict("google_account_mismatch", "This email belongs to an account linked to another Google account. Sign in with that one or with your password.")
             }
-            Users.update({ (Users.id eq existing[Users.id]) and Users.googleSub.isNull() }) { it[googleSub] = identity.sub }
-            return user(existing[Users.id])
+            val userId = existing[Users.id]
+            Users.update({ (Users.id eq userId) and Users.googleSub.isNull() }) {
+                it[googleSub] = identity.sub
+                it[passwordHash] = null
+            }
+            evictUnverifiedHolders(userId, System.currentTimeMillis())
+            return user(userId)
         }
         if (email.length > 254 || !EMAIL_PATTERN.matches(email)) throw unauthorized("invalid_google_token", "The Google account has no usable email address.")
         val userId = newId()
@@ -136,6 +154,24 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
             it[createdAt] = now
         }
         return UserDto(userId, email, now, hasPassword = false, googleLinked = true)
+    }
+
+    /**
+     * Ends every way into [userId] that did not come from the Google owner:
+     * its API and session tokens (OAuth access tokens are API tokens, and a
+     * refresh token of a revoked one is refused), its refresh tokens, its
+     * unused OAuth codes, its link codes and its push endpoints. The session the caller is about
+     * to create comes after this.
+     */
+    private fun Transaction.evictUnverifiedHolders(userId: String, now: Long) {
+        ApiTokens.update({ (ApiTokens.userId eq userId) and ApiTokens.revokedAt.isNull() }) { it[revokedAt] = now }
+        OAuthRefreshTokens.update({ (OAuthRefreshTokens.userId eq userId) and OAuthRefreshTokens.revokedAt.isNull() }) {
+            it[revokedAt] = now
+        }
+        OAuthCodes.deleteWhere { (OAuthCodes.userId eq userId) and OAuthCodes.usedAt.isNull() }
+        LinkCodes.deleteWhere { LinkCodes.userId eq userId }
+        // Their devices' push endpoints too, or they would still hear when the account changes.
+        PushEndpoints.update({ (PushEndpoints.userId eq userId) and PushEndpoints.revokedAt.isNull() }) { it[revokedAt] = now }
     }
 
     /**

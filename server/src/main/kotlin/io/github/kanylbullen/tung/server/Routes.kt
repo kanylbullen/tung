@@ -96,7 +96,7 @@ fun Route.apiRoutes(
     get("/openapi.yaml") { call.respondText(spec, ContentType.parse("application/yaml")) }
     swaggerUI(path = "docs", swaggerFile = "openapi/openapi.yaml")
 
-    val admins = Admins(db, config.adminEmails)
+    val admins = Admins(db, config.adminEmails, requireGoogleLink = accounts.google != null)
     val testers = Testers(db, admins, config.testerSignups, config.clock)
     val adminStore = AdminStore(db, admins, config.testerSignups, config.clock)
     val feedback = FeedbackStore(db, admins, config.clock)
