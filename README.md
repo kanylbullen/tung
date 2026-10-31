@@ -22,9 +22,18 @@ sets, and see what you did last time right next to every set. Think Jefit,
 but calmer, faster, and yours.
 
 <p align="center">
-  <img src="server/src/main/resources/site/screens/workout.webp" alt="An active workout: bench press, two sets of 80 kg × 8, last time shown under the set, and a Log set button at the bottom" width="240">
-  <img src="server/src/main/resources/site/screens/weight.webp" alt="The weight sheet: 62.5 kg in large type over a ruler, with minus, plus and Done" width="240">
-  <img src="server/src/main/resources/site/screens/summary.webp" alt="The summary after a workout: duration, sets, volume, the best set and a body map of the muscles worked" width="240">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="server/src/main/resources/site/screens/home-dark.webp">
+    <img src="server/src/main/resources/site/screens/home-light.webp" alt="Home: this week's volume, the days as bars, and three routines with a small body of the muscles each trains" width="240">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="server/src/main/resources/site/screens/workout-dark.webp">
+    <img src="server/src/main/resources/site/screens/workout-light.webp" alt="A Push day in progress: bench press with two sets of 82.5 kg × 8 logged, last time under every set, the rest timer and the Log set button" width="240">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="server/src/main/resources/site/screens/summary-dark.webp">
+    <img src="server/src/main/resources/site/screens/summary-light.webp" alt="The summary after the workout: a body map of the muscles worked and each muscle's share" width="240">
+  </picture>
 </p>
 
 ## Principles

@@ -31,3 +31,49 @@
     a.href = "?lang=" + other;
   });
 })();
+
+// Swedish alt texts for the screens.
+(function () {
+  if (window.tungLang !== "sv") return;
+  document.querySelectorAll("[data-sv-alt]").forEach(function (el) { el.setAttribute("alt", el.getAttribute("data-sv-alt")); });
+})();
+
+// The theme toggle: the page follows the system until the toggle picks the
+// other theme; picking the system's own theme again forgets the choice.
+(function () {
+  var button = document.querySelector(".theme-toggle");
+  if (!button) return;
+  var root = document.documentElement;
+  var media = window.matchMedia("(prefers-color-scheme: dark)");
+  var sv = window.tungLang === "sv";
+  function system() { return media.matches ? "dark" : "light"; }
+  function current() { return root.getAttribute("data-theme") || system(); }
+  function show() {
+    var dark = current() === "dark";
+    button.setAttribute("aria-pressed", String(dark));
+    button.setAttribute("aria-label", dark
+      ? (sv ? "Byt till ljust tema" : "Switch to the light theme")
+      : (sv ? "Byt till mörkt tema" : "Switch to the dark theme"));
+    button.title = button.getAttribute("aria-label");
+    document.querySelectorAll("meta[name=theme-color]").forEach(function (meta) {
+      meta.setAttribute("content", dark ? "#1A1D21" : "#F6F6F4");
+    });
+  }
+  button.addEventListener("click", function () {
+    var next = current() === "dark" ? "light" : "dark";
+    try {
+      if (next === system()) {
+        root.removeAttribute("data-theme");
+        localStorage.removeItem("tung-theme");
+      } else {
+        root.setAttribute("data-theme", next);
+        localStorage.setItem("tung-theme", next);
+      }
+    } catch (e) {
+      root.setAttribute("data-theme", next);
+    }
+    show();
+  });
+  media.addEventListener("change", show);
+  show();
+})();

@@ -46,8 +46,22 @@ docker compose up -d --build
 
 Database migrations run when the server starts.
 
-## The app
+## The apps
 
-The Android app does not talk to a server yet: the server URL setting and sync
-arrive in the next step. Until then the server is the API (for scripts,
-agents and other clients) and the export.
+Every client syncs with the server once signed in; without an account each
+keeps its log on its own device.
+
+- **Android:** Settings → Account → "Use another server", then your server's
+  address (`TUNG_PUBLIC_URL`), and sign in or create an account. Sync runs
+  after each workout, when the app opens and every 15 minutes.
+- **Wear OS:** link the watch from the phone (Settings → Devices → "Link a
+  watch") with a six-digit code, or run it next to the phone without an
+  account of its own.
+- **Web:** the server serves the web app at `/app/` and a landing page at
+  `/`. Served by your server, the web app offers that server at sign-in.
+- **Assistants:** the API (`/docs`) and MCP at `/mcp` serve scripts, agents
+  and other clients, and the export gives you everything at once.
+
+Sign in with Google and push to phones are optional and need their own
+settings (`TUNG_GOOGLE_CLIENT_ID`, `TUNG_FCM_SERVICE_ACCOUNT_JSON`); see
+[`server/README.md`](../server/README.md).

@@ -22,13 +22,20 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://tung.xuper.fun/site/og.png">
   <link rel="preload" href="/site/archivo_latin.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/site/theme.js?v=@assets@"></script>
   <link rel="stylesheet" href="/site/site.css?v=@assets@">
 </head>
 <body>
   <div class="page">
     <header class="top">
       <a class="wordmark" href="/">Tung</a>
-      <a class="top-link" href="/app/" data-sv="Öppna webbappen">Open the web app</a>
+      <div class="top-right">
+        <a class="top-link" href="/app/" data-sv="Öppna webbappen">Open the web app</a>
+        <button class="theme-toggle" type="button" aria-label="Switch to the dark theme">
+          <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.3 22c-5.6 0-10-4.5-10-10 0-4.6 3.1-8.5 7.4-9.7.5-.1 1 .3.9.8-.4 1.3-.6 2.6-.4 4 .5 4 3.7 7.1 7.7 7.5 1.3.1 2.6-.1 3.8-.6.5-.2 1 .3.8.8C21.2 19.6 17.2 22 12.3 22z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
+        </button>
+      </div>
     </header>
 
     <main>
@@ -61,22 +68,31 @@
         <h2 id="screens" data-sv="I appen">In the app</h2>
         <div class="row">
           <figure>
-            <img src="/site/screens/workout.webp" width="640" height="1387" loading="lazy"
-                 alt="A workout: bench press, set one logged at 80 kg for 8 reps with last time's numbers under it, set two current, a rest timer at 1:30 and the Log set button at the bottom."
-                 data-sv-alt="Ett pass: bänkpress, set ett loggat med 80 kg och 8 reps och förra gångens siffror under, set två aktuellt, vilotimer på 1:30 och knappen Logga set längst ner.">
+            <img class="light" src="/site/screens/home-light.webp" width="411" height="891" loading="lazy"
+                 alt="Home: this week's volume as a large number, three workouts and the days as bars, then Start workout and three routines, each with a small body of the muscles it trains."
+                 data-sv-alt="Hem: veckans volym som ett stort tal, tre pass och dagarna som staplar, sedan Starta pass och tre rutiner, var och en med en liten kropp med musklerna den tränar.">
+            <img class="dark" src="/site/screens/home-dark.webp" width="411" height="891" loading="lazy"
+                 alt="Home: this week's volume as a large number, three workouts and the days as bars, then Start workout and three routines, each with a small body of the muscles it trains."
+                 data-sv-alt="Hem: veckans volym som ett stort tal, tre pass och dagarna som staplar, sedan Starta pass och tre rutiner, var och en med en liten kropp med musklerna den tränar.">
+            <figcaption data-sv="Hem: veckan hittills, och dina rutiner med musklerna de tränar.">Home: the week so far, and your routines with the muscles they train.</figcaption>
+          </figure>
+          <figure>
+            <img class="light" src="/site/screens/workout-light.webp" width="411" height="891" loading="lazy"
+                 alt="A Push day in progress: bench press with two sets of 82.5 kg × 8 logged and last time under every set, the rest timer counting down, and the Log set button at the bottom."
+                 data-sv-alt="En Push day pågår: bänkpress med två set på 82,5 kg × 8 loggade och förra gången under varje set, vilotimern som räknar ner, och knappen Logga set längst ner.">
+            <img class="dark" src="/site/screens/workout-dark.webp" width="411" height="891" loading="lazy"
+                 alt="A Push day in progress: bench press with two sets of 82.5 kg × 8 logged and last time under every set, the rest timer counting down, and the Log set button at the bottom."
+                 data-sv-alt="En Push day pågår: bänkpress med två set på 82,5 kg × 8 loggade och förra gången under varje set, vilotimern som räknar ner, och knappen Logga set längst ner.">
             <figcaption data-sv="Logga set ligger alltid under tummen, med förra gången under varje set.">Log set is always under your thumb, with last time under every set.</figcaption>
           </figure>
           <figure>
-            <img src="/site/screens/weight.webp" width="640" height="812" loading="lazy"
-                 alt="The weight sheet: 62.5 kg in large numbers above the ruler, minus and plus buttons, and Done."
-                 data-sv-alt="Viktarket: 62,5 kg i stora siffror ovanför linjalen, minus- och plusknappar och Klar.">
-            <figcaption data-sv="Linjalen tar steg om en kilo upp till 30, sedan 2,5.">The ruler moves in steps of one kilo up to 30, then 2.5.</figcaption>
-          </figure>
-          <figure>
-            <img src="/site/screens/summary.webp" width="640" height="1387" loading="lazy"
-                 alt="The summary after a workout: duration, sets and volume, the best set, and a body map with the muscles worked and their share."
-                 data-sv-alt="Sammanfattningen efter ett pass: tid, set och volym, bästa setet, och en kroppskarta med musklerna som tränats och deras andel.">
-            <figcaption data-sv="Efter passet: vad du gjorde och vilka muskler det tog.">After the workout: what you did and which muscles it worked.</figcaption>
+            <img class="light" src="/site/screens/summary-light.webp" width="411" height="891" loading="lazy"
+                 alt="The summary after the workout: a body map with the muscles worked shaded by how much, and each muscle's share as a bar."
+                 data-sv-alt="Sammanfattningen efter passet: en kroppskarta där musklerna som tränats är skuggade efter hur mycket, och varje muskels andel som en stapel.">
+            <img class="dark" src="/site/screens/summary-dark.webp" width="411" height="891" loading="lazy"
+                 alt="The summary after the workout: a body map with the muscles worked shaded by how much, and each muscle's share as a bar."
+                 data-sv-alt="Sammanfattningen efter passet: en kroppskarta där musklerna som tränats är skuggade efter hur mycket, och varje muskels andel som en stapel.">
+            <figcaption data-sv="Efter passet: vilka muskler det tog, och hur mycket.">After the workout: which muscles it worked, and how much.</figcaption>
           </figure>
         </div>
       </section>
@@ -113,7 +129,7 @@
           <!-- no-testers:begin -->
           <li><span class="name">Android</span><span class="state" data-sv="I test på Google Play.">In a test on Google Play.</span></li>
           <!-- no-testers:end -->
-          <li><span class="name">Wear OS</span><span class="state" data-sv="Klar, men väntar på layouter för runda skärmar innan den släpps.">Ready, waiting for layouts for round screens before release.</span></li>
+          <li><span class="name">Wear OS</span><span class="state" data-sv="I test på Google Play, tillsammans med Android-appen.">In a test on Google Play, with the Android app.</span></li>
           <li><span class="name" data-sv="Webb">Web</span><span class="state"><a href="/app/" data-sv="Öppen nu">Open now</a></span></li>
           <li><span class="name">iPhone</span><span class="state" data-sv="På gång.">In the works.</span></li>
         </ul>

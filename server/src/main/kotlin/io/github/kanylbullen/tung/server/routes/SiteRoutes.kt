@@ -56,7 +56,7 @@ fun Route.siteRoutes(config: ServerConfig) {
  */
 private val assetVersion: String by lazy {
     val digest = MessageDigest.getInstance("SHA-256")
-    listOf("site.css", "site.js").forEach { name ->
+    listOf("site.css", "site.js", "theme.js").forEach { name ->
         SiteRoutes::class.java.getResourceAsStream("/site/$name")?.use { digest.update(it.readBytes()) }
     }
     digest.digest().joinToString("") { "%02x".format(it) }.take(12)

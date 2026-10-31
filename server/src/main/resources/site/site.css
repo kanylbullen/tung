@@ -18,10 +18,14 @@
       --accent-text: #F2C230;
       --on-accent: #1A1D21;
       --radius: 12px;
+      --error: #E5736C;
       --measure: 36rem;
     }
+    /* The system's theme, unless the toggle in the header chose one
+       (data-theme on <html>, set by theme.js before the page paints). */
+    :root[data-theme="dark"] { color-scheme: dark; }
     @media (prefers-color-scheme: light) {
-      :root {
+      :root:not([data-theme="dark"]) {
         --background: #F6F6F4;
         --raised: #FFFFFF;
         --border: #E2E1DC;
@@ -29,7 +33,20 @@
         --muted: #5F6368;
         --accent: #B98900;
         --accent-text: #8A6500;
+        --error: #B3261E;
+        color-scheme: light;
       }
+    }
+    :root[data-theme="light"] {
+        --background: #F6F6F4;
+        --raised: #FFFFFF;
+        --border: #E2E1DC;
+        --text: #1A1D21;
+        --muted: #5F6368;
+        --accent: #B98900;
+        --accent-text: #8A6500;
+        --error: #B3261E;
+        color-scheme: light;
     }
     * { box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
@@ -220,8 +237,7 @@
     .test .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
     .test .result { min-height: 1.5em; margin: 0; font-size: 15px; }
     .test .result.ok { color: var(--text); }
-    .test .result.error { color: #E5736C; }
-    @media (prefers-color-scheme: light) { .test .result.error { color: #B3261E; } }
+    .test .result.error { color: var(--error); }
 
     footer {
       margin: 14vh 0 0;
@@ -245,7 +261,8 @@
 /* --- The hero's pre-fill line: where the numbers came from --- */
 .last { margin: 14px 0 0; font-size: 17px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
-/* --- Screens from the app --- */
+/* --- Screens from the app: three whole screens of the same size, in the
+   page's theme (both are in the page; the other one is never shown or loaded) --- */
 .screens { margin: 14vh 0 0; }
 .screens .row {
   display: grid;
@@ -258,9 +275,35 @@
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 20px;
+  aspect-ratio: 411 / 891;
+  border-radius: 28px;
   border: 1px solid var(--border);
-  background: #F6F6F4;
+  background: var(--raised);
+  box-shadow: 0 1px 0 var(--border), 0 18px 40px -24px rgba(0, 0, 0, 0.45);
+}
+.screens img.dark { display: none; }
+:root[data-theme="dark"] .screens img.dark { display: block; }
+:root[data-theme="dark"] .screens img.light { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .screens img.dark { display: block; }
+  :root:not([data-theme="light"]) .screens img.light { display: none; }
+}
+
+/* --- The theme toggle: a moon in the light theme, a sun in the dark --- */
+.top-right { display: flex; align-items: center; gap: 12px; }
+.theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; padding: 0;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: var(--raised); color: var(--text); cursor: pointer;
+}
+.theme-toggle svg { width: 20px; height: 20px; }
+.theme-toggle .sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .sun { display: block; }
+:root[data-theme="dark"] .theme-toggle .moon { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .sun { display: block; }
+  :root:not([data-theme="light"]) .theme-toggle .moon { display: none; }
 }
 .screens figcaption { margin: 12px 0 0; font-size: 15px; color: var(--muted); max-width: 22rem; }
 
@@ -304,7 +347,9 @@
 footer .lang { margin-left: auto; }
 
 @media (max-width: 640px) {
-  .screens .row { grid-template-columns: 1fr 1fr; }
-  .screens figure:last-child { display: none; }
+  /* Three across stays, as a strip that scrolls sideways, one screen and a bit at a time. */
+  .screens .row { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -24px; padding: 0 24px 8px; scrollbar-width: none; }
+  .screens .row::-webkit-scrollbar { display: none; }
+  .screens figure { flex: 0 0 72%; scroll-snap-align: center; }
   .platforms li { grid-template-columns: 1fr; gap: 2px; }
 }
