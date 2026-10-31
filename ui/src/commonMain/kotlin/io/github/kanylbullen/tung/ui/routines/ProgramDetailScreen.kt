@@ -47,21 +47,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.ISO_WEEKDAYS
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.data.RoutineSummaryRow
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
-import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
@@ -72,11 +66,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
-    val container = appContainer()
-    val vm: ProgramDetailViewModel = viewModel(
-        factory = factoryOf { ProgramDetailViewModel(programId, container.programRepository, container.routineRepository, container.commands) }
-    )
+fun ProgramDetailScreen(vm: ProgramDetailViewModel, onBack: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -116,12 +106,12 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
                                 )
                                 if (state.isActive) {
                                     DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.program_deactivate)) },
+                                        text = { Text(stringResource(Res.string.program_deactivate)) },
                                         onClick = { menuOpen = false; vm.deactivate() },
                                     )
                                 }
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.program_delete)) },
+                                    text = { Text(stringResource(Res.string.program_delete)) },
                                     onClick = { menuOpen = false; confirmDelete = true },
                                 )
                             }
@@ -135,7 +125,7 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
             if (state.missing && !deleting) {
                 item(key = "missing") {
                     Text(
-                        stringResource(R.string.program_not_found),
+                        stringResource(Res.string.program_not_found),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
@@ -149,7 +139,7 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
                 item(key = "mode") {
                     Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)) {
                         Text(
-                            stringResource(R.string.program_mode_title),
+                            stringResource(Res.string.program_mode_title),
                             style = MaterialTheme.typography.titleMedium,
                             color = Tung.colors.muted,
                         )
@@ -160,7 +150,7 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
                 if (state.days.isEmpty()) {
                     item(key = "empty") {
                         Text(
-                            stringResource(R.string.program_days_empty),
+                            stringResource(Res.string.program_days_empty),
                             style = MaterialTheme.typography.bodyLarge,
                             color = Tung.colors.muted,
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -182,7 +172,7 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
                 }
                 item(key = "add") {
                     SecondaryButton(
-                        text = stringResource(R.string.program_add_day),
+                        text = stringResource(Res.string.program_add_day),
                         onClick = { picking = true },
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     )
@@ -204,10 +194,10 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
 
     if (renaming) {
         RoutineNameDialog(
-            title = stringResource(R.string.program_rename_title),
+            title = stringResource(Res.string.program_rename_title),
             initialName = state.name,
             confirmLabel = stringResource(Res.string.routine_rename),
-            errorText = stringResource(R.string.program_error_name),
+            errorText = stringResource(Res.string.program_error_name),
             onDismiss = { renaming = false },
             onConfirm = { name ->
                 renaming = false
@@ -222,8 +212,8 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
             containerColor = Tung.colors.raised,
             tonalElevation = 0.dp,
             shape = TungCorner,
-            title = { Text(stringResource(R.string.program_delete_title)) },
-            text = { Text(stringResource(R.string.program_delete_body), color = Tung.colors.muted) },
+            title = { Text(stringResource(Res.string.program_delete_title)) },
+            text = { Text(stringResource(Res.string.program_delete_body), color = Tung.colors.muted) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
@@ -247,7 +237,7 @@ fun ProgramDetailScreen(programId: String, onBack: () -> Unit) {
 private fun ProgramStatus(state: ProgramDetailUiState, onActivate: () -> Unit) {
     val details = listOf(
         programModeLabel(state.mode),
-        pluralStringResource(R.plurals.program_day_count, state.days.size, state.days.size),
+        pluralStringResource(Res.plurals.program_day_count, state.days.size, state.days.size),
     ).joinToString(stringResource(Res.string.row_separator))
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 20.dp, end = 16.dp, bottom = 8.dp),
@@ -255,7 +245,7 @@ private fun ProgramStatus(state: ProgramDetailUiState, onActivate: () -> Unit) {
     ) {
         Text(details, style = Tung.numbers.inline, color = Tung.colors.muted, modifier = Modifier.weight(1f))
         if (state.isActive) {
-            Text(stringResource(R.string.program_active), style = MaterialTheme.typography.labelLarge, color = Tung.colors.accentText)
+            Text(stringResource(Res.string.program_active), style = MaterialTheme.typography.labelLarge, color = Tung.colors.accentText)
         } else {
             ActivateButton(name = state.name, onClick = onActivate)
         }
@@ -281,7 +271,7 @@ private fun ProgramDayRow(
                 Text(day.routineName, style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
                 if (mode == ProgramMode.ROTATING) {
                     Text(
-                        stringResource(R.string.program_day_of, number, count),
+                        stringResource(Res.string.program_day_of, number, count),
                         style = Tung.numbers.inline,
                         color = Tung.colors.muted,
                     )
@@ -289,7 +279,7 @@ private fun ProgramDayRow(
             }
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.program_day_menu, day.routineName))
+                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.program_day_menu, day.routineName))
                 }
                 DropdownMenu(
                     expanded = menuOpen,
@@ -308,7 +298,7 @@ private fun ProgramDayRow(
                         onClick = { menuOpen = false; onMove(1) },
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.program_remove_day)) },
+                        text = { Text(stringResource(Res.string.program_remove_day)) },
                         onClick = { menuOpen = false; onRemove() },
                     )
                 }
@@ -330,7 +320,7 @@ private fun WeekdayToggles(routineName: String, selected: Set<Int>, onToggle: (I
     ) {
         ISO_WEEKDAYS.forEach { weekday ->
             val on = weekday in selected
-            val description = stringResource(R.string.program_weekday_description, routineName, weekdayFull(weekday))
+            val description = stringResource(Res.string.program_weekday_description, routineName, weekdayFull(weekday))
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -373,14 +363,14 @@ private fun RoutinePickerSheet(routines: List<RoutineSummaryRow>, onDismiss: () 
             Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp).verticalScroll(rememberScrollState()),
         ) {
             Text(
-                stringResource(R.string.program_pick_routine),
+                stringResource(Res.string.program_pick_routine),
                 style = MaterialTheme.typography.titleMedium,
                 color = Tung.colors.muted,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             if (routines.isEmpty()) {
                 Text(
-                    stringResource(R.string.program_no_routines),
+                    stringResource(Res.string.program_no_routines),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Tung.colors.muted,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),

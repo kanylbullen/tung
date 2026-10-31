@@ -57,7 +57,7 @@ Eight Gradle modules:
 | `core/` | Kotlin Multiplatform (JVM, JS, iOS klibs) | — | Domain rules, commands, sync and watch protocols |
 | `data/` | Kotlin Multiplatform (Android, iOS klibs) | `core` | Room, repositories, the CommandHandler, sync client, settings, rest timer, `TungContainer` |
 | `data-fixtures/` | Android library (tests only) | `core`, `data` | The test doubles of data's seams: `FakeSyncServer`, `MemoryTokenStore`, `FakePushEnvironment`, `FakeHealthConnect` |
-| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); the buttons, `RoutineName`, the labels and `exerciseDisplayName` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
+| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs, and the programs list and one program with theirs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); the buttons, `RoutineName`, the labels and `exerciseDisplayName` and `weekdayName` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
 | `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
 | `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
 | `server/` | Ktor server | `core` | tung-server |
@@ -202,7 +202,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the rest sheet; the input sheet is in `ui/`), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (`RoutinesRoute` and `RoutineDetailRoute` around the `ui/` screens, `defaultRoutineName`; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the rest sheet; the input sheet is in `ui/`), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -409,7 +409,7 @@ Start and is unchanged. `programDayId` is indexed and, like `routineId`, **not**
 key: removing a day or deleting a program never touches history. "Today" is
 `LocalDate.now(container.clock)`: the system clock in the app, a settable
 one (`FlowTestApp.today`) in the flow tests. Programs are reached from a row
-at the top of the Routines tab (`ui/routines/Program*`).
+at the top of the Routines tab (`ui/routines/Program*` in the `ui/` module, built by app's `ProgramsRoute` and `ProgramDetailRoute`; weekday names come from `weekdayName`, `java.time` on Android and `NSDateFormatter` on iOS).
 
 ### Log set and rest timer
 

@@ -23,3 +23,10 @@ actual fun rememberTickHaptic(): () -> Unit {
 }
 
 actual fun localPercent(fraction: Double): String = NumberFormat.getPercentInstance().format(fraction)
+
+actual fun weekdayName(isoWeekday: Int, short: Boolean): String {
+    val locale = java.util.Locale.getDefault()
+    val style = if (short) java.time.format.TextStyle.SHORT else java.time.format.TextStyle.FULL
+    return java.time.DayOfWeek.of(isoWeekday).getDisplayName(style, locale)
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+}
