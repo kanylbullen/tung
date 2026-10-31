@@ -2,7 +2,9 @@ package io.github.kanylbullen.tung.web.i18n
 
 import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.importing.SkipReason
 import io.github.kanylbullen.tung.core.sync.SyncFailure
+import io.github.kanylbullen.tung.web.ai.AiFailure
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 
 /**
@@ -214,6 +216,129 @@ interface Strings {
     val chooseAnother: String
     val chooseDay: String
     val dayGone: String
+
+    // Selecting routines, creating exercises
+    val select: String
+    val selectAll: String
+    val leaveSelection: String
+    fun selectedCount(count: Int): String
+    val deleteSelected: String
+    fun deleteManyTitle(count: Int): String
+    val deleteManyBody: String
+    fun deleteManyDays(count: Int): String
+    val createExercise: String
+    val muscleGroup: String
+    val equipment: String
+
+    // Import
+    val data: String
+    val importJefit: String
+    val importJefitHint: String
+    val importReading: String
+    val importNotRecognised: String
+    val importUnreadable: String
+    val importEmpty: String
+    fun importCounts(workouts: Int, sets: Int, routines: Int): String
+    val reviewTitle: String
+    val reviewHint: String
+    val choose: String
+    val createChoice: String
+    fun decidedCount(decided: Int, total: Int): String
+    fun decidedUse(name: String): String
+    fun decidedCreate(name: String): String
+    val decidedSkip: String
+    val change: String
+    fun usedInWorkouts(count: Int): String
+    val onlyInRoutines: String
+    val createRemaining: String
+    val skipRemaining: String
+    fun setTypeNote(type: String, count: Int): String
+    val skippedTitle: String
+    fun skipReason(reason: SkipReason, count: Int): String
+    val importAction: String
+    val decideFirst: String
+    val importing: String
+    val importDoneTitle: String
+    fun importDoneAdded(what: String): String
+    fun importDoneAlready(count: Int): String
+    val undoImport: String
+    fun importUndone(count: Int): String
+    fun lastImport(workouts: Int, date: String): String
+    val undoLastImport: String
+    fun undoImportTitle(count: Int): String
+    val undoImportBody: String
+    fun deleteImportRoutines(count: Int): String
+    val deleteImportRoutinesBody: String
+
+    // Assistant
+    val assistant: String
+    val aiEntryHint: String
+    val aiIntro: String
+    val askProgram: String
+    val askNext: String
+    val askPlateaus: String
+    val aiNotConfigured: String
+    val openSettings: String
+    val aiAsking: String
+    val showWhatIsSent: String
+    val payloadTitle: String
+    val send: String
+    val setFromLastTime: String
+    val programDefaultName: String
+    val saveProgram: String
+    val saveProgramHint: String
+    val startThisWorkout: String
+    val saveFailed: String
+    val plateausNone: String
+    val aiSettingsIntro: String
+    val providerOpenAi: String
+    val providerOpenAiHint: String
+    val providerAnthropic: String
+    val providerAnthropicHint: String
+    val baseUrl: String
+    val baseUrlHint: String
+    val model: String
+    val modelHint: String
+    val apiKey: String
+    val apiKeyHint: String
+    val keySaved: String
+    val removeKey: String
+    val keyRemoved: String
+    val jsonMode: String
+    val jsonModeHint: String
+    val test: String
+    val testing: String
+    val saved: String
+    val testOk: String
+    val errorAiUrl: String
+    val errorAiUrlHttps: String
+    val errorModel: String
+    fun payloadIntro(host: String): String
+    fun aiDropped(count: Int): String
+    fun targetSets(count: Int): String
+    fun plateauSince(date: String): String
+    fun aiFailure(failure: AiFailure): String
+    fun providerSays(message: String): String
+
+    // Voice
+    val voiceMic: String
+    val voiceStop: String
+    val voiceListening: String
+    fun voiceValues(weight: String, reps: Int): String
+    fun voiceLogged(weight: String, reps: Int): String
+    fun voiceNext(name: String, set: Int): String
+    fun voiceSetAdded(name: String): String
+    val voiceRest: String
+    fun voiceRestOff(name: String): String
+    val voiceNoSet: String
+    val voiceNoPrevious: String
+    val voiceNoNext: String
+    fun voiceNotUnderstood(text: String): String
+    val voiceHeardNothing: String
+    val voicePermission: String
+    val voiceNetwork: String
+    val voiceFailed: String
+    val askAssistant: String
     fun weeksSummary(volumes: String): String
 
     // Settings
@@ -270,7 +395,6 @@ interface Strings {
     fun removeScreenshot(number: Int): String
     fun openScreenshot(number: Int): String
     fun showScreenshots(count: Int): String
-    val send: String
     val sending: String
     val feedbackSent: String
     val feedbackTooLarge: String
@@ -565,6 +689,164 @@ object English : Strings {
     override val chooseAnother = "Choose another"
     override val chooseDay = "Choose a day"
     override val dayGone = "That day is no longer in the program."
+
+    override val select = "Select"
+    override val selectAll = "Select all"
+    override val leaveSelection = "Leave selection"
+    override fun selectedCount(count: Int) = "$count selected"
+    override val deleteSelected = "Delete selected routines"
+    override fun deleteManyTitle(count: Int) = if (count == 1) "Delete 1 routine?" else "Delete $count routines?"
+    override val deleteManyBody = "Your workout history is kept."
+    override fun deleteManyDays(count: Int) =
+        if (count == 1) "1 program day that uses them goes too." else "$count program days that use them go too."
+    override val createExercise = "Create exercise"
+    override val muscleGroup = "Muscle group"
+    override val equipment = "Equipment"
+
+    override val data = "Data"
+    override val importJefit = "Import from Jefit"
+    override val importJefitHint = "Export your data on jefit.com (My Jefit → Settings → Data Controls → Export Data), then choose the CSV file here."
+    override val importReading = "Reading the file…"
+    override val importNotRecognised = "This is not a Jefit export. Choose the CSV file from Jefit's Export Data."
+    override val importUnreadable = "The file could not be read. Choose it again."
+    override val importEmpty = "The file has no workouts or routines to import."
+    override fun importCounts(workouts: Int, sets: Int, routines: Int) = listOf(
+        if (workouts == 1) "1 workout" else "$workouts workouts",
+        if (sets == 1) "1 set" else "$sets sets",
+        if (routines == 1) "1 routine" else "$routines routines",
+    ).joinToString(" · ")
+    override val reviewTitle = "Exercises to check"
+    override val reviewHint = "These names have no exact match in Tung. Choose an exercise, create one with the Jefit name, or skip it."
+    override val choose = "Choose"
+    override val createChoice = "Create"
+    override fun decidedCount(decided: Int, total: Int) = "$decided of $total decided"
+    override fun decidedUse(name: String) = "✓ $name"
+    override fun decidedCreate(name: String) = "✓ Create “$name”"
+    override val decidedSkip = "✓ Skipped"
+    override val change = "Change"
+    override fun usedInWorkouts(count: Int) = if (count == 1) "In 1 workout" else "In $count workouts"
+    override val onlyInRoutines = "Only in routines"
+    override val createRemaining = "Create all remaining"
+    override val skipRemaining = "Skip all remaining"
+    override fun setTypeNote(type: String, count: Int) = when (type) {
+        "warm-up" -> if (count == 1) "1 warm-up set imported as a normal set" else "$count warm-up sets imported as normal sets"
+        "drop" -> if (count == 1) "1 drop set imported as a normal set" else "$count drop sets imported as normal sets"
+        "failure" -> if (count == 1) "1 failure set imported as a normal set" else "$count failure sets imported as normal sets"
+        else -> if (count == 1) "1 $type set imported as a normal set" else "$count $type sets imported as normal sets"
+    }
+    override val skippedTitle = "Not imported"
+    override fun skipReason(reason: SkipReason, count: Int): String {
+        val (one, many) = when (reason) {
+            SkipReason.SESSION_WITHOUT_EXERCISES -> "session without exercises" to "sessions without exercises"
+            SkipReason.SESSION_WITHOUT_TIME -> "session without a time" to "sessions without a time"
+            SkipReason.CARDIO -> "cardio exercise" to "cardio exercises"
+            SkipReason.CARDIO_LOG -> "cardio log entry" to "cardio log entries"
+            SkipReason.LOG_WITHOUT_SETS -> "exercise without logged sets" to "exercises without logged sets"
+            SkipReason.SET_WITHOUT_REPS -> "set without reps" to "sets without reps"
+            SkipReason.SET_UNREADABLE -> "set that could not be read" to "sets that could not be read"
+            SkipReason.SET_WITHOUT_LOG -> "set without its exercise" to "sets without their exercise"
+            SkipReason.STRAY_HEADER -> "repeated header row" to "repeated header rows"
+            SkipReason.ROUTINE_WITHOUT_EXERCISES -> "routine day without exercises" to "routine days without exercises"
+            SkipReason.DUPLICATE_ROUTINE -> "duplicate routine day" to "duplicate routine days"
+        }
+        return "$count " + if (count == 1) one else many
+    }
+    override val importAction = "Import"
+    override val decideFirst = "Decide on each exercise above to import."
+    override val importing = "Importing…"
+    override val importDoneTitle = "Import finished"
+    override fun importDoneAdded(what: String) = "Added $what"
+    override fun importDoneAlready(count: Int) =
+        if (count == 1) "1 workout was already here and was left as it is" else "$count workouts were already here and were left as they are"
+    override val undoImport = "Undo import"
+    override fun importUndone(count: Int) = if (count == 1) "Import undone: 1 workout removed" else "Import undone: $count workouts removed"
+    override fun lastImport(workouts: Int, date: String) = if (workouts == 1) "Last import: 1 workout, $date" else "Last import: $workouts workouts, $date"
+    override val undoLastImport = "Undo last import"
+    override fun undoImportTitle(count: Int) = if (count == 1) "Remove 1 imported workout?" else "Remove $count imported workouts?"
+    override val undoImportBody = "Workouts you logged in Tung are kept."
+    override fun deleteImportRoutines(count: Int) = "Delete routines from the last import ($count)"
+    override val deleteImportRoutinesBody = "The import's workouts are kept."
+
+    override val assistant = "Assistant"
+    override val aiEntryHint = "A program, today's workout or where you are stuck, from a model with your own key"
+    override val aiIntro = "Each button sends your training history, routines and programs to the provider set up in Settings, with your own key, and only when you tap it. Never your email, name or device."
+    override val askProgram = "Suggest a program"
+    override val askNext = "Next workout"
+    override val askPlateaus = "Where have I got stuck"
+    override val aiNotConfigured = "Set up the assistant first: a provider, a model and your key, in Settings."
+    override val openSettings = "Open settings"
+    override val aiAsking = "Waiting for the answer…"
+    override val showWhatIsSent = "Show what is sent"
+    override val payloadTitle = "What is sent"
+    override val send = "Send"
+    override val setFromLastTime = "as last time"
+    override val programDefaultName = "Suggested program"
+    override val saveProgram = "Save program"
+    override val saveProgramHint = "Saves the routines, and a rotating program with them in this order. Activate it under Programs."
+    override val startThisWorkout = "Start this workout"
+    override val saveFailed = "Could not save the suggestion. Try again."
+    override val plateausNone = "No plateaus found: what you train regularly is still moving."
+    override val aiSettingsIntro = "Use your own key with an OpenAI-compatible API (OpenAI, Ollama, LM Studio and others) or with Anthropic. Calls go straight from this browser to the provider, only when you tap; Tung's server never sees the key."
+    override val providerOpenAi = "OpenAI-compatible"
+    override val providerOpenAiHint = "OpenAI, or a local server such as Ollama"
+    override val providerAnthropic = "Anthropic"
+    override val providerAnthropicHint = "The Claude models"
+    override val baseUrl = "Base URL"
+    override val baseUrlHint = "Empty for the provider's own. http only on your own network."
+    override val model = "Model"
+    override val modelHint = "The model's name at your provider"
+    override val apiKey = "API key"
+    override val apiKeyHint = "Kept in this browser only. Anyone who can use this browser profile can read it, so do not save it on a shared computer. A local server may need none."
+    override val keySaved = "A key is saved. Type a new one to replace it."
+    override val removeKey = "Remove key"
+    override val keyRemoved = "The key is removed."
+    override val jsonMode = "Ask for JSON mode"
+    override val jsonModeHint = "Turn off if your server refuses response_format."
+    override val test = "Test"
+    override val testing = "Testing…"
+    override val saved = "Saved."
+    override val testOk = "The provider answered. The assistant is ready."
+    override val errorAiUrl = "Enter a base URL such as https://api.openai.com/v1, or leave it empty."
+    override val errorAiUrlHttps = "Use https://. Plain http only works for localhost and addresses on your own network."
+    override val errorModel = "Enter the model's name."
+    override fun payloadIntro(host: String) = "This is the request exactly as it goes to $host. Your key goes in a header and is not shown."
+    override fun aiDropped(count: Int) = if (count == 1) "1 suggestion could not be used and was left out." else "$count suggestions could not be used and were left out."
+    override fun targetSets(count: Int) = if (count == 1) "1 set" else "$count sets"
+    override fun plateauSince(date: String) = "Since $date"
+    override fun providerSays(message: String) = "The provider says: $message"
+
+    override val voiceMic = "Say weight and reps"
+    override val voiceStop = "Stop listening"
+    override val voiceListening = "Listening…"
+    override fun voiceValues(weight: String, reps: Int) = "$weight × $reps"
+    override fun voiceLogged(weight: String, reps: Int) = "$weight × $reps logged"
+    override fun voiceNext(name: String, set: Int) = "Next: $name, set $set"
+    override fun voiceSetAdded(name: String) = "Set added to $name"
+    override val voiceRest = "Rest started"
+    override fun voiceRestOff(name: String) = "The rest timer is off for $name"
+    override val voiceNoSet = "There is no set to log"
+    override val voiceNoPrevious = "There is no earlier set to copy"
+    override val voiceNoNext = "There is no other set to move to"
+    override fun voiceNotUnderstood(text: String) = "Didn't catch that: '$text'"
+    override val voiceHeardNothing = "Didn't hear anything"
+    override val voicePermission = "Tung needs the microphone to hear you. Allow it for this site in the browser."
+    override val voiceNetwork = "Speech recognition in this browser needs a network"
+    override val voiceFailed = "Speech recognition failed. Try again."
+    override val askAssistant = "Ask the assistant"
+    override fun aiFailure(failure: AiFailure): String = when (failure) {
+        AiFailure.NOT_CONFIGURED -> aiNotConfigured
+        AiFailure.NETWORK -> "Could not reach the provider. Check the address and your connection; a local server must allow this page's origin."
+        AiFailure.UNAUTHORIZED -> "The provider refused the key. Check it in Settings."
+        AiFailure.NOT_FOUND -> "Nothing answers at that address, or the model does not exist. Check both in Settings."
+        AiFailure.RATE_LIMITED -> "The provider's limit is reached. Wait a while, or check your quota."
+        AiFailure.REJECTED -> "The provider refused the request."
+        AiFailure.SERVER -> "The provider had a problem. Try again in a while."
+        AiFailure.NO_ANSWER -> "The provider answered with nothing. Try again."
+        AiFailure.OUT_OF_ROOM -> "The model ran out of room before answering. Try again, or use a model that thinks less."
+        AiFailure.DECLINED -> "The model declined this request."
+        AiFailure.UNREADABLE -> "The answer was not in the form Tung asked for. Try again, or use a stronger model."
+        AiFailure.NOTHING_USABLE -> "The answer named no exercise Tung knows, so there is nothing to show. Try again."
+    }
     override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
     override val settings = "Settings"
     override val training = "Training"
@@ -629,7 +911,6 @@ object English : Strings {
     override fun removeScreenshot(number: Int): String = "Remove screenshot $number"
     override fun openScreenshot(number: Int): String = "Open screenshot $number"
     override fun showScreenshots(count: Int): String = if (count == 1) "Show screenshot" else "Show $count screenshots"
-    override val send = "Send"
     override val sending = "Sending…"
     override val feedbackSent = "Thanks. Your feedback has reached us."
     override val feedbackTooLarge = "The screenshots are too large. Remove one and try again."
@@ -932,6 +1213,164 @@ object Swedish : Strings {
     override val chooseAnother = "Välj en annan"
     override val chooseDay = "Välj en dag"
     override val dayGone = "Den dagen finns inte längre i programmet."
+
+    override val select = "Välj"
+    override val selectAll = "Välj alla"
+    override val leaveSelection = "Avsluta urval"
+    override fun selectedCount(count: Int) = if (count == 1) "1 vald" else "$count valda"
+    override val deleteSelected = "Radera valda rutiner"
+    override fun deleteManyTitle(count: Int) = if (count == 1) "Radera 1 rutin?" else "Radera $count rutiner?"
+    override val deleteManyBody = "Din träningshistorik finns kvar."
+    override fun deleteManyDays(count: Int) =
+        if (count == 1) "1 programdag som använder dem försvinner också." else "$count programdagar som använder dem försvinner också."
+    override val createExercise = "Skapa övning"
+    override val muscleGroup = "Muskelgrupp"
+    override val equipment = "Utrustning"
+
+    override val data = "Data"
+    override val importJefit = "Importera från Jefit"
+    override val importJefitHint = "Exportera dina data på jefit.com (My Jefit → Settings → Data Controls → Export Data) och välj sedan CSV-filen här."
+    override val importReading = "Läser filen …"
+    override val importNotRecognised = "Det här är ingen Jefit-export. Välj CSV-filen från Jefits Export Data."
+    override val importUnreadable = "Filen gick inte att läsa. Välj den igen."
+    override val importEmpty = "Filen har inga pass eller rutiner att importera."
+    override fun importCounts(workouts: Int, sets: Int, routines: Int) = listOf(
+        "$workouts pass",
+        "$sets set",
+        if (routines == 1) "1 rutin" else "$routines rutiner",
+    ).joinToString(" · ")
+    override val reviewTitle = "Övningar att kontrollera"
+    override val reviewHint = "De här namnen har ingen exakt motsvarighet i Tung. Välj en övning, skapa en med namnet från Jefit eller hoppa över den."
+    override val choose = "Välj"
+    override val createChoice = "Skapa"
+    override fun decidedCount(decided: Int, total: Int) = "$decided av $total bestämda"
+    override fun decidedUse(name: String) = "✓ $name"
+    override fun decidedCreate(name: String) = "✓ Skapa ”$name”"
+    override val decidedSkip = "✓ Hoppas över"
+    override val change = "Ändra"
+    override fun usedInWorkouts(count: Int) = "I $count pass"
+    override val onlyInRoutines = "Bara i rutiner"
+    override val createRemaining = "Skapa alla återstående"
+    override val skipRemaining = "Hoppa över alla återstående"
+    override fun setTypeNote(type: String, count: Int) = when (type) {
+        "warm-up" -> if (count == 1) "1 uppvärmningsset importerat som vanligt set" else "$count uppvärmningsset importerade som vanliga set"
+        "drop" -> if (count == 1) "1 dropset importerat som vanligt set" else "$count dropset importerade som vanliga set"
+        "failure" -> if (count == 1) "1 set till utmattning importerat som vanligt set" else "$count set till utmattning importerade som vanliga set"
+        else -> if (count == 1) "1 $type-set importerat som vanligt set" else "$count $type-set importerade som vanliga set"
+    }
+    override val skippedTitle = "Importeras inte"
+    override fun skipReason(reason: SkipReason, count: Int): String {
+        val (one, many) = when (reason) {
+            SkipReason.SESSION_WITHOUT_EXERCISES -> "pass utan övningar" to "pass utan övningar"
+            SkipReason.SESSION_WITHOUT_TIME -> "pass utan tid" to "pass utan tid"
+            SkipReason.CARDIO -> "konditionsövning" to "konditionsövningar"
+            SkipReason.CARDIO_LOG -> "rad i konditionsloggen" to "rader i konditionsloggen"
+            SkipReason.LOG_WITHOUT_SETS -> "övning utan loggade set" to "övningar utan loggade set"
+            SkipReason.SET_WITHOUT_REPS -> "set utan repetitioner" to "set utan repetitioner"
+            SkipReason.SET_UNREADABLE -> "set som inte gick att läsa" to "set som inte gick att läsa"
+            SkipReason.SET_WITHOUT_LOG -> "set utan sin övning" to "set utan sin övning"
+            SkipReason.STRAY_HEADER -> "upprepad rubrikrad" to "upprepade rubrikrader"
+            SkipReason.ROUTINE_WITHOUT_EXERCISES -> "rutindag utan övningar" to "rutindagar utan övningar"
+            SkipReason.DUPLICATE_ROUTINE -> "dubblerad rutindag" to "dubblerade rutindagar"
+        }
+        return "$count " + if (count == 1) one else many
+    }
+    override val importAction = "Importera"
+    override val decideFirst = "Bestäm dig för varje övning ovan för att importera."
+    override val importing = "Importerar …"
+    override val importDoneTitle = "Importen är klar"
+    override fun importDoneAdded(what: String) = "Tillagt: $what"
+    override fun importDoneAlready(count: Int) =
+        if (count == 1) "1 pass fanns redan och lämnades som det var" else "$count pass fanns redan och lämnades som de var"
+    override val undoImport = "Ångra importen"
+    override fun importUndone(count: Int) = if (count == 1) "Importen ångrad: 1 pass borttaget" else "Importen ångrad: $count pass borttagna"
+    override fun lastImport(workouts: Int, date: String) = "Senaste importen: $workouts pass, $date"
+    override val undoLastImport = "Ångra senaste importen"
+    override fun undoImportTitle(count: Int) = if (count == 1) "Ta bort 1 importerat pass?" else "Ta bort $count importerade pass?"
+    override val undoImportBody = "Pass du loggat i Tung behålls."
+    override fun deleteImportRoutines(count: Int) = "Radera rutiner från senaste importen ($count)"
+    override val deleteImportRoutinesBody = "Importens pass finns kvar."
+
+    override val assistant = "Assistent"
+    override val aiEntryHint = "Ett program, dagens pass eller var du har kört fast, från en modell med din egen nyckel"
+    override val aiIntro = "Varje knapp skickar din träningshistorik, dina rutiner och program till leverantören du ställt in under Inställningar, med din egen nyckel, och bara när du trycker. Aldrig din e-post, ditt namn eller din enhet."
+    override val askProgram = "Föreslå ett program"
+    override val askNext = "Nästa pass"
+    override val askPlateaus = "Var har jag kört fast"
+    override val aiNotConfigured = "Ställ in assistenten först: en leverantör, en modell och din nyckel, under Inställningar."
+    override val openSettings = "Öppna inställningar"
+    override val aiAsking = "Väntar på svaret…"
+    override val showWhatIsSent = "Visa vad som skickas"
+    override val payloadTitle = "Det här skickas"
+    override val send = "Skicka"
+    override val setFromLastTime = "som förra gången"
+    override val programDefaultName = "Föreslaget program"
+    override val saveProgram = "Spara programmet"
+    override val saveProgramHint = "Sparar rutinerna, och ett roterande program med dem i den här ordningen. Aktivera det under Program."
+    override val startThisWorkout = "Starta det här passet"
+    override val saveFailed = "Förslaget gick inte att spara. Försök igen."
+    override val plateausNone = "Inga platåer: det du tränar regelbundet går fortfarande framåt."
+    override val aiSettingsIntro = "Använd din egen nyckel med ett OpenAI-kompatibelt API (OpenAI, Ollama, LM Studio med flera) eller med Anthropic. Anropen går direkt från webbläsaren till leverantören, bara när du trycker; Tungs server ser aldrig nyckeln."
+    override val providerOpenAi = "OpenAI-kompatibel"
+    override val providerOpenAiHint = "OpenAI, eller en lokal server som Ollama"
+    override val providerAnthropic = "Anthropic"
+    override val providerAnthropicHint = "Claude-modellerna"
+    override val baseUrl = "Bas-URL"
+    override val baseUrlHint = "Tom för leverantörens egen. http bara på ditt eget nätverk."
+    override val model = "Modell"
+    override val modelHint = "Modellens namn hos din leverantör"
+    override val apiKey = "API-nyckel"
+    override val apiKeyHint = "Sparas bara i den här webbläsaren. Den som kan använda webbläsarprofilen kan läsa den, så spara den inte på en delad dator. En lokal server behöver kanske ingen."
+    override val keySaved = "En nyckel är sparad. Skriv en ny för att byta."
+    override val removeKey = "Ta bort nyckeln"
+    override val keyRemoved = "Nyckeln är borttagen."
+    override val jsonMode = "Be om JSON-läge"
+    override val jsonModeHint = "Stäng av om din server inte godtar response_format."
+    override val test = "Testa"
+    override val testing = "Testar…"
+    override val saved = "Sparat."
+    override val testOk = "Leverantören svarade. Assistenten är redo."
+    override val errorAiUrl = "Ange en bas-URL som https://api.openai.com/v1, eller lämna fältet tomt."
+    override val errorAiUrlHttps = "Använd https://. Vanlig http fungerar bara för localhost och adresser på ditt eget nätverk."
+    override val errorModel = "Ange modellens namn."
+    override fun payloadIntro(host: String) = "Så här ser förfrågan ut, exakt som den går till $host. Din nyckel skickas i en rubrik och visas inte."
+    override fun aiDropped(count: Int) = "$count förslag gick inte att använda och togs bort."
+    override fun targetSets(count: Int) = "$count set"
+    override fun plateauSince(date: String) = "Sedan $date"
+    override fun providerSays(message: String) = "Leverantören säger: $message"
+
+    override val voiceMic = "Säg vikt och reps"
+    override val voiceStop = "Sluta lyssna"
+    override val voiceListening = "Lyssnar…"
+    override fun voiceValues(weight: String, reps: Int) = "$weight × $reps"
+    override fun voiceLogged(weight: String, reps: Int) = "$weight × $reps loggat"
+    override fun voiceNext(name: String, set: Int) = "Nästa: $name, set $set"
+    override fun voiceSetAdded(name: String) = "Set tillagt i $name"
+    override val voiceRest = "Vilan har startat"
+    override fun voiceRestOff(name: String) = "Vilotimern är av för $name"
+    override val voiceNoSet = "Det finns inget set att logga"
+    override val voiceNoPrevious = "Det finns inget tidigare set att kopiera"
+    override val voiceNoNext = "Det finns inget annat set att gå till"
+    override fun voiceNotUnderstood(text: String) = "Uppfattade inte: ”$text”"
+    override val voiceHeardNothing = "Hörde ingenting"
+    override val voicePermission = "Tung behöver mikrofonen för att höra dig. Tillåt den för den här sidan i webbläsaren."
+    override val voiceNetwork = "Taligenkänningen i den här webbläsaren behöver nätverk"
+    override val voiceFailed = "Taligenkänningen misslyckades. Försök igen."
+    override val askAssistant = "Fråga assistenten"
+    override fun aiFailure(failure: AiFailure): String = when (failure) {
+        AiFailure.NOT_CONFIGURED -> aiNotConfigured
+        AiFailure.NETWORK -> "Kunde inte nå leverantören. Kontrollera adressen och din anslutning; en lokal server måste tillåta den här sidans ursprung."
+        AiFailure.UNAUTHORIZED -> "Leverantören godtog inte nyckeln. Kontrollera den under Inställningar."
+        AiFailure.NOT_FOUND -> "Inget svarar på den adressen, eller så finns inte modellen. Kontrollera båda under Inställningar."
+        AiFailure.RATE_LIMITED -> "Leverantörens gräns är nådd. Vänta en stund, eller kontrollera din kvot."
+        AiFailure.REJECTED -> "Leverantören avvisade förfrågan."
+        AiFailure.SERVER -> "Leverantören fick problem. Försök igen om en stund."
+        AiFailure.NO_ANSWER -> "Leverantören svarade utan innehåll. Försök igen."
+        AiFailure.OUT_OF_ROOM -> "Modellen fick slut på utrymme innan den hann svara. Försök igen, eller använd en modell som tänker mindre."
+        AiFailure.DECLINED -> "Modellen avböjde den här förfrågan."
+        AiFailure.UNREADABLE -> "Svaret var inte i den form Tung bad om. Försök igen, eller använd en starkare modell."
+        AiFailure.NOTHING_USABLE -> "Svaret nämnde ingen övning som Tung känner till, så det finns inget att visa. Försök igen."
+    }
     override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
     override val settings = "Inställningar"
     override val training = "Träning"
@@ -996,7 +1435,6 @@ object Swedish : Strings {
     override fun removeScreenshot(number: Int): String = "Ta bort skärmdump $number"
     override fun openScreenshot(number: Int): String = "Öppna skärmdump $number"
     override fun showScreenshots(count: Int): String = if (count == 1) "Visa skärmdump" else "Visa $count skärmdumpar"
-    override val send = "Skicka"
     override val sending = "Skickar…"
     override val feedbackSent = "Tack. Din feedback har kommit fram."
     override val feedbackTooLarge = "Skärmdumparna är för stora. Ta bort en och försök igen."

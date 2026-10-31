@@ -25,6 +25,13 @@ import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepReps
 import io.github.kanylbullen.tung.core.stepWeight
 import io.github.kanylbullen.tung.core.stickyAction
+import io.github.kanylbullen.tung.core.voice.VoiceLanguage
+import io.github.kanylbullen.tung.core.voice.parseUtterance
+import io.github.kanylbullen.tung.web.voice.Heard
+import io.github.kanylbullen.tung.web.voice.VoiceAction
+import io.github.kanylbullen.tung.web.voice.VoiceProblem
+import io.github.kanylbullen.tung.web.voice.WebSpeech
+import io.github.kanylbullen.tung.web.voice.voiceAction
 import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.workout.ExerciseView
@@ -83,6 +90,10 @@ fun WorkoutScreen(container: WebContainer) {
     var rest by remember { mutableStateOf(RestStore.load()) }
     var restOpen by remember { mutableStateOf(false) }
     var now by remember { mutableStateOf(Date.now().toLong()) }
+    // Voice: listening, what was heard so far, and the echo line for a few seconds.
+    var listening by remember { mutableStateOf(false) }
+    var partial by remember { mutableStateOf("") }
+    var echo by remember { mutableStateOf<VoiceEcho?>(null) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(250)
@@ -189,6 +200,110 @@ fun WorkoutScreen(container: WebContainer) {
 
     // The sticky button, core's rule: Log set on the current set, else Add set.
     val touchedIndex = workout.exercises.indexOfFirst { it.workoutExerciseId == touchedExerciseId }.takeIf { it >= 0 }
+
+    fun onVoice(heard: Heard) {
+        val text = (heard as? Heard.Text)?.text
+        if (text == null) {
+            echo = VoiceEcho(
+                when (heard) {
+                    Heard.NotAllowed -> strings.voicePermission
+                    Heard.Network -> strings.voiceNetwork
+                    Heard.Failed -> strings.voiceFailed
+                    else -> strings.voiceHeardNothing
+                },
+            )
+            return
+        }
+        val current = currentSet(workout.completed, selectedSetId?.let(workout::indexOf), touchedIndex)
+        val action = voiceAction(parseUtterance(text, VoiceLanguage.of(strings.tag)), workout, current, touchedIndex) {
+            it.restSeconds ?: container.preferences.restSeconds.value
+        }
+        fun weight(kg: Double) = weightText(kg, container.locale)
+        echo = when (action) {
+            is VoiceAction.Apply -> {
+                touchedExerciseId = action.exercise.workoutExerciseId
+                scope.launch {
+                    action.weightKg?.let { container.run(Command.SetWeight(action.set.id, it, false)) }
+                    action.reps?.let { container.run(Command.SetReps(action.set.id, it, false)) }
+                    when {
+                        action.log -> {
+                            selectedSetId = null
+                            if (container.run(Command.LogSet(workout.id, action.set.id)) is CommandResult.Done) startRest(action.exercise)
+                        }
+                        action.askForReps -> editing = EditTarget(action.set.id, Field.REPS)
+                    }
+                }
+                val result = action.result
+                VoiceEcho(if (action.log) strings.voiceLogged(weight(result.weightKg), result.reps) else strings.voiceValues(weight(result.weightKg), result.reps))
+            }
+            is VoiceAction.Select -> {
+                selectedSetId = action.set.id
+                VoiceEcho(strings.voiceNext(action.exercise.name, action.set.number))
+            }
+            is VoiceAction.AddSet -> {
+                touchedExerciseId = action.exercise.workoutExerciseId
+                selectedSetId = null
+                scope.launch { container.run(Command.AddSet(action.exercise.workoutExerciseId)) }
+                VoiceEcho(strings.voiceSetAdded(action.exercise.name))
+            }
+            is VoiceAction.Rest -> {
+                startRest(action.exercise)
+                VoiceEcho(strings.voiceRest)
+            }
+            VoiceAction.Finish -> {
+                confirming = Confirm.FINISH
+                null
+            }
+            is VoiceAction.Problem -> VoiceEcho(
+                when (action.problem) {
+                    VoiceProblem.NO_CURRENT_SET -> strings.voiceNoSet
+                    VoiceProblem.NO_PREVIOUS_SET -> strings.voiceNoPrevious
+                    VoiceProblem.NO_NEXT_SET -> strings.voiceNoNext
+                    VoiceProblem.REST_OFF -> strings.voiceRestOff(action.exercise?.name ?: "")
+                },
+            )
+            is VoiceAction.NotUnderstood -> VoiceEcho(
+                strings.voiceNotUnderstood(action.text),
+                askAssistant = action.text.takeIf { container.ai.settings.config.value.configured },
+            )
+        }
+    }
+
+    // What was understood, for a few seconds; a sentence the grammar does not
+    // know offers the assistant for a little longer, as on the phone.
+    LaunchedEffect(echo) {
+        val shown = echo ?: return@LaunchedEffect
+        delay(if (shown.askAssistant != null) 8_000 else 3_000)
+        echo = null
+    }
+    (if (listening) VoiceEcho(partial.ifEmpty { strings.voiceListening }) else echo)?.let { line ->
+        Div({ classes("voice-echo"); attr("role", "status") }) {
+            Span { Text(line.text) }
+            line.askAssistant?.let { text ->
+                A(href = assistantAskHash(text), attrs = { classes("text-button") }) { Text(strings.askAssistant) }
+            }
+        }
+    }
+
+    Div({ classes("sticky-bar") }) {
+    if (WebSpeech.available) {
+        Button({
+            classes("mic")
+            if (listening) classes("on")
+            attr("aria-label", if (listening) strings.voiceStop else strings.voiceMic)
+            attr("aria-pressed", listening.toString())
+            onClick {
+                if (listening) return@onClick
+                listening = true
+                partial = ""
+                scope.launch {
+                    val heard = WebSpeech.listenOnce(strings.tag) { partial = it }
+                    listening = false
+                    onVoice(heard)
+                }
+            }
+        }) { Span({ classes("mic-glyph"); attr("aria-hidden", "true") }) }
+    }
     when (val action = stickyAction(workout.completed, selectedSetId?.let(workout::indexOf), touchedIndex)) {
         is StickyAction.LogSet -> {
             val exercise = workout.exercises[action.at.exercise]
@@ -223,6 +338,7 @@ fun WorkoutScreen(container: WebContainer) {
             }) { Text(strings.addSetSticky(exercise.name, values)) }
         }
         null -> Unit
+    }
     }
 
     editing?.let { target ->
@@ -501,6 +617,7 @@ fun Picker(container: WebContainer, onClose: () -> Unit, onPick: (String) -> Uni
     var query by remember { mutableStateOf("") }
     val order = remember { browseNameOrder(container.locale) }
     val available = container.preferences.equipment.collectAsState().value
+    var creating by remember { mutableStateOf(false) }
     val rows = remember(query, available) {
         pickerRows(container.store, query, { exerciseDisplayName(it, container.catalogueNames, strings.tag) }, order, available)
     }
@@ -530,6 +647,13 @@ fun Picker(container: WebContainer, onClose: () -> Unit, onPick: (String) -> Uni
                 }
             }
         }
+        Button({ classes("secondary", "wide"); onClick { creating = true } }) { Text(strings.createExercise) }
+    }
+    if (creating) {
+        CreateExerciseDialog(container, query.trim(), onCancel = { creating = false }) { id ->
+            creating = false
+            onPick(id)
+        }
     }
 }
 
@@ -546,3 +670,6 @@ fun Dialog(title: String, body: String, confirm: String, cancel: String, onCance
         }
     }
 }
+
+/** One line above the buttons after an utterance; [askAssistant] is the transcript to hand the assistant. */
+private data class VoiceEcho(val text: String, val askAssistant: String? = null)

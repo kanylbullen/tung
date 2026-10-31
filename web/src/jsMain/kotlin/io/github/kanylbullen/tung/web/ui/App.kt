@@ -30,6 +30,8 @@ enum class Route(val hash: String) {
     SUMMARY("#/summary"),
     EXERCISES("#/exercises"),
     PROGRAMS("#/programs"),
+    IMPORT("#/import"),
+    ASSISTANT("#/assistant"),
     ;
 
     companion object {
@@ -72,7 +74,9 @@ private fun SignedIn(container: WebContainer, account: Account) {
     val exerciseRoute = hash.removePrefix("#/exercises/").takeIf { hash.startsWith("#/exercises/") && it.isNotEmpty() }
     val summaryId = hash.removePrefix("#/summary/").takeIf { hash.startsWith("#/summary/") && it.isNotEmpty() }
     val progressId = hash.removePrefix("#/progress/").takeIf { hash.startsWith("#/progress/") && it.isNotEmpty() }
+    val spoken = hash.takeIf { it.startsWith("#/assistant?ask=") }?.removePrefix("#/assistant?ask=")?.let { js("decodeURIComponent")(it) as String }
     when {
+        spoken != null -> AssistantScreen(container, spoken)
         summaryId != null -> SummaryScreen(container, summaryId)
         exerciseRoute != null -> ExercisePageScreen(container, exerciseRoute)
         programId != null -> ProgramScreen(container, programId)
@@ -82,6 +86,8 @@ private fun SignedIn(container: WebContainer, account: Account) {
         route == Route.PROGRESS -> ProgressScreen(container, account)
         route == Route.ADMIN -> AdminScreen(container, account)
         route == Route.FEEDBACK -> FeedbackScreen(container, account)
+        route == Route.IMPORT -> ImportScreen(container)
+        route == Route.ASSISTANT -> AssistantScreen(container)
         route == Route.SETTINGS -> SettingsScreen(container, account)
         detailId != null -> WorkoutDetailScreen(container, detailId)
         routineId != null -> RoutineScreen(container, routineId)
@@ -97,7 +103,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
         else -> route
     }
     // The workout and the summary have their own bottom, as on the phone.
-    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.ADMIN && route != Route.FEEDBACK && route != Route.SUMMARY) BottomBar(tab, container)
+    if (route != Route.WORKOUT && route != Route.SETTINGS && route != Route.ADMIN && route != Route.FEEDBACK && route != Route.SUMMARY && route != Route.IMPORT && route != Route.ASSISTANT && spoken == null) BottomBar(tab, container)
 }
 
 /** Home · History, the phone's bottom bar; the current one in the accent, announced as the current page. */

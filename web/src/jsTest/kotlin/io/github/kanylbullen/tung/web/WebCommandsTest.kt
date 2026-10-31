@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.web
 
 import io.github.kanylbullen.tung.core.CoreExercise
+import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.ExtendedName
 import io.github.kanylbullen.tung.core.extendedExerciseId
@@ -65,6 +67,20 @@ class WebCommandsTest {
         val row = assertNotNull(rig.store.exercises.get(extendedExerciseId("Zercher_Squats")))
         assertEquals("Zercher Squats", row.name)
         assertEquals("legs", row.muscleGroup)
+    }
+
+    @Test
+    fun manyRoutinesGoInOneCommandAndACustomExerciseIsMade() = runTest {
+        val rig = Rig()
+        val a = assertNotNull(rig.run(Command.CreateRoutine("A")).ids[CommandIds.ROUTINE_ID])
+        val b = assertNotNull(rig.run(Command.CreateRoutine("B")).ids[CommandIds.ROUTINE_ID])
+        assertEquals("2", rig.run(Command.DeleteRoutines(listOf(a, b, "gone"))).ids[CommandIds.DELETED_COUNT])
+        assertNull(rig.store.routines.get(a))
+        assertNull(rig.store.routines.get(b))
+        val id = assertNotNull(rig.run(Command.CreateExercise("My row", MuscleGroup.BACK, Equipment.CABLE)).ids[CommandIds.EXERCISE_ID])
+        val row = assertNotNull(rig.store.exercises.get(id))
+        assertEquals(true, row.isCustom)
+        assertEquals("cable", row.equipment)
     }
 
     @Test
