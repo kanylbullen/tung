@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web.i18n
 
+import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 
@@ -151,6 +152,14 @@ interface Strings {
     fun noChangeIn(range: String): String
     fun sessionsIn(count: Int, range: String): String
     fun chartSummary(metric: String, range: String, from: String, to: String): String
+
+    // Summary
+    val summaryTitle: String
+    val newRecord: String
+    val musclesWorked: String
+    fun musclesWorkedDescription(muscles: String): String
+    fun muscleName(muscle: Muscle): String
+    fun uncountedSets(count: Int): String
     fun weeksSummary(volumes: String): String
 
     // Settings
@@ -379,6 +388,37 @@ object English : Strings {
     override fun noChangeIn(range: String): String = "No change in $range"
     override fun sessionsIn(count: Int, range: String): String = if (count == 1) "1 session in $range" else "$count sessions in $range"
     override fun chartSummary(metric: String, range: String, from: String, to: String): String = "$metric, $range: from $from to $to kg"
+
+    override val summaryTitle = "Workout done"
+    override val newRecord = "New record"
+    override val musclesWorked = "Muscles worked"
+    override fun musclesWorkedDescription(muscles: String) = "Muscles worked: $muscles"
+    override fun muscleName(muscle: Muscle): String = when (muscle) {
+        Muscle.CHEST -> "chest"
+        Muscle.LATS -> "lats"
+        Muscle.UPPER_BACK -> "upper back"
+        Muscle.LOWER_BACK -> "lower back"
+        Muscle.TRAPS -> "traps"
+        Muscle.FRONT_DELTS -> "front delts"
+        Muscle.SIDE_DELTS -> "side delts"
+        Muscle.REAR_DELTS -> "rear delts"
+        Muscle.BICEPS -> "biceps"
+        Muscle.TRICEPS -> "triceps"
+        Muscle.FOREARMS -> "forearms"
+        Muscle.QUADS -> "quads"
+        Muscle.HAMSTRINGS -> "hamstrings"
+        Muscle.GLUTES -> "glutes"
+        Muscle.CALVES -> "calves"
+        Muscle.ADDUCTORS -> "adductors"
+        Muscle.ABDUCTORS -> "abductors"
+        Muscle.ABS -> "abs"
+        Muscle.OBLIQUES -> "obliques"
+        Muscle.HIP_FLEXORS -> "hip flexors"
+        Muscle.NECK -> "neck"
+    }
+    override fun uncountedSets(count: Int) =
+        if (count == 1) "1 set of a custom exercise is not counted: custom exercises have no muscles"
+        else "$count sets of custom exercises are not counted: custom exercises have no muscles"
     override fun weeksSummary(volumes: String): String = "Volume per week, oldest first: $volumes"
     override val settings = "Settings"
     override val training = "Training"
@@ -618,6 +658,37 @@ object Swedish : Strings {
     override fun noChangeIn(range: String): String = "Ingen ändring på $range"
     override fun sessionsIn(count: Int, range: String): String = if (count == 1) "1 pass på $range" else "$count pass på $range"
     override fun chartSummary(metric: String, range: String, from: String, to: String): String = "$metric, $range: från $from till $to kg"
+
+    override val summaryTitle = "Pass klart"
+    override val newRecord = "Nytt rekord"
+    override val musclesWorked = "Tränade muskler"
+    override fun musclesWorkedDescription(muscles: String) = "Tränade muskler: $muscles"
+    override fun muscleName(muscle: Muscle): String = when (muscle) {
+        Muscle.CHEST -> "bröst"
+        Muscle.LATS -> "lats"
+        Muscle.UPPER_BACK -> "övre rygg"
+        Muscle.LOWER_BACK -> "ländrygg"
+        Muscle.TRAPS -> "trapezius"
+        Muscle.FRONT_DELTS -> "främre axlar"
+        Muscle.SIDE_DELTS -> "sidoaxlar"
+        Muscle.REAR_DELTS -> "bakre axlar"
+        Muscle.BICEPS -> "biceps"
+        Muscle.TRICEPS -> "triceps"
+        Muscle.FOREARMS -> "underarmar"
+        Muscle.QUADS -> "framsida lår"
+        Muscle.HAMSTRINGS -> "baksida lår"
+        Muscle.GLUTES -> "säte"
+        Muscle.CALVES -> "vader"
+        Muscle.ADDUCTORS -> "insida lår"
+        Muscle.ABDUCTORS -> "utsida höft"
+        Muscle.ABS -> "mage"
+        Muscle.OBLIQUES -> "sneda magmuskler"
+        Muscle.HIP_FLEXORS -> "höftböjare"
+        Muscle.NECK -> "nacke"
+    }
+    override fun uncountedSets(count: Int) =
+        if (count == 1) "1 set av en egen övning räknas inte: egna övningar har inga muskler"
+        else "$count set av egna övningar räknas inte: egna övningar har inga muskler"
     override fun weeksSummary(volumes: String): String = "Volym per vecka, äldst först: $volumes"
     override val settings = "Inställningar"
     override val training = "Träning"
