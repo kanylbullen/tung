@@ -9,7 +9,7 @@
         <item quantity="one">%d exercise</item>
         <item quantity="other">%d exercises</item>
     </plurals>
-    <string name="open_phone_hint">Open Tung on the phone to see your workout here, or link the watch to a server in Settings.</string>
+    <string name="open_phone_hint">Open Tung on your phone, or link this watch in Settings.</string>
     <string name="phone_unreachable">Phone not reachable</string>
 
     <!-- Active workout -->

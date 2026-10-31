@@ -1303,6 +1303,18 @@ watch cannot add exercises: start a routine, or add them on the phone and
 sync. The watch asks for the notification permission once, the first time a
 workout is on screen (Wear OS 4+), for its Ongoing Activity and "Rest over".
 
+**Round screens** (issue #84). Every list is a `RoundList`
+(`ui/RoundList.kt`: `TimeText`, vignette, position indicator, and the
+responsive padding of `rememberListPadding`, 5.2 % of the width at the sides
+and at the top and bottom what a full-width chip needs to keep its ends on
+the circle, `RoundGeometry.chipTopInset`); body text in a list is `ListText`,
+inset further. The screens that are not lists (the set's numbers, the adjust
+screen, the rest countdown, the link pad) size themselves by the screen's
+diameter (`screenDiameter()`), not the font scale. `RoundScreensTest` draws
+every screen at 192 dp and 227 dp round under Robolectric and asserts that
+each control lies on the circle (`RoundGeometry.fitsInCircle`, a chip's
+ends counted as round); its PNGs land in `wear/build/reports/round-screenshots/`.
+
 **File boundaries.** Watch code only in `wear/`; the protocol only in
 `core/.../core/wear/`; what both devices share in `data/`; the phone's
 companion code only in `app/.../wear/` plus the service in the manifest and
