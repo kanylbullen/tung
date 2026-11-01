@@ -26,13 +26,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.progress.ExerciseProgress
 import io.github.kanylbullen.tung.core.progress.ProgressMetric
 import io.github.kanylbullen.tung.core.progress.ProgressRange
@@ -44,11 +41,9 @@ import io.github.kanylbullen.tung.core.progress.trend
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.ui.common.Stat
 import io.github.kanylbullen.tung.ui.common.StatRow
-import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.charts.BarChart
 import io.github.kanylbullen.tung.ui.common.charts.Sparkline
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.theme.Tung
 import kotlinx.datetime.LocalDate
@@ -65,11 +60,7 @@ const val PROGRESS_LIST_TAG = "progress-list"
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProgressScreen(onOpenExercise: (String) -> Unit) {
-    val container = appContainer()
-    val vm: ProgressViewModel = viewModel(
-        factory = factoryOf { ProgressViewModel(container.workoutRepository, container.exerciseRepository, container.progressSettings, container.clock) },
-    )
+fun ProgressScreen(vm: ProgressViewModel, onOpenExercise: (String) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -80,7 +71,7 @@ fun ProgressScreen(onOpenExercise: (String) -> Unit) {
                     containerColor = Tung.colors.background,
                     scrolledContainerColor = Tung.colors.background,
                 ),
-                title = { Text(stringResource(R.string.progress_title)) },
+                title = { Text(stringResource(Res.string.progress_title)) },
             )
         },
     ) { padding ->
@@ -88,11 +79,11 @@ fun ProgressScreen(onOpenExercise: (String) -> Unit) {
             if (state.loading) return@LazyColumn
             val overview = state.overview
             if (overview.isEmpty) {
-                item(key = "empty") { ProgressMuted(stringResource(R.string.progress_empty), Modifier.padding(vertical = 12.dp)) }
+                item(key = "empty") { ProgressMuted(stringResource(Res.string.progress_empty), Modifier.padding(vertical = 12.dp)) }
                 return@LazyColumn
             }
             item(key = "overview") { Overview(state) }
-            item(key = "exercises") { ProgressHeading(stringResource(R.string.progress_exercises)) }
+            item(key = "exercises") { ProgressHeading(stringResource(Res.string.progress_exercises)) }
             item(key = "rows-metric") { ChoiceChips(TREND_METRICS, state.trendMetric, { metricLabel(it) }, vm::setTrendMetric) }
             item(key = "rows-range") { ChoiceChips(TREND_RANGES, state.trendRange, { trendRangeLabel(it) }, vm::setTrendRange) }
             items(overview.exercises, key = { "ex-${it.exerciseId}" }) { exercise ->
@@ -101,7 +92,7 @@ fun ProgressScreen(onOpenExercise: (String) -> Unit) {
                 }
             }
             if (overview.recentRecords.isNotEmpty()) {
-                item(key = "records") { ProgressHeading(stringResource(R.string.progress_records_recent)) }
+                item(key = "records") { ProgressHeading(stringResource(Res.string.progress_records_recent)) }
                 items(overview.recentRecords, key = { "pr-${it.exerciseId}-${it.record.workoutId}" }) { record ->
                     RecentRecordRow(record, state.exercises[record.exerciseId]) { onOpenExercise(record.exerciseId) }
                 }
@@ -117,28 +108,28 @@ private fun Overview(state: ProgressUiState) {
     val totalWorkouts = weeks.sumOf { it.workouts }
     val streak = state.overview.streak
     Column {
-        ProgressHeading(stringResource(R.string.progress_overview))
+        ProgressHeading(stringResource(Res.string.progress_overview))
         StatRow {
-            Stat(totalWorkouts.toString(), stringResource(R.string.progress_workouts_total), Modifier.weight(1f))
-            Stat(streak.toString(), pluralStringResource(R.plurals.progress_streak_label, streak), Modifier.weight(1f))
+            Stat(totalWorkouts.toString(), stringResource(Res.string.progress_workouts_total), Modifier.weight(1f))
+            Stat(streak.toString(), pluralStringResource(Res.plurals.progress_streak_label, streak), Modifier.weight(1f))
         }
         val first = weeks.firstOrNull()?.weekStart?.let { shortDate(it) }.orEmpty()
         val last = weeks.lastOrNull()?.weekStart?.let { shortDate(it) }.orEmpty()
-        ProgressMuted(stringResource(R.string.progress_workouts_per_week), Modifier.padding(top = 12.dp))
+        ProgressMuted(stringResource(Res.string.progress_workouts_per_week), Modifier.padding(top = 12.dp))
         BarChart(
             values = weeks.map { it.workouts.toDouble() },
-            summary = stringResource(R.string.progress_workouts_summary, totalWorkouts, weeks.lastOrNull()?.workouts ?: 0),
+            summary = stringResource(Res.string.progress_workouts_summary, totalWorkouts, weeks.lastOrNull()?.workouts ?: 0),
             firstLabel = first,
             lastLabel = last,
             yLabel = { it.toLong().toString() },
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             height = 120.dp,
         )
-        ProgressMuted(stringResource(R.string.progress_volume_per_week), Modifier.padding(top = 8.dp))
+        ProgressMuted(stringResource(Res.string.progress_volume_per_week), Modifier.padding(top = 8.dp))
         BarChart(
             values = weeks.map { it.volumeKg },
             summary = stringResource(
-                R.string.progress_volume_summary,
+                Res.string.progress_volume_summary,
                 localVolume(weeks.sumOf { it.volumeKg }),
                 localVolume(weeks.lastOrNull()?.volumeKg ?: 0.0),
             ),
@@ -161,24 +152,24 @@ private fun changeText(trend: RowTrend, metric: ProgressMetric, range: ProgressR
     val twelve = range == ProgressRange.ONE_YEAR
     val change = trend.change
         ?: return pluralStringResource(
-            if (twelve) R.plurals.progress_sessions_12m else R.plurals.progress_sessions_3m,
+            if (twelve) Res.plurals.progress_sessions_12m else Res.plurals.progress_sessions_3m,
             trend.values.size,
             trend.values.size,
         )
     val signed = signedChange(metric, change)
-        ?: return stringResource(if (twelve) R.string.progress_no_change_12m else R.string.progress_no_change_3m)
-    return stringResource(if (twelve) R.string.progress_change_12m else R.string.progress_change_3m, signed)
+        ?: return stringResource(if (twelve) Res.string.progress_no_change_12m else Res.string.progress_no_change_3m)
+    return stringResource(if (twelve) Res.string.progress_change_12m else Res.string.progress_change_3m, signed)
 }
 
 /** A row's latest value: "Est. 1RM 112 kg", "Session volume 480 kg", "Weekly volume 960 kg". */
 @Composable
 private fun latestText(metric: ProgressMetric, kg: Double): String = stringResource(
     when (metric) {
-        ProgressMetric.E1RM -> R.string.progress_e1rm_value
-        ProgressMetric.VOLUME -> R.string.progress_session_volume_value
-        ProgressMetric.WEEKLY_VOLUME -> R.string.progress_weekly_volume_value
+        ProgressMetric.E1RM -> Res.string.progress_e1rm_value
+        ProgressMetric.VOLUME -> Res.string.progress_session_volume_value
+        ProgressMetric.WEEKLY_VOLUME -> Res.string.progress_weekly_volume_value
         // Not offered on the rows (TREND_METRICS).
-        ProgressMetric.TOP_SET -> R.string.progress_kg
+        ProgressMetric.TOP_SET -> Res.string.progress_kg
     },
     metricText(metric, kg),
 )
@@ -199,7 +190,7 @@ private fun ExerciseRow(
         changeText(trend, metric, range),
     ).joinToString(stringResource(Res.string.row_separator))
     val spark = trend.values
-    val open = stringResource(R.string.progress_open_exercise, name)
+    val open = stringResource(Res.string.progress_open_exercise, name)
     Row(
         modifier = Modifier
             .fillMaxWidth()

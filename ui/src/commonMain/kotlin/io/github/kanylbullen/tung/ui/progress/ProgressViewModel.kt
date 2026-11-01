@@ -24,10 +24,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.Clock
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.toKotlinLocalDate
-import kotlinx.datetime.toKotlinTimeZone
+import kotlinx.datetime.TimeZone
 
 data class ProgressUiState(
     val loading: Boolean = true,
@@ -52,15 +50,17 @@ class ProgressViewModel(
     workouts: WorkoutRepository,
     exercises: ExerciseRepository,
     private val settings: ProgressSettings,
-    private val clock: Clock,
+    /** Today and the zone in the device's time; the phone reads its container's clock, which the flow tests set. */
+    private val currentDate: () -> LocalDate,
+    private val currentZone: () -> TimeZone,
 ) : ViewModel() {
     private val data =
         combine(workouts.observeProgressSets(), exercises.observeExercises()) { sets, all ->
-            val today = clock.today()
+            val today = currentDate()
             ProgressUiState(
                 loading = false,
                 today = today,
-                overview = progressOverview(sets, today, clock.zone.toKotlinTimeZone()),
+                overview = progressOverview(sets, today, currentZone()),
                 exercises = all.associateBy { it.id },
             )
         }.flowOn(Dispatchers.Default)
@@ -101,7 +101,9 @@ class ExerciseProgressViewModel(
     private val exerciseId: String,
     workouts: WorkoutRepository,
     exercises: ExerciseRepository,
-    private val clock: Clock,
+    /** Today and the zone in the device's time; the phone reads its container's clock, which the flow tests set. */
+    private val currentDate: () -> LocalDate,
+    private val currentZone: () -> TimeZone,
     private val settings: ProgressSettings? = null,
 ) : ViewModel() {
     private val localMetric = MutableStateFlow(ProgressMetric.E1RM)
@@ -113,10 +115,10 @@ class ExerciseProgressViewModel(
         workouts.observeProgressSets(exerciseId),
         exercises.observeExercises().map { all -> all.firstOrNull { it.id == exerciseId } },
     ) { sets, exercise ->
-        val sessions = sessionPoints(sets, clock.zone.toKotlinTimeZone())
+        val sessions = sessionPoints(sets, currentZone())
         ExerciseProgressUiState(
             loading = false,
-            today = clock.today(),
+            today = currentDate(),
             exercise = exercise,
             sessions = sessions,
             records = exerciseRecords(sessions),
@@ -135,6 +137,3 @@ class ExerciseProgressViewModel(
         if (settings == null) localRange.value = value else viewModelScope.launch { settings.setTrendRange(value) }
     }
 }
-
-/** The clock's date as core's `LocalDate` (kotlinx-datetime). */
-private fun Clock.today(): LocalDate = java.time.LocalDate.now(this).toKotlinLocalDate()

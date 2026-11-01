@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import platform.Foundation.NSCalendar
 import platform.Foundation.NSCalendarUnitYear
 import platform.Foundation.NSDate
+import platform.Foundation.NSDateComponents
 import platform.Foundation.NSDateFormatter
 import platform.Foundation.NSLocale
 import platform.Foundation.NSNumber
@@ -16,6 +17,7 @@ import platform.Foundation.autoupdatingCurrentLocale
 import platform.Foundation.dateWithTimeIntervalSince1970
 import platform.Foundation.decimalSeparator
 import kotlin.math.roundToLong
+import kotlinx.datetime.LocalDate
 import platform.UIKit.UIApplication
 import platform.UIKit.UISelectionFeedbackGenerator
 
@@ -93,4 +95,25 @@ actual fun KeepScreenOn() {
         onDispose { UIApplication.sharedApplication.idleTimerDisabled = false }
     }
 }
+
+actual fun skeletonDate(date: LocalDate, skeleton: String): String {
+    val locale = NSLocale.autoupdatingCurrentLocale
+    val components = NSDateComponents().apply {
+        year = date.year.toLong()
+        month = date.monthNumber.toLong()
+        day = date.dayOfMonth.toLong()
+        hour = 12
+    }
+    val nsDate = NSCalendar.currentCalendar.dateFromComponents(components) ?: return date.toString()
+    val pattern = NSDateFormatter.dateFormatFromTemplate(skeleton, 0u, locale) ?: skeleton
+    val formatter = skeletonFormats.getOrPut(pattern) {
+        NSDateFormatter().apply {
+            this.locale = locale
+            dateFormat = pattern
+        }
+    }
+    return formatter.stringFromDate(nsDate)
+}
+
+private val skeletonFormats = mutableMapOf<String, NSDateFormatter>()
 

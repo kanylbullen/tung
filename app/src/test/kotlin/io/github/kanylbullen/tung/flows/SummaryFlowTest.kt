@@ -38,8 +38,8 @@ class SummaryFlowTest : FlowTest() {
     /** A muscle as its row writes it: the label with a capital, "Chest". */
     private fun muscleRow(id: StringResource) = str(id).replaceFirstChar { it.uppercase() }
 
-    private fun chart(metric: Int, from: String, to: String) =
-        str(R.string.progress_chart_summary, str(metric), str(R.string.progress_range_3m_long), from, to)
+    private fun chart(metric: StringResource, from: String, to: String) =
+        str(Res.string.progress_chart_summary, str(metric), str(Res.string.progress_range_3m_long), from, to)
 
     /** Seeds the history, then logs 90 × 6 of bench press and finishes. */
     private fun finishBenchWorkout() {
@@ -63,7 +63,7 @@ class SummaryFlowTest : FlowTest() {
         val details = listOf(
             plural(R.plurals.summary_sets, 1, 1),
             str(R.string.volume_kg, "540"),
-            str(R.string.progress_e1rm_value, "108"),
+            str(Res.string.progress_e1rm_value, "108"),
         ).joinToString(sep)
         assertShown(hasText(details))
         assertShown(hasText(str(R.string.set_value, "90", 6)))
@@ -89,14 +89,14 @@ class SummaryFlowTest : FlowTest() {
         screenshot("2-muscles")
 
         // The chart has the two earlier sessions and this one, the last point.
-        val e1rm = chart(R.string.progress_metric_e1rm_long, "98", "108")
+        val e1rm = chart(Res.string.progress_metric_e1rm_long, "98", "108")
         list.performScrollToNode(hasContentDescription(e1rm))
         assertShown(hasContentDescription(e1rm))
         screenshot("3-progress")
 
-        list.performScrollToNode(hasText(str(R.string.progress_metric_weekly_volume)))
-        clickText(str(R.string.progress_metric_weekly_volume))
-        val weekly = chart(R.string.progress_metric_weekly_volume_long, "420", "540")
+        list.performScrollToNode(hasText(str(Res.string.progress_metric_weekly_volume)))
+        clickText(str(Res.string.progress_metric_weekly_volume))
+        val weekly = chart(Res.string.progress_metric_weekly_volume_long, "420", "540")
         // The choice goes through DataStore and the ViewModel before the chart changes.
         waitFor(hasContentDescription(weekly))
         list.performScrollToNode(hasContentDescription(weekly))
@@ -124,7 +124,7 @@ class SummaryFlowTest : FlowTest() {
         val list = compose.onNode(hasTestTag(SUMMARY_LIST_TAG))
         list.performScrollToNode(hasText(muscleRow(Res.string.muscle_name_chest)) and hasText("50%"))
         screenshot("2-muscles")
-        list.performScrollToNode(hasContentDescription(chart(R.string.progress_metric_e1rm_long, "98", "108")))
+        list.performScrollToNode(hasContentDescription(chart(Res.string.progress_metric_e1rm_long, "98", "108")))
         screenshot("3-progress")
     }
 }

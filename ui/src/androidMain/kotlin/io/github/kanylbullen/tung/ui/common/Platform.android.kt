@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.ui.common
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import android.text.format.DateFormat
 import android.view.HapticFeedbackConstants
 import androidx.compose.ui.platform.LocalView
 import java.text.DecimalFormatSymbols
@@ -15,6 +16,8 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToLong
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toJavaLocalDate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 
@@ -65,5 +68,10 @@ actual fun KeepScreenOn() {
         view.keepScreenOn = true
         onDispose { view.keepScreenOn = false }
     }
+}
+
+actual fun skeletonDate(date: LocalDate, skeleton: String): String {
+    val locale = Locale.getDefault()
+    return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale).format(date.toJavaLocalDate())
 }
 

@@ -181,7 +181,7 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
             }
 
             if (state.progress.isNotEmpty()) {
-                item(key = "progress") { ProgressHeading(stringResource(R.string.progress_title)) }
+                item(key = "progress") { ProgressHeading(stringResource(Res.string.progress_title)) }
                 item(key = "progress-metric") { ChoiceChips(TREND_METRICS, state.trendMetric, { metricLabel(it) }, vm::setTrendMetric) }
                 item(key = "progress-range") { ChoiceChips(TREND_RANGES, state.trendRange, { trendRangeLabel(it) }, vm::setTrendRange) }
                 items(state.progress, key = { "p-${it.exerciseId}" }) { exercise ->
@@ -192,7 +192,7 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
                         color = Tung.colors.text,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable(onClickLabel = stringResource(R.string.progress_open_exercise, name)) { onOpenProgress(exercise.exerciseId) }
+                            .clickable(onClickLabel = stringResource(Res.string.progress_open_exercise, name)) { onOpenProgress(exercise.exerciseId) }
                             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp),
                     )
                     ProgressChart(
@@ -232,7 +232,7 @@ private fun ExerciseRow(exercise: ExerciseReport) {
     val details = listOfNotNull(
         pluralStringResource(R.plurals.summary_sets, exercise.sets.size, exercise.sets.size),
         stringResource(R.string.volume_kg, localVolume(exercise.volumeKg)),
-        exercise.e1rmKg?.let { stringResource(R.string.progress_e1rm_value, metricText(ProgressMetric.E1RM, it)) },
+        exercise.e1rmKg?.let { stringResource(Res.string.progress_e1rm_value, metricText(ProgressMetric.E1RM, it)) },
     ).joinToString(stringResource(Res.string.row_separator))
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
