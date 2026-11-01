@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server.routes
 
+import io.github.kanylbullen.tung.server.WelcomeMail
 import io.github.kanylbullen.tung.server.Admins
 import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.Db
@@ -64,7 +65,13 @@ data class TesterList(val testers: List<TesterDto>)
  * [enabled] (`TUNG_TESTER_SIGNUPS`): a self-hosted server runs no Play test,
  * so there every call is 404 `not_configured`.
  */
-class Testers(private val db: Db, private val admins: Admins, private val enabled: Boolean, private val clock: () -> Long) {
+class Testers(
+    private val db: Db,
+    private val admins: Admins,
+    private val enabled: Boolean,
+    private val clock: () -> Long,
+    private val welcome: WelcomeMail? = null,
+) {
 
     /**
      * Stores [request]'s address once. The answer is the same whether the
@@ -77,7 +84,7 @@ class Testers(private val db: Db, private val admins: Admins, private val enable
         if (!request.consent) throw badRequest("Tick the box to say we may email you the invitation.", "consent_required")
         if (!request.website.isNullOrEmpty()) return
         val language = request.language?.lowercase()?.takeIf { it in LANGUAGES }
-        db.tx {
+        val added = db.tx {
             if (TesterSignups.selectAll().count() >= MAX_TESTER_SIGNUPS) {
                 throw ApiException(HttpStatusCode.ServiceUnavailable, "list_full", "The test is full for now. Try again later.")
             }
@@ -85,8 +92,10 @@ class Testers(private val db: Db, private val admins: Admins, private val enable
                 it[TesterSignups.email] = email
                 it[createdAt] = clock()
                 it[TesterSignups.language] = language
-            }
+            }.insertedCount
         }
+        // Only to a new address: a second sign-up mails nobody again, and the answer stays the same.
+        if (added > 0) welcome?.tester(email, language)
     }
 
     suspend fun list(principal: TokenPrincipal): TesterList {

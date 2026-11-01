@@ -208,6 +208,8 @@ class SyncClient(
     private val clock: () -> Long = ::systemMillis,
     private val retryDelaysMillis: List<Long> = listOf(2_000L, 8_000L),
     private val onSignedOut: suspend () -> Unit = {},
+    /** The language the app shows (`en`, `sv`), sent when an account is made, for the server's welcome email. */
+    private val language: () -> String? = { null },
 ) {
     /** Sync itself is core's [SyncLoop]; this class gives it Room, the settings and Ktor. */
     private val loop = SyncLoop(
@@ -275,7 +277,7 @@ class SyncClient(
             try {
                 val response = http.post(baseUrl + if (create) REGISTER_PATH else LOGIN_PATH) {
                     contentType(ContentType.Application.Json)
-                    setBody(Credentials(email, password))
+                    setBody(Credentials(email, password, if (create) language() else null))
                 }
                 if (response.status.isSuccess()) {
                     val session = response.body<Session>()
@@ -328,7 +330,7 @@ class SyncClient(
         try {
             val response = http.post(baseUrl + GOOGLE_PATH) {
                 contentType(ContentType.Application.Json)
-                setBody(GoogleBody(idToken))
+                setBody(GoogleBody(idToken, language()))
             }
             if (response.status.isSuccess()) {
                 val session = response.body<Session>()
@@ -574,7 +576,7 @@ class SyncClient(
     private class SyncFailedException(val failure: SyncFailure) : Exception(failure.key)
 
     @Serializable
-    private data class Credentials(val email: String, val password: String)
+    private data class Credentials(val email: String, val password: String, val language: String? = null)
 
     @Serializable
     private data class FeedbackBody(
@@ -603,7 +605,7 @@ class SyncClient(
     )
 
     @Serializable
-    private data class GoogleBody(@SerialName("id_token") val idToken: String)
+    private data class GoogleBody(@SerialName("id_token") val idToken: String, val language: String? = null)
 
     @Serializable
     private data class MethodsBody(val password: Boolean = true, val google: GoogleMethodBody? = null)

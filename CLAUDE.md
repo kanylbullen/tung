@@ -2057,6 +2057,23 @@ fallback, and only on a tap.
   the link Play's Data safety asks for: the steps, the email way, what goes
   and what stays). `DeleteAccountTest`, `DeleteAccountFlowTest`,
   `WebAuthDeleteTest`.
+- **Welcome emails** (`Mail.kt`, only with `TUNG_RESEND_API_KEY`, which
+  needs `TUNG_MAIL_FROM` and `TUNG_PUBLIC_URL`): `WelcomeMail` sends one
+  plain-text email per new account (`Accounts.register`, and `googleUser`
+  when it creates the user, on `/auth/google` and the consent page alike)
+  and one per new test sign-up (`Testers.signUp`, only when the insert added
+  the address; the answer stays the same), in `en` or `sv` from the
+  request's optional `language` (the phone's `SyncClient` sends the
+  locale's, the web its strings').
+  `ResendMailer` is the one `Mailer` (`POST /emails`, ten seconds, no
+  redirects); it runs on the application's scope after the commit, and a
+  failure is logged without the address (Resend's status and error name
+  only) and never fails the request. At most `MAX_WELCOME_MAILS_PER_DAY`
+  (200) a UTC day, in memory: registration is open and takes any address, so
+  the ceiling keeps the sender's reputation. The consent page passes the
+  browser's `Accept-Language`.
+  `ServerConfig.mailer` is the seam tests replace (`WelcomeMailTest`). The
+  privacy page names Resend as the processor.
 - **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST
   /api/v1/link/start` (write token) gives a six-digit code valid ten minutes,
   unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)

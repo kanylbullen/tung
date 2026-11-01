@@ -41,7 +41,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-private const val CLIENT_ID = "1234-web.apps.googleusercontent.com"
+internal const val CLIENT_ID = "1234-web.apps.googleusercontent.com"
 private const val OTHER_CLIENT_ID = "5678-other.apps.googleusercontent.com"
 
 /**

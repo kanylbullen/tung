@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web
 
+import io.github.kanylbullen.tung.web.i18n.Swedish
 import io.github.kanylbullen.tung.core.CoreCatalog
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.StartedBy
@@ -211,7 +212,7 @@ class WebContainer(
 
     /** Signs in with Google's ID token for [serverUrl]'s client and, on success, pulls the account's log. */
     suspend fun signInWithGoogle(serverUrl: String, idToken: String): AuthResult =
-        signedIn(serverUrl, auth.signInWithGoogle(serverUrl, idToken))
+        signedIn(serverUrl, auth.signInWithGoogle(serverUrl, idToken, if (strings === Swedish) "sv" else "en"))
 
     private suspend fun signedIn(serverUrl: String, result: AuthResult): AuthResult {
         if (result is AuthResult.Success) {
