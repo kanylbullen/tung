@@ -227,13 +227,27 @@ fun ActiveWorkoutScreen(
         }
     }
     // The microphone is asked for the first time it is used; denied, the echo says how to allow it.
+    var pendingHandsFree by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(platform) {
+        platform.microphoneAnswers.collect { granted ->
+            val handsFree = pendingHandsFree
+            pendingHandsFree = null
+            when {
+                !granted -> voice.show(VoiceEcho.Failed(SpeechErrorKind.PERMISSION))
+                handsFree != null -> startVoice(handsFree)
+            }
+        }
+    }
     fun onMic(handsFree: Boolean) {
         if (voice.active && !handsFree) {
             voice.stop()
             return
         }
-        platform.withMicrophone { granted ->
-            if (granted) startVoice(handsFree) else voice.show(VoiceEcho.Failed(SpeechErrorKind.PERMISSION))
+        if (platform.microphoneAllowed()) {
+            startVoice(handsFree)
+        } else {
+            pendingHandsFree = handsFree
+            platform.askForMicrophone()
         }
     }
 

@@ -9,9 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
@@ -23,7 +21,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.progress.ProgressSheet
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 
 /**
  * The active workout on the phone: [ActiveWorkoutScreen] (in `ui/`) with its
@@ -61,12 +61,11 @@ fun ActiveWorkoutRoute(
     val context = LocalContext.current
     val view = LocalView.current
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    var micAnswer by remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
+    val micAnswers = remember { Channel<Boolean>(Channel.BUFFERED) }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        micAnswer?.invoke(granted)
-        micAnswer = null
+        micAnswers.trySend(granted)
     }
-    val platform = remember(context, view, notificationPermission, micPermission) {
+    val platform = remember(context, view, notificationPermission, micPermission, micAnswers) {
         object : WorkoutPlatform {
             override val speech = (context.applicationContext as TungApp).createSpeechInput()
 
@@ -83,14 +82,14 @@ fun ActiveWorkoutRoute(
                 }
             }
 
-            override fun withMicrophone(onResult: (granted: Boolean) -> Unit) {
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    onResult(true)
-                } else {
-                    micAnswer = onResult
-                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
-                }
+            override fun microphoneAllowed(): Boolean =
+                ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+            override fun askForMicrophone() {
+                micPermission.launch(Manifest.permission.RECORD_AUDIO)
             }
+
+            override val microphoneAnswers = micAnswers.receiveAsFlow()
 
             override fun confirmHaptic() {
                 view.performHapticFeedback(
