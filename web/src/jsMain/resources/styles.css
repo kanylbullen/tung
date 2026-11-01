@@ -233,27 +233,29 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .bottom-bar .tab.current { color: var(--accent-text); }
 .bottom-bar .tab:focus-visible { outline: 2px solid var(--accent); }
 
-/* --- Sign in with Google: Google's own button, then the email form --- */
-.google { margin: 0 20px; min-height: 44px; }
-/* Sign in with Apple: Apple's own look (HIG), white on the dark page and black on the light,
-   as wide as Google's button; the system font, as Apple asks for its title. */
+/* --- Sign in with Google and Apple: one pair of buttons, then the email form ---
+   Google's is its own (an iframe: white, outlined, 40px, 4px corners, logo on the left)
+   and Apple's is drawn to match it, which Apple's guidelines allow ("white with outline").
+   The iframe's document is light: with the page's dark color-scheme the browser would
+   paint an opaque white box behind it, wider than the button, so the frame says light. */
+.google { margin: 0 20px; min-height: 40px; color-scheme: light; }
+.google iframe { color-scheme: light; }
 .apple {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  width: calc(100% - 40px); max-width: 400px; min-height: 44px; margin: 12px 20px 0;
-  border: 1px solid #fff; border-radius: var(--radius);
-  background: #fff; color: #000;
-  font: 500 17px -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  position: relative; display: flex; align-items: center; justify-content: center;
+  width: calc(100% - 40px); max-width: 400px; height: 40px; margin: 12px 20px 0; padding: 0 40px;
+  border: 1px solid #dadce0; border-radius: 4px;
+  background: #fff; color: #1f1f1f;
+  font: 500 14px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; letter-spacing: 0.25px;
   cursor: pointer;
 }
+.apple:hover { background: #f8faff; border-color: #d2e3fc; }
 .apple::before {
-  content: ""; width: 17px; height: 17px; margin-top: -3px; background: currentColor;
+  content: ""; position: absolute; left: 12px; top: 50%; width: 18px; height: 18px; margin-top: -10px;
+  background: #000;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .apple:disabled { opacity: 0.6; cursor: default; }
 .apple:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (prefers-color-scheme: light) {
-  .apple { background: #000; color: #fff; border-color: #000; }
-}
 .google-hint { margin: 8px 20px 0; color: var(--muted); font-size: 14px; }
 .or { margin: 24px 20px 12px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
 
