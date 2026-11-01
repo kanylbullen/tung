@@ -83,6 +83,7 @@ fun AccountScreen(onBack: () -> Unit) {
                 onPassword = vm::onPassword,
                 onSignIn = { vm.signIn(create = false) },
                 onCreate = { vm.signIn(create = true) },
+                onForgot = vm::forgotPassword,
                 onGoogle = { vm.signInWithGoogle { clientId -> google.idToken(context, clientId) } },
             )
         }
@@ -209,6 +210,7 @@ private fun SignInForm(
     onPassword: (String) -> Unit,
     onSignIn: () -> Unit,
     onCreate: () -> Unit,
+    onForgot: () -> Unit,
     onGoogle: () -> Unit,
 ) {
     Text(stringResource(R.string.sync_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
@@ -250,6 +252,12 @@ private fun SignInForm(
     }
     PrimaryButton(text = stringResource(R.string.sync_sign_in), onClick = onSignIn, enabled = !form.busy)
     SecondaryButton(text = stringResource(R.string.sync_create_account), onClick = onCreate)
+    TextButton(onClick = onForgot, enabled = !form.busy, modifier = Modifier.heightIn(min = 48.dp)) {
+        Text(stringResource(R.string.sync_forgot_password), color = Tung.colors.text, style = MaterialTheme.typography.labelLarge)
+    }
+    form.notice?.let {
+        Text(stringResource(it, form.email.trim()), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+    }
     if (form.editingServer) {
         OutlinedTextField(
             value = form.serverUrl,

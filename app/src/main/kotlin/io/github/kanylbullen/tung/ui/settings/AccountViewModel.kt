@@ -12,6 +12,7 @@ import io.github.kanylbullen.tung.sync.AuthFailure
 import io.github.kanylbullen.tung.sync.AuthMethodsResult
 import io.github.kanylbullen.tung.sync.AuthResult
 import io.github.kanylbullen.tung.sync.DeleteAccountOutcome
+import io.github.kanylbullen.tung.sync.ForgotOutcome
 import io.github.kanylbullen.tung.sync.ResendOutcome
 import io.github.kanylbullen.tung.sync.SyncAccount
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,8 @@ data class SignInForm(
     val password: String = "",
     val busy: Boolean = false,
     @StringRes val error: Int? = null,
+    /** What "Forgot password?" gave, muted under the buttons; [email] is in the text. */
+    @StringRes val notice: Int? = null,
     /**
      * The Google client id the server at [googleServer] named in
      * `/auth/methods`; null hides "Sign in with Google" (not offered, not
@@ -173,7 +176,33 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
         }
     }
 
-    fun onEmail(value: String) = form.update { it.copy(email = value, error = null) }
+    fun onEmail(value: String) = form.update { it.copy(email = value, error = null, notice = null) }
+
+    /** "Forgot password?": a link to choose a new one, mailed to the address typed above. */
+    fun forgotPassword() {
+        val current = form.value
+        if (current.busy) return
+        val url = when (val check = checkServerUrl(current.serverUrl)) {
+            is ServerUrlCheck.Valid -> check.url
+            ServerUrlCheck.Malformed -> return form.update { it.copy(error = R.string.sync_error_url) }
+            ServerUrlCheck.NeedsHttps -> return form.update { it.copy(error = R.string.sync_error_url_https) }
+        }
+        if (current.email.isBlank()) return form.update { it.copy(error = R.string.sync_forgot_needs_email, notice = null) }
+        form.update { it.copy(busy = true, error = null, notice = null) }
+        viewModelScope.launch {
+            val outcome = account.forgotPassword(url, current.email)
+            form.update {
+                when (outcome) {
+                    ForgotOutcome.SENT -> it.copy(busy = false, notice = R.string.sync_forgot_sent)
+                    ForgotOutcome.NOT_OFFERED -> it.copy(busy = false, error = R.string.sync_forgot_not_offered)
+                    ForgotOutcome.RATE_LIMITED -> it.copy(busy = false, error = R.string.sync_error_rate_limited)
+                    ForgotOutcome.INVALID_EMAIL -> it.copy(busy = false, error = R.string.sync_error_invalid)
+                    ForgotOutcome.NETWORK -> it.copy(busy = false, error = R.string.sync_error_network)
+                    ForgotOutcome.FAILED -> it.copy(busy = false, error = R.string.sync_error_server)
+                }
+            }
+        }
+    }
 
     fun onPassword(value: String) = form.update { it.copy(password = value, error = null) }
 

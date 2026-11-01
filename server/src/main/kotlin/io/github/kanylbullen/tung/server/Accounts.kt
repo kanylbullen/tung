@@ -43,6 +43,19 @@ const val UNCONFIRMED_HOLD_MS = 24 * 60 * 60 * 1000L
 /** Confirmation emails one account may ask for again, per day (and each ask counts against the sign-in rate limit). */
 const val CONFIRM_RESENDS_PER_DAY = 3
 
+/** How long a link to choose a new password works. */
+const val PASSWORD_RESET_LIFETIME_MS = 60 * 60 * 1000L
+
+/**
+ * Password-reset emails one account gets, per day, however often they are
+ * asked for: someone who registered a stranger's address could otherwise
+ * keep mailing them.
+ */
+const val RESET_MAILS_PER_DAY = 3
+
+/** What choosing a new password by an emailed link gave. */
+enum class ResetOutcome { DONE, WEAK_PASSWORD, INVALID_LINK }
+
 /** last_used_at is written at most this often per token, so reads do not each cost a write. */
 private const val LAST_USED_RESOLUTION_MS = 60_000L
 
@@ -66,6 +79,7 @@ class Accounts(
     val verifiesEmail: Boolean get() = welcome?.canSend == true
 
     private val resends = SlidingWindowLimiter(CONFIRM_RESENDS_PER_DAY, 24 * 60 * 60 * 1000L, clock)
+    private val resetMails = SlidingWindowLimiter(RESET_MAILS_PER_DAY, 24 * 60 * 60 * 1000L, clock)
 
     suspend fun register(credentials: Credentials): SessionDto {
         val email = normalizeEmail(credentials.email)
@@ -244,7 +258,8 @@ class Accounts(
     }
 
     /**
-     * Ends every way into [userId] that did not come from the Google owner:
+     * Ends every way into [userId] that did not come from the address's
+     * proven owner (a Google link, or a password chosen by an emailed link):
      * its API and session tokens (OAuth access tokens are API tokens, and a
      * refresh token of a revoked one is refused), its refresh tokens, its
      * unused OAuth codes, its link codes and its push endpoints. The session the caller is about
@@ -344,6 +359,68 @@ class Accounts(
         welcome.confirmAgain(email, language, token)
     }
 
+    /**
+     * `POST /auth/password/forgot`: a link to choose a new password, to
+     * [email] if an account has it. The answer is the same whether or not
+     * one does, so nobody learns who has an account; at most
+     * [RESET_MAILS_PER_DAY] mails an account a day, more asks are
+     * dropped silently. A Google-only account may set a password this way
+     * too: the link proves the inbox. 404 `not_configured` on a server that
+     * sends no mail.
+     */
+    suspend fun forgotPassword(email: String, language: String?) {
+        val welcome = welcome?.takeIf { verifiesEmail } ?: throw ApiException(
+            HttpStatusCode.NotFound,
+            "not_configured",
+            "This server sends no email, so it cannot reset a password. Ask its owner.",
+        )
+        val address = normalizeEmail(email)
+        val now = clock()
+        val token = db.tx {
+            val userId = Users.select(Users.id).where { Users.email eq address }.singleOrNull()?.get(Users.id) ?: return@tx null
+            if (!resetMails.tryAcquire(userId)) return@tx null
+            EmailTokens.deleteWhere { (EmailTokens.userId eq userId) and (EmailTokens.kind eq EmailTokens.KIND_RESET) }
+            newEmailToken(userId, EmailTokens.KIND_RESET, now, PASSWORD_RESET_LIFETIME_MS)
+        } ?: return
+        welcome.passwordReset(address, language, token)
+    }
+
+    /** Whether [token] is a reset link that still works: the page shows the form only then. */
+    suspend fun resetLinkWorks(token: String): Boolean = db.tx { resetRow(token, clock()) != null }
+
+    /**
+     * The new password of a reset link's account. The link is spent, the
+     * address counts as proven (the link came to its inbox), and every way
+     * into the account is ended, as when Google takes an account over: its
+     * tokens, sessions, OAuth grants, link codes and push endpoints, so
+     * whoever knew the old password is out. The person signs in again.
+     */
+    suspend fun resetPassword(token: String, password: String): ResetOutcome {
+        if (password.length !in MIN_PASSWORD..MAX_PASSWORD) return ResetOutcome.WEAK_PASSWORD
+        if (!resetLinkWorks(token)) return ResetOutcome.INVALID_LINK
+        val hash = withContext(Dispatchers.Default) { Passwords.hash(password) }
+        return db.tx {
+            val now = clock()
+            val userId = resetRow(token, now)?.get(EmailTokens.userId) ?: return@tx ResetOutcome.INVALID_LINK
+            lockUser(userId)
+            // Read again under the lock: a second submit of the same form waited here, and finds the link spent.
+            if (resetRow(token, now) == null) return@tx ResetOutcome.INVALID_LINK
+            EmailTokens.deleteWhere { (EmailTokens.userId eq userId) and (EmailTokens.kind eq EmailTokens.KIND_RESET) }
+            val proven = proven(Users.select(Users.emailVerifiedAt).where { Users.id eq userId }.single()[Users.emailVerifiedAt])
+            Users.update({ Users.id eq userId }) {
+                it[passwordHash] = hash
+                if (!proven) it[emailVerifiedAt] = now
+            }
+            evictUnverifiedHolders(userId, now)
+            ResetOutcome.DONE
+        }
+    }
+
+    private fun Transaction.resetRow(token: String, now: Long): ResultRow? =
+        EmailTokens.selectAll().where {
+            (EmailTokens.tokenHash eq Tokens.hash(token)) and (EmailTokens.kind eq EmailTokens.KIND_RESET) and (EmailTokens.expiresAt greater now)
+        }.singleOrNull()
+
     /** Whether [token] is a confirmation link that still works: its page shows the button only then. */
     suspend fun confirmLinkWorks(token: String): Boolean = db.tx {
         EmailTokens.selectAll().where {
@@ -352,14 +429,18 @@ class Accounts(
     }
 
     /** A fresh confirmation link's token for [userId]; only its hash is stored. */
-    private fun Transaction.newConfirmToken(userId: String, now: Long): String {
+    private fun Transaction.newConfirmToken(userId: String, now: Long): String =
+        newEmailToken(userId, EmailTokens.KIND_VERIFY, now, EMAIL_CONFIRM_LIFETIME_MS)
+
+    /** A fresh one-use link's token of [kind] for [userId], working [lifetime]; only its hash is stored. */
+    private fun Transaction.newEmailToken(userId: String, kind: String, now: Long, lifetime: Long): String {
         val token = Tokens.generate()
         EmailTokens.insert {
             it[tokenHash] = Tokens.hash(token)
             it[EmailTokens.userId] = userId
-            it[kind] = EmailTokens.KIND_VERIFY
+            it[EmailTokens.kind] = kind
             it[createdAt] = now
-            it[expiresAt] = now + EMAIL_CONFIRM_LIFETIME_MS
+            it[expiresAt] = now + lifetime
         }
         return token
     }

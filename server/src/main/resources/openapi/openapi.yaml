@@ -158,6 +158,45 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
+  /api/v1/auth/password/forgot:
+    post:
+      tags: [auth]
+      summary: Mail a link to choose a new password
+      description: |
+        Mails a link (`/reset-password?token=…`, one hour) to the address if
+        an account has it; the answer is the same either way, so nobody
+        learns who has an account. At most three mails an account a day, with a daily mail budget of their own;
+        more asks are answered alike and dropped. Rate-limited per client
+        address like login. Opening the link shows a form; submitting it sets
+        the password, counts the address as confirmed, spends the link, and
+        signs every device and assistant of the account out. A Google-only
+        account may set a password this way. Only on a server that sends mail.
+      operationId: forgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string }
+                language: { type: [string, "null"], description: "`en` or `sv`, for the email; English when absent." }
+      responses:
+        "202": { description: Mailed, or nothing to mail. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: "`not_configured`: this server sends no email."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/auth/verify/resend:
     post:
       tags: [auth]

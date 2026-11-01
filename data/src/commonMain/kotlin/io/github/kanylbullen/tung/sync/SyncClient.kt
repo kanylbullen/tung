@@ -61,6 +61,9 @@ sealed interface AuthMethodsResult {
     data class Failed(val failure: AuthFailure) : AuthMethodsResult
 }
 
+/** What "Forgot password?" gave. [NOT_OFFERED]: the server sends no email (404), or predates the route. */
+enum class ForgotOutcome { SENT, NOT_OFFERED, RATE_LIMITED, INVALID_EMAIL, NETWORK, FAILED }
+
 /** What asking for a new confirmation link gave. */
 enum class ResendOutcome { SENT, RATE_LIMITED, NETWORK, FAILED }
 
@@ -273,6 +276,31 @@ class SyncClient(
      * recorded in [SyncSettings]; a 401 signs the device out.
      */
     suspend fun syncOnce(): SyncResult = withContext(ioDispatcher) { loop.syncOnce() }
+
+    /**
+     * `POST /api/v1/auth/password/forgot` at [baseUrl]: a link to choose a
+     * new password, mailed to [email] if an account has it (the answer is the
+     * same either way). Stores nothing.
+     */
+    suspend fun forgotPassword(baseUrl: String, email: String): ForgotOutcome = withContext(ioDispatcher) {
+        try {
+            val response = http.post(baseUrl + FORGOT_PASSWORD_PATH) {
+                contentType(ContentType.Application.Json)
+                setBody(ForgotBody(email, language()))
+            }
+            when {
+                response.status.isSuccess() -> ForgotOutcome.SENT
+                response.status.value == 404 -> ForgotOutcome.NOT_OFFERED
+                response.status.value == 429 -> ForgotOutcome.RATE_LIMITED
+                response.status.value == 400 -> ForgotOutcome.INVALID_EMAIL
+                else -> ForgotOutcome.FAILED
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            ForgotOutcome.NETWORK
+        }
+    }
 
     /** `POST /api/v1/auth/login`, or `/register` when [create]. Stores nothing; [SyncAccount] does. */
     suspend fun authenticate(baseUrl: String, email: String, password: String, create: Boolean): AuthResult =
@@ -639,6 +667,9 @@ class SyncClient(
     private data class ResendBody(val language: String? = null)
 
     @Serializable
+    private data class ForgotBody(val email: String, val language: String? = null)
+
+    @Serializable
     private data class MethodsBody(val password: Boolean = true, val google: GoogleMethodBody? = null)
 
     @Serializable
@@ -661,6 +692,7 @@ class SyncClient(
         const val METHODS_PATH = "/api/v1/auth/methods"
         const val ME_PATH = "/api/v1/me"
         const val RESEND_CONFIRMATION_PATH = "/api/v1/auth/verify/resend"
+        const val FORGOT_PASSWORD_PATH = "/api/v1/auth/password/forgot"
         const val LINK_START_PATH = "/api/v1/link/start"
         const val FEEDBACK_PATH = "/api/v1/feedback"
         const val LINK_CLAIM_PATH = "/api/v1/link/claim"

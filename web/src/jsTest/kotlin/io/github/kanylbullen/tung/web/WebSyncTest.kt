@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.web.store.TungStore
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 import io.github.kanylbullen.tung.web.sync.AuthResult
 import io.github.kanylbullen.tung.web.sync.HttpReply
+import io.github.kanylbullen.tung.web.sync.ForgotResult
 import io.github.kanylbullen.tung.web.sync.HttpUnreachable
 import io.github.kanylbullen.tung.web.sync.ResendResult
 import io.github.kanylbullen.tung.web.sync.SyncJson
@@ -239,5 +240,20 @@ class WebSyncTest {
         assertEquals(ResendResult.RATE_LIMITED, answer { HttpReply(429, "") })
         assertEquals(ResendResult.FAILED, answer { HttpReply(404, """{"error":{"code":"not_configured"}}""") })
         assertEquals(ResendResult.NETWORK, answer { throw HttpUnreachable(null) })
+    }
+
+    @Test
+    fun forgotPasswordPostsTheEmailAndNamesTheOutcome() = runTest {
+        var url = ""
+        var body = ""
+        suspend fun answer(reply: () -> HttpReply): ForgotResult =
+            WebAuth(post = { u, b, _ -> url = u; body = b; reply() }).forgotPassword("https://tung.example.org", "x@example.org", "sv")
+        assertEquals(ForgotResult.SENT, answer { HttpReply(202, "") })
+        assertEquals("https://tung.example.org/api/v1/auth/password/forgot", url)
+        assertEquals("""{"email":"x@example.org","language":"sv"}""", body)
+        assertEquals(ForgotResult.NOT_OFFERED, answer { HttpReply(404, """{"error":{"code":"not_configured"}}""") })
+        assertEquals(ForgotResult.RATE_LIMITED, answer { HttpReply(429, "") })
+        assertEquals(ForgotResult.INVALID_EMAIL, answer { HttpReply(400, """{"error":{"code":"invalid_email"}}""") })
+        assertEquals(ForgotResult.NETWORK, answer { throw HttpUnreachable(null) })
     }
 }

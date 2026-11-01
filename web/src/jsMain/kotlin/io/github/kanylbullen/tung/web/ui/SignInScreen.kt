@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.web.defaultServerUrl
 import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 import io.github.kanylbullen.tung.web.sync.AuthResult
+import io.github.kanylbullen.tung.web.sync.ForgotResult
 import kotlinx.browser.window
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AutoComplete
@@ -46,6 +47,7 @@ fun SignInScreen(container: WebContainer) {
     var editingServer by remember { mutableStateOf(storedServer != null && storedServer != defaultServerUrl()) }
     var busy by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
+    var notice by remember { mutableStateOf<String?>(null) }
     var error by remember {
         mutableStateOf(if (container.signedOutByServer) strings.syncFailure(SyncFailure.SIGNED_OUT) else null)
     }
@@ -71,6 +73,38 @@ fun SignInScreen(container: WebContainer) {
             val result = container.signInWithGoogle(url, idToken)
             busy = false
             if (result is AuthResult.Failed) error = strings.authFailure(result.failure)
+        }
+    }
+
+    /** "Forgot password?": a reset link to the address typed above. */
+    fun forgot() {
+        if (busy) return
+        notice = null
+        if (email.isBlank()) {
+            error = strings.forgotNeedsEmail
+            return
+        }
+        val url = when (val check = checkServerUrl(server)) {
+            is ServerUrlCheck.Valid -> check.url
+            ServerUrlCheck.Malformed -> {
+                error = strings.errorUrl
+                return
+            }
+            ServerUrlCheck.NeedsHttps -> {
+                error = strings.errorUrlHttps
+                return
+            }
+        }
+        busy = true
+        error = null
+        scope.launch {
+            val typed = email.trim()
+            try {
+                val result = container.forgotPassword(url, typed)
+                if (result == ForgotResult.SENT) notice = strings.forgotResult(result, typed) else error = strings.forgotResult(result, typed)
+            } finally {
+                busy = false
+            }
         }
     }
 
@@ -188,6 +222,13 @@ fun SignInScreen(container: WebContainer) {
                 if (busy) disabled()
                 onClick { submit(create = true) }
             }) { Text(if (busy && creating) strings.creatingAccount else strings.createAccount) }
+            Button({
+                classes("text-button", "forgot")
+                attr("type", "button")
+                if (busy) disabled()
+                onClick { forgot() }
+            }) { Text(strings.forgotPassword) }
+            notice?.let { P({ classes("hint"); attr("role", "status") }) { Text(it) } }
         }
     }
 }

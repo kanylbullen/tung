@@ -7,6 +7,7 @@ import io.github.kanylbullen.tung.core.importing.SkipReason
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.ai.AiFailure
 import io.github.kanylbullen.tung.web.sync.AuthFailure
+import io.github.kanylbullen.tung.web.sync.ForgotResult
 import io.github.kanylbullen.tung.web.sync.ResendResult
 
 /**
@@ -36,6 +37,9 @@ interface Strings {
     val signingIn: String
     val createAccount: String
     val creatingAccount: String
+    val forgotPassword: String
+    val forgotNeedsEmail: String
+    fun forgotResult(result: ForgotResult, email: String): String
 
     /** Under the Google button, above the email form. */
     val googleHint: String
@@ -467,6 +471,16 @@ object English : Strings {
     override val signingIn = "Signing in…"
     override val createAccount = "Create account"
     override val creatingAccount = "Creating account…"
+    override val forgotPassword = "Forgot password?"
+    override val forgotNeedsEmail = "Enter your email above, then choose Forgot password? again."
+    override fun forgotResult(result: ForgotResult, email: String): String = when (result) {
+        ForgotResult.SENT -> "If there is an account with $email, we sent it a link to choose a new password. It works for an hour."
+        ForgotResult.NOT_OFFERED -> "This server cannot send email, so it cannot reset a password. Ask its owner."
+        ForgotResult.RATE_LIMITED -> "Too many attempts. Wait a minute and try again."
+        ForgotResult.INVALID_EMAIL -> "The server did not accept that email address. Check it and try again."
+        ForgotResult.NETWORK -> "Could not reach the server. Check the address and your connection."
+        ForgotResult.FAILED -> "The server had a problem. Try again in a while."
+    }
     override val googleHint = "Choose your Google account in the window that opens."
     override val orWithEmail = "Or with email and password"
     override val errorFields = "Enter your email and password."
@@ -1021,6 +1035,16 @@ object Swedish : Strings {
     override val signingIn = "Loggar in…"
     override val createAccount = "Skapa konto"
     override val creatingAccount = "Skapar konto…"
+    override val forgotPassword = "Glömt lösenordet?"
+    override val forgotNeedsEmail = "Skriv din e-post ovan och välj sedan Glömt lösenordet? igen."
+    override fun forgotResult(result: ForgotResult, email: String): String = when (result) {
+        ForgotResult.SENT -> "Om det finns ett konto med $email har vi skickat en länk dit för att välja ett nytt lösenord. Den fungerar i en timme."
+        ForgotResult.NOT_OFFERED -> "Den här servern kan inte skicka e-post och kan därför inte återställa lösenord. Fråga dess ägare."
+        ForgotResult.RATE_LIMITED -> "För många försök. Vänta en minut och försök igen."
+        ForgotResult.INVALID_EMAIL -> "Servern godtog inte den e-postadressen. Kontrollera den och försök igen."
+        ForgotResult.NETWORK -> "Kunde inte nå servern. Kontrollera adressen och din uppkoppling."
+        ForgotResult.FAILED -> "Servern fick ett fel. Försök igen om en stund."
+    }
     override val googleHint = "Välj ditt Google-konto i fönstret som öppnas."
     override val orWithEmail = "Eller med e-post och lösenord"
     override val errorFields = "Ange e-post och lösenord."

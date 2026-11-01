@@ -88,6 +88,9 @@ class FakeSyncServer : Dispatcher() {
     /** False: the account's email is not confirmed, and every sync is 403 `email_not_verified`. */
     @Volatile var emailVerified = true
 
+    /** The bodies of every `POST /api/v1/auth/password/forgot`. */
+    val forgotRequests = CopyOnWriteArrayList<String>()
+
     /** How many times `POST /api/v1/auth/verify/resend` was asked. */
     @Volatile var resends = 0
 
@@ -222,6 +225,11 @@ class FakeSyncServer : Dispatcher() {
                 feedback += request.body.readUtf8()
                 json(201, """{"id":"f-${feedback.size}"}""")
             }
+        }
+        "/api/v1/auth/password/forgot" -> {
+            authPaths += request.path
+            forgotRequests += request.body.readUtf8()
+            MockResponse().setResponseCode(202)
         }
         "/api/v1/auth/verify/resend" -> {
             authPaths += request.path

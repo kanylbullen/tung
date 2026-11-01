@@ -132,6 +132,11 @@ fun Route.apiRoutes(
             testerSignupRoute(testers)
             post("/auth/register") { call.respond(HttpStatusCode.Created, accounts.register(call.receive())) }
             post("/auth/login") { call.respond(accounts.login(call.receive())) }
+            post("/auth/password/forgot") {
+                val body = call.receive<ForgotPassword>()
+                accounts.forgotPassword(body.email, body.language)
+                call.respond(HttpStatusCode.Accepted)
+            }
             post("/auth/google") {
                 val body = call.receive<GoogleSignIn>()
                 call.respond(accounts.signInWithGoogle(body.idToken, body.language))

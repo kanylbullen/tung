@@ -4,6 +4,7 @@ import io.ktor.server.routing.post
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.plugins.ratelimit.rateLimit
 import io.ktor.server.application.ApplicationCall
+import io.github.kanylbullen.tung.server.ResetOutcome
 import io.github.kanylbullen.tung.server.AUTH_RATE_LIMIT
 import io.github.kanylbullen.tung.server.Accounts
 import io.github.kanylbullen.tung.server.ServerConfig
@@ -74,6 +75,45 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
                     call.respondConfirm(confirmView("confirmed"), HttpStatusCode.OK)
                 } else {
                     call.respondConfirm(confirmView("failed"), HttpStatusCode.BadRequest)
+                }
+            }
+        }
+    }
+
+    // The link in a password-reset email: the GET only shows the form (a mail scanner may open it), the POST sets
+    // the password. Rate-limited like the API's sign-in routes.
+    if (accounts != null) {
+        val resetPage by lazy { sitePage("reset-password.html") }
+        fun resetView(view: String, token: String = "", weak: Boolean = false): String? {
+            var html = resetPage ?: return null
+            for (other in listOf("form", "done", "failed").filter { it != view }) html = keepBlocks(html, view, other)
+            html = keepBlocks(html, if (weak) "error" else "no-error", if (weak) "no-error" else "error")
+            return html.replace("@token@", htmlAttribute(token))
+        }
+        suspend fun ApplicationCall.respondReset(html: String?, status: HttpStatusCode) {
+            html ?: return respond(HttpStatusCode.NotFound)
+            response.header("Referrer-Policy", "no-referrer")
+            response.header(HttpHeaders.CacheControl, "no-store")
+            response.header("X-Frame-Options", "DENY")
+            response.header("Content-Security-Policy", "frame-ancestors 'none'; form-action 'self'; base-uri 'none'")
+            respondText(html, ContentType.Text.Html, status)
+        }
+        rateLimit(AUTH_RATE_LIMIT) {
+            get("/reset-password") {
+                val token = call.request.queryParameters["token"]?.takeIf { it.length <= 200 }
+                if (token != null && accounts.resetLinkWorks(token)) {
+                    call.respondReset(resetView("form", token), HttpStatusCode.OK)
+                } else {
+                    call.respondReset(resetView("failed"), HttpStatusCode.BadRequest)
+                }
+            }
+            post("/reset-password") {
+                val form = call.receiveParameters()
+                val token = form["token"].orEmpty().take(200)
+                when (accounts.resetPassword(token, form["password"].orEmpty())) {
+                    ResetOutcome.DONE -> call.respondReset(resetView("done"), HttpStatusCode.OK)
+                    ResetOutcome.WEAK_PASSWORD -> call.respondReset(resetView("form", token, weak = true), HttpStatusCode.BadRequest)
+                    ResetOutcome.INVALID_LINK -> call.respondReset(resetView("failed"), HttpStatusCode.BadRequest)
                 }
             }
         }

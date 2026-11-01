@@ -13,6 +13,11 @@ const val METHODS_PATH = "/api/v1/auth/methods"
 const val ACCOUNT_PATH = "/api/v1/me"
 const val RESEND_CONFIRMATION_PATH = "/api/v1/auth/verify/resend"
 
+const val FORGOT_PASSWORD_PATH = "/api/v1/auth/password/forgot"
+
+/** What "Forgot password?" gave, as the phone's `ForgotOutcome` names it. */
+enum class ForgotResult { SENT, NOT_OFFERED, RATE_LIMITED, INVALID_EMAIL, NETWORK, FAILED }
+
 /** What asking for a new confirmation link gave, as the phone's `ResendOutcome` names it. */
 enum class ResendResult { SENT, RATE_LIMITED, NETWORK, FAILED }
 
@@ -199,6 +204,26 @@ class WebAuth(
         }
     }
 
+    /**
+     * `POST /api/v1/auth/password/forgot {email, language}`: a link to choose
+     * a new password, mailed if an account has [email]; the answer is the
+     * same either way. Stores nothing.
+     */
+    suspend fun forgotPassword(baseUrl: String, email: String, language: String?): ForgotResult {
+        val reply = try {
+            post(baseUrl + FORGOT_PASSWORD_PATH, json.encodeToString(Forgot.serializer(), Forgot(email, language)), emptyMap())
+        } catch (e: HttpUnreachable) {
+            return ForgotResult.NETWORK
+        }
+        return when {
+            reply.isSuccess -> ForgotResult.SENT
+            reply.status == 404 -> ForgotResult.NOT_OFFERED
+            reply.status == 429 -> ForgotResult.RATE_LIMITED
+            reply.status == 400 -> ForgotResult.INVALID_EMAIL
+            else -> ForgotResult.FAILED
+        }
+    }
+
     /** `POST /api/v1/auth/verify/resend {language}`: a new link to confirm the account's email. Stores nothing. */
     suspend fun resendConfirmation(baseUrl: String, token: String, language: String?): ResendResult {
         val reply = try {
@@ -255,6 +280,9 @@ class WebAuth(
 
     @Serializable
     private data class Resend(val language: String? = null)
+
+    @Serializable
+    private data class Forgot(val email: String, val language: String? = null)
 
     @Serializable
     private data class GoogleToken(@SerialName("id_token") val idToken: String, val language: String? = null)

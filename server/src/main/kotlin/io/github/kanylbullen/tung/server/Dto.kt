@@ -14,6 +14,10 @@ data class Credentials(
     val language: String? = null,
 )
 
+/** `POST /auth/password/forgot`: the account's email, and the app's language (`en`, `sv`) for the mail. */
+@Serializable
+data class ForgotPassword(val email: String, val language: String? = null)
+
 /** `POST /auth/verify/resend`, optional: the app's language (`en`, `sv`) for the email; English when absent. */
 @Serializable
 data class ResendConfirmation(val language: String? = null)

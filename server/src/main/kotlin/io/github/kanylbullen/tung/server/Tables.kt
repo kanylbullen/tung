@@ -35,6 +35,7 @@ object EmailTokens : Table("email_tokens") {
     override val primaryKey = PrimaryKey(tokenHash)
 
     const val KIND_VERIFY = "verify"
+    const val KIND_RESET = "reset"
 }
 
 object ApiTokens : Table("api_tokens") {
