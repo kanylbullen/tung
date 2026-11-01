@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import io.github.kanylbullen.tung.core.isPastWorkout
 import io.github.kanylbullen.tung.data.R
 import io.github.kanylbullen.tung.data.TungHost
 import kotlinx.coroutines.CoroutineScope
@@ -108,7 +109,8 @@ class OngoingWorkoutNotifier(
             .setSilent(true)
             .setShowWhen(true)
             .setWhen(workout.startedAt)
-            .setUsesChronometer(true)
+            // A workout logged after the fact shows when it started, not a timer running from days ago.
+            .setUsesChronometer(!isPastWorkout(workout.startedAt, System.currentTimeMillis()))
             .setContentIntent(open)
         if (actions) {
             val logSetId = workout.logSetId

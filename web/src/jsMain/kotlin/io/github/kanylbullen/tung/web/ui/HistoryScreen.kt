@@ -2,10 +2,16 @@ package io.github.kanylbullen.tung.web.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import io.github.kanylbullen.tung.core.ROUTINE_NAME_SEPARATOR
+import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandIds
+import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.history.HistoryRow
@@ -29,6 +35,8 @@ import org.jetbrains.compose.web.dom.Ul
  * with the account and the sync's status above. The rows come from the
  * store in memory and are recomputed when it ticks (a sync applied
  * something), so the list is right after a reload without a network too.
+ * "Log past workout" starts a workout at a date and time of the past and
+ * opens it; beside a workout in progress it offers to open that one instead.
  */
 @Composable
 fun HistoryScreen(container: WebContainer, account: Account) {
@@ -38,9 +46,14 @@ fun HistoryScreen(container: WebContainer, account: Account) {
         historyRows(container.store) { exerciseDisplayName(it, container.catalogueNames, strings.tag) }
     }
     val now = Date.now().toLong()
+    val scope = rememberCoroutineScope()
+    var logging by remember { mutableStateOf(false) }
 
     Div({ classes("screen") }) {
-        TopBar(container, account) { H1 { Text(strings.history) } }
+        TopBar(container, account) {
+            H1 { Text(strings.history) }
+            Button({ classes("text-button", "title-action"); onClick { logging = true } }) { Text(strings.logPastWorkout) }
+        }
         if (rows.isEmpty()) {
             Div({ classes("empty") }) { Text(strings.historyEmpty) }
         } else {
@@ -48,6 +61,35 @@ fun HistoryScreen(container: WebContainer, account: Account) {
                 rows.forEach { row ->
                     key(row.id) {
                         Li { A(href = workoutDetailHash(row.id), attrs = { classes("row", "row-link") }) { WorkoutRow(row, container, now) } }
+                    }
+                }
+            }
+        }
+    }
+
+    if (logging) {
+        val inProgress = container.store.workouts.rows.values.any { it.row.endedAt == null && it.row.startedAt != null }
+        if (inProgress) {
+            Dialog(strings.logPastWorkout, strings.pastBusy, strings.openWorkout, strings.cancel, onCancel = { logging = false }) {
+                logging = false
+                go(Route.WORKOUT)
+            }
+        } else {
+            WorkoutTimeDialog(
+                container,
+                title = strings.logPastWorkout,
+                confirm = strings.logWorkout,
+                initialStart = defaultPastStart(now),
+                initialDurationMillis = null,
+                now = now,
+                onCancel = { logging = false },
+            ) { startedAt, _ ->
+                logging = false
+                scope.launch {
+                    val result = container.run(Command.StartWorkout(startedAt = startedAt))
+                    if (result is CommandResult.Done) {
+                        result.ids[CommandIds.WORKOUT_ID]?.let(PastWorkoutStore::add)
+                        go(Route.WORKOUT)
                     }
                 }
             }

@@ -53,6 +53,7 @@ fun ActiveWorkoutRoute(
                     commands = container.commands,
                     restTimer = container.restTimer,
                     savedState = createSavedStateHandle(),
+                    pastWorkouts = container.pastWorkouts,
                 )
             }
         }

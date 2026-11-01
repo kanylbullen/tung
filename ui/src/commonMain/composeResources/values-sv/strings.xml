@@ -409,4 +409,25 @@
     <string name="summary_record">Nytt rekord</string>
     <string name="summary_done">Klar</string>
     <string name="set_value">%1$s × %2$d</string>
+    <string name="detail_change_time">Ändra datum och tid</string>
+    <string name="detail_change_time_confirm">Spara</string>
+    <string name="past_busy">Avsluta passet som pågår först.</string>
+    <string name="past_log">Lägg in ett tidigare pass</string>
+    <string name="past_log_confirm">Lägg in pass</string>
+    <string name="past_open_active">Öppna passet</string>
+    <string name="time_choose">Välj</string>
+    <string name="time_date">Datum</string>
+    <string name="time_day_earlier">En dag tidigare</string>
+    <string name="time_day_later">En dag senare</string>
+    <string name="time_duration_longer">15 minuter längre</string>
+    <string name="time_duration_shorter">15 minuter kortare</string>
+    <string name="time_pick_date">Välj datum, %1$s</string>
+    <string name="time_pick_start">Välj starttid, %1$s</string>
+    <string name="time_start">Start</string>
+    <string name="time_start_earlier">Börja 15 minuter tidigare</string>
+    <string name="time_start_later">Börja 15 minuter senare</string>
+    <string name="workout_started_description">Startade %1$s</string>
+    <string name="time_error_future">Den tiden ligger i framtiden.</string>
+    <string name="time_error_other">Datum och tid kunde inte ändras.</string>
+    <string name="time_error_too_long">Ett pass kan vara högst 24 timmar.</string>
 </resources>

@@ -414,6 +414,14 @@ internal class ExposedCommandTx(
         }
     }
 
+    override suspend fun setWorkoutTimes(id: String, startedAt: Long, endedAt: Long?) {
+        Workouts.update({ (Workouts.userId eq userId) and (Workouts.id eq id) }) {
+            it[Workouts.startedAt] = startedAt
+            it[Workouts.endedAt] = endedAt
+            it[updatedAt] = bumped(updatedAt, now)
+        }
+    }
+
     override suspend fun tickSet(id: String, done: Boolean) {
         Sets.update({ (Sets.userId eq userId) and (Sets.id eq id) }) {
             it[completed] = done

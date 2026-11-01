@@ -43,6 +43,10 @@ interface Strings {
 
     /** Under the Google button, above the email form. */
     val googleHint: String
+    /** The same with Apple's button there too. */
+    val signInWindowHint: String
+    /** Sign in with Apple's button, in Apple's own wording. */
+    val continueWithApple: String
     val orWithEmail: String
     val errorFields: String
     val errorUrl: String
@@ -123,6 +127,20 @@ interface Strings {
     val deleteWorkoutBody: String
     val delete: String
     val notFound: String
+
+    // A workout logged after the fact
+    val logPastWorkout: String
+    val logWorkout: String
+    val pastBusy: String
+    val openWorkout: String
+    val changeDateTime: String
+    val date: String
+    val startTime: String
+    val durationShorter: String
+    val durationLonger: String
+    fun startedAt(when_: String): String
+    /** Why `set_workout_time` refused, from its reasons. */
+    fun timeChangeRefused(reasons: List<String>): String
 
     // Routines
     val newRoutine: String
@@ -375,6 +393,7 @@ interface Strings {
     fun accountsShown(shown: Int, total: Int): String
     fun joined(date: String): String
     val signInGoogle: String
+    val signInApple: String
     val signInPassword: String
     val adminBadge: String
     fun lastSeen(date: String): String
@@ -482,6 +501,8 @@ object English : Strings {
         ForgotResult.FAILED -> "The server had a problem. Try again in a while."
     }
     override val googleHint = "Choose your Google account in the window that opens."
+    override val signInWindowHint = "Choose your account in the window that opens."
+    override val continueWithApple = "Continue with Apple"
     override val orWithEmail = "Or with email and password"
     override val errorFields = "Enter your email and password."
     override val errorUrl = "Enter the server address, for example https://tung.example.org."
@@ -500,6 +521,11 @@ object English : Strings {
         AuthFailure.GOOGLE_ACCOUNT_MISMATCH -> "This email belongs to an account linked to another Google account. Sign in with that one or with your password."
         AuthFailure.GOOGLE_NOT_OFFERED -> "This server does not offer Sign in with Google. Use your email and password."
         AuthFailure.GOOGLE_FAILED -> "Google sign-in did not work. Try again, or use your email and password."
+        AuthFailure.APPLE_REJECTED -> "The server did not accept the Apple sign-in. Try again."
+        AuthFailure.APPLE_EMAIL_UNVERIFIED -> "Apple did not give an email address Tung can use. Use your email and password."
+        AuthFailure.APPLE_ACCOUNT_MISMATCH -> "This email belongs to an account linked to another Apple ID. Sign in with that one or with your password."
+        AuthFailure.APPLE_NOT_OFFERED -> "This server does not offer Sign in with Apple. Use your email and password."
+        AuthFailure.APPLE_FAILED -> "Apple sign-in did not work. Try again, or use your email and password."
     }
 
     override val home = "Home"
@@ -574,6 +600,21 @@ object English : Strings {
     override val deleteWorkoutBody = "The workout and all its sets will be deleted. This cannot be undone."
     override val delete = "Delete"
     override val notFound = "This workout is not here. It may have been deleted on another device."
+    override val logPastWorkout = "Log past workout"
+    override val logWorkout = "Log workout"
+    override val pastBusy = "Finish the workout in progress first."
+    override val openWorkout = "Open workout"
+    override val changeDateTime = "Change date and time"
+    override val date = "Date"
+    override val startTime = "Start"
+    override val durationShorter = "15 minutes shorter"
+    override val durationLonger = "15 minutes longer"
+    override fun startedAt(when_: String): String = "Started $when_"
+    override fun timeChangeRefused(reasons: List<String>): String = when {
+        reasons.any { it.endsWith("is in the future") } -> "That time is in the future."
+        reasons.any { it.startsWith("a workout lasts at most") } -> "A workout can last at most 24 hours."
+        else -> "The date and time could not be changed."
+    }
     override val newRoutine = "+ New routine"
     override val newRoutineTitle = "New routine"
     override val routinesAllEmpty = "No routines. Create one with + New routine, or save a finished workout as a routine from its page."
@@ -920,6 +961,7 @@ object English : Strings {
     override fun accountsShown(shown: Int, total: Int): String = "The newest $shown of $total."
     override fun joined(date: String): String = "Joined $date"
     override val signInGoogle = "Google"
+    override val signInApple = "Apple"
     override val signInPassword = "Password"
     override val adminBadge = "Admin"
     override fun lastSeen(date: String): String = "Last seen $date"
@@ -1046,6 +1088,8 @@ object Swedish : Strings {
         ForgotResult.FAILED -> "Servern fick ett fel. Försök igen om en stund."
     }
     override val googleHint = "Välj ditt Google-konto i fönstret som öppnas."
+    override val signInWindowHint = "Välj ditt konto i fönstret som öppnas."
+    override val continueWithApple = "Fortsätt med Apple"
     override val orWithEmail = "Eller med e-post och lösenord"
     override val errorFields = "Ange e-post och lösenord."
     override val errorUrl = "Ange serverns adress, till exempel https://tung.example.org."
@@ -1064,6 +1108,11 @@ object Swedish : Strings {
         AuthFailure.GOOGLE_ACCOUNT_MISMATCH -> "E-postadressen hör till ett konto som är kopplat till ett annat Google-konto. Logga in med det eller med ditt lösenord."
         AuthFailure.GOOGLE_NOT_OFFERED -> "Den här servern erbjuder inte inloggning med Google. Använd e-post och lösenord."
         AuthFailure.GOOGLE_FAILED -> "Google-inloggningen fungerade inte. Försök igen, eller använd e-post och lösenord."
+        AuthFailure.APPLE_REJECTED -> "Servern godtog inte Apple-inloggningen. Försök igen."
+        AuthFailure.APPLE_EMAIL_UNVERIFIED -> "Apple gav ingen e-postadress som Tung kan använda. Använd e-post och lösenord."
+        AuthFailure.APPLE_ACCOUNT_MISMATCH -> "E-postadressen hör till ett konto som är kopplat till ett annat Apple-ID. Logga in med det eller med ditt lösenord."
+        AuthFailure.APPLE_NOT_OFFERED -> "Den här servern erbjuder inte inloggning med Apple. Använd e-post och lösenord."
+        AuthFailure.APPLE_FAILED -> "Apple-inloggningen fungerade inte. Försök igen, eller använd e-post och lösenord."
     }
 
     override val home = "Hem"
@@ -1138,6 +1187,21 @@ object Swedish : Strings {
     override val deleteWorkoutBody = "Passet och alla dess set raderas. Det går inte att ångra."
     override val delete = "Radera"
     override val notFound = "Passet finns inte här. Det kan ha raderats på en annan enhet."
+    override val logPastWorkout = "Lägg in ett tidigare pass"
+    override val logWorkout = "Lägg in pass"
+    override val pastBusy = "Avsluta passet som pågår först."
+    override val openWorkout = "Öppna passet"
+    override val changeDateTime = "Ändra datum och tid"
+    override val date = "Datum"
+    override val startTime = "Start"
+    override val durationShorter = "15 minuter kortare"
+    override val durationLonger = "15 minuter längre"
+    override fun startedAt(when_: String): String = "Startade $when_"
+    override fun timeChangeRefused(reasons: List<String>): String = when {
+        reasons.any { it.endsWith("is in the future") } -> "Den tiden ligger i framtiden."
+        reasons.any { it.startsWith("a workout lasts at most") } -> "Ett pass kan vara högst 24 timmar."
+        else -> "Datum och tid kunde inte ändras."
+    }
     override val newRoutine = "+ Ny rutin"
     override val newRoutineTitle = "Ny rutin"
     override val routinesAllEmpty = "Inga rutiner. Skapa en med + Ny rutin, eller spara ett avslutat pass som rutin från dess sida."
@@ -1484,6 +1548,7 @@ object Swedish : Strings {
     override fun accountsShown(shown: Int, total: Int): String = "De $shown senaste av $total."
     override fun joined(date: String): String = "Skapat $date"
     override val signInGoogle = "Google"
+    override val signInApple = "Apple"
     override val signInPassword = "Lösenord"
     override val adminBadge = "Admin"
     override fun lastSeen(date: String): String = "Senast sedd $date"

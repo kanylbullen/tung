@@ -36,7 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.Stat
+import io.github.kanylbullen.tung.core.MAX_WORKOUT_DURATION_MILLIS
 import io.github.kanylbullen.tung.ui.common.StatRow
+import io.github.kanylbullen.tung.ui.common.WorkoutTimeDialog
+import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.common.durationText
 import io.github.kanylbullen.tung.ui.common.localDate
 import io.github.kanylbullen.tung.ui.common.localVolume
@@ -54,6 +57,8 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    var changingTime by rememberSaveable { mutableStateOf(false) }
+    var timeProblem by remember { mutableStateOf<TimeChangeProblem?>(null) }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -83,6 +88,10 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.routine_save_as)) },
                                 onClick = { menuOpen = false; savingRoutine = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.detail_change_time)) },
+                                onClick = { menuOpen = false; changingTime = true },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.detail_delete)) },
@@ -154,6 +163,34 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
                 savingRoutine = false
                 vm.saveAsRoutine(name) { saved ->
                     if (saved) onRoutineSaved(name)
+                }
+            },
+        )
+    }
+
+    if (changingTime && report != null) {
+        val workout = report.workout
+        WorkoutTimeDialog(
+            title = stringResource(Res.string.detail_change_time),
+            confirmLabel = stringResource(Res.string.detail_change_time_confirm),
+            initialStart = workout.startedAt,
+            // At most a day, so a workout that lasted longer can still have only its date changed.
+            initialDurationMillis = report.durationMillis.coerceAtMost(MAX_WORKOUT_DURATION_MILLIS),
+            now = rememberNow(),
+            error = timeProblem?.let {
+                stringResource(
+                    when (it) {
+                        TimeChangeProblem.FUTURE -> Res.string.time_error_future
+                        TimeChangeProblem.TOO_LONG -> Res.string.time_error_too_long
+                        TimeChangeProblem.OTHER -> Res.string.time_error_other
+                    }
+                )
+            },
+            onDismiss = { changingTime = false; timeProblem = null },
+            onConfirm = { startedAt, duration ->
+                vm.setTime(startedAt, duration ?: report.durationMillis) { problem ->
+                    timeProblem = problem
+                    if (problem == null) changingTime = false
                 }
             },
         )

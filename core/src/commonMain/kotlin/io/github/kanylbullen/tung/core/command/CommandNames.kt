@@ -33,6 +33,7 @@ import io.github.kanylbullen.tung.core.command.Command.SetReps
 import io.github.kanylbullen.tung.core.command.Command.SetRest
 import io.github.kanylbullen.tung.core.command.Command.SetTargetReps
 import io.github.kanylbullen.tung.core.command.Command.SetWeight
+import io.github.kanylbullen.tung.core.command.Command.SetWorkoutTime
 import io.github.kanylbullen.tung.core.command.Command.StartRoutine
 import io.github.kanylbullen.tung.core.command.Command.StartWorkout
 import io.github.kanylbullen.tung.core.command.Command.TickSet
@@ -63,6 +64,7 @@ object CommandNames {
         SelectCurrent::class to "select_current",
         FinishWorkout::class to "finish_workout",
         DeleteWorkout::class to "delete_workout",
+        SetWorkoutTime::class to "set_workout_time",
         ApplyPlan::class to "apply_plan",
         SetRest::class to "set_rest",
         CreateExercise::class to "create_exercise",

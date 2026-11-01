@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.server.auth.APPLE_JWKS_URL
 import io.github.kanylbullen.tung.server.auth.GOOGLE_JWKS_URL
 import io.github.kanylbullen.tung.server.push.FCM_BASE_URL
 import io.github.kanylbullen.tung.server.push.FcmServiceAccount
@@ -62,6 +63,15 @@ data class ServerConfig(
     val googleClientIds: List<String> = emptyList(),
     /** Google's JWK set. Not an environment variable: only tests point it elsewhere. */
     val googleJwksUrl: String = GOOGLE_JWKS_URL,
+    /**
+     * `TUNG_APPLE_CLIENT_ID`: the client ids whose Apple ID tokens sign users
+     * in (comma-separated): the web's Services ID first, the one
+     * `/auth/methods` hands out, then the iPhone app's bundle id. Empty turns
+     * Sign in with Apple off.
+     */
+    val appleClientIds: List<String> = emptyList(),
+    /** Apple's JWK set. Not an environment variable: only tests point it elsewhere. */
+    val appleJwksUrl: String = APPLE_JWKS_URL,
     /** The time for Google token expiry. Not an environment variable: tests set it. */
     val clock: () -> Long = System::currentTimeMillis,
     /**
@@ -129,6 +139,8 @@ data class ServerConfig(
                     ?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.toSet().orEmpty(),
                 testerSignups = testerSignups,
                 googleClientIds = value("TUNG_GOOGLE_CLIENT_ID")
+                    ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty(),
+                appleClientIds = value("TUNG_APPLE_CLIENT_ID")
                     ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty(),
             )
         }

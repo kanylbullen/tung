@@ -7,6 +7,7 @@ import io.github.kanylbullen.tung.server.ApiJson
 import io.github.kanylbullen.tung.server.Credentials
 import io.github.kanylbullen.tung.server.ServerConfig
 import io.github.kanylbullen.tung.server.lockUser
+import io.github.kanylbullen.tung.server.auth.IdProvider
 import io.github.kanylbullen.tung.server.oauth.AUTH_NONE
 import io.github.kanylbullen.tung.server.oauth.AUTH_SECRET_BASIC
 import io.github.kanylbullen.tung.server.oauth.AUTH_SECRET_POST
@@ -198,7 +199,7 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
             val csrf = call.csrfToken()
             val user = try {
                 // The browser's language for the welcome email, should this make a new account.
-                accounts.googleUser(accounts.verifyGoogle(form["credential"].orEmpty()), call.request.headers["Accept-Language"])
+                accounts.providerUser(accounts.verify(IdProvider.GOOGLE, form["credential"].orEmpty()), call.request.headers["Accept-Language"])
             } catch (e: ApiException) {
                 if (e.status.value >= 500) throw e
                 // 200 like a wrong password: StatusPages would replace a 401's page with the API's JSON.

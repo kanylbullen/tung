@@ -158,6 +158,13 @@ class MemoryCommandTx : CommandTx {
         writes += "end $id $endedAt"
     }
 
+    override suspend fun setWorkoutTimes(id: String, startedAt: Long, endedAt: Long?) {
+        val index = workouts.indexOfFirst { it.id == id }
+        require(index >= 0) { "no workout $id" }
+        workouts[index] = workouts[index].copy(startedAt = startedAt, endedAt = endedAt)
+        writes += "times $id $startedAt $endedAt"
+    }
+
     override suspend fun tickSet(id: String, done: Boolean) = updateSet(id, "tick $id $done") { it.copy(completed = done) }
 
     override suspend fun setWeight(id: String, weightKg: Double) = updateSet(id, "weight $id $weightKg") { it.copy(weightKg = weightKg) }

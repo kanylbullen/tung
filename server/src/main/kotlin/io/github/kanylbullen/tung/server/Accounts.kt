@@ -17,12 +17,14 @@ import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import io.github.kanylbullen.tung.core.newId
-import io.github.kanylbullen.tung.server.auth.GoogleIdTokens
-import io.github.kanylbullen.tung.server.auth.GoogleIdentity
+import io.github.kanylbullen.tung.server.auth.IdIdentity
+import io.github.kanylbullen.tung.server.auth.IdProvider
+import io.github.kanylbullen.tung.server.auth.IdTokens
 import io.github.kanylbullen.tung.server.oauth.OAuthCodes
 import io.github.kanylbullen.tung.server.oauth.OAuthRefreshTokens
 import io.github.kanylbullen.tung.server.routes.LinkCodes
 import io.github.kanylbullen.tung.server.routes.SlidingWindowLimiter
+import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ResultRow
 
 private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+$")
@@ -60,15 +62,17 @@ enum class ResetOutcome { DONE, WEAK_PASSWORD, INVALID_LINK }
 private const val LAST_USED_RESOLUTION_MS = 60_000L
 
 /**
- * Users, passwords, Google sign-in, session tokens and API tokens. One table
- * holds both kinds of token. [google] is null when the instance has no
- * Google client id (`TUNG_GOOGLE_CLIENT_ID`).
+ * Users, passwords, sign-in with Google and Apple, session tokens and API
+ * tokens. One table holds both kinds of token. [google] is null when the
+ * instance has no Google client id (`TUNG_GOOGLE_CLIENT_ID`), [apple] when it
+ * has no Apple one (`TUNG_APPLE_CLIENT_ID`).
  */
 class Accounts(
     private val db: Db,
-    val google: GoogleIdTokens? = null,
+    val google: IdTokens? = null,
     private val welcome: WelcomeMail? = null,
     private val clock: () -> Long = System::currentTimeMillis,
+    val apple: IdTokens? = null,
 ) {
 
     /**
@@ -94,13 +98,14 @@ class Accounts(
             val (session, confirmToken) = db.tx {
                 Users.selectAll().where { Users.email eq email }.singleOrNull()?.let { held ->
                     // An address someone registered and never confirmed gives way after a day: see UNCONFIRMED_HOLD_MS.
-                    val unconfirmed = held[Users.emailVerifiedAt] == null && held[Users.googleSub] == null
+                    val unconfirmed = held[Users.emailVerifiedAt] == null && !held.providerLinked()
                     if (!(confirming && unconfirmed && held[Users.createdAt] <= now - UNCONFIRMED_HOLD_MS)) throw emailTaken()
-                    // Under its lock and only if it is still unconfirmed: a confirmation or a Google link may have
-                    // committed since the read.
+                    // Under its lock and only if it is still unconfirmed: a confirmation or a Google or Apple link
+                    // may have committed since the read.
                     lockUser(held[Users.id])
                     val gone = Users.deleteWhere {
-                        (Users.id eq held[Users.id]) and Users.emailVerifiedAt.isNull() and Users.googleSub.isNull()
+                        (Users.id eq held[Users.id]) and Users.emailVerifiedAt.isNull() and Users.googleSub.isNull() and
+                            Users.appleSub.isNull()
                     }
                     if (gone != 1) throw emailTaken()
                 }
@@ -131,15 +136,15 @@ class Accounts(
     }
 
     /**
-     * `POST /auth/google`: verifies the ID token, finds or links or creates
-     * the user ([googleUser]) and answers what [login] answers.
+     * `POST /auth/google` and `/auth/apple`: verifies the ID token, finds or
+     * links or creates the user ([providerUser]) and answers what [login] answers.
      */
-    suspend fun signInWithGoogle(idToken: String, language: String? = null): SessionDto =
-        session(googleUser(verifyGoogle(idToken), language))
+    suspend fun signInWith(provider: IdProvider, idToken: String, language: String? = null): SessionDto =
+        session(providerUser(verify(provider, idToken), language))
 
     /**
-     * A new session token for [user]: the one way login and Google sign-in
-     * end. [guard] runs first in the same transaction (see [requirePassword]).
+     * A new session token for [user]: the one way login and sign-in with
+     * Google or Apple end. [guard] runs first in the same transaction (see [requirePassword]).
      */
     private suspend fun session(user: UserDto, guard: Transaction.() -> Unit = { lockUser(user.id) }): SessionDto {
         val token = db.tx {
@@ -154,7 +159,7 @@ class Accounts(
      * strength of [proof]: takes [lockUser] and refuses unless the account
      * still has the password that was checked. Argon2 runs outside any
      * transaction, so without this a login that checked the password just
-     * before the account was handed to its Google owner
+     * before the account was handed to its Google or Apple owner
      * ([evictUnverifiedHolders], under the same lock) would get a session
      * after the eviction, and keep it.
      */
@@ -164,37 +169,45 @@ class Accounts(
         if (current == null || current != proof.hash) throw unauthorized("invalid_credentials", "Wrong email or password.")
     }
 
-    /** The identity in a Google ID token; 404 `not_configured` when the instance has no Google client id. */
-    suspend fun verifyGoogle(idToken: String): GoogleIdentity {
-        val google = google ?: throw ApiException(
+    /** The identity in [provider]'s ID token; 404 `not_configured` when the instance has no client id for it. */
+    suspend fun verify(provider: IdProvider, idToken: String): IdIdentity {
+        val verifier = when (provider) {
+            IdProvider.GOOGLE -> google
+            IdProvider.APPLE -> apple
+        } ?: throw ApiException(
             HttpStatusCode.NotFound,
             "not_configured",
-            "Sign in with Google is not set up on this server.",
+            "Sign in with ${provider.label} is not set up on this server.",
         )
-        return google.verify(idToken)
+        return verifier.verify(idToken)
     }
 
     /**
-     * The user a verified Google identity signs in as. By `google_sub` first;
-     * else, when Google says the email is verified, the account with that
-     * email, which gets the `google_sub` (the link); else a new account
-     * without a password.
+     * The user a verified Google or Apple identity signs in as. By its sub
+     * (`google_sub`, `apple_sub`) first; else, when the provider says the
+     * email is verified, the account with that email, which gets the sub
+     * (the link); else a new account without a password.
      *
      * A password account may have been registered by anyone, with someone
-     * else's address, and waited for its owner to sign in with Google; even a
+     * else's address, and waited for its owner to sign in with Google or Apple; even a
      * confirmed one, since confirming proves only that someone at the inbox
      * pressed a button. So the link hands the account to the verified owner and
      * shuts out whoever else may hold it: the password is removed, and every
      * token, OAuth grant and link code of the account is revoked
-     * ([evictUnverifiedHolders]). The owner signs in with Google from then on,
-     * and signs the other devices in again. An unverified email
-     * that matches no linked account is refused: it proves nothing about who
-     * owns the address. The consent page and `POST /auth/google` both use it.
+     * ([evictUnverifiedHolders]). The owner signs in with the provider from then
+     * on, and signs the other devices in again. An account already linked to the
+     * other provider is handed over the same way: a link proves only that its
+     * provider vouches for the address now, so a second provider never joins
+     * an account silently (an Apple ID made with someone's address would
+     * otherwise be a lasting way into their Google account that nobody sees).
+     * An unverified email that matches no linked account is refused: it proves
+     * nothing about who owns the address. The consent page, `POST /auth/google`
+     * and `POST /auth/apple` use it.
      */
-    suspend fun googleUser(identity: GoogleIdentity, language: String? = null): UserDto {
+    suspend fun providerUser(identity: IdIdentity, language: String? = null): UserDto {
         repeat(2) { attempt ->
             try {
-                val (user, created) = db.tx { resolveGoogleUser(identity) }
+                val (user, created) = db.tx { resolveProviderUser(identity) }
                 // A new account, after its commit: the welcome email, as after registering.
                 if (created) welcome?.account(user.email, language)
                 return user
@@ -207,9 +220,12 @@ class Accounts(
     }
 
     /** The user, and whether this call created it. */
-    private fun Transaction.resolveGoogleUser(identity: GoogleIdentity): Pair<UserDto, Boolean> {
-        Users.selectAll().where { Users.googleSub eq identity.sub }.singleOrNull()?.let { row ->
-            // Google verified the address when it was linked: an account confirmed by nothing else is confirmed now.
+    private fun Transaction.resolveProviderUser(identity: IdIdentity): Pair<UserDto, Boolean> {
+        val provider = identity.provider
+        val column = provider.column
+        val label = provider.label
+        Users.selectAll().where { column eq identity.sub }.singleOrNull()?.let { row ->
+            // The provider verified the address when it was linked: an account confirmed by nothing else is confirmed now.
             if (!proven(row[Users.emailVerifiedAt])) {
                 Users.update({ Users.id eq row[Users.id] }) { it[emailVerifiedAt] = clock() }
                 return user(row[Users.id]) to false
@@ -217,10 +233,16 @@ class Accounts(
             return row.toUserDto() to false
         }
         val email = identity.email
-        if (email == null || !identity.emailVerified) {
+        if (email == null) {
             throw unauthorized(
                 "email_not_verified",
-                "Google has not verified this account's email address, so it cannot sign in to Tung. Use your password, or a Google account with a verified email.",
+                "$label shared no email address, so Tung cannot find or make the account. Share your email when you sign in, or use your password.",
+            )
+        }
+        if (!identity.emailVerified) {
+            throw unauthorized(
+                "email_not_verified",
+                "$label has not verified this account's email address, so it cannot sign in to Tung. Use your password, or a $label account with a verified email.",
             )
         }
         val found = Users.selectAll().where { Users.email eq email }.singleOrNull()
@@ -229,32 +251,45 @@ class Accounts(
             // under it: a concurrent first sign-in may have linked the account meanwhile.
             val userId = found[Users.id]
             lockUser(userId)
-            val linked = Users.selectAll().where { Users.id eq userId }.single()[Users.googleSub]
+            val current = Users.selectAll().where { Users.id eq userId }.single()
+            val linked = current[column]
             if (linked == identity.sub) return user(userId) to false
             if (linked != null) {
-                throw conflict("google_account_mismatch", "This email belongs to an account linked to another Google account. Sign in with that one or with your password.")
+                throw conflict(
+                    "${provider.code}_account_mismatch",
+                    "This email belongs to an account linked to another $label account. Sign in with that one or with your password.",
+                )
             }
             val now = clock()
-            Users.update({ (Users.id eq userId) and Users.googleSub.isNull() }) {
-                it[googleSub] = identity.sub
+            Users.update({ (Users.id eq userId) and column.isNull() }) {
+                it[column] = identity.sub
                 it[passwordHash] = null
                 it[emailVerifiedAt] = now
             }
             evictUnverifiedHolders(userId, now)
             return user(userId) to false
         }
-        if (email.length > 254 || !EMAIL_PATTERN.matches(email)) throw unauthorized("invalid_google_token", "The Google account has no usable email address.")
+        if (email.length > 254 || !EMAIL_PATTERN.matches(email)) {
+            throw unauthorized("invalid_${provider.code}_token", "The $label account has no usable email address.")
+        }
         val userId = newId()
         val now = System.currentTimeMillis()
         Users.insert {
             it[id] = userId
             it[Users.email] = email
             it[passwordHash] = null
-            it[googleSub] = identity.sub
+            it[column] = identity.sub
             it[createdAt] = now
             it[emailVerifiedAt] = now
         }
-        return UserDto(userId, email, now, hasPassword = false, googleLinked = true) to true
+        return UserDto(
+            userId,
+            email,
+            now,
+            hasPassword = false,
+            googleLinked = provider == IdProvider.GOOGLE,
+            appleLinked = provider == IdProvider.APPLE,
+        ) to true
     }
 
     /**
@@ -284,7 +319,7 @@ class Accounts(
     suspend fun verifyCredentials(credentials: Credentials): PasswordProof? {
         val email = credentials.email.trim().lowercase()
         val user = db.tx { Users.selectAll().where { Users.email eq email }.singleOrNull() }
-        // A user without a password (Google only) is refused like a wrong password, after the same work.
+        // A user without a password (Google or Apple only) is refused like a wrong password, after the same work.
         val hash = user?.get(Users.passwordHash)
         val ok = withContext(Dispatchers.Default) { Passwords.verify(credentials.password, hash ?: Passwords.dummyHash) && hash != null }
         if (!ok || user == null || hash == null) return null
@@ -457,6 +492,7 @@ class Accounts(
         createdAt = this[Users.createdAt],
         hasPassword = this[Users.passwordHash] != null,
         googleLinked = this[Users.googleSub] != null,
+        appleLinked = this[Users.appleSub] != null,
         emailVerified = this[Users.emailVerifiedAt] != null,
     )
 
@@ -518,7 +554,7 @@ class Accounts(
             lockUser(principal.userId)
             val tokenName = ApiTokens.selectAll().where { ApiTokens.id eq principal.tokenId }.single()[ApiTokens.name]
             if (tokenName != Tokens.SESSION_NAME) {
-                throw forbidden("session_required", "Delete the account from the app or the web, signed in with your password or Google.")
+                throw forbidden("session_required", "Delete the account from the app or the web, signed in with your password, Google or Apple.")
             }
             val email = Users.selectAll().where { Users.id eq principal.userId }.single()[Users.email]
             if (!email.equals(confirmEmail.trim(), ignoreCase = true)) {
@@ -571,3 +607,13 @@ class PasswordProof(val user: UserDto, internal val hash: String)
  * counts as confirmed for syncing but proves nothing; see V14).
  */
 internal fun proven(emailVerifiedAt: Long?): Boolean = emailVerifiedAt != null && emailVerifiedAt > 0
+
+/** The column that holds this provider's sub. */
+private val IdProvider.column: Column<String?>
+    get() = when (this) {
+        IdProvider.GOOGLE -> Users.googleSub
+        IdProvider.APPLE -> Users.appleSub
+    }
+
+/** The account is linked to Google or Apple, whose owner proved the address. */
+fun ResultRow.providerLinked(): Boolean = this[Users.googleSub] != null || this[Users.appleSub] != null

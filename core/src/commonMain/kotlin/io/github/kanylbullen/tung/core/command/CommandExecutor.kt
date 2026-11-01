@@ -48,7 +48,11 @@ class CommandExecutor(
     private suspend fun perform(tx: CommandTx, command: Command): CommandResult = when (command) {
         is Command.StartWorkout -> {
             val routineId = command.routineId
-            if (routineId != null) rules.startRoutine(tx, routineId, command.programDayId, startedBy) else rules.startWorkout(tx, startedBy)
+            if (routineId != null) {
+                rules.startRoutine(tx, routineId, command.programDayId, startedBy, command.startedAt)
+            } else {
+                rules.startWorkout(tx, startedBy, command.startedAt)
+            }
         }
         is Command.StartRoutine -> rules.startRoutine(tx, command.routineId, command.programDayId, startedBy)
         is Command.AddExercise -> addExercise(tx, command)
@@ -60,8 +64,9 @@ class CommandExecutor(
         is Command.TickSet -> rules.tickSet(tx, command.setId, command.done)
         is Command.LogSet -> rules.logSet(tx, command)
         is Command.SelectCurrent -> rules.selectCurrent(tx, command)
-        is Command.FinishWorkout -> rules.finishWorkout(tx, command.workoutId)
+        is Command.FinishWorkout -> rules.finishWorkout(tx, command.workoutId, command.endedAt)
         is Command.DeleteWorkout -> rules.deleteWorkout(tx, command.workoutId)
+        is Command.SetWorkoutTime -> rules.setWorkoutTime(tx, command.workoutId, command.startedAt, command.endedAt)
         is Command.ApplyPlan -> applyPlan(tx, command)
         is Command.SetRest -> rules.setRest(tx, command.exerciseId, command.seconds)
         is Command.CreateExercise -> rules.createExercise(tx, command.name, command.muscleGroup, command.equipment)

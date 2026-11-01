@@ -8,12 +8,17 @@ import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.factoryOf
 
-/** History on the phone: [HistoryScreen] (in `ui/`) with its ViewModel from the container. */
+/**
+ * History on the phone: [HistoryScreen] (in `ui/`) with its ViewModel from the container; "Log past
+ * workout" offers its start from the container's clock and opens the workout it starts ([onOpenWorkout]).
+ */
 @Composable
-fun HistoryRoute(onOpenDetail: (String) -> Unit) {
+fun HistoryRoute(onOpenDetail: (String) -> Unit, onOpenWorkout: (String) -> Unit) {
     val container = appContainer()
-    val vm: HistoryViewModel = viewModel(factory = factoryOf { HistoryViewModel(container.workoutRepository) })
-    HistoryScreen(vm, onOpenDetail)
+    val vm: HistoryViewModel = viewModel(
+        factory = factoryOf { HistoryViewModel(container.workoutRepository, container.commands, { container.clock.millis() }, container.pastWorkouts) }
+    )
+    HistoryScreen(vm, onOpenDetail, onOpenWorkout)
 }
 
 /** One finished workout on the phone: [WorkoutDetailScreen] (in `ui/`), and a toast when it is saved as a routine. */

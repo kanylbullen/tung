@@ -29,9 +29,11 @@ sealed interface Command {
     /**
      * Starts a workout, or returns the one in progress (there is at most one).
      * With [routineId] it is [StartRoutine]; [programDayId] is recorded on the
-     * workout and needs a [routineId].
+     * workout and needs a [routineId]. [startedAt] (epoch millis) starts it
+     * then instead of now, to log a workout after the fact; it may not lie
+     * ahead of the store's clock.
      */
-    data class StartWorkout(val routineId: String? = null, val programDayId: String? = null) : Command
+    data class StartWorkout(val routineId: String? = null, val programDayId: String? = null, val startedAt: Long? = null) : Command
 
     /** Starts a workout from a routine, or returns the one in progress; [programDayId] when started from a program day. */
     data class StartRoutine(val routineId: String, val programDayId: String? = null) : Command
@@ -84,8 +86,18 @@ sealed interface Command {
      */
     data class SelectCurrent(val setId: String? = null, val workoutExerciseId: String? = null) : Command
 
-    /** Drops un-ticked and empty sets, then empty exercises; a workout with nothing logged is deleted. */
-    data class FinishWorkout(val workoutId: String) : Command
+    /**
+     * Drops un-ticked and empty sets, then empty exercises; a workout with
+     * nothing logged is deleted. It ends at [endedAt] (epoch millis), else
+     * now: a workout logged after the fact ends when it really did.
+     */
+    data class FinishWorkout(val workoutId: String, val endedAt: Long? = null) : Command
+
+    /**
+     * Moves a workout in time: its start and, for a finished one, its end
+     * (required then; null for a workout in progress). Nothing else changes.
+     */
+    data class SetWorkoutTime(val workoutId: String, val startedAt: Long, val endedAt: Long? = null) : Command
 
     data class DeleteWorkout(val workoutId: String) : Command
 

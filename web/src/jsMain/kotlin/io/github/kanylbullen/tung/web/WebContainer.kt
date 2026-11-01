@@ -220,6 +220,10 @@ class WebContainer(
     suspend fun signInWithGoogle(serverUrl: String, idToken: String): AuthResult =
         signedIn(serverUrl, auth.signInWithGoogle(serverUrl, idToken, languageTag()))
 
+    /** Signs in with Apple's ID token for [serverUrl]'s Services ID and, on success, pulls the account's log. */
+    suspend fun signInWithApple(serverUrl: String, idToken: String): AuthResult =
+        signedIn(serverUrl, auth.signInWithApple(serverUrl, idToken, languageTag()))
+
     /** The app's language for the server's welcome email: `sv` or `en`. */
     private fun languageTag(): String = if (strings === Swedish) "sv" else "en"
 

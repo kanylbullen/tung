@@ -116,6 +116,25 @@ class CommandExecutorTest {
     }
 
     @Test
+    fun aWorkoutLoggedAfterTheFactCarriesItsTimesThrough() {
+        tx.now = 2_000_000_000_000L
+        val start = 1_999_000_000_000L
+        val workoutId = done(Command.StartWorkout(startedAt = start)).ids.getValue(WORKOUT_ID)
+        assertEquals(start, runBlocking { tx.workout(workoutId) }?.startedAt)
+        done(Command.AddExercise(workoutId, ExerciseRef.ById(bench.id), sets = 1))
+        val set = runBlocking { tx.sets(runBlocking { tx.workoutExercises(workoutId) }.single().id) }.single()
+        done(Command.SetReps(set.id, 8))
+        done(Command.LogSet(workoutId, set.id))
+        done(Command.FinishWorkout(workoutId, endedAt = start + 5_400_000L))
+        assertEquals(start + 5_400_000L, runBlocking { tx.workout(workoutId) }?.endedAt)
+        done(Command.SetWorkoutTime(workoutId, start - 86_400_000L, start - 86_400_000L + 3_600_000L))
+        val row = runBlocking { tx.workout(workoutId) }
+        assertEquals(start - 86_400_000L to start - 82_800_000L, row?.startedAt to row?.endedAt)
+        val before2000 = run(Command.SetWorkoutTime(workoutId, 1L, 2L))
+        assertTrue("$before2000", before2000 is CommandResult.Rejected)
+    }
+
+    @Test
     fun theOtherCommandsReachTheRules() {
         val workoutId = done(Command.StartWorkout()).ids.getValue(WORKOUT_ID)
         done(Command.AddExercise(workoutId, ExerciseRef.ById(bench.id), sets = 2))

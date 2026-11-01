@@ -30,12 +30,12 @@ class Admins(private val db: Db, private val emails: Set<String>, private val re
     suspend fun isAdmin(userId: String): Boolean {
         if (emails.isEmpty()) return false
         val row = db.tx { Users.selectAll().where { Users.id eq userId }.singleOrNull() } ?: return false
-        return isAdmin(row[Users.email], row[Users.googleSub] != null, row[Users.emailVerifiedAt])
+        return isAdmin(row[Users.email], row.providerLinked(), row[Users.emailVerifiedAt])
     }
 
-    fun isAdmin(email: String, googleLinked: Boolean, emailVerifiedAt: Long?): Boolean =
+    fun isAdmin(email: String, providerLinked: Boolean, emailVerifiedAt: Long?): Boolean =
         email.lowercase() in emails &&
-            (googleLinked || proven(emailVerifiedAt) || (!requireProof && emailVerifiedAt != null))
+            (providerLinked || proven(emailVerifiedAt) || (!requireProof && emailVerifiedAt != null))
 
     /**
      * Only a write token: a `read` token is what an admin hands an assistant
@@ -67,6 +67,7 @@ data class AdminUserDto(
     val createdAt: Long,
     val hasPassword: Boolean,
     val googleLinked: Boolean,
+    val appleLinked: Boolean = false,
     /** The email is confirmed, or the account is from before confirmation; false while its link is not opened. */
     val emailVerified: Boolean = true,
     val isAdmin: Boolean,
@@ -113,10 +114,11 @@ class AdminStore(private val db: Db, private val admins: Admins, private val tes
                                     createdAt = rows.getLong("created_at"),
                                     hasPassword = rows.getBoolean("has_password"),
                                     googleLinked = rows.getBoolean("google_linked"),
+                                    appleLinked = rows.getBoolean("apple_linked"),
                                     emailVerified = rows.getLong("email_verified_at").let { !rows.wasNull() },
                                     isAdmin = admins.isAdmin(
                                         email,
-                                        rows.getBoolean("google_linked"),
+                                        rows.getBoolean("google_linked") || rows.getBoolean("apple_linked"),
                                         rows.getLong("email_verified_at").takeUnless { rows.wasNull() },
                                     ),
                                     lastSeenAt = rows.getLong("last_seen_at").takeUnless { rows.wasNull() },
@@ -138,6 +140,7 @@ class AdminStore(private val db: Db, private val admins: Admins, private val tes
             SELECT u.id, u.email, u.created_at,
                    u.password_hash IS NOT NULL AS has_password,
                    u.google_sub IS NOT NULL AS google_linked,
+                   u.apple_sub IS NOT NULL AS apple_linked,
                    u.email_verified_at,
                    t.last_seen_at, coalesce(t.active_tokens, 0) AS active_tokens,
                    coalesce(w.workouts, 0) AS workouts, w.last_workout_at

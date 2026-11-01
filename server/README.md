@@ -41,6 +41,7 @@ from [`catalog/core.json`](../catalog/core.json) on every start.
 | `TUNG_FCM_SERVICE_ACCOUNT_JSON` | | A Firebase service-account key for FCM push: the path to the JSON file (inside the container) or the JSON itself (starting with `{`). Empty: FCM push is off. An unreadable or invalid key stops the server at start. See "Push". |
 | `TUNG_PUSH_ALLOW_PRIVATE` | `false` | `true` lets UnifiedPush endpoints be plain `http://` and private, loopback or link-local addresses: for a self-hosted instance whose push distributor (ntfy) is on the same LAN. Leave `false` on any instance others can register on: the server would then POST to addresses inside your network. See "Push". |
 | `TUNG_GOOGLE_CLIENT_ID` | | The Google OAuth client id (a Web application client, `….apps.googleusercontent.com`) whose ID tokens sign users in; several comma-separated are accepted, and the first is the one clients are told to use. Empty: nothing Google-related is shown or served. See "Sign in with Google". |
+| `TUNG_APPLE_CLIENT_ID` | | Sign in with Apple: the web's Services ID first (the one `/auth/methods` hands out), then, comma-separated, the iPhone app's bundle id. Empty: nothing Apple-related is shown or served. See "Sign in with Apple". |
 | `TUNG_WEB_DIR` | `/app/web` in the image | The web app's built site (`web/`, `:web:jsBrowserDistribution`), served at `/app/`; the landing page at `/` is built in. Unset (outside the image): no app, `/app` is a 404. A directory without `index.html` stops the server at start. |
 | `TUNG_ADMIN_EMAILS` | | The server's admins (comma-separated emails). In the web app they get Settings → Server admin: every account on the server, how it signs in, when it was last seen and how many workouts it has (`GET /api/v1/admin/users`), and the test sign-ups when those are on. `/api/v1/me` says `is_admin`, and a read-only token is refused. A password account is made without checking the address, so with Sign in with Google configured an admin's account must also be linked to Google (sign in with Google once); without Google, an address here is an admin as soon as an account has it, so create your own account before you set it. Empty: nobody is an admin. |
 | `TUNG_TESTER_SIGNUPS` | `false` | `true` puts the form "Test the Android app" on the landing page and keeps the addresses for the admins to copy into the Play Console (`GET /api/v1/testers`, `DELETE /api/v1/testers/{email}`). Only for the instance that runs the Play test, tung.xuper.fun; a self-hosted server leaves it off, and then the form is not on the page and `/api/v1/testers` is 404 `not_configured`. |
@@ -59,9 +60,10 @@ caller's own: another user's ids answer 404.
 | `GET /healthz` | No auth. 200 when the database answers, 503 otherwise. |
 | `POST /api/v1/auth/register`, `/login` | `{email, password}` → a session token. 10 requests a minute per client address. |
 | `POST /api/v1/auth/google` | `{id_token}` → a session token, as `/login` answers. Only with `TUNG_GOOGLE_CLIENT_ID`, else 404 `not_configured`. Rate-limited like login. See "Sign in with Google". |
-| `GET /api/v1/auth/methods` | No auth. `{"password": true, "google": {"client_id": "…"}}`, or `"google": null` without a Google client id. |
+| `POST /api/v1/auth/apple` | `{id_token}` → a session token, as `/login` answers. Only with `TUNG_APPLE_CLIENT_ID`, else 404 `not_configured`. Rate-limited like login. See "Sign in with Apple". |
+| `GET /api/v1/auth/methods` | No auth. `{"password": true, "google": {"client_id": "…"}, "apple": {"client_id": "…"}}`, each null without its client id. |
 | `POST /api/v1/auth/logout` | Revokes the token used. |
-| `GET /api/v1/me` | The account, with `has_password` and `google_linked`. |
+| `GET /api/v1/me` | The account, with `has_password`, `google_linked` and `apple_linked`. |
 | `GET/POST /api/v1/tokens`, `DELETE /api/v1/tokens/{id}` | List, create (`{name, scope}`, scope `read` or `write`) and revoke API tokens. |
 | `POST /api/v1/link/start`, `POST /api/v1/link/claim` | Sign a watch in with a six-digit code instead of a password. See "Linking a device". |
 | `GET/POST /api/v1/exercises`, `PATCH /api/v1/exercises/{id}` | The catalogue plus your own; create custom ones; rename yours, set the rest time of any. |
@@ -117,7 +119,7 @@ OAuth consent page that MCP clients send you to. Off until the operator sets
 `GET /api/v1/auth/methods` and never hardcodes one, so every instance uses
 its own.
 
-**Verification** (`auth/GoogleIdTokens.kt`, no Google library): the ID
+**Verification** (`auth/IdTokens.kt`, no Google library): the ID
 token must be RS256, issued by `accounts.google.com`, for one of the
 configured client ids, unexpired (60 s leeway for clock skew) and carry
 `iat`; its signature is checked against Google's key set
@@ -169,6 +171,47 @@ package name `io.github.kanylbullen.tung` and the SHA-1 of the signing key
 (`keytool -list -v -keystore …`, or Play Console's app signing page), or
 Google refuses to hand the app a token. The Android client's id is never
 configured anywhere; Google matches it by package and signature.
+
+## Sign in with Apple
+
+Optional, next to Google and the password, on the web (the sign-in page)
+and, later, in the iPhone app, where the App Store asks for it next to
+Google. Off until the operator sets `TUNG_APPLE_CLIENT_ID`; the web learns
+the Services ID from `GET /api/v1/auth/methods`.
+
+**Verification** is Google's (`auth/IdTokens.kt`, `IdProvider.APPLE`): RS256,
+issued by `https://appleid.apple.com`, for one of the configured ids (the
+Services ID for the web, the bundle id for the app), unexpired, with `iat`,
+signed with a key of `https://appleid.apple.com/auth/keys`. A rejected token
+is 401 `invalid_apple_token`; an unreachable key set 503 `apple_unavailable`.
+
+**Which account** is Google's rule (`users.apple_sub`, V15): the linked
+account, else the account with the email Apple vouches for, handed over as
+with Google (its password removed, its other ways in revoked), else a new
+account without a password. An account linked to Google is handed over the
+same way: a second provider never joins an account silently. A person who hides their address signs in with a private
+relay address (`…@privaterelay.appleid.com`), which is an account of its own.
+`/api/v1/me` says `apple_linked`. The consent page for MCP clients has no
+Apple button yet.
+
+**Setting it up** (an Apple Developer Program membership):
+
+1. *Certificates, Identifiers & Profiles → Identifiers*: the app's **App
+   ID** (the bundle id) with *Sign in with Apple* ticked, as primary App ID.
+2. A **Services ID** (e.g. `fun.xuper.tung.web`), *Sign in with Apple*
+   ticked, configured with the App ID above as primary; *Domains*: the
+   public host (`tung.example.org`); *Return URLs*:
+   `https://tung.example.org/app/`. The web's popup answers by message, but
+   Apple still checks this URL.
+3. `TUNG_APPLE_CLIENT_ID=<services id>,<bundle id>`, and restart.
+4. For mail to private relay addresses (the welcome and reset emails):
+   *Services → Sign in with Apple for Email Communication*, register
+   `TUNG_MAIL_FROM`'s domain or address; Apple checks its SPF there.
+   Without it Apple's relay drops that mail.
+
+No key or client secret is needed to sign in: the server only checks ID
+tokens. Revoking an Apple ID's grant when its account is deleted, which the
+App Store asks of iPhone apps, needs one (a `.p8` key) and is not built yet.
 
 ## Sync
 
