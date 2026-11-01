@@ -50,6 +50,9 @@ interface WorkoutDao {
     @Query("UPDATE workout SET endedAt = :endedAt, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setEndedAt(id: String, endedAt: Long, updatedAt: Long)
 
+    @Query("UPDATE workout SET startedAt = :startedAt, endedAt = :endedAt, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
+    suspend fun setTimes(id: String, startedAt: Long, endedAt: Long?, updatedAt: Long)
+
     @Query("DELETE FROM workout WHERE id = :id")
     suspend fun deleteWorkout(id: String)
 

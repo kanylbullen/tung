@@ -133,6 +133,16 @@ class ValidationTest {
         valid(StartWorkout())
         valid(StartWorkout(routineId = "r", programDayId = "d"))
         invalid(StartWorkout(programDayId = "d"))
+        valid(StartWorkout(startedAt = 1_760_000_000_000L))
+        assertEquals(listOf("startedAt must not be before 2000-01-01"), invalid(StartWorkout(startedAt = 946_684_799_999L)))
+        valid(Command.FinishWorkout("w", endedAt = 1_760_000_000_000L))
+        invalid(Command.FinishWorkout("w", endedAt = 0L))
+        valid(Command.SetWorkoutTime("w", 1_760_000_000_000L, null))
+        valid(Command.SetWorkoutTime("w", 1_760_000_000_000L, 1_760_003_600_000L))
+        assertEquals(
+            listOf("workoutId must not be blank", "startedAt must not be before 2000-01-01", "endedAt must not be before 2000-01-01"),
+            invalid(Command.SetWorkoutTime("", 5L, 6L)),
+        )
         valid(LogSet("w"))
         valid(LogSet("w", setId = "s", addNext = true))
         invalid(LogSet("w", setId = "", addNext = true))

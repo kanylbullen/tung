@@ -34,6 +34,7 @@ class CommandWireTest {
         "select_current" to """{"workout_exercise_id": "$id"}""",
         "finish_workout" to """{"workout_id": "$id"}""",
         "delete_workout" to """{"workout_id": "$id"}""",
+        "set_workout_time" to """{"workout_id": "$id", "started_at": 1761840000000, "ended_at": 1761845400000}""",
         "apply_plan" to """{"exercises": [{"exercise": $ex, "set_count": 5, "reps": 10, "weight_kg": 60}]}""",
         "set_rest" to """{"exercise_id": "$id", "seconds": 120}""",
         "create_exercise" to """{"name": "Zercher squat", "muscle_group": "legs", "equipment": "barbell"}""",
@@ -94,6 +95,25 @@ class CommandWireTest {
         assertEquals(Command.CreateProgram("PPL", ProgramMode.ROTATING), decoded("create_program", samples.getValue("create_program")))
         assertEquals(Command.SetRest(id, null), decoded("set_rest", """{"exercise_id": "$id", "seconds": null}"""))
         assertEquals(Command.SetRest(id, null), decoded("set_rest", """{"exercise_id": "$id"}"""))
+    }
+
+    @Test
+    fun aWorkoutsTimesAreEpochMillisWithoutLosingPrecision() {
+        assertEquals(Command.StartWorkout(), decoded("start_workout", samples.getValue("start_workout")))
+        assertEquals(Command.StartWorkout(startedAt = 1_761_840_000_123L), decoded("start_workout", """{"started_at": 1761840000123}"""))
+        assertEquals(Command.FinishWorkout(id), decoded("finish_workout", samples.getValue("finish_workout")))
+        assertEquals(Command.FinishWorkout(id, 1_761_845_400_001L), decoded("finish_workout", """{"workout_id": "$id", "ended_at": "1761845400001"}"""))
+        assertEquals(
+            Command.SetWorkoutTime(id, 1_761_840_000_000L, 1_761_845_400_000L),
+            decoded("set_workout_time", samples.getValue("set_workout_time")),
+        )
+        assertEquals(Command.SetWorkoutTime(id, 1_761_840_000_000L, null), decoded("set_workout_time", """{"workout_id": "$id", "started_at": 1761840000000, "ended_at": null}"""))
+        fun reasons(name: String, body: String) = (CommandWire.decode(name, obj(body)) as WireDecoding.Invalid).reasons
+        assertEquals(listOf("started_at is required"), reasons("set_workout_time", """{"workout_id": "$id"}"""))
+        assertEquals(listOf("started_at must be a time in epoch milliseconds"), reasons("start_workout", """{"started_at": "yesterday"}"""))
+        assertEquals(listOf("ended_at must be a time in epoch milliseconds"), reasons("finish_workout", """{"workout_id": "$id", "ended_at": 1.5}"""))
+        val schema = CommandWire.schema("set_workout_time")!!
+        assertEquals(listOf("workout_id", "started_at"), schema.getValue("required").jsonArray.map { it.jsonPrimitive.content })
     }
 
     @Test

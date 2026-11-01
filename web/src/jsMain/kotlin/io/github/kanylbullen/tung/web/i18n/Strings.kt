@@ -124,6 +124,20 @@ interface Strings {
     val delete: String
     val notFound: String
 
+    // A workout logged after the fact
+    val logPastWorkout: String
+    val logWorkout: String
+    val pastBusy: String
+    val openWorkout: String
+    val changeDateTime: String
+    val date: String
+    val startTime: String
+    val durationShorter: String
+    val durationLonger: String
+    fun startedAt(when_: String): String
+    /** Why `set_workout_time` refused, from its reasons. */
+    fun timeChangeRefused(reasons: List<String>): String
+
     // Routines
     val newRoutine: String
     val newRoutineTitle: String
@@ -574,6 +588,21 @@ object English : Strings {
     override val deleteWorkoutBody = "The workout and all its sets will be deleted. This cannot be undone."
     override val delete = "Delete"
     override val notFound = "This workout is not here. It may have been deleted on another device."
+    override val logPastWorkout = "Log past workout"
+    override val logWorkout = "Log workout"
+    override val pastBusy = "Finish the workout in progress first."
+    override val openWorkout = "Open workout"
+    override val changeDateTime = "Change date and time"
+    override val date = "Date"
+    override val startTime = "Start"
+    override val durationShorter = "15 minutes shorter"
+    override val durationLonger = "15 minutes longer"
+    override fun startedAt(when_: String): String = "Started $when_"
+    override fun timeChangeRefused(reasons: List<String>): String = when {
+        reasons.any { it.endsWith("is in the future") } -> "That time is in the future."
+        reasons.any { it.startsWith("a workout lasts at most") } -> "A workout can last at most 24 hours."
+        else -> "The date and time could not be changed."
+    }
     override val newRoutine = "+ New routine"
     override val newRoutineTitle = "New routine"
     override val routinesAllEmpty = "No routines. Create one with + New routine, or save a finished workout as a routine from its page."
@@ -1138,6 +1167,21 @@ object Swedish : Strings {
     override val deleteWorkoutBody = "Passet och alla dess set raderas. Det går inte att ångra."
     override val delete = "Radera"
     override val notFound = "Passet finns inte här. Det kan ha raderats på en annan enhet."
+    override val logPastWorkout = "Lägg in ett tidigare pass"
+    override val logWorkout = "Lägg in pass"
+    override val pastBusy = "Avsluta passet som pågår först."
+    override val openWorkout = "Öppna passet"
+    override val changeDateTime = "Ändra datum och tid"
+    override val date = "Datum"
+    override val startTime = "Start"
+    override val durationShorter = "15 minuter kortare"
+    override val durationLonger = "15 minuter längre"
+    override fun startedAt(when_: String): String = "Startade $when_"
+    override fun timeChangeRefused(reasons: List<String>): String = when {
+        reasons.any { it.endsWith("is in the future") } -> "Den tiden ligger i framtiden."
+        reasons.any { it.startsWith("a workout lasts at most") } -> "Ett pass kan vara högst 24 timmar."
+        else -> "Datum och tid kunde inte ändras."
+    }
     override val newRoutine = "+ Ny rutin"
     override val newRoutineTitle = "Ny rutin"
     override val routinesAllEmpty = "Inga rutiner. Skapa en med + Ny rutin, eller spara ett avslutat pass som rutin från dess sida."

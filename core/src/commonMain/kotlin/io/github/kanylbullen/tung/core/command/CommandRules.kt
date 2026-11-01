@@ -2,8 +2,10 @@ package io.github.kanylbullen.tung.core.command
 
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
+import io.github.kanylbullen.tung.core.MAX_WORKOUT_DURATION_MILLIS
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.core.WORKOUT_CLOCK_SKEW_MILLIS
 import io.github.kanylbullen.tung.core.addedExerciseSets
 import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.clampTargetSets
@@ -79,10 +81,16 @@ class CommandRules(private val ids: () -> String = { newId() }) {
         return Done(mapOf(SET_ID to set.id, WORKOUT_EXERCISE_ID to set.workoutExerciseId))
     }
 
-    /** `start_workout` without a routine: the workout in progress (there is at most one), else a new one started now by [startedBy]. */
-    suspend fun startWorkout(tx: CommandTx, startedBy: String?): CommandResult {
+    /**
+     * `start_workout` without a routine: the workout in progress (there is at
+     * most one), else a new one started by [startedBy] at [startedAt] (a
+     * workout logged after the fact), or now. A start ahead of the store's
+     * clock by more than [WORKOUT_CLOCK_SKEW_MILLIS] is refused.
+     */
+    suspend fun startWorkout(tx: CommandTx, startedBy: String?, startedAt: Long? = null): CommandResult {
+        futureStart(tx, startedAt)?.let { return it }
         tx.activeWorkout()?.let { return Done(mapOf(WORKOUT_ID to it.id)) }
-        return Done(mapOf(WORKOUT_ID to insertWorkout(tx, startedBy, routineId = null, programDayId = null)))
+        return Done(mapOf(WORKOUT_ID to insertWorkout(tx, startedBy, routineId = null, programDayId = null, startedAt)))
     }
 
     /**
@@ -91,13 +99,14 @@ class CommandRules(private val ids: () -> String = { newId() }) {
      * [programDayId]: its exercises in order with `targetSets` un-ticked sets
      * each, filled by [routineStartSets] (last session's set at the same
      * position, past its end the set before, 0 kg × `targetReps` with no
-     * history), and the routine marked used.
+     * history), and the routine marked used. [startedAt] as in [startWorkout].
      */
-    suspend fun startRoutine(tx: CommandTx, routineId: String, programDayId: String?, startedBy: String?): CommandResult {
+    suspend fun startRoutine(tx: CommandTx, routineId: String, programDayId: String?, startedBy: String?, startedAt: Long? = null): CommandResult {
+        futureStart(tx, startedAt)?.let { return it }
         tx.activeWorkout()?.let { return Done(mapOf(WORKOUT_ID to it.id)) }
         tx.routine(routineId) ?: return noSuch("routine", routineId)
         if (programDayId != null) tx.programDay(programDayId) ?: return noSuch("program day", programDayId)
-        val workoutId = insertWorkout(tx, startedBy, routineId, programDayId)
+        val workoutId = insertWorkout(tx, startedBy, routineId, programDayId, startedAt)
         tx.routineExercises(routineId).forEachIndexed { position, re ->
             val row = WorkoutExerciseRow(ids(), workoutId, re.exerciseId, position)
             tx.insertWorkoutExercise(row)
@@ -115,14 +124,17 @@ class CommandRules(private val ids: () -> String = { newId() }) {
      * reps) are dropped, then exercises left without sets, and a workout
      * without one logged set is deleted rather than kept empty (then no
      * [WORKOUT_ID] comes back). It ends at [endedAt], or now (at its start if
-     * that lies ahead, a device clock that runs fast); an end before the start
-     * is refused. A workout already finished is left as it is.
+     * that lies ahead, a device clock that runs fast); an end before the start,
+     * or a given end ahead of the store's clock by more than
+     * [WORKOUT_CLOCK_SKEW_MILLIS], is refused. A workout already finished is left as it is.
      */
     suspend fun finishWorkout(tx: CommandTx, workoutId: String, endedAt: Long? = null): CommandResult {
         val workout = tx.workout(workoutId) ?: return noSuch("workout", workoutId)
         if (workout.endedAt != null) return Done(mapOf(WORKOUT_ID to workoutId))
         val end = endedAt ?: maxOf(tx.now(), workout.startedAt)
         if (end < workout.startedAt) return Rejected(listOf("ended_at is before started_at"))
+        // Only a given end: without one a start a fast clock put ahead is still finished, at the start.
+        if (endedAt != null && endedAt > tx.now() + WORKOUT_CLOCK_SKEW_MILLIS) return Rejected(listOf("ended_at is in the future"))
         var logged = 0
         for (we in tx.workoutExercises(workoutId)) {
             val (keep, drop) = tx.sets(we.id).partition { isLogged(it.completed, it.reps) }
@@ -163,10 +175,48 @@ class CommandRules(private val ids: () -> String = { newId() }) {
         return Done(mapOf(WORKOUT_ID to workoutId))
     }
 
-    private suspend fun insertWorkout(tx: CommandTx, startedBy: String?, routineId: String?, programDayId: String?): String {
-        val row = WorkoutRow(ids(), startedAt = tx.now(), endedAt = null, routineId = routineId, programDayId = programDayId, startedBy = startedBy)
+    private suspend fun insertWorkout(
+        tx: CommandTx,
+        startedBy: String?,
+        routineId: String?,
+        programDayId: String?,
+        startedAt: Long? = null,
+    ): String {
+        val row = WorkoutRow(ids(), startedAt = startedAt ?: tx.now(), endedAt = null, routineId = routineId, programDayId = programDayId, startedBy = startedBy)
         tx.insertWorkout(row)
         return row.id
+    }
+
+    /** The refusal of a start that lies ahead of the store's clock, or null. */
+    private fun futureStart(tx: CommandTx, startedAt: Long?): CommandResult? =
+        if (startedAt != null && startedAt > tx.now() + WORKOUT_CLOCK_SKEW_MILLIS) Rejected(listOf("started_at is in the future")) else null
+
+    /**
+     * `set_workout_time`: moves a workout to [startedAt] and, when it is
+     * finished, [endedAt] (required then: start ≤ end, at most
+     * [MAX_WORKOUT_DURATION_MILLIS] apart). A workout in progress takes no
+     * end. Neither may lie ahead of the store's clock by more than
+     * [WORKOUT_CLOCK_SKEW_MILLIS]. Written only when something changes; its
+     * exercises and sets are left as they are.
+     */
+    suspend fun setWorkoutTime(tx: CommandTx, workoutId: String, startedAt: Long, endedAt: Long?): CommandResult {
+        val workout = tx.workout(workoutId) ?: return noSuch("workout", workoutId)
+        val latest = tx.now() + WORKOUT_CLOCK_SKEW_MILLIS
+        val reasons = buildList {
+            if (startedAt > latest) add("started_at is in the future")
+            if (workout.endedAt == null) {
+                if (endedAt != null) add("a workout in progress has no ended_at; finish it with finish_workout")
+            } else if (endedAt == null) {
+                add("a finished workout needs ended_at")
+            } else {
+                if (endedAt < startedAt) add("ended_at is before started_at")
+                if (endedAt > latest) add("ended_at is in the future")
+                if (endedAt - startedAt > MAX_WORKOUT_DURATION_MILLIS) add("a workout lasts at most 24 hours")
+            }
+        }
+        if (reasons.isNotEmpty()) return Rejected(reasons)
+        if (startedAt != workout.startedAt || endedAt != workout.endedAt) tx.setWorkoutTimes(workoutId, startedAt, endedAt)
+        return Done(mapOf(WORKOUT_ID to workoutId))
     }
 
     /**

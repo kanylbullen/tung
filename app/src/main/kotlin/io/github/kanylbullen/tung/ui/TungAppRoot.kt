@@ -297,7 +297,10 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 )
             }
             composable(Routes.HISTORY) {
-                HistoryRoute(onOpenDetail = { id -> nav.navigate(Routes.detail(id)) })
+                HistoryRoute(
+                    onOpenDetail = { id -> nav.navigate(Routes.detail(id)) },
+                    onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) { popUpTo(Routes.HOME) } },
+                )
             }
             composable(Routes.EXERCISES) {
                 ExercisesScreen(

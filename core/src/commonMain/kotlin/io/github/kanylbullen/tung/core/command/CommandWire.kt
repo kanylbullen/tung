@@ -111,7 +111,7 @@ object CommandWire {
     // --- the table ---
 
     private enum class Kind(val nullable: Boolean = false) {
-        ID, TEXT, INT, NUMBER, BOOL, NULLABLE_INT(nullable = true), MUSCLE_GROUP, EQUIPMENT, PROGRAM_MODE,
+        ID, TEXT, INT, NUMBER, BOOL, NULLABLE_INT(nullable = true), TIME, NULLABLE_TIME(nullable = true), MUSCLE_GROUP, EQUIPMENT, PROGRAM_MODE,
         EXERCISE, PLAN_EXERCISES, ROUTINE_EXERCISES, ID_LIST,
     }
 
@@ -139,8 +139,9 @@ object CommandWire {
             listOf(
                 opt("routine_id", Kind.ID, "Start from this routine instead of empty (the same as start_routine)."),
                 opt("program_day_id", Kind.ID, "With routine_id: the program day it is started from."),
+                opt("started_at", Kind.TIME, "When the workout started, in epoch milliseconds, to log one after the fact. Default: now. Not in the future."),
             ),
-        ) { Command.StartWorkout(it.idOrNull("routine_id"), it.idOrNull("program_day_id")) },
+        ) { Command.StartWorkout(it.idOrNull("routine_id"), it.idOrNull("program_day_id"), it.longOrNull("started_at")) },
         "start_routine" to Spec(listOf(routineId, programDayId)) {
             Command.StartRoutine(it.id("routine_id"), it.idOrNull("program_day_id"))
         },
@@ -192,8 +193,25 @@ object CommandWire {
                 opt("workout_exercise_id", Kind.ID, "Or: an exercise in the workout, whose first un-ticked set becomes current."),
             ),
         ) { Command.SelectCurrent(it.idOrNull("set_id"), it.idOrNull("workout_exercise_id")) },
-        "finish_workout" to Spec(listOf(workoutId)) { Command.FinishWorkout(it.id("workout_id")) },
+        "finish_workout" to Spec(
+            listOf(
+                workoutId,
+                opt("ended_at", Kind.TIME, "When the workout ended, in epoch milliseconds (a workout logged after the fact). Default: now. Not in the future."),
+            ),
+        ) { Command.FinishWorkout(it.id("workout_id"), it.longOrNull("ended_at")) },
         "delete_workout" to Spec(listOf(workoutId)) { Command.DeleteWorkout(it.id("workout_id")) },
+        "set_workout_time" to Spec(
+            listOf(
+                workoutId,
+                req("started_at", Kind.TIME, "The new start, in epoch milliseconds. Not in the future."),
+                opt(
+                    "ended_at",
+                    Kind.NULLABLE_TIME,
+                    "The new end, in epoch milliseconds: required for a finished workout (at most 24 hours after started_at), " +
+                        "left out or null for one in progress.",
+                ),
+            ),
+        ) { Command.SetWorkoutTime(it.id("workout_id"), it.long("started_at"), it.longOrNull("ended_at")) },
         "apply_plan" to Spec(listOf(req("exercises", Kind.PLAN_EXERCISES, "The exercises in order, each with its planned sets."))) {
             Command.ApplyPlan(WorkoutPlan(it.planExercises("exercises")))
         },
@@ -277,7 +295,8 @@ object CommandWire {
     private fun kindSchema(kind: Kind, description: String): JsonObject = buildJsonObject {
         when (kind) {
             Kind.ID, Kind.TEXT -> put("type", "string")
-            Kind.INT -> put("type", "integer")
+            Kind.INT, Kind.TIME -> put("type", "integer")
+            Kind.NULLABLE_TIME -> putJsonArray("type") { add("integer"); add("null") }
             Kind.NUMBER -> put("type", "number")
             Kind.BOOL -> put("type", "boolean")
             Kind.NULLABLE_INT -> putJsonArray("type") { add("integer"); add("null") }
@@ -368,6 +387,8 @@ object CommandWire {
             Kind.NUMBER -> if (value.double() == null) reasons += "$at must be a number"
             Kind.BOOL -> if (value.bool() == null) reasons += "$at must be true or false"
             Kind.NULLABLE_INT -> if (value !is JsonNull && value.int() == null) reasons += "$at must be a whole number or null"
+            Kind.TIME -> if (value.long() == null) reasons += "$at must be a time in epoch milliseconds"
+            Kind.NULLABLE_TIME -> if (value !is JsonNull && value.long() == null) reasons += "$at must be a time in epoch milliseconds or null"
             Kind.MUSCLE_GROUP -> enumCheck(value, MuscleGroup.entries.map { it.key }, at, reasons)
             Kind.EQUIPMENT -> enumCheck(value, Equipment.entries.map { it.key }, at, reasons)
             Kind.PROGRAM_MODE -> enumCheck(value, ProgramMode.entries.map { it.key }, at, reasons)
@@ -439,6 +460,8 @@ object CommandWire {
         fun text(name: String): String = requireNotNull(args[name]?.string())
         fun int(name: String): Int = requireNotNull(args[name]?.int())
         fun intOrNull(name: String): Int? = args[name]?.int()
+        fun long(name: String): Long = requireNotNull(args[name]?.long())
+        fun longOrNull(name: String): Long? = args[name]?.long()
         fun double(name: String): Double = requireNotNull(args[name]?.double())
         fun bool(name: String): Boolean = args[name]?.takeUnless { it is JsonNull }?.bool() ?: false
         fun exercise(name: String): ExerciseRef = requireNotNull(args[name]?.let(::exerciseRef))
@@ -498,6 +521,14 @@ object CommandWire {
         val number = double() ?: return null
         if (number != floor(number) || number > Int.MAX_VALUE || number < Int.MIN_VALUE) return null
         return number.toInt()
+    }
+
+    /** A whole number that may exceed an Int, such as epoch milliseconds; read from the text, so no precision is lost. */
+    private fun JsonElement.long(): Long? {
+        val primitive = this as? JsonPrimitive ?: return null
+        if (primitive is JsonNull) return null
+        val text = primitive.content.trim()
+        return text.toLongOrNull() ?: text.toDoubleOrNull()?.takeIf { it.isFinite() && it == floor(it) && kotlin.math.abs(it) < 9.0e15 }?.toLong()
     }
 
     private fun JsonElement.bool(): Boolean? {

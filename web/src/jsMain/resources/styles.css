@@ -247,6 +247,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* --- The workout in progress --- */
 .workout .topbar { gap: 8px; }
 .workout .clock { font-size: 20px; font-weight: 600; margin-right: auto; }
+.workout .past-start { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .routine-name { display: flex; padding: 0 20px 8px; font-weight: 600; }
 .exercise { padding: 12px 0 8px; }
 .exercise-head { display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 20px; }
@@ -378,6 +379,9 @@ a.text-button { text-decoration: none; display: inline-flex; align-items: center
 .targets { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .stepper-small { min-width: 44px; min-height: 44px; padding: 0; font-size: 22px; background: var(--raised); border: 1px solid var(--border); }
 .target-sets { min-width: 4.5em; text-align: center; font-weight: 700; }
+.duration-stepper { display: flex; align-items: center; gap: 12px; }
+.duration-value { flex: 1; text-align: center; font-weight: 600; }
+.title-action { margin-left: auto; }
 .routine-actions { display: flex; justify-content: space-between; margin: 16px 8px 0; }
 
 /* --- Progress and charts --- */

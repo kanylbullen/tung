@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.core.command
 
+import io.github.kanylbullen.tung.core.EARLIEST_WORKOUT_MILLIS
 import io.github.kanylbullen.tung.core.ISO_WEEKDAYS
 import io.github.kanylbullen.tung.core.MAX_REPS
 import io.github.kanylbullen.tung.core.MAX_TARGET_SETS
@@ -38,6 +39,7 @@ import io.github.kanylbullen.tung.core.command.Command.SetReps
 import io.github.kanylbullen.tung.core.command.Command.SetRest
 import io.github.kanylbullen.tung.core.command.Command.SetTargetReps
 import io.github.kanylbullen.tung.core.command.Command.SetWeight
+import io.github.kanylbullen.tung.core.command.Command.SetWorkoutTime
 import io.github.kanylbullen.tung.core.command.Command.StartRoutine
 import io.github.kanylbullen.tung.core.command.Command.StartWorkout
 import io.github.kanylbullen.tung.core.command.Command.TickSet
@@ -71,7 +73,8 @@ sealed interface Validation {
  * [MIN_PLANNED_SETS]..[MAX_PLANNED_SETS], a routine's target sets
  * [MIN_TARGET_SETS]..[MAX_TARGET_SETS] and target reps 1..[MAX_REPS], sets
  * added at once [MIN_ADDED_SETS]..[MAX_ADDED_SETS], rest 0..[MAX_REST_SECONDS] s, weekday
- * 1..7, 1..[MAX_DELETE_ROUTINES] routines in `delete_routines`), names and ids
+ * 1..7, 1..[MAX_DELETE_ROUTINES] routines in `delete_routines`, a workout's
+ * times not before [EARLIEST_WORKOUT_MILLIS]), names and ids
  * not blank, plans not empty. Whether the ids exist is the
  * handler's business. Pure, so the app, the server and a client checking
  * before it sends all agree.
@@ -96,6 +99,9 @@ fun validate(command: Command): Validation {
     fun addedSets(value: Int?, field: String) {
         if (value != null && value !in MIN_ADDED_SETS..MAX_ADDED_SETS) reasons += "$field must be between $MIN_ADDED_SETS and $MAX_ADDED_SETS"
     }
+    fun time(value: Long?, field: String) {
+        if (value != null && value < EARLIEST_WORKOUT_MILLIS) reasons += "$field must not be before 2000-01-01"
+    }
     fun ref(value: ExerciseRef, field: String = "exercise") {
         val text = when (value) {
             is ExerciseRef.ByKey -> value.nameKey
@@ -111,6 +117,7 @@ fun validate(command: Command): Validation {
             id(command.routineId, "routineId")
             id(command.programDayId, "programDayId")
             if (command.programDayId != null && command.routineId == null) reasons += "programDayId needs a routineId"
+            time(command.startedAt, "startedAt")
         }
         is StartRoutine -> {
             id(command.routineId, "routineId")
@@ -145,7 +152,15 @@ fun validate(command: Command): Validation {
             id(command.workoutExerciseId, "workoutExerciseId")
             if (command.setId == null && command.workoutExerciseId == null) reasons += "a setId or a workoutExerciseId is needed"
         }
-        is FinishWorkout -> id(command.workoutId, "workoutId")
+        is FinishWorkout -> {
+            id(command.workoutId, "workoutId")
+            time(command.endedAt, "endedAt")
+        }
+        is SetWorkoutTime -> {
+            id(command.workoutId, "workoutId")
+            time(command.startedAt, "startedAt")
+            time(command.endedAt, "endedAt")
+        }
         is DeleteWorkout -> id(command.workoutId, "workoutId")
         is ApplyPlan -> {
             if (command.plan.exercises.isEmpty()) reasons += "the plan has no exercises"

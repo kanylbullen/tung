@@ -18,7 +18,8 @@ object McpDescriptions {
     private val commands: Map<String, String> = mapOf(
         "start_workout" to
             "Starts an empty workout and returns its id (ids.workoutId), or returns the workout already in progress: there is at most one. " +
-            "With routine_id it starts from that routine, like start_routine. Then add exercises with add_exercise, or a whole plan with apply_plan.",
+            "With routine_id it starts from that routine, like start_routine. Then add exercises with add_exercise, or a whole plan with apply_plan. " +
+            "To log a workout the user did earlier, give started_at (epoch milliseconds, not in the future) and finish it with finish_workout's ended_at.",
         "start_routine" to
             "Starts a workout from a saved routine: its exercises in order, each with the routine's target number of sets, pre-filled with " +
             "last session's weights (kg) and reps. Returns ids.workoutId. If a workout is already in progress, that one is returned and " +
@@ -52,7 +53,12 @@ object McpDescriptions {
             "nothing; returns ids.setId and ids.workoutExerciseId, which you can pass to log_set.",
         "finish_workout" to
             "Finishes a workout. Sets that are not ticked with reps above 0 are dropped, then exercises left without sets; a workout " +
-            "with nothing logged is deleted instead of saved (ids is then empty). Confirm with the user before finishing.",
+            "with nothing logged is deleted instead of saved (ids is then empty). It ends now, or at ended_at (epoch milliseconds, not " +
+            "in the future), for a workout logged after the fact. Confirm with the user before finishing.",
+        "set_workout_time" to
+            "Moves a workout in time: started_at and, for a finished workout, ended_at (epoch milliseconds; required then, at most 24 " +
+            "hours after started_at; leave it out for the workout in progress). Neither may be in the future. Its exercises and sets " +
+            "are not changed. Returns ids.workoutId.",
         "delete_workout" to "Deletes a workout with all its sets, in progress or finished. This cannot be undone: confirm with the user first.",
         "apply_plan" to
             "Applies a whole workout at once, e.g. \"deadlift, bench press and biceps curl, five sets of ten at 50, 60 and 20 kg\": " +
