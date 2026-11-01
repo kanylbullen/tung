@@ -13,6 +13,7 @@ import platform.Foundation.NSNumberFormatterDecimalStyle
 import platform.Foundation.NSNumberFormatterPercentStyle
 import platform.Foundation.autoupdatingCurrentLocale
 import platform.Foundation.dateWithTimeIntervalSince1970
+import platform.Foundation.decimalSeparator
 import kotlin.math.roundToLong
 import platform.UIKit.UISelectionFeedbackGenerator
 
@@ -80,3 +81,5 @@ internal actual fun dateText(epochMillis: Long, pattern: String, patternWithYear
 
 // One formatter per pattern: a list of workout rows asks for the same two on every recomposition.
 private val dateFormats = mutableMapOf<String, NSDateFormatter>()
+
+actual fun decimalSeparator(): Char = NSLocale.autoupdatingCurrentLocale.decimalSeparator.firstOrNull() ?: '.'

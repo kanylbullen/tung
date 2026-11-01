@@ -53,7 +53,7 @@ class SessionFlowTest : FlowTest() {
 
         waitForText(str(R.string.summary_title))
         assertShown(hasText("1") and hasText(str(R.string.stat_sets)))
-        assertShown(hasText("640") and hasText(str(R.string.stat_volume)))
+        assertShown(hasText("640") and hasText(str(Res.string.stat_volume)))
         assertShown(hasText(str(R.string.set_value, "80", 8)))
         screenshot("7-summary")
 

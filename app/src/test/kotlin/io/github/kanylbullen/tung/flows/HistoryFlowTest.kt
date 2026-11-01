@@ -36,15 +36,15 @@ class HistoryFlowTest : FlowTest() {
 
         clickText(newerDate)
         waitForText(str(R.string.ex_bench_press))
-        assertShown(hasText(str(R.string.detail_set_line, "80", 8)))
+        assertShown(hasText(str(Res.string.detail_set_line, "80", 8)))
         compose.onNode(hasText(str(R.string.ex_back_squat))).assertDoesNotExist()
         screenshot("2-detail")
 
         clickDescription(str(Res.string.action_more))
-        clickText(str(R.string.detail_delete))
-        assertShown(hasText(str(R.string.detail_delete_body)))
+        clickText(str(Res.string.detail_delete))
+        assertShown(hasText(str(Res.string.detail_delete_body)))
         screenshot("3-delete-dialog")
-        clickInDialog(str(R.string.detail_delete_confirm))
+        clickInDialog(str(Res.string.detail_delete_confirm))
 
         waitForText(olderDate)
         waitGone(hasText(newerDate))

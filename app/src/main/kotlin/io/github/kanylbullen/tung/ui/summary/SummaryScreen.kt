@@ -134,7 +134,7 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    SecondaryButton(stringResource(R.string.routine_save_as), onClick = { savingRoutine = true }, modifier = Modifier.weight(1f))
+                    SecondaryButton(stringResource(Res.string.routine_save_as), onClick = { savingRoutine = true }, modifier = Modifier.weight(1f))
                     PrimaryButton(stringResource(R.string.summary_done), onClick = onDone, modifier = Modifier.weight(1f))
                 }
             }
@@ -145,9 +145,9 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
             if (report == null) return@LazyColumn
             item(key = "stats") {
                 StatRow {
-                    Stat(durationText(report.durationMillis), stringResource(R.string.stat_duration), Modifier.weight(1.3f))
+                    Stat(durationText(report.durationMillis), stringResource(Res.string.stat_duration), Modifier.weight(1.3f))
                     Stat(report.setCount.toString(), stringResource(R.string.stat_sets), Modifier.weight(0.7f))
-                    Stat(localVolume(report.totalVolumeKg), stringResource(R.string.stat_volume), Modifier.weight(1.2f))
+                    Stat(localVolume(report.totalVolumeKg), stringResource(Res.string.stat_volume), Modifier.weight(1.2f))
                 }
             }
             item(key = "exercises") { ProgressHeading(stringResource(R.string.summary_exercises)) }
@@ -212,9 +212,9 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
     val report = state.report
     if (savingRoutine && report != null) {
         RoutineNameDialog(
-            title = stringResource(R.string.routine_save_as),
+            title = stringResource(Res.string.routine_save_as),
             initialName = defaultRoutineName(report),
-            confirmLabel = stringResource(R.string.routine_save),
+            confirmLabel = stringResource(Res.string.routine_save),
             onDismiss = { savingRoutine = false },
             onConfirm = { name ->
                 savingRoutine = false

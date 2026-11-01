@@ -98,8 +98,8 @@ class ProgressFlowTest : FlowTest() {
         check(squatTop < benchTop) { "squat $squatTop, bench $benchTop" }
 
         list.performScrollToNode(hasText(str(R.string.progress_records_recent)))
-        list.performScrollToNode(hasText(str(R.string.detail_set_line, "96", 5)))
-        assertShown(hasText(str(R.string.detail_set_line, "110", 5)))
+        list.performScrollToNode(hasText(str(Res.string.detail_set_line, "96", 5)))
+        assertShown(hasText(str(Res.string.detail_set_line, "110", 5)))
         // Both latest sessions are the heaviest yet.
         waitUntil { compose.onAllNodes(hasText(str(R.string.progress_record_heaviest), substring = true)).fetchSemanticsNodes().size == 2 }
         screenshot("2-exercises-and-records")

@@ -207,7 +207,7 @@ fun ExerciseDetailScreen(
                                 modifier = Modifier.width(32.dp),
                             )
                             Text(
-                                stringResource(R.string.detail_set_line, localWeight(set.weightKg), set.reps),
+                                stringResource(Res.string.detail_set_line, localWeight(set.weightKg), set.reps),
                                 style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
                                 color = Tung.colors.text,
                             )

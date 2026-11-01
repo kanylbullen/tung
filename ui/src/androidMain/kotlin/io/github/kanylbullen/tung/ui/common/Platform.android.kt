@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import android.view.HapticFeedbackConstants
 import androidx.compose.ui.platform.LocalView
+import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
 import java.time.DayOfWeek
 import java.time.Instant
@@ -53,3 +54,5 @@ internal actual fun dateText(epochMillis: Long, pattern: String, patternWithYear
     val text = DateTimeFormatter.ofPattern(chosen, locale).format(date)
     return text.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
 }
+
+actual fun decimalSeparator(): Char = DecimalFormatSymbols.getInstance().decimalSeparator
