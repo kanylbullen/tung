@@ -288,6 +288,11 @@ class CommandRulesTest {
         assertEquals(emptyList<String>(), tx.writes)
         done { executor.finishWorkout(tx, workoutId, endedAt = 15_400_000L) }
         assertEquals("ends when it really did", 15_400_000L, runBlocking { tx.workout(workoutId) }?.endedAt)
+
+        val ahead = tx.addWorkout(startedAt = 100_000_000L + 120_000L)
+        tx.addSet(tx.addExercise(ahead, "bench"), 80.0, 8, completed = true)
+        done { executor.finishWorkout(tx, ahead) }
+        assertEquals("without ended_at a start a fast clock put ahead still finishes, at the start", 100_120_000L, runBlocking { tx.workout(ahead) }?.endedAt)
     }
 
     // --- set_workout_time ---

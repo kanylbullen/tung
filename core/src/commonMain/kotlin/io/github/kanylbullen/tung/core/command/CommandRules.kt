@@ -125,15 +125,16 @@ class CommandRules(private val ids: () -> String = { newId() }) {
      * without one logged set is deleted rather than kept empty (then no
      * [WORKOUT_ID] comes back). It ends at [endedAt], or now (at its start if
      * that lies ahead, a device clock that runs fast); an end before the start,
-     * or ahead of the store's clock by more than [WORKOUT_CLOCK_SKEW_MILLIS],
-     * is refused. A workout already finished is left as it is.
+     * or a given end ahead of the store's clock by more than
+     * [WORKOUT_CLOCK_SKEW_MILLIS], is refused. A workout already finished is left as it is.
      */
     suspend fun finishWorkout(tx: CommandTx, workoutId: String, endedAt: Long? = null): CommandResult {
         val workout = tx.workout(workoutId) ?: return noSuch("workout", workoutId)
         if (workout.endedAt != null) return Done(mapOf(WORKOUT_ID to workoutId))
         val end = endedAt ?: maxOf(tx.now(), workout.startedAt)
         if (end < workout.startedAt) return Rejected(listOf("ended_at is before started_at"))
-        if (end > tx.now() + WORKOUT_CLOCK_SKEW_MILLIS) return Rejected(listOf("ended_at is in the future"))
+        // Only a given end: without one a start a fast clock put ahead is still finished, at the start.
+        if (endedAt != null && endedAt > tx.now() + WORKOUT_CLOCK_SKEW_MILLIS) return Rejected(listOf("ended_at is in the future"))
         var logged = 0
         for (we in tx.workoutExercises(workoutId)) {
             val (keep, drop) = tx.sets(we.id).partition { isLogged(it.completed, it.reps) }
