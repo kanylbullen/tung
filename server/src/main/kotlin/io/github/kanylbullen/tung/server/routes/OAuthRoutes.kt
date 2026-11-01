@@ -2,15 +2,16 @@ package io.github.kanylbullen.tung.server.routes
 
 import io.github.kanylbullen.tung.server.AUTH_RATE_LIMIT
 import io.github.kanylbullen.tung.server.Accounts
+import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.ApiJson
 import io.github.kanylbullen.tung.server.Credentials
-import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.ServerConfig
-import io.github.kanylbullen.tung.server.oauth.GoogleConsent
+import io.github.kanylbullen.tung.server.lockUser
 import io.github.kanylbullen.tung.server.oauth.AUTH_NONE
 import io.github.kanylbullen.tung.server.oauth.AUTH_SECRET_BASIC
 import io.github.kanylbullen.tung.server.oauth.AUTH_SECRET_POST
 import io.github.kanylbullen.tung.server.oauth.ConsentPage
+import io.github.kanylbullen.tung.server.oauth.GoogleConsent
 import io.github.kanylbullen.tung.server.oauth.OAuthClient
 import io.github.kanylbullen.tung.server.oauth.OAuthException
 import io.github.kanylbullen.tung.server.oauth.OAuthScopes
@@ -40,6 +41,10 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.utils.io.readRemaining
+import java.net.URI
+import java.net.URLDecoder
+import java.security.MessageDigest
+import java.util.Base64
 import kotlinx.io.readByteArray
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -47,10 +52,7 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
-import java.net.URI
-import java.net.URLDecoder
-import java.security.MessageDigest
-import java.util.Base64
+import org.jetbrains.exposed.sql.Transaction
 
 private const val CSRF_COOKIE = "tung_oauth_csrf"
 /** The double-submit cookie Google Identity Services sets and posts back as a field. */
@@ -130,6 +132,7 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
                     Checked.Refused(request.redirectUri, "access_denied", "The user denied access.", request.state),
                 )
             }
+            var guard: (Transaction.() -> Unit)? = null
             val userId = if (form["google_ticket"] != null) {
                 // Signed in with Google on /oauth/google: the ticket names the user, bound to this browser's CSRF token.
                 googleConsent.readTicket(form["google_ticket"], cookie, request.clientId) ?: return@post call.respondPage(
@@ -138,14 +141,24 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
                 )
             } else {
                 val email = form["email"].orEmpty()
-                val user = accounts.verifyCredentials(Credentials(email, form["password"].orEmpty()))
-                if (user == null) {
+                val proof = accounts.verifyCredentials(Credentials(email, form["password"].orEmpty()))
+                if (proof == null) {
                     call.consentPage(request, cookie, email, "Wrong email or password.")
                     return@post
                 }
-                user.id
+                guard = { with(accounts) { requirePassword(proof) } }
+                proof.user.id
             }
-            val code = store.createCode(request.clientId, userId, request.redirectUri, request.scope, request.codeChallenge, request.resource)
+            val code = try {
+                store.createCode(
+                    request.clientId, userId, request.redirectUri, request.scope, request.codeChallenge, request.resource,
+                    guard ?: { lockUser(userId) },
+                )
+            } catch (e: ApiException) {
+                // The password stopped being the account's between the check and the code (handed to its Google owner).
+                call.consentPage(request, cookie, form["email"].orEmpty(), "Wrong email or password.")
+                return@post
+            }
             val params = listOfNotNull("code" to code, request.state?.let { "state" to it }, "iss" to call.publicBaseUrl(config))
             call.respondRedirect(withQuery(request.redirectUri, params), permanent = false)
         }

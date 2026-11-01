@@ -4,6 +4,11 @@ import io.github.kanylbullen.tung.core.newId
 import io.github.kanylbullen.tung.server.ApiTokens
 import io.github.kanylbullen.tung.server.Db
 import io.github.kanylbullen.tung.server.Tokens
+import io.github.kanylbullen.tung.server.lockUser
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.sql.Connection
+import java.util.Base64
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -14,10 +19,6 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
-import java.security.MessageDigest
-import java.sql.Connection
-import java.security.SecureRandom
-import java.util.Base64
 
 /** The two scopes. `write` includes reading, as for every API token. */
 object OAuthScopes {
@@ -147,10 +148,13 @@ class OAuthStore(private val db: Db, private val clock: () -> Long = System::cur
         scope: String,
         codeChallenge: String,
         resource: String?,
+        guard: Transaction.() -> Unit = { lockUser(userId) },
     ): String {
         val code = random()
         val now = clock()
         db.tx {
+            // The user's lock (and, after a password, the password still being the account's): see Accounts.requirePassword.
+            guard()
             OAuthCodes.deleteWhere { expiresAt less now - CODE_SWEEP_AFTER_MS }
             OAuthCodes.insert {
                 it[codeHash] = sha256(code)
@@ -175,6 +179,9 @@ class OAuthStore(private val db: Db, private val clock: () -> Long = System::cur
     suspend fun exchangeCode(client: OAuthClient, code: String, redirectUri: String?, codeVerifier: String?): IssuedTokens {
         val now = clock()
         val outcome: Result<IssuedTokens> = db.tx {
+            // The user's lock before the code's row lock, the order the Google hand-over takes them in; it deletes
+            // unused codes, so an exchange that waited finds the code gone.
+            OAuthCodes.selectAll().where { OAuthCodes.codeHash eq sha256(code) }.singleOrNull()?.let { lockUser(it[OAuthCodes.userId]) }
             val row = OAuthCodes.selectAll().where { OAuthCodes.codeHash eq sha256(code) }.forUpdate().singleOrNull()
                 ?: return@tx failure("The code is unknown.")
             if (row[OAuthCodes.clientId] != client.id) return@tx failure("The code was issued to another client.")

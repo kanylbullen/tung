@@ -1,8 +1,11 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.server.routes.LINK_CLAIM_FAILURES_PER_TTL
+import io.github.kanylbullen.tung.server.routes.LINK_START_PER_MINUTE
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -117,6 +120,41 @@ class LinkTest {
         val limited = client.claim(code)
         assertEquals(HttpStatusCode.TooManyRequests, limited.status)
         assertEquals("rate_limited", limited.errorCode())
+    }
+
+    @Test
+    fun failedClaimsShareOneBudgetAcrossAddresses() = tungTest(trustProxy = true) {
+        // One guesser with many addresses: each stays far below the per-address limit.
+        repeat(LINK_CLAIM_FAILURES_PER_TTL) {
+            val response = client.post("/api/v1/link/claim") {
+                header("X-Forwarded-For", "2001:db8::${it.toString(16)}")
+                jsonBody("""{"code": "${"%06d".format(it)}"}""")
+            }
+            assertEquals(HttpStatusCode.NotFound, response.status, response.bodyAsText())
+        }
+        // The budget is spent: a fresh address with a valid code is refused too, until the window moves on.
+        val code = client.startCode(client.register())
+        val limited = client.post("/api/v1/link/claim") {
+            header("X-Forwarded-For", "198.51.100.77")
+            jsonBody("""{"code": "$code"}""")
+        }
+        assertEquals(HttpStatusCode.TooManyRequests, limited.status)
+        assertEquals("rate_limited", limited.errorCode())
+    }
+
+    @Test
+    fun aSuccessfulClaimDoesNotSpendTheFailureBudget() = tungTest(trustProxy = true) {
+        var session = client.register()
+        repeat(LINK_CLAIM_FAILURES_PER_TTL + 1) {
+            // A fresh user every few codes, so the per-user start limit is not what the test meets.
+            if (it > 0 && it % LINK_START_PER_MINUTE == 0) session = client.register()
+            val code = client.startCode(session)
+            val response = client.post("/api/v1/link/claim") {
+                header("X-Forwarded-For", "203.0.113.${it % 250}")
+                jsonBody("""{"code": "$code"}""")
+            }
+            assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
+        }
     }
 
     @Test

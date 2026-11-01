@@ -127,4 +127,18 @@ class AuthTest {
         // ...and a forged first entry does not buy a new one: the last hop counts.
         assertEquals(HttpStatusCode.TooManyRequests, login("192.0.2.1, 203.0.113.7"))
     }
+
+    @Test
+    fun aForwardedHeaderFromTheClientBuysNoNewBudget() = tungTest(authRequestsPerMinute = 2, trustProxy = true) {
+        // The proxy appends the real client to X-Forwarded-For and passes the client's own `Forwarded` through.
+        suspend fun login(forged: String) = client.post("/api/v1/auth/login") {
+            header("X-Forwarded-For", "203.0.113.8")
+            header("Forwarded", "for=$forged")
+            jsonBody("""{"email": "${uniqueEmail()}", "password": "whatever123"}""")
+        }.status
+
+        assertEquals(HttpStatusCode.Unauthorized, login("10.0.0.1"))
+        assertEquals(HttpStatusCode.Unauthorized, login("10.0.0.2"))
+        assertEquals(HttpStatusCode.TooManyRequests, login("10.0.0.3"))
+    }
 }
