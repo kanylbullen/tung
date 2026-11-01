@@ -24,6 +24,7 @@ import io.github.kanylbullen.tung.web.store.WebExerciseResolver
 import io.github.kanylbullen.tung.web.store.Write
 import io.github.kanylbullen.tung.web.sync.AuthResult
 import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
+import io.github.kanylbullen.tung.web.sync.ForgotResult
 import io.github.kanylbullen.tung.web.sync.ResendResult
 import io.github.kanylbullen.tung.web.sync.PeriodicSync
 import io.github.kanylbullen.tung.web.sync.WebAuth
@@ -240,6 +241,10 @@ class WebContainer(
         settings.signedOut(failure = null)
         if (account != null && token != null) auth.signOut(account.serverUrl, token)
     }
+
+    /** "Forgot password?": a reset link mailed to [email] at [serverUrl], in the app's language. */
+    suspend fun forgotPassword(serverUrl: String, email: String): ForgotResult =
+        auth.forgotPassword(serverUrl, email, languageTag())
 
     /** A new link to confirm the account's email, in the app's language. */
     suspend fun resendConfirmation(): ResendResult {

@@ -117,4 +117,21 @@ class SyncFlowTest : FlowTest() {
         waitForText(str(R.string.sync_status_just_now))
         waitGone(hasText(str(R.string.sync_confirm_email, "lifter@example.org")))
     }
+
+    @Test
+    fun forgotPasswordMailsALinkToTheTypedAddress() {
+        openSettingsGroup(R.string.settings_group_account)
+        useServer(fake.baseUrl)
+        // Without an address, it says to type one.
+        clickText(str(R.string.sync_forgot_password))
+        waitForText(str(R.string.sync_forgot_needs_email))
+
+        fill(str(R.string.sync_email), "lifter@example.org")
+        clickText(str(R.string.sync_forgot_password))
+        waitForText(str(R.string.sync_forgot_sent, "lifter@example.org"))
+        screenshot("1-forgot-sent")
+        assertEquals(1, fake.forgotRequests.size)
+        assertTrue(fake.forgotRequests.single().contains("\"email\":\"lifter@example.org\""))
+        assertTrue(fake.forgotRequests.single().contains("\"language\":\"en\""))
+    }
 }

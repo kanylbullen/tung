@@ -86,9 +86,9 @@ class WelcomeMail(
 ) {
     private val log = LoggerFactory.getLogger(WelcomeMail::class.java)
 
-    /** The UTC day ([clock] / one day) and how many mails it has sent. */
+    /** The UTC day ([clock] / one day) and how many mails each budget has sent in it. */
     private var day = -1L
-    private var sentToday = 0
+    private val sentToday = IntArray(2)
 
     /** Whether this server sends mail at all; email verification ([Accounts.verifiesEmail]) depends on it. */
     val canSend: Boolean get() = mailer != null && publicUrl != null
@@ -97,6 +97,10 @@ class WelcomeMail(
     fun account(email: String, language: String?, confirmToken: String? = null) =
         send { url -> accountMessage(email, swedish(language), url, testInvite, confirmToken?.let { confirmLink(url, it) }) }
 
+    /** A link to choose a new password, asked for from an app's sign-in. */
+    fun passwordReset(email: String, language: String?, token: String) =
+        send(RESET_BUDGET) { url -> resetMessage(email, swedish(language), "$url/reset-password?token=$token") }
+
     /** A new confirmation link, asked for from the app. */
     fun confirmAgain(email: String, language: String?, token: String) =
         send { url -> confirmMessage(email, swedish(language), confirmLink(url, token)) }
@@ -104,30 +108,32 @@ class WelcomeMail(
     fun tester(email: String, language: String?) = send { url -> testerMessage(email, swedish(language), url) }
 
     /**
-     * At most [perDay] mails a UTC day, whoever asks: registration is open
-     * and takes any address, so without a ceiling one could make the server
-     * mail strangers by the thousand and spend the sender's reputation.
+     * At most [perDay] mails a UTC day per budget, whoever asks: registration
+     * is open and takes any address, so without a ceiling one could make the
+     * server mail strangers by the thousand and spend the sender's
+     * reputation. Password resets have a budget of their own, so sign-ups
+     * that used up the day's cannot lock a person out of their account.
      */
-    private fun underCeiling(): Boolean = synchronized(this) {
+    private fun underCeiling(budget: Int): Boolean = synchronized(this) {
         val today = clock() / DAY_MILLIS
         if (today != day) {
             day = today
-            sentToday = 0
+            sentToday.fill(0)
         }
-        if (sentToday >= perDay) {
-            if (sentToday == perDay) log.warn("{} welcome emails today: no more are sent until tomorrow (UTC)", perDay)
-            sentToday = perDay + 1
+        if (sentToday[budget] >= perDay) {
+            if (sentToday[budget] == perDay) log.warn("{} emails of one kind today: no more are sent until tomorrow (UTC)", perDay)
+            sentToday[budget] = perDay + 1
             return false
         }
-        sentToday++
+        sentToday[budget]++
         true
     }
 
     /** Builds and sends the message off the request, so not even a bad `TUNG_PUBLIC_URL` can fail a sign-up. */
-    private fun send(build: (url: String) -> MailMessage) {
+    private fun send(budget: Int = WELCOME_BUDGET, build: (url: String) -> MailMessage) {
         val mailer = mailer ?: return
         val url = publicUrl ?: return
-        if (!underCeiling()) return
+        if (!underCeiling(budget)) return
         scope.launch(Dispatchers.IO) {
             try {
                 mailer.send(build(url))
@@ -148,6 +154,8 @@ class WelcomeMail(
         /** Far above a day of real sign-ups on one instance, far below what would hurt the sender. */
         const val MAX_WELCOME_MAILS_PER_DAY = 200
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+        private const val WELCOME_BUDGET = 0
+        private const val RESET_BUDGET = 1
 
         /** The page that confirms an address: `GET /verify-email?token=…` (SiteRoutes). */
         internal fun confirmLink(url: String, token: String) = "$url/verify-email?token=$token"
@@ -236,6 +244,45 @@ class WelcomeMail(
                     |The link works for seven days. Earlier links no longer work.
                     |
                     |Didn't ask for this? Ignore this email.
+                    |
+                    |Tung
+                    """.trimMargin(),
+                )
+            }
+
+        internal fun resetMessage(email: String, swedish: Boolean, link: String): MailMessage =
+            if (swedish) {
+                MailMessage(
+                    email,
+                    "Välj ett nytt lösenord för Tung",
+                    """
+                    |Hej!
+                    |
+                    |Någon, förhoppningsvis du, bad om ett nytt lösenord till ditt Tung-konto. Välj det här:
+                    |
+                    |$link
+                    |
+                    |Länken fungerar i en timme. När du har valt lösenordet loggas alla dina enheter ut, och du loggar in igen med det nya.
+                    |
+                    |Har du inte bett om det här? Strunta i mejlet: lösenordet är oförändrat.
+                    |
+                    |Tung
+                    """.trimMargin(),
+                )
+            } else {
+                MailMessage(
+                    email,
+                    "Choose a new password for Tung",
+                    """
+                    |Hi,
+                    |
+                    |Someone, hopefully you, asked for a new password for your Tung account. Choose it here:
+                    |
+                    |$link
+                    |
+                    |The link works for an hour. Once you have chosen the password, all your devices are signed out, and you sign in again with the new one.
+                    |
+                    |Didn't ask for this? Ignore this email: your password is unchanged.
                     |
                     |Tung
                     """.trimMargin(),

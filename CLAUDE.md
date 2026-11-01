@@ -2024,6 +2024,18 @@ fallback, and only on a tap.
   transports pass the error code in `SyncReply.Status`), and Settings →
   Account on the phone and the web says "Confirm your email" with "Send
   the link again". `EmailVerificationTest`, `SyncFlowTest`.
+- **Password reset** (`Accounts.forgotPassword`/`resetPassword`, the
+  page `/reset-password` in `SiteRoutes.kt`), only on a server that sends
+  mail: `POST /api/v1/auth/password/forgot {email, language}` answers 202
+  whether or not an account has the address, and mails one a link
+  (`email_tokens` kind `reset`, one hour, the newest only; three mails an
+  account a day and a mail budget of their own, more asks dropped). Opening the link shows a form (a GET
+  changes nothing: mail scanners open links); submitting it (rate-limited
+  like sign-in) sets the password under `lockUser`, spends the link, counts
+  the address as confirmed, and ends every token, OAuth grant, link code
+  and push endpoint of the account (`evictUnverifiedHolders`). Clients:
+  "Forgot password?" under Create account on the phone and the web, for the
+  address typed above. `PasswordResetTest`, `SyncFlowTest`.
 - **Admins** (`Admin.kt`): the accounts whose email is in
   `TUNG_ADMIN_EMAILS` (`Admins`, the one place that decides it; a `read`
   token is refused, 403 `insufficient_scope`). The address must be proven

@@ -199,6 +199,10 @@
     <string name="sync_password">Password</string>
     <string name="sync_sign_in">Sign in</string>
     <string name="sync_create_account">Create account</string>
+    <string name="sync_forgot_password">Forgot password?</string>
+    <string name="sync_forgot_sent">If there is an account with %1$s, we sent it a link to choose a new password. It works for an hour.</string>
+    <string name="sync_forgot_needs_email">Enter your email above, then tap Forgot password? again.</string>
+    <string name="sync_forgot_not_offered">This server cannot send email, so it cannot reset a password. Ask its owner.</string>
     <string name="sync_signed_in_as">Signed in as %1$s</string>
     <string name="sync_sign_out">Sign out</string>
     <string name="sync_sign_out_hint">Signing out keeps your training on this phone.</string>

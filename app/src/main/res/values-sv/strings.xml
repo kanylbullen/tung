@@ -183,6 +183,10 @@
     <string name="sync_password">Lösenord</string>
     <string name="sync_sign_in">Logga in</string>
     <string name="sync_create_account">Skapa konto</string>
+    <string name="sync_forgot_password">Glömt lösenordet?</string>
+    <string name="sync_forgot_sent">Om det finns ett konto med %1$s har vi skickat en länk dit för att välja ett nytt lösenord. Den fungerar i en timme.</string>
+    <string name="sync_forgot_needs_email">Skriv din e-post ovan och tryck sedan på Glömt lösenordet? igen.</string>
+    <string name="sync_forgot_not_offered">Den här servern kan inte skicka e-post och kan därför inte återställa lösenord. Fråga dess ägare.</string>
     <string name="sync_signed_in_as">Inloggad som %1$s</string>
     <string name="sync_sign_out">Logga ut</string>
     <string name="sync_sign_out_hint">Din träning finns kvar på telefonen när du loggar ut.</string>

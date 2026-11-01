@@ -64,6 +64,9 @@ class SyncAccount(
         return result
     }
 
+    /** "Forgot password?": a reset link mailed to [email] at [serverUrl]. */
+    suspend fun forgotPassword(serverUrl: String, email: String): ForgotOutcome = client.forgotPassword(serverUrl, email.trim())
+
     /** What [serverUrl] offers for signing in (the Google button shows only when it names a client id). */
     suspend fun authMethods(serverUrl: String): AuthMethodsResult = client.authMethods(serverUrl)
 
