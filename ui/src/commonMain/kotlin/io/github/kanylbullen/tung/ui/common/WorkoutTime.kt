@@ -1,3 +1,6 @@
+// kotlinx-datetime's Instant conversions are opt-in where the iOS klibs resolve a newer kotlinx-datetime.
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package io.github.kanylbullen.tung.ui.common
 
 import androidx.compose.foundation.layout.Arrangement
