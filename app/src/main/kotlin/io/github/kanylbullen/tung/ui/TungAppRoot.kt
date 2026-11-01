@@ -55,8 +55,8 @@ import io.github.kanylbullen.tung.ui.history.WorkoutDetailScreen
 import io.github.kanylbullen.tung.ui.home.HomeScreen
 import io.github.kanylbullen.tung.ui.progress.ExerciseProgressScreen
 import io.github.kanylbullen.tung.ui.progress.ProgressScreen
-import io.github.kanylbullen.tung.ui.routines.ProgramDetailScreen
-import io.github.kanylbullen.tung.ui.routines.ProgramsScreen
+import io.github.kanylbullen.tung.ui.routines.ProgramDetailRoute
+import io.github.kanylbullen.tung.ui.routines.ProgramsRoute
 import io.github.kanylbullen.tung.ui.routines.RoutineDetailRoute
 import io.github.kanylbullen.tung.ui.routines.RoutinesRoute
 import io.github.kanylbullen.tung.ui.settings.SETTINGS_ROUTE
@@ -259,7 +259,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 )
             }
             composable(Routes.PROGRAMS) {
-                ProgramsScreen(
+                ProgramsRoute(
                     onBack = { nav.popBackStack() },
                     onOpenProgram = { id -> nav.navigate(Routes.program(id)) },
                 )
@@ -269,7 +269,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 arguments = listOf(navArgument(Routes.ARG_PROGRAM) { type = NavType.StringType }),
             ) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_PROGRAM) ?: return@composable
-                ProgramDetailScreen(programId = id, onBack = { nav.popBackStack() })
+                ProgramDetailRoute(programId = id, onBack = { nav.popBackStack() })
             }
             composable(
                 Routes.ROUTINE,

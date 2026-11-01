@@ -242,39 +242,7 @@
     <string name="routine_default_name">%1$s: %2$s</string>
     <string name="nav_routines">Rutiner</string>
 
-    <!-- Programs -->
-    <string name="programs_empty">Inga program. Ett program lägger dina rutiner på fasta veckodagar eller i rullande ordning, och Hem visar dagens.</string>
-    <string name="program_new">Nytt program</string>
-    <string name="program_create">Skapa</string>
-    <string name="program_name">Namn</string>
-    <string name="program_error_name">Skriv ett namn på programmet.</string>
-    <string name="program_mode_fixed">Fasta dagar</string>
-    <string name="program_mode_fixed_hint">Varje rutin på de veckodagar du väljer</string>
-    <string name="program_mode_rotating">Rullande</string>
-    <string name="program_mode_rotating_hint">Dag 1, 2, 3 i tur och ordning, oavsett datum</string>
-    <string name="program_mode_title">Läge</string>
-    <string name="program_active">Aktivt</string>
-    <string name="program_activate">Aktivera</string>
-    <string name="program_activate_description">Aktivera %1$s</string>
-    <string name="program_deactivate">Avaktivera</string>
-    <plurals name="program_day_count">
-        <item quantity="one">%d dag</item>
-        <item quantity="other">%d dagar</item>
-    </plurals>
-    <string name="program_day_of">Dag %1$d av %2$d</string>
-    <string name="program_no_weekdays">Inga veckodagar</string>
-    <string name="program_weekday_description">%1$s på %2$s</string>
-    <string name="program_days_empty">Inga dagar än. Lägg till dina rutiner i den ordning du tränar dem.</string>
-    <string name="program_add_day">Lägg till dag</string>
-    <string name="program_pick_routine">Välj en rutin</string>
-    <string name="program_no_routines">Inga rutiner än. Skapa en i fliken Rutiner med ”+ Ny rutin”, eller spara ett avslutat pass som en.</string>
-    <string name="program_day_menu">Val för %1$s</string>
-    <string name="program_remove_day">Ta bort dagen</string>
-    <string name="program_rename_title">Byt namn på program</string>
-    <string name="program_delete">Radera program</string>
-    <string name="program_delete_title">Radera program?</string>
-    <string name="program_delete_body">Programmet raderas. Dess rutiner, och passen du har gjort från det, finns kvar.</string>
-    <string name="program_not_found">Programmet finns inte längre.</string>
+    <!-- Home: Today, from the active program (the program screens are in ui) -->
     <string name="today_fixed">Idag: %1$s</string>
     <string name="today_rotating">%1$s: %2$s</string>
     <string name="today_rest">Vilodag</string>

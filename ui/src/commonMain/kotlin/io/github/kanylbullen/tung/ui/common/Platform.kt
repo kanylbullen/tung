@@ -17,3 +17,9 @@ expect fun exerciseDisplayName(nameKey: String?, name: String): String
  */
 @Composable
 expect fun rememberTickHaptic(): () -> Unit
+
+/**
+ * The name of ISO weekday [isoWeekday] (1 = Monday) in the device's language,
+ * capitalised: "Mon" or "Monday" ([short] or not).
+ */
+expect fun weekdayName(isoWeekday: Int, short: Boolean): String

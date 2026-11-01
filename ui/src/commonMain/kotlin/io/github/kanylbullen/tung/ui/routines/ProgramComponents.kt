@@ -20,36 +20,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.ISO_WEEKDAYS
 import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.ui.common.weekdayName
 import io.github.kanylbullen.tung.ui.theme.Tung
-import java.time.DayOfWeek
-import java.time.format.TextStyle
-import java.util.Locale
 
 /** "Mon" for ISO weekday 1, in the phone's language. */
-fun weekdayShort(isoWeekday: Int): String =
-    DayOfWeek.of(isoWeekday).getDisplayName(TextStyle.SHORT, Locale.getDefault()).capitalized()
+fun weekdayShort(isoWeekday: Int): String = weekdayName(isoWeekday, short = true)
 
 /** "Monday" for ISO weekday 1, in the phone's language. */
-fun weekdayFull(isoWeekday: Int): String =
-    DayOfWeek.of(isoWeekday).getDisplayName(TextStyle.FULL, Locale.getDefault()).capitalized()
-
-private fun String.capitalized(): String {
-    val locale = Locale.getDefault()
-    return replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
-}
+fun weekdayFull(isoWeekday: Int): String = weekdayName(isoWeekday, short = false)
 
 /** "Fixed days" or "Rotating". */
 @Composable
 fun programModeLabel(mode: ProgramMode): String = stringResource(
     when (mode) {
-        ProgramMode.FIXED -> R.string.program_mode_fixed
-        ProgramMode.ROTATING -> R.string.program_mode_rotating
+        ProgramMode.FIXED -> Res.string.program_mode_fixed
+        ProgramMode.ROTATING -> Res.string.program_mode_rotating
     },
 )
 
@@ -59,10 +48,10 @@ fun programModeLabel(mode: ProgramMode): String = stringResource(
  */
 @Composable
 fun programDayPlace(mode: ProgramMode, number: Int, count: Int, weekdays: Set<Int>): String = when (mode) {
-    ProgramMode.ROTATING -> stringResource(R.string.program_day_of, number, count)
+    ProgramMode.ROTATING -> stringResource(Res.string.program_day_of, number, count)
     ProgramMode.FIXED ->
         if (weekdays.isEmpty()) {
-            stringResource(R.string.program_no_weekdays)
+            stringResource(Res.string.program_no_weekdays)
         } else {
             ISO_WEEKDAYS.filter { it in weekdays }.joinToString(stringResource(Res.string.list_separator)) { weekdayShort(it) }
         }
@@ -91,8 +80,8 @@ fun ProgramDayChoiceRow(routineName: String, place: String, onClick: () -> Unit)
 fun ProgramModeChoice(selected: ProgramMode, onSelect: (ProgramMode) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.selectableGroup()) {
         listOf(
-            ProgramMode.ROTATING to R.string.program_mode_rotating_hint,
-            ProgramMode.FIXED to R.string.program_mode_fixed_hint,
+            ProgramMode.ROTATING to Res.string.program_mode_rotating_hint,
+            ProgramMode.FIXED to Res.string.program_mode_fixed_hint,
         ).forEach { (option, hint) ->
             ModeOption(
                 label = programModeLabel(option),
