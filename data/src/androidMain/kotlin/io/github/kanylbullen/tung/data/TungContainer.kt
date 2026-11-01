@@ -199,6 +199,8 @@ class TungContainer(
 
     /** The compact trends' span and metric, shared by the Progress tab's rows and the sheet in a workout. Not synced. */
     val progressSettings: ProgressSettings by lazy { ProgressSettings(settings) }
+    /** The workouts this device started from "Log past workout" (CLAUDE.md, "Log set and rest timer"). */
+    val pastWorkouts: PastWorkoutSettings by lazy { PastWorkoutSettings(settings) }
 
     // --- sync with tung-server (sync/, CLAUDE.md "Sync") ---
     private val tokenStore: TokenStore by lazy { createTokenStore(this.context) }

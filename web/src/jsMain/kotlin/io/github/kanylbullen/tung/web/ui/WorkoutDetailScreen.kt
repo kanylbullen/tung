@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import io.github.kanylbullen.tung.core.MAX_WORKOUT_DURATION_MILLIS
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.web.WebContainer
@@ -51,6 +52,7 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
     var naming by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf<String?>(null) }
     var changingTime by remember { mutableStateOf(false) }
+    var timeError by remember { mutableStateOf<String?>(null) }
 
     Div({ classes("screen") }) {
         Div({ classes("topbar", "topbar-start") }) {
@@ -100,13 +102,20 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
             title = strings.changeDateTime,
             confirm = strings.save,
             initialStart = detail.startedAt,
-            initialDurationMillis = detail.durationMillis,
+            // At most a day, so a workout that lasted longer can still have only its date changed.
+            initialDurationMillis = detail.durationMillis.coerceAtMost(MAX_WORKOUT_DURATION_MILLIS),
             now = Date.now().toLong(),
-            onCancel = { changingTime = false },
+            error = timeError,
+            onCancel = { changingTime = false; timeError = null },
         ) { startedAt, duration ->
-            changingTime = false
             scope.launch {
-                container.commands.execute(Command.SetWorkoutTime(detail.id, startedAt, startedAt + (duration ?: detail.durationMillis)))
+                val result = container.commands.execute(Command.SetWorkoutTime(detail.id, startedAt, startedAt + (duration ?: detail.durationMillis)))
+                if (result is CommandResult.Done) {
+                    changingTime = false
+                    timeError = null
+                } else {
+                    timeError = strings.timeChangeRefused((result as? CommandResult.Rejected)?.reasons.orEmpty())
+                }
             }
         }
     }

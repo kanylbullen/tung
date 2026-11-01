@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import io.github.kanylbullen.tung.core.EARLIEST_WORKOUT_MILLIS
 import io.github.kanylbullen.tung.core.WORKOUT_CLOCK_SKEW_MILLIS
 import io.github.kanylbullen.tung.ui.resources.*
 import io.github.kanylbullen.tung.ui.theme.Tung
@@ -110,6 +111,8 @@ fun WorkoutTimeDialog(
     onConfirm: (startedAt: Long, durationMillis: Long?) -> Unit,
     /** The longest duration the steps reach. */
     maxDurationMillis: Long = 24L * 60 * 60 * 1000,
+    /** Why the last confirm was refused, shown under the fields; null for nothing. */
+    error: String? = null,
 ) {
     var start by rememberSaveable { mutableLongStateOf(initialStart) }
     var duration by rememberSaveable { mutableLongStateOf(initialDurationMillis ?: 0L) }
@@ -119,7 +122,7 @@ fun WorkoutTimeDialog(
     val withDuration = initialDurationMillis != null
     val minDuration = minOf(WORKOUT_TIME_STEP_MILLIS, initialDurationMillis ?: WORKOUT_TIME_STEP_MILLIS)
     val end = start + if (withDuration) duration else 0L
-    val valid = start <= latest && end <= latest
+    val valid = start in EARLIEST_WORKOUT_MILLIS..latest && end <= latest
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -138,7 +141,7 @@ fun WorkoutTimeDialog(
                     onValueClick = { pickingDate = true },
                     lessDescription = stringResource(Res.string.time_day_earlier),
                     moreDescription = stringResource(Res.string.time_day_later),
-                    canLess = true,
+                    canLess = shiftDays(start, -1) >= EARLIEST_WORKOUT_MILLIS,
                     canMore = shiftDays(start, 1) + (if (withDuration) duration else 0L) <= latest,
                     onLess = { start = shiftDays(start, -1) },
                     onMore = { start = shiftDays(start, 1) },
@@ -151,7 +154,7 @@ fun WorkoutTimeDialog(
                     onValueClick = { pickingTime = true },
                     lessDescription = stringResource(Res.string.time_start_earlier),
                     moreDescription = stringResource(Res.string.time_start_later),
-                    canLess = true,
+                    canLess = start - WORKOUT_TIME_STEP_MILLIS >= EARLIEST_WORKOUT_MILLIS,
                     canMore = end + WORKOUT_TIME_STEP_MILLIS <= latest,
                     onLess = { start -= WORKOUT_TIME_STEP_MILLIS },
                     onMore = { start += WORKOUT_TIME_STEP_MILLIS },
@@ -165,6 +168,7 @@ fun WorkoutTimeDialog(
                         onMore = { duration += WORKOUT_TIME_STEP_MILLIS },
                     )
                 }
+                error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText) }
             }
         },
         confirmButton = {

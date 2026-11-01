@@ -16,7 +16,7 @@ import io.github.kanylbullen.tung.ui.common.factoryOf
 fun HistoryRoute(onOpenDetail: (String) -> Unit, onOpenWorkout: (String) -> Unit) {
     val container = appContainer()
     val vm: HistoryViewModel = viewModel(
-        factory = factoryOf { HistoryViewModel(container.workoutRepository, container.commands) { container.clock.millis() } }
+        factory = factoryOf { HistoryViewModel(container.workoutRepository, container.commands, { container.clock.millis() }, container.pastWorkouts) }
     )
     HistoryScreen(vm, onOpenDetail, onOpenWorkout)
 }

@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.Stat
+import io.github.kanylbullen.tung.core.MAX_WORKOUT_DURATION_MILLIS
 import io.github.kanylbullen.tung.ui.common.StatRow
 import io.github.kanylbullen.tung.ui.common.WorkoutTimeDialog
 import io.github.kanylbullen.tung.ui.common.rememberNow
@@ -57,6 +58,7 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
     var confirmDelete by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     var changingTime by rememberSaveable { mutableStateOf(false) }
+    var timeProblem by remember { mutableStateOf<TimeChangeProblem?>(null) }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -172,12 +174,24 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
             title = stringResource(Res.string.detail_change_time),
             confirmLabel = stringResource(Res.string.detail_change_time_confirm),
             initialStart = workout.startedAt,
-            initialDurationMillis = report.durationMillis,
+            // At most a day, so a workout that lasted longer can still have only its date changed.
+            initialDurationMillis = report.durationMillis.coerceAtMost(MAX_WORKOUT_DURATION_MILLIS),
             now = rememberNow(),
-            onDismiss = { changingTime = false },
+            error = timeProblem?.let {
+                stringResource(
+                    when (it) {
+                        TimeChangeProblem.FUTURE -> Res.string.time_error_future
+                        TimeChangeProblem.TOO_LONG -> Res.string.time_error_too_long
+                        TimeChangeProblem.OTHER -> Res.string.time_error_other
+                    }
+                )
+            },
+            onDismiss = { changingTime = false; timeProblem = null },
             onConfirm = { startedAt, duration ->
-                changingTime = false
-                vm.setTime(startedAt, duration ?: report.durationMillis)
+                vm.setTime(startedAt, duration ?: report.durationMillis) { problem ->
+                    timeProblem = problem
+                    if (problem == null) changingTime = false
+                }
             },
         )
     }

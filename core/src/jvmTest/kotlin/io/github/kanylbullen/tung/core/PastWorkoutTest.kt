@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.core
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -17,5 +18,19 @@ class PastWorkoutTest {
         assertTrue(isPastWorkout(now - 4 * hour - 1, now))
         assertTrue("yesterday", isPastWorkout(now - 24 * hour, now))
         assertFalse("a start ahead of the clock", isPastWorkout(now + 30_000L, now))
+    }
+
+    @Test
+    fun theFinishDurationOfAWorkoutLoggedAfterTheFactIsAnHourNeverPastNow() {
+        assertEquals(hour, finishDurationPreset(now - 24 * hour, now, loggedAfterTheFact = true))
+        assertEquals("started 40 minutes ago: at most until now", 40 * 60_000L, finishDurationPreset(now - 40 * 60_000L, now, loggedAfterTheFact = true))
+        assertEquals("a start ahead of the clock", 0L, finishDurationPreset(now + 30_000L, now, loggedAfterTheFact = true))
+    }
+
+    @Test
+    fun aLiveWorkoutPastFourHoursIsPresetToItsElapsedTimeUpToSixHours() {
+        assertEquals("a long session", 4 * hour + 20 * 60_000L, finishDurationPreset(now - 4 * hour - 20 * 60_000L, now, loggedAfterTheFact = false))
+        assertEquals(6 * hour, finishDurationPreset(now - 6 * hour, now, loggedAfterTheFact = false))
+        assertEquals("forgotten since yesterday: an hour", hour, finishDurationPreset(now - 6 * hour - 1, now, loggedAfterTheFact = false))
     }
 }

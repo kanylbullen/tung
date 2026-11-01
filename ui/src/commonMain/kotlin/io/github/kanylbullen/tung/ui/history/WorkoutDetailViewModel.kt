@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds
+import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.ui.common.WorkoutReport
@@ -16,6 +17,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** Why "Change date and time" was refused, for the line in its dialog. */
+enum class TimeChangeProblem { FUTURE, TOO_LONG, OTHER }
+
+/** What a refusal of `set_workout_time` says, as a [TimeChangeProblem]. */
+fun timeChangeProblem(reasons: List<String>): TimeChangeProblem = when {
+    reasons.any { it.endsWith("is in the future") } -> TimeChangeProblem.FUTURE
+    reasons.any { it.startsWith("a workout lasts at most") } -> TimeChangeProblem.TOO_LONG
+    else -> TimeChangeProblem.OTHER
+}
 
 data class WorkoutDetailUiState(
     val loading: Boolean = true,
@@ -44,9 +55,15 @@ class WorkoutDetailViewModel(
         viewModelScope.launch { onSaved(commands.execute(Command.SaveRoutine(workoutId, name)).id(CommandIds.ROUTINE_ID) != null) }
     }
 
-    /** Moves the workout to [startedAt], lasting [durationMillis] (`set_workout_time`). */
-    fun setTime(startedAt: Long, durationMillis: Long) {
-        viewModelScope.launch { commands.execute(Command.SetWorkoutTime(workoutId, startedAt, startedAt + durationMillis)) }
+    /**
+     * Moves the workout to [startedAt], lasting [durationMillis]
+     * (`set_workout_time`); [onResult] gets null when it moved, else what was wrong.
+     */
+    fun setTime(startedAt: Long, durationMillis: Long, onResult: (TimeChangeProblem?) -> Unit) {
+        viewModelScope.launch {
+            val result = commands.execute(Command.SetWorkoutTime(workoutId, startedAt, startedAt + durationMillis))
+            onResult((result as? CommandResult.Rejected)?.let { timeChangeProblem(it.reasons) } ?: if (result is CommandResult.Done) null else TimeChangeProblem.OTHER)
+        }
     }
 
     fun delete(onDeleted: () -> Unit) {

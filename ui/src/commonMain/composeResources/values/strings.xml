@@ -408,4 +408,7 @@
     <string name="time_start_earlier">Start 15 minutes earlier</string>
     <string name="time_start_later">Start 15 minutes later</string>
     <string name="workout_started_description">Started %1$s</string>
+    <string name="time_error_future">That time is in the future.</string>
+    <string name="time_error_other">The date and time could not be changed.</string>
+    <string name="time_error_too_long">A workout can last at most 24 hours.</string>
 </resources>

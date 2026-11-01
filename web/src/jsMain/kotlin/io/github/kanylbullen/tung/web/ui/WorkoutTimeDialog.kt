@@ -5,9 +5,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import io.github.kanylbullen.tung.core.EARLIEST_WORKOUT_MILLIS
 import io.github.kanylbullen.tung.core.WORKOUT_CLOCK_SKEW_MILLIS
 import io.github.kanylbullen.tung.web.WebContainer
 import kotlin.js.Date
+import kotlinx.browser.window
 import org.jetbrains.compose.web.attributes.InputType
 import org.jetbrains.compose.web.attributes.disabled
 import org.jetbrains.compose.web.dom.Button
@@ -15,6 +17,7 @@ import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Input
 import org.jetbrains.compose.web.dom.Label
+import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 
@@ -91,6 +94,8 @@ fun WorkoutTimeDialog(
     initialDurationMillis: Long?,
     now: Long,
     onCancel: () -> Unit,
+    /** Why the last confirm was refused, shown above the buttons; null for nothing. */
+    error: String? = null,
     onConfirm: (startedAt: Long, durationMillis: Long?) -> Unit,
 ) {
     val strings = container.strings
@@ -100,7 +105,7 @@ fun WorkoutTimeDialog(
     // Unchanged inputs keep the exact start, seconds and all, so saving without a change writes nothing.
     val start = if (date == dateInputValue(initialStart) && time == timeInputValue(initialStart)) initialStart else localMillis(date, time)
     val latest = now + WORKOUT_CLOCK_SKEW_MILLIS
-    val valid = start != null && start <= latest && start + duration <= latest
+    val valid = start != null && start >= EARLIEST_WORKOUT_MILLIS && start <= latest && start + duration <= latest
     Div({ classes("sheet-backdrop"); onClick { onCancel() } })
     Div({ classes("dialog"); attr("role", "dialog"); attr("aria-modal", "true"); attr("aria-label", title) }) {
         H2 { Text(title) }
@@ -123,6 +128,7 @@ fun WorkoutTimeDialog(
         if (initialDurationMillis != null) {
             DurationControl(container, duration, min = minOf(STEP_MILLIS, initialDurationMillis), max = 24L * 60 * 60 * 1000) { duration = it }
         }
+        error?.let { P({ classes("hint", "accent"); attr("role", "alert") }) { Text(it) } }
         Div({ classes("dialog-actions") }) {
             Button({ classes("secondary"); onClick { onCancel() } }) { Text(strings.cancel) }
             Button({
@@ -130,6 +136,37 @@ fun WorkoutTimeDialog(
                 if (!valid) disabled()
                 onClick { if (start != null) onConfirm(start, initialDurationMillis?.let { duration }) }
             }) { Text(confirm) }
+        }
+    }
+}
+
+/**
+ * The workout this browser started from "Log past workout", in its
+ * localStorage (the phone's `PastWorkoutSettings`): past from its start,
+ * whatever its age. Not synced; forgotten once it is finished or discarded.
+ */
+object PastWorkoutStore {
+    private const val KEY = "tung-past-workout"
+
+    fun isLoggedAfterTheFact(workoutId: String): Boolean = try {
+        window.localStorage.getItem(KEY) == workoutId
+    } catch (e: Throwable) {
+        false
+    }
+
+    fun add(workoutId: String) {
+        try {
+            window.localStorage.setItem(KEY, workoutId)
+        } catch (e: Throwable) {
+            // Private mode: the workout then counts as past by its age alone.
+        }
+    }
+
+    fun forget(workoutId: String) {
+        try {
+            if (window.localStorage.getItem(KEY) == workoutId) window.localStorage.removeItem(KEY)
+        } catch (e: Throwable) {
+            // Nothing stored, nothing to forget.
         }
     }
 }

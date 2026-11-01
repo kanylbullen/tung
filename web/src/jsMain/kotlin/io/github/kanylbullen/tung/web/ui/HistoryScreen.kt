@@ -10,6 +10,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import io.github.kanylbullen.tung.core.ROUTINE_NAME_SEPARATOR
 import io.github.kanylbullen.tung.core.command.Command
+import io.github.kanylbullen.tung.core.command.CommandIds
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.WebContainer
@@ -85,7 +86,11 @@ fun HistoryScreen(container: WebContainer, account: Account) {
             ) { startedAt, _ ->
                 logging = false
                 scope.launch {
-                    if (container.run(Command.StartWorkout(startedAt = startedAt)) is CommandResult.Done) go(Route.WORKOUT)
+                    val result = container.run(Command.StartWorkout(startedAt = startedAt))
+                    if (result is CommandResult.Done) {
+                        result.ids[CommandIds.WORKOUT_ID]?.let(PastWorkoutStore::add)
+                        go(Route.WORKOUT)
+                    }
                 }
             }
         }

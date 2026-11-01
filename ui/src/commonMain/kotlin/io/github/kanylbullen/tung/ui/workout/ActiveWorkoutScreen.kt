@@ -104,6 +104,8 @@ import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.core.WORKOUT_CLOCK_SKEW_MILLIS
 import io.github.kanylbullen.tung.core.isLogged
+import io.github.kanylbullen.tung.core.MAX_FINISH_DURATION_MILLIS
+import io.github.kanylbullen.tung.core.finishDurationPreset
 import io.github.kanylbullen.tung.core.isPastWorkout
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
@@ -155,6 +157,7 @@ fun ActiveWorkoutScreen(
     onAskAssistant: (String) -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val loggedAfterTheFact by vm.loggedAfterTheFact.collectAsStateWithLifecycle()
     val discardedMessage = stringResource(Res.string.workout_discarded)
     val currentOnFinished by rememberUpdatedState(onFinished)
     val currentOnDiscarded by rememberUpdatedState(onDiscarded)
@@ -319,7 +322,7 @@ fun ActiveWorkoutScreen(
                 title = {
                     if (!state.loading && !state.missing) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isPastWorkout(state.startedAt, now)) {
+                            if (loggedAfterTheFact || isPastWorkout(state.startedAt, now)) {
                                 // Logged after the fact: when it started, not a timer running since then.
                                 val started = workoutStartText(state.startedAt)
                                 val description = stringResource(Res.string.workout_started_description, started)
@@ -545,10 +548,11 @@ fun ActiveWorkoutScreen(
         // What Finish removes: the sets that are not logged, and exercises with no set at all.
         val unlogged = state.exercises.sumOf { e -> e.sets.count { !isLogged(it.completed, it.reps) } }
         val emptyExercises = state.exercises.count { it.sets.isEmpty() }
-        // A workout logged after the fact ends when it really did: its start plus how long it lasted.
-        val past = isPastWorkout(state.startedAt, now)
-        val longest = minOf(MAX_PAST_DURATION_MILLIS, now + WORKOUT_CLOCK_SKEW_MILLIS - state.startedAt)
-        var duration by rememberSaveable { mutableLongStateOf(DEFAULT_PAST_DURATION_MILLIS) }
+        // A past workout ends when it really did: its start plus how long it lasted. Decided once,
+        // when the dialog opens, so the duration never appears under the thumb mid-dialog.
+        val past = rememberSaveable { loggedAfterTheFact || isPastWorkout(state.startedAt, now) }
+        var duration by rememberSaveable { mutableLongStateOf(finishDurationPreset(state.startedAt, now, loggedAfterTheFact)) }
+        val longest = minOf(MAX_FINISH_DURATION_MILLIS, now + WORKOUT_CLOCK_SKEW_MILLIS - state.startedAt)
         val lasted = duration.coerceAtMost(longest)
         AlertDialog(
             onDismissRequest = { confirmFinish = false },
@@ -570,7 +574,7 @@ fun ActiveWorkoutScreen(
                         Spacer(Modifier.height(16.dp))
                         DurationStepper(
                             durationMillis = lasted,
-                            canLess = lasted - WORKOUT_TIME_STEP_MILLIS >= MIN_PAST_DURATION_MILLIS,
+                            canLess = lasted - WORKOUT_TIME_STEP_MILLIS >= WORKOUT_TIME_STEP_MILLIS,
                             canMore = lasted + WORKOUT_TIME_STEP_MILLIS <= longest,
                             onLess = { duration = lasted - WORKOUT_TIME_STEP_MILLIS },
                             onMore = { duration = lasted + WORKOUT_TIME_STEP_MILLIS },
@@ -1230,9 +1234,3 @@ private fun weightSpec(initial: String): NumberInputSpec {
     )
 }
 
-/** How long a workout logged after the fact lasted, as the finish dialog first offers it. */
-private const val DEFAULT_PAST_DURATION_MILLIS: Long = 60L * 60 * 1000
-
-/** The shortest and longest the finish dialog's duration goes, in its quarter-hour steps. */
-private const val MIN_PAST_DURATION_MILLIS: Long = WORKOUT_TIME_STEP_MILLIS
-private const val MAX_PAST_DURATION_MILLIS: Long = 6L * 60 * 60 * 1000

@@ -2,12 +2,15 @@ package io.github.kanylbullen.tung.flows
 
 import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.ui.common.localDate
 import io.github.kanylbullen.tung.ui.common.shortLocalDate
+import io.github.kanylbullen.tung.ui.common.timeOfDayText
 import org.junit.Assert.assertEquals
+import kotlinx.coroutines.flow.first
 import org.junit.Test
 import java.time.Clock
 import java.time.Instant
@@ -70,11 +73,48 @@ class PastWorkoutFlowTest : FlowTest() {
         waitForText(str(R.string.summary_done))
         val end = start + 90 * 60_000L
         waitUntil { count("SELECT COUNT(*) FROM workout WHERE startedAt = $start AND endedAt = $end") == 1 }
+        waitUntilStored(emptySet<String>()) { app.container.pastWorkouts.ids.first() }
         clickText(str(R.string.summary_done))
         clickText(str(R.string.nav_history))
         waitForText(shortLocalDate(start))
         assertShown(hasText(str(Res.string.duration_hours_minutes, 1, 30), substring = true))
         screenshot("4-history")
+    }
+
+    /**
+     * "Log past workout" an hour back, as the dialog offers: less than four
+     * hours ago, yet logged after the fact from the start. The screen shows
+     * when it started, a logged set starts no rest timer, and Finish asks how
+     * long it lasted (an hour), ending it then rather than now.
+     */
+    @Test
+    fun aWorkoutLoggedAnHourBackIsPastFromTheStart() {
+        seedFinishedWorkout(SEEDED, bench(), weightKg = 80.0, reps = 8)
+        clickText(str(R.string.nav_history))
+        clickDescription(str(Res.string.past_log))
+        clickInDialog(str(Res.string.past_log_confirm))
+
+        waitForText(str(Res.string.workout_empty))
+        val start = waitStart()
+        waitForDescription(str(Res.string.workout_started_description, shortLocalDate(start) + " · " + timeOfDayText(start)))
+        addExercise("bench", benchPress)
+        clickText(str(Res.string.workout_log_set, benchPress, "80", "8"))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
+        compose.onNode(hasContentDescription(str(Res.string.rest_title))).assertDoesNotExist()
+        screenshot("1-no-rest")
+
+        clickText(str(Res.string.workout_finish))
+        waitFor(hasText(str(Res.string.duration_hours_minutes, 1, 0)) and hasAnyAncestor(isDialog()))
+        screenshot("2-finish-asks-duration")
+        clickInDialog(str(Res.string.workout_finish_confirm))
+        waitForText(str(R.string.summary_done))
+        waitUntil { count("SELECT COUNT(*) FROM workout WHERE startedAt = $start AND endedAt = ${start + 60 * 60_000L}") == 1 }
+    }
+
+    /** The start of the workout in progress, once it is written. */
+    private fun waitStart(): Long {
+        waitUntil { count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL") == 1 }
+        return db.openHelper.readableDatabase.query("SELECT startedAt FROM workout WHERE endedAt IS NULL").use { c -> c.moveToFirst(); c.getLong(0) }
     }
 
     /**

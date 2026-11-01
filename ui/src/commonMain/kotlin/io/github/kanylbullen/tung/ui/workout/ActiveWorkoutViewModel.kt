@@ -11,9 +11,9 @@ import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.id
-import io.github.kanylbullen.tung.core.isPastWorkout
 import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
+import io.github.kanylbullen.tung.data.PastWorkoutSettings
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.data.systemMillis
@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -45,7 +47,26 @@ class ActiveWorkoutViewModel(
     private val restTimer: RestTimerStore,
     private val savedState: SavedStateHandle,
     private val clock: () -> Long = ::systemMillis,
+    /** The workouts this device started from "Log past workout"; null where there is no such store. */
+    private val pastWorkouts: PastWorkoutSettings? = null,
 ) : ViewModel() {
+
+    /**
+     * Whether this workout was started from "Log past workout" on this
+     * device: past from its start, whatever its age (no rest timer, its date
+     * instead of a clock, a duration on finish).
+     */
+    val loggedAfterTheFact: StateFlow<Boolean> = (pastWorkouts?.ids?.map { workoutId in it } ?: flowOf(false))
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    init {
+        // Forgotten once the workout is over or gone, here or through a sync.
+        if (pastWorkouts != null) {
+            viewModelScope.launch {
+                repo.observeWorkout(workoutId).collect { if (it == null || it.endedAt != null) pastWorkouts.forget(workoutId) }
+            }
+        }
+    }
 
     /**
      * Last session's sets per exercise. History cannot change while a workout
@@ -343,6 +364,7 @@ class ActiveWorkoutViewModel(
         restTimer.set(workoutId, null)
         // FinishWorkout returns the workout's id only when it was kept.
         val saved = commands.execute(Command.FinishWorkout(workoutId, endedAt)).id(CommandIds.WORKOUT_ID) != null
+        pastWorkouts?.forget(workoutId)
         eventChannel.send(ActiveWorkoutEvent.Finished(workoutId, saved))
     }
 
@@ -356,13 +378,17 @@ class ActiveWorkoutViewModel(
         setRest(null)
         restTimer.set(workoutId, null)
         commands.execute(Command.DeleteWorkout(workoutId))
+        pastWorkouts?.forget(workoutId)
         eventChannel.send(ActiveWorkoutEvent.Discarded(workoutId))
     }
 
-    /** The rest after a logged set, except in a workout logged after the fact: nobody rests between sets typed in later. */
+    /**
+     * The rest after a logged set, except in a workout started from "Log past
+     * workout": nobody rests between sets typed in later. A live workout that
+     * merely ran past four hours keeps its rest timer.
+     */
     private fun restAfterLogging(exercise: ActiveExerciseUi) {
-        val current = state.value
-        if (current.loading || !isPastWorkout(current.startedAt, clock())) startRest(exercise)
+        if (!loggedAfterTheFact.value) startRest(exercise)
     }
 
     private fun startRest(exercise: ActiveExerciseUi) {

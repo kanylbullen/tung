@@ -408,4 +408,7 @@
     <string name="time_start_earlier">Börja 15 minuter tidigare</string>
     <string name="time_start_later">Börja 15 minuter senare</string>
     <string name="workout_started_description">Startade %1$s</string>
+    <string name="time_error_future">Den tiden ligger i framtiden.</string>
+    <string name="time_error_other">Datum och tid kunde inte ändras.</string>
+    <string name="time_error_too_long">Ett pass kan vara högst 24 timmar.</string>
 </resources>

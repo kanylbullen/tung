@@ -553,19 +553,27 @@ start as −/+ steps (a day, 15 minutes) and, behind a tap on each,
 Material's `DatePicker` (nothing after today) and `TimePicker`; it offers an
 hour before now, down to the quarter hour (`defaultPastStart`, from the
 container's clock, which `FlowTestApp.today` sets). Confirming runs
-`StartWorkout(startedAt = …)` and opens the workout screen. Beside a workout
-in progress the dialog says "Finish the workout in progress first." and
-offers to open it. A workout counts as logged after the fact while
-`core.isPastWorkout` (started more than `PAST_WORKOUT_AFTER_MILLIS`, 4 h,
-ago): its top bar shows "Sat 31 Oct · 18:00" instead of the elapsed clock,
-a logged set starts no rest timer, and the finish dialog asks how long it
-lasted (`DurationStepper`: 1 h at first, −/+ 15 min, 15 min to 6 h, never
-past now) and finishes with `FinishWorkout(endedAt = start + duration)`.
-That also serves someone who forgot to finish yesterday's workout. A
-finished workout's page has "Change date and time" in its menu: the same
-dialog with the duration, prefilled, running `SetWorkoutTime` (unchanged
-values are passed through exactly, so saving without a change writes
-nothing). The ongoing notification of such a workout shows its start
+`StartWorkout(startedAt = …)`, remembers the workout's id in
+`PastWorkoutSettings` (`past_workout_ids` in the `settings` DataStore, not
+synced; forgotten once the workout is finished, discarded or gone) and opens
+the workout screen. Beside a workout in progress the dialog says "Finish the
+workout in progress first." and offers to open it. **Such a workout is past
+from its start, whatever its age**: its top bar shows "Sat 31 Oct · 18:00"
+instead of the elapsed clock, a logged set starts no rest timer, and the
+finish dialog asks how long it lasted (`DurationStepper`: 1 h at first,
+−/+ 15 min, 15 min to 6 h, never past now) and finishes with
+`FinishWorkout(endedAt = start + duration)`. **A live workout that runs past
+`core.isPastWorkout`** (started more than `PAST_WORKOUT_AFTER_MILLIS`, 4 h,
+ago; also how another device sees a past one) shows its start and gets the
+duration on finish too, but keeps its rest timer; its duration starts at the
+elapsed time when that is at most 6 h, else 1 h (forgot to finish).
+`core.finishDurationPreset` is the rule, decided once when the dialog opens
+so the stepper never appears under the thumb. A finished workout's page has
+"Change date and time" in its menu: the same dialog with the duration,
+prefilled (at most 24 h, so a longer workout can still change only its date;
+day "−" stops at 2000-01-01), running `SetWorkoutTime`; a refusal stays in the
+dialog as a line ("That time is in the future."), and unchanged values are
+passed through exactly, so saving without a change writes nothing. The ongoing notification of such a workout shows its start
 (`setWhen`) without a chronometer. `PastWorkoutFlowTest`.
 
 ### Ids and `updatedAt`
@@ -2336,10 +2344,12 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   4xx until it is redeployed. `WebCommandsTest`.
 - **A workout logged after the fact** (`ui/WorkoutTimeDialog.kt`), as on
   the phone: History's "Log past workout" with `<input type="date">` (not
-  after today) and `<input type="time">`, the workout screen's start in
-  place of the clock and no rest timer while `isPastWorkout`, Finish with a
-  duration (−/+ 15 min), and "Change date and time" on a finished
-  workout's page (`set_workout_time`).
+  after today) and `<input type="time">`, remembered as past in
+  localStorage (`PastWorkoutStore`, `tung-past-workout`); the workout
+  screen's start in place of the clock, no rest timer for such a workout,
+  Finish with a duration (`finishDurationPreset`, −/+ 15 min), and "Change
+  date and time" on a finished workout's page (`set_workout_time`, a refusal
+  shown in the dialog).
 - **Strings** are Kotlin (`i18n/Strings.kt`: `English`, `Swedish`,
   `stringsFor(navigator.language)`), the phone's wording where the screen is
   the same; a new language is a new object. Exercise names come from the

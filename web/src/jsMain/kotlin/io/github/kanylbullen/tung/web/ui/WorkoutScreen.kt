@@ -21,6 +21,8 @@ import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.ExerciseRef
 import io.github.kanylbullen.tung.core.WORKOUT_CLOCK_SKEW_MILLIS
 import io.github.kanylbullen.tung.core.currentSet
+import io.github.kanylbullen.tung.core.MAX_FINISH_DURATION_MILLIS
+import io.github.kanylbullen.tung.core.finishDurationPreset
 import io.github.kanylbullen.tung.core.isPastWorkout
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
@@ -118,10 +120,13 @@ fun WorkoutScreen(container: WebContainer) {
         RestStore.save(rest)
     }
 
-    /** The rest after a logged set, except in a workout logged after the fact: nobody rests between sets typed in later. */
+    /**
+     * The rest after a logged set, except in a workout started from "Log past
+     * workout": nobody rests between sets typed in later. A live workout that
+     * merely ran past four hours keeps its rest timer.
+     */
     fun restAfterLogging(exercise: ExerciseView) {
-        val started = workout?.startedAt
-        if (started == null || !isPastWorkout(started, Date.now().toLong())) startRest(exercise)
+        if (workout == null || !PastWorkoutStore.isLoggedAfterTheFact(workout.id)) startRest(exercise)
     }
 
     if (workout == null) {
@@ -139,7 +144,7 @@ fun WorkoutScreen(container: WebContainer) {
     Div({ classes("screen", "workout") }) {
         Div({ classes("topbar") }) {
             A(href = Route.HOME.hash, attrs = { classes("text-button"); attr("aria-label", strings.home) }) { Text("←") }
-            if (isPastWorkout(workout.startedAt, now)) {
+            if (PastWorkoutStore.isLoggedAfterTheFact(workout.id) || isPastWorkout(workout.startedAt, now)) {
                 // Logged after the fact: when it started, not a timer running since then.
                 val started = workoutStartText(workout.startedAt, container, now)
                 Div({ classes("clock", "past-start"); attr("aria-label", strings.startedAt(started)) }) { Text(started) }
@@ -395,6 +400,7 @@ fun WorkoutScreen(container: WebContainer) {
             val anyLogged = workout.loggedSets > 0
             scope.launch {
                 container.run(Command.FinishWorkout(workout.id, endedAt))
+                PastWorkoutStore.forget(workout.id)
                 if (anyLogged) window.location.hash = summaryHash(workout.id) else go(Route.HOME)
             }
         }
@@ -408,6 +414,7 @@ fun WorkoutScreen(container: WebContainer) {
             confirming = null
             scope.launch {
                 container.run(Command.DeleteWorkout(workout.id))
+                PastWorkoutStore.forget(workout.id)
                 go(Route.HOME)
             }
         }
@@ -425,9 +432,11 @@ private enum class Confirm { FINISH, DISCARD }
 @Composable
 private fun FinishDialog(container: WebContainer, workout: WorkoutView, now: Long, onCancel: () -> Unit, onFinish: (Long?) -> Unit) {
     val strings = container.strings
-    val past = isPastWorkout(workout.startedAt, now) && workout.loggedSets > 0
-    val longest = minOf(MAX_PAST_DURATION_MILLIS, now + WORKOUT_CLOCK_SKEW_MILLIS - workout.startedAt)
-    var duration by remember { mutableStateOf(DEFAULT_PAST_DURATION_MILLIS) }
+    // Decided once, when the dialog opens, so the duration never appears under the pointer mid-dialog.
+    val explicit = remember { PastWorkoutStore.isLoggedAfterTheFact(workout.id) }
+    val past = remember { (explicit || isPastWorkout(workout.startedAt, now)) && workout.loggedSets > 0 }
+    val longest = minOf(MAX_FINISH_DURATION_MILLIS, now + WORKOUT_CLOCK_SKEW_MILLIS - workout.startedAt)
+    var duration by remember { mutableStateOf(finishDurationPreset(workout.startedAt, now, explicit)) }
     val lasted = duration.coerceAtMost(longest)
     Div({ classes("sheet-backdrop"); onClick { onCancel() } })
     Div({ classes("dialog"); attr("role", "alertdialog"); attr("aria-modal", "true"); attr("aria-label", strings.finishTitle) }) {
@@ -441,9 +450,6 @@ private fun FinishDialog(container: WebContainer, workout: WorkoutView, now: Lon
     }
 }
 
-/** How long a workout logged after the fact lasted, as Finish first offers it, and the longest it goes. */
-private const val DEFAULT_PAST_DURATION_MILLIS: Long = 60L * 60 * 1000
-private const val MAX_PAST_DURATION_MILLIS: Long = 6L * 60 * 60 * 1000
 
 private fun finishBody(workout: WorkoutView, container: WebContainer): String = when {
     workout.loggedSets == 0 -> container.strings.finishNothingLogged
