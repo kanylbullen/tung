@@ -119,6 +119,7 @@ private fun syncLine(ui: AccountUi): String {
                 SyncFailure.SERVER -> R.string.sync_error_server
                 SyncFailure.SIGNED_OUT -> R.string.sync_error_signed_out
                 SyncFailure.REJECTED -> R.string.sync_error_rejected
+                SyncFailure.EMAIL_NOT_VERIFIED -> R.string.sync_error_email_not_verified
             },
         )
     }

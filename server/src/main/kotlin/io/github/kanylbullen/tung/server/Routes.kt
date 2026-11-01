@@ -29,6 +29,7 @@ import io.ktor.server.plugins.ratelimit.RateLimitName
 import io.ktor.server.plugins.ratelimit.rateLimit
 import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.request.httpMethod
+import io.ktor.server.request.path
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveChannel
 import io.ktor.server.response.header
@@ -61,6 +62,26 @@ private val RequireWriteScope = createRouteScopedPlugin("RequireWriteScope") {
         }
     }
 }
+
+/**
+ * An account whose email is not confirmed yet may sign out, read and delete
+ * itself and ask for a new link, nothing else: no sync, no training data, no
+ * tokens or devices, no feedback. So it holds nothing on the server, and an
+ * address registered by someone who does not own it gives way after a day
+ * ([UNCONFIRMED_HOLD_MS]).
+ */
+internal val RequireConfirmedEmail = createRouteScopedPlugin("RequireConfirmedEmail") {
+    on(AuthenticationChecked) { call ->
+        val principal = call.principal<TokenPrincipal>() ?: return@on
+        if (principal.emailVerified) return@on
+        val path = call.request.path()
+        val allowed = path == "/api/v1/auth/logout" || path == "/api/v1/me" || path == "/api/v1/auth/verify/resend"
+        if (!allowed) throw emailNotConfirmed()
+    }
+}
+
+internal fun emailNotConfirmed() =
+    forbidden("email_not_verified", "Confirm your email first: open the link we sent you. The app can send a new one.")
 
 internal fun ApplicationCall.user(): TokenPrincipal =
     principal<TokenPrincipal>() ?: throw unauthorized("unauthorized", "Send a valid API token as 'Authorization: Bearer tung_…'.")
@@ -97,7 +118,7 @@ fun Route.apiRoutes(
     get("/openapi.yaml") { call.respondText(spec, ContentType.parse("application/yaml")) }
     swaggerUI(path = "docs", swaggerFile = "openapi/openapi.yaml")
 
-    val admins = Admins(db, config.adminEmails, requireGoogleLink = accounts.google != null)
+    val admins = Admins(db, config.adminEmails, requireProof = accounts.google != null || accounts.verifiesEmail)
     val testers = Testers(db, admins, config.testerSignups, config.clock, welcome)
     val adminStore = AdminStore(db, admins, config.testerSignups, config.clock)
     val feedback = FeedbackStore(db, admins, config.clock)
@@ -118,6 +139,17 @@ fun Route.apiRoutes(
 
         authenticate(BEARER) {
             install(RequireWriteScope)
+            install(RequireConfirmedEmail)
+
+            post("/auth/verify/resend") {
+                val body = if (call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()?.let { it > 0 } == true) {
+                    call.receive<ResendConfirmation>()
+                } else {
+                    ResendConfirmation()
+                }
+                accounts.resendConfirmation(call.user(), body.language)
+                call.respond(HttpStatusCode.Accepted)
+            }
 
             post("/auth/logout") {
                 val principal = call.user()
@@ -230,6 +262,7 @@ fun Route.apiRoutes(
 
         // Outside RequireWriteScope: a read token may pull (empty changes); the handler refuses its pushes.
         authenticate(BEARER) {
+            install(RequireConfirmedEmail)
             post(SYNC_PATH.removePrefix("/api/v1")) {
                 val principal = call.user()
                 val request = call.receiveSyncRequest()

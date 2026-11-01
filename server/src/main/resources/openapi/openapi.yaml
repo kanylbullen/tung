@@ -111,7 +111,14 @@ paths:
     post:
       tags: [auth]
       summary: Create an account
-      description: Creates the user and returns a session token (scope `write`, name `session`). Rate-limited per client address.
+      description: |
+        Creates the user and returns a session token (scope `write`, name
+        `session`). Rate-limited per client address. On a server that sends
+        mail the account starts unconfirmed (`email_verified` false): the
+        welcome email carries a confirmation link, and the account may not
+        sync or change data until it is opened (see `/auth/verify/resend`).
+        An address registered and never confirmed is 409 for a day, then
+        gives way to a new registration.
       operationId: register
       security: []
       requestBody:
@@ -151,6 +158,42 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
+  /api/v1/auth/verify/resend:
+    post:
+      tags: [auth]
+      summary: Send a new confirmation link
+      description: |
+        On a server that sends mail (`TUNG_RESEND_API_KEY`), a new password
+        account must confirm its email by the link in its welcome email before
+        it may sync or change data; until then every route but this one,
+        `GET/DELETE /me` and `/auth/logout` answers 403 `email_not_verified`.
+        This sends a new link (seven days) and spends the earlier ones. Nothing
+        is sent for an account already confirmed. At most three an hour per
+        account. An address registered and never confirmed gives way to a new
+        registration after a day.
+      operationId: resendConfirmation
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                language: { type: [string, "null"], description: "`en` or `sv`, for the email; English when absent." }
+      responses:
+        "202": { description: Sent, or nothing to send. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: "`not_configured`: this server sends no email."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/auth/google:
     post:
       tags: [auth]
@@ -162,10 +205,12 @@ paths:
         issued by Google, for one of the configured client ids, unexpired
         (60 s leeway) and signed with a key from Google's JWK set. The user is
         the one already linked to the Google account; else, when Google says
-        the email is verified, the account with that email, which is linked;
-        its password is removed and its other tokens, OAuth grants, link
-        codes and push endpoints are revoked, since the password sign-up
-        never verified the address. Else a new account without a password. An
+        the email is verified, the account with that email, which is linked.
+        If that account never confirmed its address by its emailed link, its
+        password is removed and its other tokens, OAuth grants, link codes and
+        push endpoints are revoked, since anyone could have registered it; a
+        confirmed account keeps its password. Either way the address counts as
+        confirmed. Else a new account without a password. An
         unverified email that is linked to nothing is refused. Rate-limited
         per client address like login. Without `TUNG_GOOGLE_CLIENT_ID` the
         route answers 404 `not_configured`.
@@ -1641,6 +1686,13 @@ components:
       type: object
       required: [id, email, created_at, has_password, google_linked, is_admin]
       properties:
+        email_verified:
+          type: boolean
+          description: |
+            The email is confirmed (its emailed link, or Google), or the server
+            confirms none. While false the account may sign in but not sync or
+            change data (403 `email_not_verified`); `POST /auth/verify/resend`
+            sends a new link. Absent from servers before verification: true.
         id: { $ref: "#/components/schemas/Uuid" }
         email: { type: string }
         created_at: { $ref: "#/components/schemas/Millis" }
@@ -1699,6 +1751,7 @@ components:
         created_at: { $ref: "#/components/schemas/Millis" }
         has_password: { type: boolean }
         google_linked: { type: boolean }
+        email_verified: { type: boolean, description: "False while the account's confirmation link is not opened." }
         is_admin: { type: boolean }
         last_seen_at:
           type: [integer, "null"]

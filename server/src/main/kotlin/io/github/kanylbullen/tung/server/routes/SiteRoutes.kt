@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server.routes
 
+import io.github.kanylbullen.tung.server.Accounts
 import io.github.kanylbullen.tung.server.ServerConfig
 import io.ktor.http.ContentType
 import io.ktor.server.http.content.staticFiles
@@ -27,7 +28,7 @@ private object SiteRoutes
  * its service worker, served from `/app/`, controls `/app/` only, never the
  * API, `/docs` or the OAuth pages.
  */
-fun Route.siteRoutes(config: ServerConfig) {
+fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
     // The page itself by a route of its own: a static tree at "/" would also
     // claim every unknown API path and turn its 404 into another answer.
     // The sign-up for the Play test only where that test is run (TUNG_TESTER_SIGNUPS).
@@ -36,6 +37,19 @@ fun Route.siteRoutes(config: ServerConfig) {
     page("/privacy", "privacy.html")
     // How to delete an account, and what goes; the deletion link Google Play asks for.
     page("/delete-account", "delete-account.html")
+    // The link in a confirmation email. A GET that confirms: mail scanners that open links can only open them
+    // from the inbox the link was sent to, which is what confirming proves.
+    if (accounts != null) {
+        val confirmed by lazy { sitePage("verify-email.html")?.let { keepBlocks(it, "confirmed", "failed") } }
+        val failed by lazy { sitePage("verify-email.html")?.let { keepBlocks(it, "failed", "confirmed") } }
+        get("/verify-email") {
+            val token = call.request.queryParameters["token"]
+            val ok = token != null && token.length <= 200 && accounts.confirmEmail(token)
+            val html = (if (ok) confirmed else failed) ?: return@get call.respond(HttpStatusCode.NotFound)
+            call.response.header("Referrer-Policy", "no-referrer")
+            call.respondText(html, ContentType.Text.Html, if (ok) HttpStatusCode.OK else HttpStatusCode.BadRequest)
+        }
+    }
     staticResources("/site", "site")
 
     val webDir = config.webDir ?: return
@@ -75,9 +89,13 @@ internal fun keepBlocks(html: String, keep: String, drop: String): String {
     return marker(keep, "end").replace(marker(keep, "begin").replace(dropped, ""), "")
 }
 
+/** The classpath's `site/[file]` with `@assets@` as [assetVersion], or null when it is missing. */
+private fun sitePage(file: String): String? =
+    SiteRoutes::class.java.getResource("/site/$file")?.readText()?.replace("@assets@", assetVersion)
+
 /** One page of the site at [path], read from the classpath's `site/[file]`, with `@assets@` as [assetVersion] and then [transform]. */
 private fun Route.page(path: String, file: String, transform: (String) -> String = { it }) {
-    val page by lazy { SiteRoutes::class.java.getResource("/site/$file")?.readText()?.replace("@assets@", assetVersion)?.let(transform) }
+    val page by lazy { sitePage(file)?.let(transform) }
     get(path) {
         val html = page ?: return@get call.respond(HttpStatusCode.NotFound)
         call.respondText(html, ContentType.Text.Html)

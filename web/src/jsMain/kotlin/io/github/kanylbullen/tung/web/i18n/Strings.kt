@@ -7,6 +7,7 @@ import io.github.kanylbullen.tung.core.importing.SkipReason
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.web.ai.AiFailure
 import io.github.kanylbullen.tung.web.sync.AuthFailure
+import io.github.kanylbullen.tung.web.sync.ResendResult
 
 /**
  * The web app's texts. English is the default and Swedish the first
@@ -444,6 +445,10 @@ interface Strings {
     fun lastSyncHoursAgo(hours: Int): String
     fun lastSyncOn(date: String): String
     fun syncFailure(failure: SyncFailure): String
+    /** Above Sync now while the account's email is not confirmed. */
+    fun confirmEmail(email: String): String
+    val confirmResend: String
+    fun confirmResult(result: ResendResult): String
 }
 
 object English : Strings {
@@ -989,6 +994,14 @@ object English : Strings {
         SyncFailure.SERVER -> "The server had a problem with the last sync. Sync tries again later."
         SyncFailure.SIGNED_OUT -> "The server signed you out. Sign in again to keep syncing."
         SyncFailure.REJECTED -> "The server refused the last sync. Check that the app and the server are up to date."
+        SyncFailure.EMAIL_NOT_VERIFIED -> "Not synced yet: your email is not confirmed."
+    }
+    override fun confirmEmail(email: String): String = "Confirm your email to start syncing: open the link we sent to $email, then choose Sync now."
+    override val confirmResend = "Send the link again"
+    override fun confirmResult(result: ResendResult): String = when (result) {
+        ResendResult.SENT -> "We sent a new link. Check your inbox."
+        ResendResult.RATE_LIMITED -> "You have asked for several links already. Wait a while and try again."
+        ResendResult.NETWORK, ResendResult.FAILED -> "Could not send a new link. Check your connection and try again."
     }
 }
 
@@ -1535,6 +1548,14 @@ object Swedish : Strings {
         SyncFailure.SERVER -> "Servern fick ett fel vid senaste synken. Synken försöker igen senare."
         SyncFailure.SIGNED_OUT -> "Servern loggade ut dig. Logga in igen för att fortsätta synka."
         SyncFailure.REJECTED -> "Servern avvisade senaste synken. Kontrollera att appen och servern är uppdaterade."
+        SyncFailure.EMAIL_NOT_VERIFIED -> "Inte synkat än: din e-post är inte bekräftad."
+    }
+    override fun confirmEmail(email: String): String = "Bekräfta din e-post för att börja synka: öppna länken vi skickade till $email och välj sedan Synka nu."
+    override val confirmResend = "Skicka länken igen"
+    override fun confirmResult(result: ResendResult): String = when (result) {
+        ResendResult.SENT -> "Vi har skickat en ny länk. Titta i inkorgen."
+        ResendResult.RATE_LIMITED -> "Du har redan bett om flera länkar. Vänta en stund och försök igen."
+        ResendResult.NETWORK, ResendResult.FAILED -> "Kunde inte skicka en ny länk. Kontrollera uppkopplingen och försök igen."
     }
 }
 

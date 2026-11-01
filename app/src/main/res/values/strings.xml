@@ -249,6 +249,12 @@
     <string name="sync_error_server">The server had a problem with the last sync. Sync tries again later.</string>
     <string name="sync_error_signed_out">The server signed you out. Sign in again to keep syncing.</string>
     <string name="sync_error_rejected">The server refused the last sync. Check that the app and the server are up to date.</string>
+    <string name="sync_error_email_not_verified">Not synced yet: your email is not confirmed.</string>
+    <string name="sync_confirm_email">Confirm your email to start syncing: open the link we sent to %1$s, then tap Sync now.</string>
+    <string name="sync_confirm_resend">Send the link again</string>
+    <string name="sync_confirm_sent">We sent a new link. Check your inbox.</string>
+    <string name="sync_confirm_rate_limited">You have asked for several links already. Wait a while and try again.</string>
+    <string name="sync_confirm_failed">Could not send a new link. Check your connection and try again.</string>
     <string name="sync_error_url">Enter the server address, for example https://tung.example.org.</string>
     <string name="sync_error_url_https">Use https://. Plain http only works for localhost and addresses on your own network.</string>
     <string name="sync_error_fields">Enter your email and password.</string>

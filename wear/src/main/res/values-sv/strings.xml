@@ -67,6 +67,7 @@
     <string name="sync_error_server">Servern hade problem. Försöker igen senare.</string>
     <string name="sync_error_signed_out">Utloggad av servern. Länka klockan igen.</string>
     <string name="sync_error_rejected">Servern nekade synken.</string>
+    <string name="sync_error_email_not_verified">Bekräfta din e-post i telefonen först.</string>
     <string name="sign_out">Logga ut</string>
     <string name="standalone_explainer">Länka klockan till din Tung-server för att logga utan telefonen.</string>
     <string name="link_to_server">Länka till %1$s</string>

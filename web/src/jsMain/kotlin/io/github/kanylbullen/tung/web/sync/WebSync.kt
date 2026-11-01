@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.web.sync
 
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import io.github.kanylbullen.tung.core.sync.DEVICE_HEADER
 import io.github.kanylbullen.tung.core.sync.LocalChanges
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
@@ -78,7 +80,7 @@ class WebSync(
             } catch (e: HttpUnreachable) {
                 return@SyncTransport SyncReply.Unreachable
             }
-            if (!reply.isSuccess) return@SyncTransport SyncReply.Status(reply.status)
+            if (!reply.isSuccess) return@SyncTransport SyncReply.Status(reply.status, errorCode(reply.body))
             try {
                 SyncReply.Answer(SyncJson.decodeFromString(SyncResponse.serializer(), reply.body))
             } catch (e: CancellationException) {
@@ -96,4 +98,13 @@ class WebSync(
     val running: StateFlow<Boolean> = loop.running
 
     suspend fun syncOnce(): SyncResult = loop.syncOnce()
+}
+
+/** The API error's `code` in a refusal's [body] (`{"error": {"code": …}}`), or null. */
+private fun errorCode(body: String): String? = try {
+    SyncJson.parseToJsonElement(body).jsonObject["error"]?.jsonObject?.get("code")?.jsonPrimitive?.content
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    null
 }

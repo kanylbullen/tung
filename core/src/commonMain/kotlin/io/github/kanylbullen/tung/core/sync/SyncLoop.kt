@@ -62,8 +62,8 @@ interface SyncSession {
 sealed interface SyncReply {
     data class Answer(val response: SyncResponse) : SyncReply
 
-    /** An answer that was not a success; the body is not read. */
-    data class Status(val code: Int) : SyncReply
+    /** An answer that was not a success, and the API error's `code` when its body had one. */
+    data class Status(val code: Int, val error: String? = null) : SyncReply
 
     /** A success whose body was not a [SyncResponse]. */
     data object Unreadable : SyncReply
@@ -71,6 +71,9 @@ sealed interface SyncReply {
     /** No answer at all: no connection, refused, timed out. */
     data object Unreachable : SyncReply
 }
+
+/** The API error code of a sync refused because the account's email is not confirmed yet. */
+const val EMAIL_NOT_VERIFIED_CODE = "email_not_verified"
 
 /** One `POST /api/v1/sync` with the bearer [token] and [DEVICE_HEADER] = [deviceId]: Ktor on a device, `fetch` in the browser. */
 fun interface SyncTransport {
@@ -158,7 +161,9 @@ class SyncLoop(
                 is SyncReply.Answer -> return reply.response
                 is SyncReply.Status -> when (reply.code) {
                     401 -> throw SyncFailedException(SyncFailure.SIGNED_OUT)
-                    in 400..499 -> throw SyncFailedException(SyncFailure.REJECTED)
+                    in 400..499 -> throw SyncFailedException(
+                        if (reply.code == 403 && reply.error == EMAIL_NOT_VERIFIED_CODE) SyncFailure.EMAIL_NOT_VERIFIED else SyncFailure.REJECTED,
+                    )
                     else -> SyncFailure.SERVER
                 }
                 SyncReply.Unreadable -> SyncFailure.SERVER

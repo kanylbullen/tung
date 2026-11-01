@@ -1981,9 +1981,12 @@ fallback, and only on a tap.
   `max-age`, else 1 h; an unknown kid refetches, at most once a minute);
   failures are 401 `invalid_google_token`, an unreachable key set 503.
   **Linking rule:** by `users.google_sub`; else, only when `email_verified`,
-  the user with that email gets the `google_sub`, and loses its password:
-  a password sign-up never verified the address, so whoever registered it
-  may not be its owner, and `evictUnverifiedHolders` also revokes the
+  the user with that email gets the `google_sub`. If that account never
+  proved its address (`email_verified_at` null or 0, see "Email
+  verification"), it loses its password: whoever registered it may not be
+  its owner, and `evictUnverifiedHolders` (under `lockUser`, which every
+  path that issues a credential also takes, re-checking its password or
+  token inside it) also revokes the
   account's tokens, refresh tokens, unused OAuth codes, link codes and push
   endpoints before the Google session is made; else a new user with `password_hash NULL`. An unverified email linked to
   nothing is 401 `email_not_verified`; never link on it. A null
@@ -2000,11 +2003,30 @@ fallback, and only on a tap.
   and client) that `POST /oauth/authorize` takes instead of the password.
   Tests: `GoogleSignInTest` (a test RSA key and a JWK set on a JDK
   `HttpServer`; `ServerConfig.clock` exists for expiry).
+- **Email verification** (`V14__email_verification.sql`, `Accounts`,
+  `RequireConfirmedEmail` in `Routes.kt`, the page `GET /verify-email` in
+  `SiteRoutes.kt`), only on a server that sends mail
+  (`TUNG_RESEND_API_KEY`; `Accounts.verifiesEmail`): a new password
+  account starts with `users.email_verified_at` null, and its welcome email
+  carries a link (`email_tokens`, SHA-256 of the token, seven days, kept
+  until it expires since a mail scanner may open it first). Until it is
+  opened the account may sign in, read and delete itself, sign out and
+  `POST /api/v1/auth/verify/resend` (three an hour), nothing else: every
+  other route, sync, commands, MCP and the OAuth consent answer 403
+  `email_not_verified`, so it holds nothing on the server, and after
+  `UNCONFIRMED_HOLD_MS` (a day) a new registration of the address deletes
+  it. Google proves an address too. `email_verified_at` 0 is an account
+  from before V14 or from a server without mail: it syncs, but proves
+  nothing (`proven()`), so Google linking still hands it over and it makes
+  no admin. Clients: core's `SyncFailure.EMAIL_NOT_VERIFIED` (the
+  transports pass the error code in `SyncReply.Status`), and Settings →
+  Account on the phone and the web says "Confirm your email" with "Send
+  the link again". `EmailVerificationTest`, `SyncFlowTest`.
 - **Admins** (`Admin.kt`): the accounts whose email is in
   `TUNG_ADMIN_EMAILS` (`Admins`, the one place that decides it; a `read`
-  token is refused, 403 `insufficient_scope`). With Sign in with Google
-  configured, the account must also be linked to Google, the only way the
-  server knows the address is its owner's. `/me` says `is_admin`;
+  token is refused, 403 `insufficient_scope`). Where the server can prove
+  an address (Sign in with Google, or email verification), the account's
+  must be proven: linked to Google or confirmed by its link. `/me` says `is_admin`;
   `GET /api/v1/admin/users` lists every account with how it signs in, when
   it was last seen, its working tokens and its finished workouts, never
   training content. The web app's Settings → Server admin shows it

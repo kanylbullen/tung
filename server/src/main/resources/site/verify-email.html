@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#1A1D21" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F6F6F4" media="(prefers-color-scheme: light)">
+  <meta name="description" content="Confirm the email of your Tung account.">
+  <meta name="robots" content="noindex">
+  <meta name="title-sv" content="Bekräfta e-post, Tung">
+  <title>Confirm your email, Tung</title>
+  <link rel="icon" href="/site/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="/site/archivo_latin.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/site/theme.js?v=@assets@"></script>
+  <link rel="stylesheet" href="/site/site.css?v=@assets@">
+</head>
+<body>
+  <div class="page">
+    <header class="top">
+      <a class="wordmark" href="/">Tung</a>
+      <div class="top-right">
+        <a class="top-link" href="/app/" data-sv="Öppna webbappen">Open the web app</a>
+        <button class="theme-toggle" type="button" aria-label="Switch to the dark theme">
+          <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.3 22c-5.6 0-10-4.5-10-10 0-4.6 3.1-8.5 7.4-9.7.5-.1 1 .3.9.8-.4 1.3-.6 2.6-.4 4 .5 4 3.7 7.1 7.7 7.5 1.3.1 2.6-.1 3.8-.6.5-.2 1 .3.8.8C21.2 19.6 17.2 22 12.3 22z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="prose">
+      <article data-lang="en" lang="en">
+        <!-- confirmed:begin -->
+        <h1>Your email is confirmed</h1>
+        <p>Your training now syncs. Go back to the app: it syncs by itself within a few minutes, or at once with Sync now in Settings → Account.</p>
+        <!-- confirmed:end -->
+        <!-- failed:begin -->
+        <h1>This link does not work</h1>
+        <p>It has expired, or a newer link was sent after it. Sign in to the app, and ask for a new link under Settings → Account.</p>
+        <!-- failed:end -->
+        <p><a href="/app/">Open the web app</a></p>
+      </article>
+
+      <article data-lang="sv" lang="sv" hidden>
+        <!-- confirmed:begin -->
+        <h1>Din e-post är bekräftad</h1>
+        <p>Nu synkas din träning. Gå tillbaka till appen: den synkar av sig själv inom några minuter, eller direkt med Synka nu under Inställningar → Konto.</p>
+        <!-- confirmed:end -->
+        <!-- failed:begin -->
+        <h1>Länken fungerar inte</h1>
+        <p>Den har gått ut, eller så har en nyare länk skickats efter den. Logga in i appen och be om en ny länk under Inställningar → Konto.</p>
+        <!-- failed:end -->
+        <p><a href="/app/">Öppna webbappen</a></p>
+      </article>
+    </main>
+
+    <footer>
+      <a href="/" data-sv="Startsidan">Front page</a>
+      <a href="https://github.com/kanylbullen/tung" data-sv="Källkod">Source</a>
+      <a href="https://github.com/kanylbullen/tung/blob/main/LICENSE" data-sv="Licens: AGPL-3.0">Licence: AGPL-3.0</a>
+      <a class="lang" href="?lang=sv" lang="sv">Svenska</a>
+    </footer>
+  </div>
+  <script src="/site/site.js?v=@assets@"></script>
+</body>
+</html>

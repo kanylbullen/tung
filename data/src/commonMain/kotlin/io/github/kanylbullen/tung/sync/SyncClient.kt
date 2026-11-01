@@ -62,6 +62,9 @@ sealed interface AuthMethodsResult {
 }
 
 /** `GET /api/v1/me`: the signed-in account as the server has it. */
+/** What asking for a new confirmation link gave. */
+enum class ResendOutcome { SENT, RATE_LIMITED, NETWORK, FAILED }
+
 data class AccountInfo(val email: String, val hasPassword: Boolean, val googleLinked: Boolean)
 
 enum class AuthFailure {
@@ -236,7 +239,7 @@ class SyncClient(
                     setBody(request)
                 }
                 if (!response.status.isSuccess()) {
-                    SyncReply.Status(response.status.value)
+                    SyncReply.Status(response.status.value, runCatching { response.body<ErrorBody>().error.code }.getOrNull())
                 } else {
                     try {
                         SyncReply.Answer(response.body<SyncResponse>())
@@ -355,6 +358,31 @@ class SyncClient(
             AuthResult.Failed(AuthFailure.NETWORK)
         } catch (e: Exception) {
             AuthResult.Failed(AuthFailure.SERVER)
+        }
+    }
+
+    /**
+     * `POST /api/v1/auth/verify/resend`: a new link to confirm the account's
+     * email, in the app's language. Stores nothing.
+     */
+    suspend fun resendConfirmation(): ResendOutcome = withContext(ioDispatcher) {
+        val baseUrl = settings.serverUrl() ?: return@withContext ResendOutcome.FAILED
+        val token = tokens.read() ?: return@withContext ResendOutcome.FAILED
+        try {
+            val response = http.post(baseUrl + RESEND_CONFIRMATION_PATH) {
+                bearerAuth(token)
+                contentType(ContentType.Application.Json)
+                setBody(ResendBody(language()))
+            }
+            when {
+                response.status.isSuccess() -> ResendOutcome.SENT
+                response.status.value == 429 -> ResendOutcome.RATE_LIMITED
+                else -> ResendOutcome.FAILED
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            ResendOutcome.NETWORK
         }
     }
 
@@ -608,6 +636,9 @@ class SyncClient(
     private data class GoogleBody(@SerialName("id_token") val idToken: String, val language: String? = null)
 
     @Serializable
+    private data class ResendBody(val language: String? = null)
+
+    @Serializable
     private data class MethodsBody(val password: Boolean = true, val google: GoogleMethodBody? = null)
 
     @Serializable
@@ -629,6 +660,7 @@ class SyncClient(
         const val GOOGLE_PATH = "/api/v1/auth/google"
         const val METHODS_PATH = "/api/v1/auth/methods"
         const val ME_PATH = "/api/v1/me"
+        const val RESEND_CONFIRMATION_PATH = "/api/v1/auth/verify/resend"
         const val LINK_START_PATH = "/api/v1/link/start"
         const val FEEDBACK_PATH = "/api/v1/feedback"
         const val LINK_CLAIM_PATH = "/api/v1/link/claim"

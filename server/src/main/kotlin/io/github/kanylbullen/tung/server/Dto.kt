@@ -14,6 +14,10 @@ data class Credentials(
     val language: String? = null,
 )
 
+/** `POST /auth/verify/resend`, optional: the app's language (`en`, `sv`) for the email; English when absent. */
+@Serializable
+data class ResendConfirmation(val language: String? = null)
+
 @Serializable
 data class UserDto(
     val id: String,
@@ -25,6 +29,12 @@ data class UserDto(
     val googleLinked: Boolean,
     /** The account is one of the server's admins (`TUNG_ADMIN_EMAILS`). Only `/me` says so; elsewhere false. */
     val isAdmin: Boolean = false,
+    /**
+     * The email is confirmed (its link, or Google), or the server confirms
+     * none. False: the account may sign in but not sync or change data until
+     * the emailed link is opened (`POST /auth/verify/resend` sends a new one).
+     */
+    val emailVerified: Boolean = true,
 )
 
 /**

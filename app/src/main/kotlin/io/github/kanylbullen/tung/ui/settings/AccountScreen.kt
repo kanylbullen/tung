@@ -65,7 +65,14 @@ fun AccountScreen(onBack: () -> Unit) {
         val account = state.account
         when (account?.signedIn) {
             null -> Unit
-            true -> SignedIn(account, onSyncNow = vm::syncNow, onSignOut = vm::signOut, onDelete = vm::openDeletion)
+            true -> SignedIn(
+                account,
+                resend = state.resend,
+                onSyncNow = vm::syncNow,
+                onResend = vm::resendConfirmation,
+                onSignOut = vm::signOut,
+                onDelete = vm::openDeletion,
+            )
             false -> SignInForm(
                 form = state.form,
                 deleted = state.deleted,
@@ -93,7 +100,14 @@ fun AccountScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: () -> Unit, onDelete: () -> Unit) {
+private fun SignedIn(
+    account: AccountState,
+    resend: ResendState?,
+    onSyncNow: () -> Unit,
+    onResend: () -> Unit,
+    onSignOut: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             stringResource(R.string.sync_signed_in_as, account.email.orEmpty()),
@@ -103,6 +117,18 @@ private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: ()
         Text(account.serverUrl.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
         if (account.googleLinked) {
             Text(stringResource(R.string.sync_google_linked), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+        }
+    }
+    // A new account on a server that confirms addresses: nothing syncs until the emailed link is opened.
+    if (SyncFailure.fromKey(account.sync.lastError) == SyncFailure.EMAIL_NOT_VERIFIED) {
+        Text(
+            stringResource(R.string.sync_confirm_email, account.email.orEmpty()),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Tung.colors.accentText,
+        )
+        SecondaryButton(text = stringResource(R.string.sync_confirm_resend), onClick = onResend, enabled = resend != ResendState.Sending)
+        (resend as? ResendState.Done)?.let {
+            Text(stringResource(it.message), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
         }
     }
     Text(syncStatusText(account.sync), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
@@ -275,6 +301,7 @@ private fun syncStatusText(sync: SyncState): String {
         SyncFailure.SERVER -> return stringResource(R.string.sync_error_server)
         SyncFailure.SIGNED_OUT -> return stringResource(R.string.sync_error_signed_out)
         SyncFailure.REJECTED -> return stringResource(R.string.sync_error_rejected)
+        SyncFailure.EMAIL_NOT_VERIFIED -> return stringResource(R.string.sync_error_email_not_verified)
         null -> Unit
     }
     val at = sync.lastSyncAt ?: return stringResource(R.string.sync_status_never)

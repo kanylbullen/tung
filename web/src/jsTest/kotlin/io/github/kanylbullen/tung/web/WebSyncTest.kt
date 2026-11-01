@@ -15,6 +15,7 @@ import io.github.kanylbullen.tung.web.sync.AuthFailure
 import io.github.kanylbullen.tung.web.sync.AuthResult
 import io.github.kanylbullen.tung.web.sync.HttpReply
 import io.github.kanylbullen.tung.web.sync.HttpUnreachable
+import io.github.kanylbullen.tung.web.sync.ResendResult
 import io.github.kanylbullen.tung.web.sync.SyncJson
 import io.github.kanylbullen.tung.web.sync.WebAuth
 import io.github.kanylbullen.tung.web.sync.WebSettings
@@ -138,6 +139,11 @@ class WebSyncTest {
         assertEquals(1, refusing.seen.size, "a 4xx is not retried")
         assertEquals(SyncFailure.REJECTED.key, settings.syncState.value.lastError)
 
+        val unconfirmed = FakeServer({ HttpReply(403, """{"error":{"code":"email_not_verified","message":"Confirm your email first."}}""") })
+        assertEquals(SyncResult.Failed(SyncFailure.EMAIL_NOT_VERIFIED), sync(store, db, settings, unconfirmed).syncOnce())
+        assertEquals(1, unconfirmed.seen.size, "waiting for the link is not retried")
+        assertEquals(SyncFailure.EMAIL_NOT_VERIFIED.key, settings.syncState.value.lastError)
+
         val down = FakeServer({ HttpReply(500, "") }, { HttpReply(500, "") }, { HttpReply(500, "") })
         assertEquals(SyncResult.Failed(SyncFailure.SERVER), sync(store, db, settings, down).syncOnce())
         assertEquals(3, down.seen.size, "two retries, then it gives up")
@@ -216,5 +222,22 @@ class WebSyncTest {
         var body = ""
         WebAuth(post = { _, b, _ -> body = b; HttpReply(401, "") }).signIn("https://tung.example.org", "x@example.org", "secret123")
         assertEquals("""{"email":"x@example.org","password":"secret123"}""", body)
+    }
+
+    @Test
+    fun resendConfirmationPostsTheLanguageAndNamesTheOutcome() = runTest {
+        var url = ""
+        var body = ""
+        var auth: String? = null
+        suspend fun answer(reply: () -> HttpReply): ResendResult =
+            WebAuth(post = { u, b, h -> url = u; body = b; auth = h["Authorization"]; reply() })
+                .resendConfirmation("https://tung.example.org", "tung_abc", "sv")
+        assertEquals(ResendResult.SENT, answer { HttpReply(202, "") })
+        assertEquals("https://tung.example.org/api/v1/auth/verify/resend", url)
+        assertEquals("""{"language":"sv"}""", body)
+        assertEquals("Bearer tung_abc", auth)
+        assertEquals(ResendResult.RATE_LIMITED, answer { HttpReply(429, "") })
+        assertEquals(ResendResult.FAILED, answer { HttpReply(404, """{"error":{"code":"not_configured"}}""") })
+        assertEquals(ResendResult.NETWORK, answer { throw HttpUnreachable(null) })
     }
 }

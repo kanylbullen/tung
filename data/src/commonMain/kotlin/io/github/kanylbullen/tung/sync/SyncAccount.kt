@@ -79,6 +79,9 @@ class SyncAccount(
         return result
     }
 
+    /** A new link to confirm the account's email (see [SyncFailure.EMAIL_NOT_VERIFIED]). */
+    suspend fun resendConfirmation(): ResendOutcome = client.resendConfirmation()
+
     /** Asks the server (`/me`) whether a Google account is linked, so Settings shows it after a link made elsewhere. */
     suspend fun refreshAccount() {
         if (!isSignedIn()) return

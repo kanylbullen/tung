@@ -11,6 +11,10 @@ const val LOGOUT_PATH = "/api/v1/auth/logout"
 const val GOOGLE_PATH = "/api/v1/auth/google"
 const val METHODS_PATH = "/api/v1/auth/methods"
 const val ACCOUNT_PATH = "/api/v1/me"
+const val RESEND_CONFIRMATION_PATH = "/api/v1/auth/verify/resend"
+
+/** What asking for a new confirmation link gave, as the phone's `ResendOutcome` names it. */
+enum class ResendResult { SENT, RATE_LIMITED, NETWORK, FAILED }
 
 /** What deleting the account gave, as the phone's `DeleteAccountOutcome` names it. */
 enum class DeleteAccountResult {
@@ -195,6 +199,24 @@ class WebAuth(
         }
     }
 
+    /** `POST /api/v1/auth/verify/resend {language}`: a new link to confirm the account's email. Stores nothing. */
+    suspend fun resendConfirmation(baseUrl: String, token: String, language: String?): ResendResult {
+        val reply = try {
+            post(
+                baseUrl + RESEND_CONFIRMATION_PATH,
+                json.encodeToString(Resend.serializer(), Resend(language)),
+                mapOf("Authorization" to "Bearer $token"),
+            )
+        } catch (e: HttpUnreachable) {
+            return ResendResult.NETWORK
+        }
+        return when {
+            reply.isSuccess -> ResendResult.SENT
+            reply.status == 429 -> ResendResult.RATE_LIMITED
+            else -> ResendResult.FAILED
+        }
+    }
+
     /** `DELETE /api/v1/me {email}`: the server deletes the account and everything of it. Stores nothing. */
     suspend fun deleteAccount(baseUrl: String, token: String, email: String): DeleteAccountResult {
         val reply = try {
@@ -230,6 +252,9 @@ class WebAuth(
 
     @Serializable
     private data class Confirmation(val email: String)
+
+    @Serializable
+    private data class Resend(val language: String? = null)
 
     @Serializable
     private data class GoogleToken(@SerialName("id_token") val idToken: String, val language: String? = null)

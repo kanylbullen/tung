@@ -65,7 +65,9 @@ class WelcomeMailTest {
         }
         assertEquals(HttpStatusCode.Created, response.status)
         val mail = mailsTo(email, 1).single()
-        assertEquals("Välkommen till Tung", mail.subject)
+        // A server that sends mail asks a new password account to confirm its address, in the welcome itself.
+        assertEquals("Bekräfta din e-post för Tung", mail.subject)
+        assertTrue("https://tung.example.org/verify-email?token=" in mail.text, mail.text)
         assertTrue("https://tung.example.org/app/" in mail.text, mail.text)
         assertTrue("https://tung.example.org/delete-account" in mail.text, mail.text)
         assertTrue("Tung är i beta" in mail.text, "the beta notice: ${mail.text}")
@@ -83,7 +85,9 @@ class WelcomeMailTest {
     fun withoutALanguageTheWelcomeIsEnglish() = mailTest {
         val email = uniqueEmail()
         client.register(email)
-        assertEquals("Welcome to Tung", mailsTo(email, 1).single().subject)
+        assertEquals("Confirm your email for Tung", mailsTo(email, 1).single().subject)
+        val plain = WelcomeMail.accountMessage(email, swedish = false, url = "https://t.example.org").subject
+        assertEquals("Welcome to Tung", plain)
     }
 
     @Test
