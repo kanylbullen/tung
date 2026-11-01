@@ -61,10 +61,10 @@ sealed interface AuthMethodsResult {
     data class Failed(val failure: AuthFailure) : AuthMethodsResult
 }
 
-/** `GET /api/v1/me`: the signed-in account as the server has it. */
 /** What asking for a new confirmation link gave. */
 enum class ResendOutcome { SENT, RATE_LIMITED, NETWORK, FAILED }
 
+/** `GET /api/v1/me`: the signed-in account as the server has it. */
 data class AccountInfo(val email: String, val hasPassword: Boolean, val googleLinked: Boolean)
 
 enum class AuthFailure {

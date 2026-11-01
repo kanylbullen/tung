@@ -1,5 +1,8 @@
 package io.github.kanylbullen.tung.server
 
+import io.ktor.http.Parameters
+import io.ktor.client.request.setBody
+import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -59,7 +62,12 @@ class EmailVerificationTest {
 
     private suspend fun ApplicationTestBuilder.me(token: String) = client.get("/api/v1/me") { bearerAuth(token) }.json()
 
+    /** Opening the link: what a person, or a mail scanner, does first. */
     private suspend fun ApplicationTestBuilder.open(link: String) = client.get("/verify-email?token=$link")
+
+    /** Pressing "Confirm my email" on the link's page. */
+    private suspend fun ApplicationTestBuilder.confirm(link: String) =
+        client.post("/verify-email") { setBody(FormDataContent(Parameters.build { append("token", link) })) }
 
     @Test
     fun aNewAccountMaySignInButNotSyncUntilItsLinkIsOpened() = verifyTest {
@@ -78,13 +86,20 @@ class EmailVerificationTest {
             assertEquals("email_not_verified", refused.errorCode(), path)
         }
 
+        // Opening the link (a mail scanner does) only shows the button.
         val page = open(linkTo(email))
         assertEquals(HttpStatusCode.OK, page.status)
-        assertTrue("Your email is confirmed" in page.bodyAsText())
+        assertTrue("Confirm my email" in page.bodyAsText())
+        assertEquals("no-referrer", page.headers["Referrer-Policy"])
+        assertFalse(me(session)["email_verified"]!!.jsonPrimitive.boolean)
+
+        val confirmed = confirm(linkTo(email))
+        assertEquals(HttpStatusCode.OK, confirmed.status)
+        assertTrue("Your email is confirmed" in confirmed.bodyAsText())
         assertTrue(me(session)["email_verified"]!!.jsonPrimitive.boolean)
         client.synced(session)
-        // Opened again (a mail scanner may have opened it first): still confirmed.
-        assertEquals(HttpStatusCode.OK, open(linkTo(email)).status)
+        // Pressed again: still confirmed.
+        assertEquals(HttpStatusCode.OK, confirm(linkTo(email)).status)
     }
 
     @Test
@@ -97,15 +112,16 @@ class EmailVerificationTest {
         assertNotEquals(first, second)
         assertTrue("Confirm your email for Tung" == sent.last { it.to == email }.subject)
         assertEquals(HttpStatusCode.BadRequest, open(first).status)
+        assertEquals(HttpStatusCode.BadRequest, confirm(first).status)
 
-        repeat(CONFIRM_RESENDS_PER_HOUR - 1) {
+        repeat(CONFIRM_RESENDS_PER_DAY - 1) {
             assertEquals(HttpStatusCode.Accepted, client.post("/api/v1/auth/verify/resend") { bearerAuth(session) }.status)
         }
         val limited = client.post("/api/v1/auth/verify/resend") { bearerAuth(session) }
         assertEquals(HttpStatusCode.TooManyRequests, limited.status)
 
-        val last = linkTo(email, count = 1 + CONFIRM_RESENDS_PER_HOUR)
-        assertEquals(HttpStatusCode.OK, open(last).status)
+        val last = linkTo(email, count = 1 + CONFIRM_RESENDS_PER_DAY)
+        assertEquals(HttpStatusCode.OK, confirm(last).status)
         // Confirmed: asking again sends nothing.
         val before = sent.count { it.to == email }
         now += 2 * 60 * 60 * 1000L
@@ -123,6 +139,7 @@ class EmailVerificationTest {
         val page = open(link)
         assertEquals(HttpStatusCode.BadRequest, page.status)
         assertTrue("This link does not work" in page.bodyAsText())
+        assertEquals(HttpStatusCode.BadRequest, confirm(link).status)
         assertFalse(me(session)["email_verified"]!!.jsonPrimitive.boolean)
     }
 
@@ -139,14 +156,14 @@ class EmailVerificationTest {
         assertEquals(email, me(owner)["email"]!!.jsonPrimitive.content)
 
         // A confirmed address never gives way.
-        assertEquals(HttpStatusCode.OK, open(linkTo(email, count = 2)).status)
+        assertEquals(HttpStatusCode.OK, confirm(linkTo(email, count = 2)).status)
         now += UNCONFIRMED_HOLD_MS + 1
         val late = client.post("/api/v1/auth/register") { jsonBody("""{"email": "$email", "password": "someone else's"}""") }
         assertEquals(HttpStatusCode.Conflict, late.status)
     }
 
     @Test
-    fun googleConfirmsAnAddressAndAConfirmedAccountKeepsItsPassword() = verifyTest {
+    fun googleConfirmsAnAddressAndAlwaysHandsTheAccountToItsOwner() = verifyTest {
         // Unconfirmed: Google's owner gets the account, as before.
         val unconfirmed = uniqueEmail()
         client.register(unconfirmed, "the squatter's password")
@@ -155,15 +172,15 @@ class EmailVerificationTest {
         assertTrue(taken.json()["user"]!!.jsonObject["email_verified"]!!.jsonPrimitive.boolean)
         assertFalse(taken.json()["user"]!!.jsonObject["has_password"]!!.jsonPrimitive.boolean)
 
-        // Confirmed by its link: the same person, who keeps the password.
+        // Confirmed by its link too: a button pressed at the inbox is no proof of who registered it.
         val confirmed = uniqueEmail()
         client.register(confirmed, "correct horse battery")
-        open(linkTo(confirmed))
+        confirm(linkTo(confirmed))
         val linked = client.post("/api/v1/auth/google") { jsonBody("""{"id_token": "${google.token(email = confirmed)}"}""") }
         assertEquals(HttpStatusCode.OK, linked.status)
-        assertTrue(linked.json()["user"]!!.jsonObject["has_password"]!!.jsonPrimitive.boolean)
+        assertFalse(linked.json()["user"]!!.jsonObject["has_password"]!!.jsonPrimitive.boolean)
         val login = client.post("/api/v1/auth/login") { jsonBody("""{"email": "$confirmed", "password": "correct horse battery"}""") }
-        assertEquals(HttpStatusCode.OK, login.status)
+        assertEquals(HttpStatusCode.Unauthorized, login.status)
     }
 
     @Test
@@ -173,6 +190,8 @@ class EmailVerificationTest {
             val session = client.register(admin, "correct horse battery")
             assertFalse(me(session)["is_admin"]!!.jsonPrimitive.boolean)
             open(linkTo(admin))
+            assertFalse(me(session)["is_admin"]!!.jsonPrimitive.boolean, "opening the link is not confirming")
+            confirm(linkTo(admin))
             assertTrue(me(session)["is_admin"]!!.jsonPrimitive.boolean)
         }
     }

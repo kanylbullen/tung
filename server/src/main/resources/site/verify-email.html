@@ -30,6 +30,14 @@
 
     <main class="prose">
       <article data-lang="en" lang="en">
+        <!-- ask:begin -->
+        <h1>Confirm your email</h1>
+        <p>Press the button to confirm this address for your Tung account. Didn't create an account? Close this page: nothing happens.</p>
+        <form class="reset" method="post" action="/verify-email">
+          <input type="hidden" name="token" value="@token@">
+          <button class="button primary" type="submit">Confirm my email</button>
+        </form>
+        <!-- ask:end -->
         <!-- confirmed:begin -->
         <h1>Your email is confirmed</h1>
         <p>Your training now syncs. Go back to the app: it syncs by itself within a few minutes, or at once with Sync now in Settings → Account.</p>
@@ -42,6 +50,14 @@
       </article>
 
       <article data-lang="sv" lang="sv" hidden>
+        <!-- ask:begin -->
+        <h1>Bekräfta din e-post</h1>
+        <p>Tryck på knappen för att bekräfta adressen till ditt Tung-konto. Har du inte skapat något konto? Stäng sidan, så händer ingenting.</p>
+        <form class="reset" method="post" action="/verify-email">
+          <input type="hidden" name="token" value="@token@">
+          <button class="button primary" type="submit">Bekräfta min e-post</button>
+        </form>
+        <!-- ask:end -->
         <!-- confirmed:begin -->
         <h1>Din e-post är bekräftad</h1>
         <p>Nu synkas din träning. Gå tillbaka till appen: den synkar av sig själv inom några minuter, eller direkt med Synka nu under Inställningar → Konto.</p>

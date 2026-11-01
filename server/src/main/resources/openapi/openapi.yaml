@@ -166,9 +166,10 @@ paths:
         On a server that sends mail (`TUNG_RESEND_API_KEY`), a new password
         account must confirm its email by the link in its welcome email before
         it may sync or change data; until then every route but this one,
-        `GET/DELETE /me` and `/auth/logout` answers 403 `email_not_verified`.
+        `GET/DELETE /me`, `/auth/logout` and the push endpoints answers 403
+        `email_not_verified`.
         This sends a new link (seven days) and spends the earlier ones. Nothing
-        is sent for an account already confirmed. At most three an hour per
+        is sent for an account already confirmed. At most three a day per
         account. An address registered and never confirmed gives way to a new
         registration after a day.
       operationId: resendConfirmation
@@ -205,12 +206,11 @@ paths:
         issued by Google, for one of the configured client ids, unexpired
         (60 s leeway) and signed with a key from Google's JWK set. The user is
         the one already linked to the Google account; else, when Google says
-        the email is verified, the account with that email, which is linked.
-        If that account never confirmed its address by its emailed link, its
-        password is removed and its other tokens, OAuth grants, link codes and
-        push endpoints are revoked, since anyone could have registered it; a
-        confirmed account keeps its password. Either way the address counts as
-        confirmed. Else a new account without a password. An
+        the email is verified, the account with that email, which is linked;
+        its password is removed and its other tokens, OAuth grants, link codes
+        and push endpoints are revoked, since anyone could have registered it
+        (a confirmation link pressed at the inbox does not prove who did), and
+        the address counts as confirmed. Else a new account without a password. An
         unverified email that is linked to nothing is refused. Rate-limited
         per client address like login. Without `TUNG_GOOGLE_CLIENT_ID` the
         route answers 404 `not_configured`.

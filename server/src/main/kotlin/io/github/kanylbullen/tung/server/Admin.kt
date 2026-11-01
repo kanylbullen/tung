@@ -16,25 +16,26 @@ const val MAX_ADMIN_USERS = 1_000
  * The one place that decides it, for `/me`'s `is_admin`, the account list
  * and the test sign-ups.
  *
- * Registering with a password proves nothing about the email, so where the
- * server can prove one ([requireProof]: it offers Sign in with Google, or
- * sends confirmation links) an admin's address must be proven: linked to
- * Google, or confirmed by its link. Otherwise anyone could register an
- * admin's address before its owner, and be admin. An account from before
- * verification (`email_verified_at` 0) proves nothing either. A server that
- * can prove neither should have its admins register before it is opened to
- * others.
+ * Registering with a password proves nothing about the email, so an
+ * admin's address must be proven: linked to Google or confirmed by its
+ * emailed link. On a server with Sign in with Google ([requireProof]) only
+ * that counts; elsewhere an account from before email verification
+ * (`email_verified_at` 0) counts too, so an admin of a server without
+ * Google keeps it, but a new account must confirm its address first.
+ * Otherwise anyone could register an admin's address before its owner, and
+ * be admin.
  */
 class Admins(private val db: Db, private val emails: Set<String>, private val requireProof: Boolean = false) {
 
     suspend fun isAdmin(userId: String): Boolean {
         if (emails.isEmpty()) return false
         val row = db.tx { Users.selectAll().where { Users.id eq userId }.singleOrNull() } ?: return false
-        return isAdmin(row[Users.email], proven = row[Users.googleSub] != null || proven(row[Users.emailVerifiedAt]))
+        return isAdmin(row[Users.email], row[Users.googleSub] != null, row[Users.emailVerifiedAt])
     }
 
-    fun isAdmin(email: String, proven: Boolean): Boolean =
-        email.lowercase() in emails && (proven || !requireProof)
+    fun isAdmin(email: String, googleLinked: Boolean, emailVerifiedAt: Long?): Boolean =
+        email.lowercase() in emails &&
+            (googleLinked || proven(emailVerifiedAt) || (!requireProof && emailVerifiedAt != null))
 
     /**
      * Only a write token: a `read` token is what an admin hands an assistant
@@ -49,7 +50,7 @@ class Admins(private val db: Db, private val emails: Set<String>, private val re
             throw forbidden(
                 "not_admin",
                 if (requireProof) {
-                    "Only the server's admins (TUNG_ADMIN_EMAILS, with the address confirmed or signed in with Google once) may see this."
+                    "Only the server's admins (TUNG_ADMIN_EMAILS, confirmed by email or signed in with Google once) may see this."
                 } else {
                     "Only the server's admins (TUNG_ADMIN_EMAILS) may see this."
                 },
@@ -115,7 +116,8 @@ class AdminStore(private val db: Db, private val admins: Admins, private val tes
                                     emailVerified = rows.getLong("email_verified_at").let { !rows.wasNull() },
                                     isAdmin = admins.isAdmin(
                                         email,
-                                        proven = rows.getBoolean("google_linked") || proven(rows.getLong("email_verified_at").takeUnless { rows.wasNull() }),
+                                        rows.getBoolean("google_linked"),
+                                        rows.getLong("email_verified_at").takeUnless { rows.wasNull() },
                                     ),
                                     lastSeenAt = rows.getLong("last_seen_at").takeUnless { rows.wasNull() },
                                     activeTokens = rows.getInt("active_tokens"),

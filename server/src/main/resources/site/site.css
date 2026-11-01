@@ -219,6 +219,9 @@
       padding: 0 16px;
     }
     .test input[type=email]:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+    /* --- The forms behind emailed links (/verify-email, /reset-password) --- */
+    .reset { display: grid; gap: 16px; max-width: 26rem; margin: 8px 0 24px; }
+    .reset button { justify-self: start; border: 0; font: inherit; font-weight: 700; cursor: pointer; }
     .test label.consent { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; color: var(--muted); cursor: pointer; }
     .test label.consent input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
     .test button {

@@ -307,8 +307,11 @@ private fun ConfirmEmail(container: WebContainer, email: String) {
             onClick {
                 sending = true
                 scope.launch {
-                    result = container.resendConfirmation()
-                    sending = false
+                    try {
+                        result = container.resendConfirmation()
+                    } finally {
+                        sending = false
+                    }
                 }
             }
         }) { Text(strings.confirmResend) }

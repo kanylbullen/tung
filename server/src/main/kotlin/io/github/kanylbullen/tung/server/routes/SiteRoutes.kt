@@ -1,5 +1,10 @@
 package io.github.kanylbullen.tung.server.routes
 
+import io.ktor.server.routing.post
+import io.ktor.server.request.receiveParameters
+import io.ktor.server.plugins.ratelimit.rateLimit
+import io.ktor.server.application.ApplicationCall
+import io.github.kanylbullen.tung.server.AUTH_RATE_LIMIT
 import io.github.kanylbullen.tung.server.Accounts
 import io.github.kanylbullen.tung.server.ServerConfig
 import io.ktor.http.ContentType
@@ -37,17 +42,40 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
     page("/privacy", "privacy.html")
     // How to delete an account, and what goes; the deletion link Google Play asks for.
     page("/delete-account", "delete-account.html")
-    // The link in a confirmation email. A GET that confirms: mail scanners that open links can only open them
-    // from the inbox the link was sent to, which is what confirming proves.
+    // The link in a confirmation email. Opening it (a GET, which mail scanners do by themselves) only shows a
+    // button; pressing it (the POST) confirms, so only a person at the inbox can.
     if (accounts != null) {
-        val confirmed by lazy { sitePage("verify-email.html")?.let { keepBlocks(it, "confirmed", "failed") } }
-        val failed by lazy { sitePage("verify-email.html")?.let { keepBlocks(it, "failed", "confirmed") } }
-        get("/verify-email") {
-            val token = call.request.queryParameters["token"]
-            val ok = token != null && token.length <= 200 && accounts.confirmEmail(token)
-            val html = (if (ok) confirmed else failed) ?: return@get call.respond(HttpStatusCode.NotFound)
-            call.response.header("Referrer-Policy", "no-referrer")
-            call.respondText(html, ContentType.Text.Html, if (ok) HttpStatusCode.OK else HttpStatusCode.BadRequest)
+        val confirmPage by lazy { sitePage("verify-email.html") }
+        fun confirmView(view: String, token: String = ""): String? {
+            var html = confirmPage ?: return null
+            for (other in listOf("ask", "confirmed", "failed").filter { it != view }) html = keepBlocks(html, view, other)
+            return html.replace("@token@", htmlAttribute(token))
+        }
+        suspend fun ApplicationCall.respondConfirm(html: String?, status: HttpStatusCode) {
+            html ?: return respond(HttpStatusCode.NotFound)
+            response.header("Referrer-Policy", "no-referrer")
+            response.header(HttpHeaders.CacheControl, "no-store")
+            response.header("X-Frame-Options", "DENY")
+            response.header("Content-Security-Policy", "frame-ancestors 'none'; form-action 'self'; base-uri 'none'")
+            respondText(html, ContentType.Text.Html, status)
+        }
+        rateLimit(AUTH_RATE_LIMIT) {
+            get("/verify-email") {
+                val token = call.request.queryParameters["token"]?.takeIf { it.length <= 200 }
+                if (token != null && accounts.confirmLinkWorks(token)) {
+                    call.respondConfirm(confirmView("ask", token), HttpStatusCode.OK)
+                } else {
+                    call.respondConfirm(confirmView("failed"), HttpStatusCode.BadRequest)
+                }
+            }
+            post("/verify-email") {
+                val token = call.receiveParameters()["token"].orEmpty().take(200)
+                if (accounts.confirmEmail(token)) {
+                    call.respondConfirm(confirmView("confirmed"), HttpStatusCode.OK)
+                } else {
+                    call.respondConfirm(confirmView("failed"), HttpStatusCode.BadRequest)
+                }
+            }
         }
     }
     staticResources("/site", "site")
@@ -101,3 +129,7 @@ private fun Route.page(path: String, file: String, transform: (String) -> String
         call.respondText(html, ContentType.Text.Html)
     }
 }
+
+/** [value] safe inside a double-quoted HTML attribute. */
+private fun htmlAttribute(value: String): String =
+    value.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")

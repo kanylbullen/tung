@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.core.sync.PUSH_ENDPOINTS_PATH
 import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
 import io.github.kanylbullen.tung.core.sync.SyncRequest
@@ -65,8 +66,10 @@ private val RequireWriteScope = createRouteScopedPlugin("RequireWriteScope") {
 
 /**
  * An account whose email is not confirmed yet may sign out, read and delete
- * itself and ask for a new link, nothing else: no sync, no training data, no
- * tokens or devices, no feedback. So it holds nothing on the server, and an
+ * itself, ask for a new link and register its device's push endpoint (so it
+ * hears of changes once confirmed; the phone registers only at start and
+ * sign-in), nothing else: no sync, no training data, no tokens or linked
+ * devices, no feedback. So it holds nothing on the server, and an
  * address registered by someone who does not own it gives way after a day
  * ([UNCONFIRMED_HOLD_MS]).
  */
@@ -75,7 +78,8 @@ internal val RequireConfirmedEmail = createRouteScopedPlugin("RequireConfirmedEm
         val principal = call.principal<TokenPrincipal>() ?: return@on
         if (principal.emailVerified) return@on
         val path = call.request.path()
-        val allowed = path == "/api/v1/auth/logout" || path == "/api/v1/me" || path == "/api/v1/auth/verify/resend"
+        val allowed = path == "/api/v1/auth/logout" || path == "/api/v1/me" || path == "/api/v1/auth/verify/resend" ||
+            path == PUSH_ENDPOINTS_PATH || path.startsWith("$PUSH_ENDPOINTS_PATH/")
         if (!allowed) throw emailNotConfirmed()
     }
 }
@@ -118,7 +122,7 @@ fun Route.apiRoutes(
     get("/openapi.yaml") { call.respondText(spec, ContentType.parse("application/yaml")) }
     swaggerUI(path = "docs", swaggerFile = "openapi/openapi.yaml")
 
-    val admins = Admins(db, config.adminEmails, requireProof = accounts.google != null || accounts.verifiesEmail)
+    val admins = Admins(db, config.adminEmails, requireProof = accounts.google != null)
     val testers = Testers(db, admins, config.testerSignups, config.clock, welcome)
     val adminStore = AdminStore(db, admins, config.testerSignups, config.clock)
     val feedback = FeedbackStore(db, admins, config.clock)
@@ -141,7 +145,7 @@ fun Route.apiRoutes(
             install(RequireWriteScope)
             install(RequireConfirmedEmail)
 
-            post("/auth/verify/resend") {
+            rateLimit(AUTH_RATE_LIMIT) { post("/auth/verify/resend") {
                 val body = if (call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()?.let { it > 0 } == true) {
                     call.receive<ResendConfirmation>()
                 } else {
@@ -149,7 +153,7 @@ fun Route.apiRoutes(
                 }
                 accounts.resendConfirmation(call.user(), body.language)
                 call.respond(HttpStatusCode.Accepted)
-            }
+            } }
 
             post("/auth/logout") {
                 val principal = call.user()
