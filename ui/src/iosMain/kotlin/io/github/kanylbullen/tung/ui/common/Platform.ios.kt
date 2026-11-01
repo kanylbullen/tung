@@ -42,7 +42,7 @@ private val weekdayFormat: NSDateFormatter by lazy {
     NSDateFormatter().apply { locale = NSLocale.autoupdatingCurrentLocale }
 }
 
-actual fun weekdayName(isoWeekday: Int, style: WeekdayStyle): String {
+actual fun weekdayName(isoWeekday: Int, style: WeekdayStyle, capitalized: Boolean): String {
     val symbols = when (style) {
         WeekdayStyle.NARROW -> weekdayFormat.veryShortStandaloneWeekdaySymbols
         WeekdayStyle.SHORT -> weekdayFormat.shortStandaloneWeekdaySymbols
@@ -50,11 +50,12 @@ actual fun weekdayName(isoWeekday: Int, style: WeekdayStyle): String {
     }
     // Foundation's lists start on Sunday; ISO weekday 7 is Sunday.
     val name = symbols[isoWeekday % 7] as String
-    return name.replaceFirstChar { it.uppercase() }
+    return if (capitalized) name.replaceFirstChar { it.uppercase() } else name
 }
 
 private val volumeFormat: NSNumberFormatter by lazy {
     NSNumberFormatter().apply {
+        locale = NSLocale.autoupdatingCurrentLocale
         numberStyle = NSNumberFormatterDecimalStyle
         maximumFractionDigits = 0u
     }
@@ -67,9 +68,15 @@ internal actual fun dateText(epochMillis: Long, pattern: String, patternWithYear
     val date = NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0)
     val calendar = NSCalendar.currentCalendar
     val sameYear = calendar.component(NSCalendarUnitYear, fromDate = date) == calendar.component(NSCalendarUnitYear, fromDate = NSDate())
-    val formatter = NSDateFormatter().apply {
-        locale = NSLocale.autoupdatingCurrentLocale
-        dateFormat = if (sameYear) pattern else patternWithYear
+    val chosen = if (sameYear) pattern else patternWithYear
+    val formatter = dateFormats.getOrPut(chosen) {
+        NSDateFormatter().apply {
+            locale = NSLocale.autoupdatingCurrentLocale
+            dateFormat = chosen
+        }
     }
     return formatter.stringFromDate(date).replaceFirstChar { it.uppercase() }
 }
+
+// One formatter per pattern: a list of workout rows asks for the same two on every recomposition.
+private val dateFormats = mutableMapOf<String, NSDateFormatter>()

@@ -44,7 +44,7 @@ fun WeekStrip(days: List<WeekDay>, today: LocalDate, modifier: Modifier = Modifi
         stringResource(Res.string.home_week_days_none)
     } else {
         trained.map { day ->
-            stringResource(Res.string.home_week_day_volume, weekdayName(day.date.dayOfWeek.isoDayNumber, WeekdayStyle.FULL), localVolume(day.volumeKg))
+            stringResource(Res.string.home_week_day_volume, weekdayName(day.date.dayOfWeek.isoDayNumber, WeekdayStyle.FULL, capitalized = false), localVolume(day.volumeKg))
         }.joinToString(stringResource(Res.string.list_separator))
     }
     val description = stringResource(Res.string.home_week_days_description, listed)

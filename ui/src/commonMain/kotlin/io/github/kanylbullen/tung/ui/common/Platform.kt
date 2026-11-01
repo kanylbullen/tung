@@ -21,8 +21,12 @@ expect fun rememberTickHaptic(): () -> Unit
 /** How long a weekday's name is: "M", "Mon" or "Monday". */
 enum class WeekdayStyle { NARROW, SHORT, FULL }
 
-/** The name of ISO weekday [isoWeekday] (1 = Monday) in the device's language, capitalised. */
-expect fun weekdayName(isoWeekday: Int, style: WeekdayStyle): String
+/**
+ * The name of ISO weekday [isoWeekday] (1 = Monday) in the device's
+ * language: capitalised for a label, or as the language writes it inside a
+ * sentence ("måndag") when not [capitalized].
+ */
+expect fun weekdayName(isoWeekday: Int, style: WeekdayStyle, capitalized: Boolean = true): String
 
 /** Whole kilos with the locale's grouping: 12 450. */
 expect fun localVolume(kg: Double): String

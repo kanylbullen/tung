@@ -32,15 +32,15 @@ actual fun rememberTickHaptic(): () -> Unit {
 
 actual fun localPercent(fraction: Double): String = NumberFormat.getPercentInstance().format(fraction)
 
-actual fun weekdayName(isoWeekday: Int, style: WeekdayStyle): String {
+actual fun weekdayName(isoWeekday: Int, style: WeekdayStyle, capitalized: Boolean): String {
     val locale = Locale.getDefault()
     val textStyle = when (style) {
         WeekdayStyle.NARROW -> TextStyle.NARROW
         WeekdayStyle.SHORT -> TextStyle.SHORT
         WeekdayStyle.FULL -> TextStyle.FULL
     }
-    return DayOfWeek.of(isoWeekday).getDisplayName(textStyle, locale)
-        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+    val name = DayOfWeek.of(isoWeekday).getDisplayName(textStyle, locale)
+    return if (capitalized) name.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() } else name
 }
 
 actual fun localVolume(kg: Double): String = NumberFormat.getIntegerInstance().format(kg.roundToLong())
