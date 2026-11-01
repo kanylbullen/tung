@@ -2072,6 +2072,10 @@ fallback, and only on a tap.
   (200) a UTC day, in memory: registration is open and takes any address, so
   the ceiling keeps the sender's reputation. The consent page passes the
   browser's `Accept-Language`.
+  On a server that runs the Play test (`TUNG_TESTER_SIGNUPS`) the account
+  welcome also says the address is invited to the test, and the web's
+  Server admin has "Copy every address for Play" (`playAddresses`: the
+  sign-ups, then every account, each once).
   `ServerConfig.mailer` is the seam tests replace (`WelcomeMailTest`). The
   privacy page names Resend as the processor.
 - **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST

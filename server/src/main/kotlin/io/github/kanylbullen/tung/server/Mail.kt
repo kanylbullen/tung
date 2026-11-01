@@ -79,6 +79,8 @@ class WelcomeMail(
     private val mailer: Mailer?,
     private val publicUrl: String?,
     private val scope: CoroutineScope,
+    /** The server runs the Play test (`TUNG_TESTER_SIGNUPS`): the account welcome says its address is invited too. */
+    private val testInvite: Boolean = false,
     private val clock: () -> Long = System::currentTimeMillis,
     private val perDay: Int = MAX_WELCOME_MAILS_PER_DAY,
 ) {
@@ -88,7 +90,7 @@ class WelcomeMail(
     private var day = -1L
     private var sentToday = 0
 
-    fun account(email: String, language: String?) = send { url -> accountMessage(email, swedish(language), url) }
+    fun account(email: String, language: String?) = send { url -> accountMessage(email, swedish(language), url, testInvite) }
 
     fun tester(email: String, language: String?) = send { url -> testerMessage(email, swedish(language), url) }
 
@@ -138,7 +140,7 @@ class WelcomeMail(
         const val MAX_WELCOME_MAILS_PER_DAY = 200
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 
-        internal fun accountMessage(email: String, swedish: Boolean, url: String): MailMessage {
+        internal fun accountMessage(email: String, swedish: Boolean, url: String, testInvite: Boolean = false): MailMessage {
             val host = URI(url).host ?: url
             return if (swedish) {
                 MailMessage(
@@ -152,7 +154,7 @@ class WelcomeMail(
                     |Tung är i beta. Appen och servern kan ha fel och störningar. Tjänsten är gratis och drivs på bästa förmåga, utan garantier under testperioden om att den finns kvar eller fungerar. Din träning finns alltid kvar på telefonen också.
                     |
                     |Du kan när som helst flytta till en annan Tung-server, till exempel en egen: logga in på den under Inställningar → Konto, så följer all träning på telefonen med dit.
-                    |
+                    |${if (testInvite) "\nVi bjuder också in den här adressen till testet av Android-appen på Google Play. Inbjudan fungerar bara om adressen hör till ett Google-konto. Du behöver inte installera appen om du inte vill.\n" else ""}
                     |Webbappen: $url/app/
                     |Säg vad du tycker: Inställningar → Feedback i appen.
                     |Integritet: $url/privacy
@@ -175,7 +177,7 @@ class WelcomeMail(
                     |Tung is in beta. The app and the server can have bugs and outages. The service is free and run on a best-effort basis, with no guarantee during the test period that it stays available or keeps working. Your training always stays on your phone as well.
                     |
                     |You can move to another Tung server at any time, your own for example: sign in to it under Settings → Account, and all the training on your phone goes with you.
-                    |
+                    |${if (testInvite) "\nWe also invite this address to the test of the Android app on Google Play. The invitation works only if the address belongs to a Google account. You don't have to install the app if you don't want to.\n" else ""}
                     |The web app: $url/app/
                     |Tell us what you think: Settings → Feedback in the app.
                     |Privacy: $url/privacy

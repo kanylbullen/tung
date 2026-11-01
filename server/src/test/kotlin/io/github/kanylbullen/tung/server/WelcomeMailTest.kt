@@ -70,6 +70,9 @@ class WelcomeMailTest {
         assertTrue("https://tung.example.org/delete-account" in mail.text, mail.text)
         assertTrue("Tung är i beta" in mail.text, "the beta notice: ${mail.text}")
         assertTrue("flytta till en annan Tung-server" in mail.text, "how to move: ${mail.text}")
+        assertTrue("testet av Android-appen" in mail.text, "the Play test invite, on a server that runs it: ${mail.text}")
+        val plain = WelcomeMail.accountMessage(email, swedish = true, url = "https://t.example.org", testInvite = false).text
+        assertTrue("Android-appen" !in plain && "\n\n\n" !in plain, plain)
 
         // Signing in again sends nothing.
         client.post("/api/v1/auth/login") { jsonBody("""{"email": "$email", "password": "correct horse battery"}""") }
