@@ -67,8 +67,8 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
     }
 
     suspend fun login(credentials: Credentials): SessionDto {
-        val user = verifyCredentials(credentials) ?: throw unauthorized("invalid_credentials", "Wrong email or password.")
-        return session(user)
+        val proof = verifyCredentials(credentials) ?: throw unauthorized("invalid_credentials", "Wrong email or password.")
+        return session(proof.user) { requirePassword(proof) }
     }
 
     /**
@@ -78,10 +78,31 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
     suspend fun signInWithGoogle(idToken: String, language: String? = null): SessionDto =
         session(googleUser(verifyGoogle(idToken), language))
 
-    /** A new session token for [user]: the one way login, Google sign-in and registration end. */
-    private suspend fun session(user: UserDto): SessionDto {
-        val token = db.tx { insertToken(user.id, Tokens.SESSION_NAME, Tokens.SCOPE_WRITE, System.currentTimeMillis()) }
+    /**
+     * A new session token for [user]: the one way login and Google sign-in
+     * end. [guard] runs first in the same transaction (see [requirePassword]).
+     */
+    private suspend fun session(user: UserDto, guard: Transaction.() -> Unit = { lockUser(user.id) }): SessionDto {
+        val token = db.tx {
+            guard()
+            insertToken(user.id, Tokens.SESSION_NAME, Tokens.SCOPE_WRITE, System.currentTimeMillis())
+        }
         return SessionDto(token.token, user)
+    }
+
+    /**
+     * Inside a transaction that is about to issue a credential on the
+     * strength of [proof]: takes [lockUser] and refuses unless the account
+     * still has the password that was checked. Argon2 runs outside any
+     * transaction, so without this a login that checked the password just
+     * before the account was handed to its Google owner
+     * ([evictUnverifiedHolders], under the same lock) would get a session
+     * after the eviction, and keep it.
+     */
+    fun Transaction.requirePassword(proof: PasswordProof) {
+        lockUser(proof.user.id)
+        val current = Users.selectAll().where { Users.id eq proof.user.id }.singleOrNull()?.get(Users.passwordHash)
+        if (current == null || current != proof.hash) throw unauthorized("invalid_credentials", "Wrong email or password.")
     }
 
     /** The identity in a Google ID token; 404 `not_configured` when the instance has no Google client id. */
@@ -135,12 +156,17 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
                 "Google has not verified this account's email address, so it cannot sign in to Tung. Use your password, or a Google account with a verified email.",
             )
         }
-        val existing = Users.selectAll().where { Users.email eq email }.singleOrNull()
-        if (existing != null) {
-            if (existing[Users.googleSub] != null) {
+        val found = Users.selectAll().where { Users.email eq email }.singleOrNull()
+        if (found != null) {
+            // Under the user's lock, so no credential is issued half-way through the hand-over, and read again
+            // under it: a concurrent first sign-in may have linked the account meanwhile.
+            val userId = found[Users.id]
+            lockUser(userId)
+            val linked = Users.selectAll().where { Users.id eq userId }.single()[Users.googleSub]
+            if (linked == identity.sub) return user(userId) to false
+            if (linked != null) {
                 throw conflict("google_account_mismatch", "This email belongs to an account linked to another Google account. Sign in with that one or with your password.")
             }
-            val userId = existing[Users.id]
             Users.update({ (Users.id eq userId) and Users.googleSub.isNull() }) {
                 it[googleSub] = identity.sub
                 it[passwordHash] = null
@@ -166,7 +192,8 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
      * its API and session tokens (OAuth access tokens are API tokens, and a
      * refresh token of a revoked one is refused), its refresh tokens, its
      * unused OAuth codes, its link codes and its push endpoints. The session the caller is about
-     * to create comes after this.
+     * to create comes after this. The caller holds [lockUser], which every path that issues a
+     * credential takes too, so nothing issued on an older password or token outlives this.
      */
     private fun Transaction.evictUnverifiedHolders(userId: String, now: Long) {
         ApiTokens.update({ (ApiTokens.userId eq userId) and ApiTokens.revokedAt.isNull() }) { it[revokedAt] = now }
@@ -183,14 +210,14 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
      * The user with these credentials, or null. Takes as long for an unknown
      * email as for a wrong password. Login and the OAuth consent page use it.
      */
-    suspend fun verifyCredentials(credentials: Credentials): UserDto? {
+    suspend fun verifyCredentials(credentials: Credentials): PasswordProof? {
         val email = credentials.email.trim().lowercase()
         val user = db.tx { Users.selectAll().where { Users.email eq email }.singleOrNull() }
         // A user without a password (Google only) is refused like a wrong password, after the same work.
         val hash = user?.get(Users.passwordHash)
         val ok = withContext(Dispatchers.Default) { Passwords.verify(credentials.password, hash ?: Passwords.dummyHash) && hash != null }
-        if (!ok || user == null) return null
-        return user.toUserDto()
+        if (!ok || user == null || hash == null) return null
+        return PasswordProof(user.toUserDto(), hash)
     }
 
     /** The principal for a bearer token, or null when it is unknown, revoked or expired. */
@@ -246,7 +273,7 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
         TokenList(tokens)
     }
 
-    suspend fun createToken(userId: String, request: NewToken): CreatedToken {
+    suspend fun createToken(principal: TokenPrincipal, request: NewToken): CreatedToken {
         val name = validName(request.name)
         // The names the server gives its own tokens: a made token never passes for a sign-in (account deletion
         // trusts "session"), a watch or an OAuth grant.
@@ -257,7 +284,10 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
         if (scope != Tokens.SCOPE_READ && scope != Tokens.SCOPE_WRITE) {
             throw badRequest("scope must be 'read' or 'write', got '${request.scope}'.", "invalid_scope")
         }
-        return db.tx { insertToken(userId, name, scope, System.currentTimeMillis()) }
+        return db.tx {
+            requireLiveToken(principal)
+            insertToken(principal.userId, name, scope, System.currentTimeMillis())
+        }
     }
 
     /** Revokes one of the user's tokens; a token of another user, or one already revoked, is not found. */
@@ -322,3 +352,10 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
 
     private fun emailTaken() = conflict("email_taken", "An account with that email already exists. Log in instead.")
 }
+
+/**
+ * A password that was checked, and the hash it was checked against: what
+ * [Accounts.requirePassword] compares with the account before anything is
+ * issued on it.
+ */
+class PasswordProof(val user: UserDto, internal val hash: String)

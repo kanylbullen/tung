@@ -142,7 +142,7 @@ fun Route.apiRoutes(
 
             route("/tokens") {
                 get { call.respond(accounts.listTokens(call.user())) }
-                post { call.respond(HttpStatusCode.Created, accounts.createToken(call.user().userId, call.receive())) }
+                post { call.respond(HttpStatusCode.Created, accounts.createToken(call.user(), call.receive())) }
                 delete("/{id}") {
                     accounts.revokeToken(call.user().userId, call.pathId())
                     call.respond(HttpStatusCode.NoContent)

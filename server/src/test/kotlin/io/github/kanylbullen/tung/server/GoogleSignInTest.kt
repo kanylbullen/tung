@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
@@ -238,6 +239,26 @@ class GoogleSignInTest {
         val other = signIn(google.token(email = email))
         assertEquals(HttpStatusCode.Conflict, other.status)
         assertEquals("google_account_mismatch", other.errorCode())
+    }
+
+    @Test
+    fun aCredentialCheckedBeforeTheHandOverIsWorthNothingAfterIt() = googleTest {
+        // The squatter's login and token request have passed their checks (Argon2 and the bearer token run
+        // outside any transaction) when the owner signs in with Google; then they try to issue.
+        val email = uniqueEmail()
+        val squatter = client.register(email, "the squatter's password")
+        val db = Db.connect(TestDatabase.config())
+        val accounts = Accounts(db)
+        val proof = assertNotNull(accounts.verifyCredentials(Credentials(email, "the squatter's password")))
+        val principal = assertNotNull(accounts.authenticate(squatter))
+
+        assertEquals(HttpStatusCode.OK, signIn(google.token(email = email)).status)
+
+        val session = assertFailsWith<ApiException> { db.tx { with(accounts) { requirePassword(proof) } } }
+        assertEquals(HttpStatusCode.Unauthorized, session.status)
+        val token = assertFailsWith<ApiException> { accounts.createToken(principal, NewToken("later", "read")) }
+        assertEquals(HttpStatusCode.Unauthorized, token.status)
+        db.close()
     }
 
     @Test

@@ -10,6 +10,8 @@ import io.github.kanylbullen.tung.server.SessionDto
 import io.github.kanylbullen.tung.server.TokenPrincipal
 import io.github.kanylbullen.tung.server.Tokens
 import io.github.kanylbullen.tung.server.forbidden
+import io.github.kanylbullen.tung.server.lockUser
+import io.github.kanylbullen.tung.server.requireLiveToken
 import io.github.kanylbullen.tung.server.unauthorized
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
@@ -19,6 +21,9 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
+import java.security.SecureRandom
+import java.util.ArrayDeque
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -30,9 +35,6 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
-import java.security.SecureRandom
-import java.util.ArrayDeque
-import java.util.concurrent.ConcurrentHashMap
 
 /** How long a link code can be claimed. */
 const val LINK_CODE_TTL_MS = 10 * 60 * 1000L
@@ -107,7 +109,7 @@ fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::cur
                 throw forbidden("insufficient_scope", "This token is read-only. Use a token with scope 'write' to link a device.")
             }
             if (!startLimit.tryAcquire(principal.userId)) throw rateLimited()
-            call.respond(HttpStatusCode.Created, startCode(db, principal.userId, random, clock()))
+            call.respond(HttpStatusCode.Created, startCode(db, principal, random, clock()))
         }
     }
 
@@ -118,6 +120,11 @@ fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::cur
         if (!CODE_PATTERN.matches(code)) throw invalidCode()
         val now = clock()
         val claimed = db.tx {
+            // The owner's lock first, as every path that issues a credential: an account handed to its Google
+            // owner deletes its link codes under it, so a claim that waited finds the code gone.
+            val owner = LinkCodes.selectAll().where { LinkCodes.code eq code }.singleOrNull()?.get(LinkCodes.userId)
+                ?: return@tx null
+            lockUser(owner)
             // One statement decides: a concurrent second claim waits on the row lock, then matches nothing.
             val changed = LinkCodes.update({
                 (LinkCodes.code eq code) and LinkCodes.claimedAt.isNull() and (LinkCodes.expiresAt greater now)
@@ -144,11 +151,13 @@ fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::cur
 }
 
 /** Deletes expired codes, then inserts a fresh one for [userId]; draws again on the rare collision. */
-private suspend fun startCode(db: Db, userId: String, random: SecureRandom, now: Long): LinkCode {
+private suspend fun startCode(db: Db, principal: TokenPrincipal, random: SecureRandom, now: Long): LinkCode {
+    val userId = principal.userId
     repeat(MAX_ATTEMPTS) {
         val code = "%06d".format(random.nextInt(1_000_000))
         val inserted = try {
             db.tx {
+                requireLiveToken(principal)
                 LinkCodes.deleteWhere { expiresAt less now }
                 if (!LinkCodes.selectAll().where { LinkCodes.code eq code }.empty()) return@tx false
                 LinkCodes.insert {
