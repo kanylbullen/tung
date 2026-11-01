@@ -11,26 +11,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.progress.WeekDay
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.theme.Tung
+import io.github.kanylbullen.tung.ui.common.WeekdayStyle
+import io.github.kanylbullen.tung.ui.common.weekdayName
 import kotlinx.datetime.LocalDate
-import java.time.format.TextStyle
+import kotlinx.datetime.isoDayNumber
 
 /**
  * The seven days of this week, Monday first, as bars of the day's logged
@@ -41,18 +38,16 @@ import java.time.format.TextStyle
  */
 @Composable
 fun WeekStrip(days: List<WeekDay>, today: LocalDate, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val locale = LocalConfiguration.current.locales[0]
     val max = days.maxOfOrNull { it.volumeKg } ?: 0.0
     val trained = days.filter { it.volumeKg > 0.0 }
     val listed = if (trained.isEmpty()) {
-        stringResource(R.string.home_week_days_none)
+        stringResource(Res.string.home_week_days_none)
     } else {
-        trained.joinToString(stringResource(Res.string.list_separator)) { day ->
-            context.getString(R.string.home_week_day_volume, day.date.dayOfWeek.getDisplayName(TextStyle.FULL, locale), localVolume(day.volumeKg))
-        }
+        trained.map { day ->
+            stringResource(Res.string.home_week_day_volume, weekdayName(day.date.dayOfWeek.isoDayNumber, WeekdayStyle.FULL), localVolume(day.volumeKg))
+        }.joinToString(stringResource(Res.string.list_separator))
     }
-    val description = stringResource(R.string.home_week_days_description, listed)
+    val description = stringResource(Res.string.home_week_days_description, listed)
     val bar = RoundedCornerShape(3.dp)
     Row(
         modifier = modifier
@@ -75,7 +70,7 @@ fun WeekStrip(days: List<WeekDay>, today: LocalDate, modifier: Modifier = Modifi
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    day.date.dayOfWeek.getDisplayName(TextStyle.NARROW, locale),
+                    weekdayName(day.date.dayOfWeek.isoDayNumber, WeekdayStyle.NARROW),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isToday) Tung.colors.text else Tung.colors.muted,
                     fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,

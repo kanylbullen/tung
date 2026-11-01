@@ -71,10 +71,15 @@ abstract class FlowTest {
     protected val app: FlowTestApp get() = ApplicationProvider.getApplicationContext()
     protected val db: TungDatabase get() = app.database
 
+    /**
+     * The default locale is the configuration's language, as a phone sets it
+     * from the app's language: Compose Resources (the `ui/` strings) read the
+     * default locale, not the qualifiers, and number formatting follows it.
+     * The language alone, so an `en-rSE` test formats numbers as English.
+     */
     @Before
-    fun englishNumbers() {
-        // The qualifiers pick values/strings.xml; this makes number formatting match it.
-        Locale.setDefault(Locale.ENGLISH)
+    fun defaultLocaleFromQualifiers() {
+        Locale.setDefault(Locale.forLanguageTag(app.resources.configuration.locales[0].language))
     }
 
     protected fun str(@StringRes id: Int, vararg args: Any): String = app.getString(id, *args)
@@ -193,7 +198,7 @@ abstract class FlowTest {
 
     /** Settings from Home's gear, then the group titled [group] (a `settings_group_*` string) (issue #67). */
     protected fun openSettingsGroup(@StringRes group: Int) {
-        clickDescription(str(R.string.settings_title))
+        clickDescription(str(Res.string.settings_title))
         clickText(str(group))
     }
 
@@ -214,7 +219,7 @@ abstract class FlowTest {
 
     protected fun startWorkoutFromHome() {
         // The button is disabled until Home has read the database; a tap before that does nothing.
-        val start = hasText(str(R.string.home_start_workout)) and isEnabled()
+        val start = hasText(str(Res.string.home_start_workout)) and isEnabled()
         waitFor(start)
         compose.onNode(start).performClick()
         waitForText(str(R.string.workout_empty))

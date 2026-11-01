@@ -57,7 +57,7 @@ Eight Gradle modules:
 | `core/` | Kotlin Multiplatform (JVM, JS, iOS klibs) | — | Domain rules, commands, sync and watch protocols |
 | `data/` | Kotlin Multiplatform (Android, iOS klibs) | `core` | Room, repositories, the CommandHandler, sync client, settings, rest timer, `TungContainer` |
 | `data-fixtures/` | Android library (tests only) | `core`, `data` | The test doubles of data's seams: `FakeSyncServer`, `MemoryTokenStore`, `FakePushEnvironment`, `FakeHealthConnect` |
-| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs, and the programs list and one program with theirs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); the buttons, `RoutineName`, the labels and `exerciseDisplayName` and `weekdayName` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
+| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs, and the programs list and one program with theirs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); Home (`ui/home/`) and the discard dialog (`ui/workout/`); the buttons, `RoutineName`, `WorkoutRow`, the labels (`durationText`, `localDate`, `shortLocalDate`) and the platform seams `exerciseDisplayName`, `weekdayName`, `localVolume` and `dateText` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
 | `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
 | `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
 | `server/` | Ktor server | `core` | tung-server |
@@ -202,7 +202,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the rest sheet; the input sheet is in `ui/`), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (active workout, the rest sheet; the input sheet is in `ui/`), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -217,7 +217,7 @@ both "Last: 80 × 8" and the pre-fill of new sets.
 
 ### Home
 
-`ui/home/`: the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
+`ui/home/` in the `ui/` module (app's `HomeRoute` builds `HomeViewModel` with today, the zone and the rest timer's clearing from the container, so the ViewModel has no `java.time` or `RestTimerController` of its own): the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
 and heaviest, `archivoWideFamily()` in `ui/theme/Type.kt` (the `ui/` module), which only the wordmark
 and the hero number use), then, once there is a finished workout, **"This
 week"** (`ThisWeekSection`): the week's volume as the hero number
@@ -2521,9 +2521,9 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
   screen: its strings go with it, and `app/` reads any it still uses from
   `Res`. Compose Resources pick the language from the process's
   default locale, not from the configuration: on a phone Android sets both
-  from the app's language, but a flow test on another language than English
-  sets `Locale.setDefault` itself (`SwedishFlowTest`), since `FlowTest`
-  forces English.
+  from the app's language, and `FlowTest` does the same from the
+  qualifiers' language (`defaultLocaleFromQualifiers`), so a `sv` flow test
+  sees Swedish in `ui/` too (`SwedishFlowTest`, `AssistantFlowTest`).
 - **The font is a Compose Resource** (`ui/src/commonMain/composeResources/font/archivo_variable.ttf`,
   read with `Res.font.archivo_variable` inside `ui/`; the APK carries it under
   `assets/composeResources/`). The OFL licence stays in app's `assets/licenses/`.

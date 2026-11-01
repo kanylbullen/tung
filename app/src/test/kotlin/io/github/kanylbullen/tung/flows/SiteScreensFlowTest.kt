@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasTestTag
@@ -109,7 +110,7 @@ class SiteScreensFlowTest : FlowTest() {
     private fun screens() {
         seed()
         waitForText("Leg day")
-        waitForText(str(R.string.home_this_week))
+        waitForText(str(Res.string.home_this_week))
         screenshot("1-home")
 
         clickDescription(str(Res.string.routine_start_description, "Push day"))

@@ -76,7 +76,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenGroup: (SettingsGroup) -> Unit) {
         onPauseOrDispose { }
     }
 
-    SettingsPage(title = stringResource(R.string.settings_title), onBack = onBack, padded = false) {
+    SettingsPage(title = stringResource(Res.string.settings_title), onBack = onBack, padded = false) {
         SettingsGroup.entries.forEach { group ->
             val line = when (group) {
                 SettingsGroup.ACCOUNT -> accountSummary(summary)

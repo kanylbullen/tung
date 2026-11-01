@@ -38,8 +38,8 @@ class RoutineEditFlowTest : FlowTest() {
         val routineId = checkNotNull(runBlocking { RoutineRepository(db).saveFromWorkout(source, "Push day") })
 
         waitForText("Push day")
-        clickText(str(R.string.routines_all))
-        waitGone(hasText(str(R.string.home_recent)))
+        clickText(str(Res.string.routines_all))
+        waitGone(hasText(str(Res.string.home_recent)))
         clickText("Push day")
         waitForText(benchPress)
         assertShown(hasText(targetReps(8)))

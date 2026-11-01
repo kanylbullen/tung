@@ -155,4 +155,48 @@
     <string name="program_delete_title">Delete program?</string>
     <string name="program_delete_body">The program will be deleted. Its routines, and the workouts you did from it, are kept.</string>
     <string name="program_not_found">This program no longer exists.</string>
+    <!-- Home -->
+    <string name="ai_entry_hint">A program, today's workout or where you are stuck, from a model with your own key</string>
+    <string name="ai_title">Assistant</string>
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="home_empty">No workouts yet. Start your first and it will show up here.</string>
+    <string name="home_in_progress_since">In progress for %1$s</string>
+    <string name="home_muscles_description">Muscles worked this week: %1$s</string>
+    <string name="home_recent">Recent workouts</string>
+    <string name="home_resume_workout">Resume workout</string>
+    <string name="home_show_all">Show all</string>
+    <string name="home_start_workout">Start workout</string>
+    <string name="home_this_week">This week</string>
+    <string name="home_week_best">Best of the last 12 weeks</string>
+    <string name="home_week_day_volume">%1$s %2$s kg</string>
+    <string name="home_week_days_description">Volume per day this week: %1$s</string>
+    <string name="home_week_days_none">nothing yet</string>
+    <string name="home_week_last">Last week %1$s kg</string>
+    <string name="home_week_none">No workout yet this week</string>
+    <plurals name="home_week_sets">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d sets</item>
+    </plurals>
+    <plurals name="home_week_workouts">
+        <item quantity="one">%1$d workout</item>
+        <item quantity="other">%1$d workouts</item>
+    </plurals>
+    <string name="home_workout_menu">Options for the workout in progress</string>
+    <string name="routines_all">All</string>
+    <string name="settings_title">Settings</string>
+    <string name="today_choose_another">Choose another</string>
+    <string name="today_choose_title">Choose a day</string>
+    <string name="today_day_gone">That day is no longer in the program.</string>
+    <string name="today_fixed">Today: %1$s</string>
+    <string name="today_rest">Rest day</string>
+    <string name="today_rotating">%1$s: %2$s</string>
+    <string name="today_start_description">Start today’s routine, %1$s</string>
+    <string name="workout_discard">Discard workout…</string>
+    <string name="workout_discard_body">The sets you logged are deleted.</string>
+    <string name="workout_discard_confirm">Discard</string>
+    <string name="workout_discard_title">Discard this workout?</string>
+    <string name="workout_row_untitled">Workout</string>
+    <string name="workout_unit_kg">kg</string>
+    <string name="home_wordmark">Tung</string>
 </resources>

@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isOff
 import androidx.compose.ui.test.isOn
@@ -35,7 +36,7 @@ class HealthConnectFlowTest : FlowTest() {
     /** Bench press with last time's 80 × 8 pre-filled: start, tick, finish. */
     private fun logAndFinishOneSet() {
         seedFinishedWorkout(System.currentTimeMillis() - 2 * DAY, bench(), weightKg = 80.0, reps = 8)
-        waitForText(str(R.string.home_recent))
+        waitForText(str(Res.string.home_recent))
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
         waitForDescription(str(R.string.workout_edit_reps, "8"))

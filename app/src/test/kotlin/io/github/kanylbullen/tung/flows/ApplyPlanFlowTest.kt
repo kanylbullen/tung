@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -71,7 +72,7 @@ class ApplyPlanFlowTest : FlowTest() {
         assertEquals(5, setsOf("barbell_curl", "s.weightKg = 20.0 AND s.reps = 10 AND s.completed = 0"))
         assertEquals(15, count("SELECT COUNT(*) FROM set_entry"))
 
-        clickText(str(R.string.home_resume_workout))
+        clickText(str(Res.string.home_resume_workout))
         waitForText(deadlift)
         val logDeadlift = str(R.string.workout_log_set, deadlift, "50", "10")
         waitForText(logDeadlift)
@@ -135,7 +136,7 @@ class ApplyPlanFlowTest : FlowTest() {
         assertEquals(exercisesBefore, count("SELECT COUNT(*) FROM exercise"))
 
         // Home still offers a fresh start, not a workout to resume.
-        waitForText(str(R.string.home_start_workout))
-        compose.onNode(hasText(str(R.string.home_resume_workout))).assertDoesNotExist()
+        waitForText(str(Res.string.home_start_workout))
+        compose.onNode(hasText(str(Res.string.home_resume_workout))).assertDoesNotExist()
     }
 }

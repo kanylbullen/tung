@@ -8,9 +8,7 @@ import io.github.kanylbullen.tung.core.command.Command
 import kotlinx.coroutines.runBlocking
 import io.github.kanylbullen.tung.R
 import org.junit.Assert.assertEquals
-import org.junit.Before
 import org.junit.Test
-import java.util.Locale
 import org.robolectric.annotation.Config
 
 /**
@@ -23,18 +21,6 @@ import org.robolectric.annotation.Config
  */
 @Config(qualifiers = "sv-w411dp-h891dp-xhdpi")
 class SwedishFlowTest : FlowTest() {
-
-    /**
-     * A Swedish phone's default locale is Swedish. FlowTest sets English for
-     * every test (number formats), but Compose Resources pick the language
-     * from the default locale, not from the qualifiers as Android's resources
-     * do; on a phone Android sets both from the app's language and recreates
-     * the activity when it changes. Runs after FlowTest's @Before.
-     */
-    @Before
-    fun swedishDefaultLocale() {
-        Locale.setDefault(Locale.forLanguageTag("sv"))
-    }
 
     /** "+ Set" is described with the name shown on screen, "Bänkpress", not the English fallback. */
     @Test

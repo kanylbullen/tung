@@ -6,9 +6,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
@@ -25,11 +23,11 @@ fun DiscardWorkoutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         containerColor = Tung.colors.raised,
         tonalElevation = 0.dp,
         shape = TungCorner,
-        title = { Text(stringResource(R.string.workout_discard_title)) },
-        text = { Text(stringResource(R.string.workout_discard_body), color = Tung.colors.muted) },
+        title = { Text(stringResource(Res.string.workout_discard_title)) },
+        text = { Text(stringResource(Res.string.workout_discard_body), color = Tung.colors.muted) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.workout_discard_confirm), color = Tung.colors.accentText)
+                Text(stringResource(Res.string.workout_discard_confirm), color = Tung.colors.accentText)
             }
         },
         dismissButton = {

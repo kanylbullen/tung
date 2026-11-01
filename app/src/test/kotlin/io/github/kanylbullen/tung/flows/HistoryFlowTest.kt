@@ -23,9 +23,9 @@ class HistoryFlowTest : FlowTest() {
         val olderDate = shortLocalDate(OLDER)
         val newerDate = shortLocalDate(NEWER)
 
-        waitForText(str(R.string.home_recent))
+        waitForText(str(Res.string.home_recent))
         clickText(str(R.string.nav_history))
-        waitGone(hasText(str(R.string.home_recent))) // left Home, which lists the same dates
+        waitGone(hasText(str(Res.string.home_recent))) // left Home, which lists the same dates
         waitForText(newerDate)
         waitForText(olderDate)
         screenshot("1-history")

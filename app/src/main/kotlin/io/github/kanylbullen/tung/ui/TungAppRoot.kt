@@ -52,7 +52,7 @@ import io.github.kanylbullen.tung.ui.exercises.ExercisesScreen
 import io.github.kanylbullen.tung.ui.exercises.PickerTarget
 import io.github.kanylbullen.tung.ui.history.HistoryScreen
 import io.github.kanylbullen.tung.ui.history.WorkoutDetailScreen
-import io.github.kanylbullen.tung.ui.home.HomeScreen
+import io.github.kanylbullen.tung.ui.home.HomeRoute
 import io.github.kanylbullen.tung.ui.progress.ExerciseProgressScreen
 import io.github.kanylbullen.tung.ui.progress.ProgressScreen
 import io.github.kanylbullen.tung.ui.routines.ProgramDetailRoute
@@ -189,7 +189,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
             exitTransition = { androidx.compose.animation.ExitTransition.None },
         ) {
             composable(Routes.HOME) {
-                HomeScreen(
+                HomeRoute(
                     onOpenWorkout = { id -> nav.navigate(Routes.workout(id)) },
                     onOpenDetail = { id -> nav.navigate(Routes.detail(id)) },
                     onShowHistory = { nav.navigateToTab(Routes.HISTORY) },

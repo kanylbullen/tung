@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -71,7 +72,7 @@ class CurrentSetFlowTest : FlowTest() {
     @Test
     fun aSetNumberTapMakesThatSetCurrent() {
         seedActiveWorkout(bench() to listOf(80.0 to 8, 85.0 to 6, 90.0 to 4))
-        clickText(str(R.string.home_resume_workout))
+        clickText(str(Res.string.home_resume_workout))
         waitFor(logSet(benchPress, "80", "8"))
         waitFor(markedCurrent(1))
         screenshot("1-set-1-current")
@@ -104,7 +105,7 @@ class CurrentSetFlowTest : FlowTest() {
             val routines = RoutineRepository(db)
             checkNotNull(routines.start(checkNotNull(routines.saveFromWorkout(source, "Full body"))))
         }
-        clickText(str(R.string.home_resume_workout))
+        clickText(str(Res.string.home_resume_workout))
         waitFor(logSet(benchPress, "80", "8"))
 
         clickDescription(str(R.string.workout_select_exercise, backSquat))
@@ -131,7 +132,7 @@ class CurrentSetFlowTest : FlowTest() {
     @Test
     fun aNewSetIsScrolledIntoView() {
         seedLongWorkout()
-        clickText(str(R.string.home_resume_workout))
+        clickText(str(Res.string.home_resume_workout))
         val squatButton = logSet(backSquat, "100", "5")
         waitFor(squatButton)
 
@@ -167,7 +168,7 @@ class CurrentSetFlowTest : FlowTest() {
     @Test
     fun aNewExerciseIsScrolledToTheTop() {
         seedLongWorkout()
-        clickText(str(R.string.home_resume_workout))
+        clickText(str(Res.string.home_resume_workout))
         waitFor(logSet(backSquat, "100", "5"))
 
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(str(R.string.workout_add_exercise)))
@@ -193,7 +194,7 @@ class CurrentSetFlowTest : FlowTest() {
     @Test
     fun aManualSelectionSurvivesRecreation() {
         seedActiveWorkout(bench() to listOf(80.0 to 8, 85.0 to 6, 90.0 to 4))
-        clickText(str(R.string.home_resume_workout))
+        clickText(str(Res.string.home_resume_workout))
         waitFor(logSet(benchPress, "80", "8"))
         clickDescription(str(R.string.workout_select_set, 3))
         waitFor(logSet(benchPress, "90", "4"))

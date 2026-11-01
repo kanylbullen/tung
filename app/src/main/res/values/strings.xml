@@ -9,38 +9,12 @@
     <string name="action_close">Close</string>
 
     <!-- Home -->
-    <string name="home_start_workout">Start workout</string>
-    <string name="home_resume_workout">Resume workout</string>
-    <string name="home_workout_menu">Options for the workout in progress</string>
-    <string name="home_in_progress_since">In progress for %1$s</string>
-    <string name="home_recent">Recent workouts</string>
-    <string name="home_empty">No workouts yet. Start your first and it will show up here.</string>
-    <string name="home_show_all">Show all</string>
     <!-- Home's "This week" block: the hero number is the week's volume in kg, under it the counts, then the days. -->
-    <string name="home_this_week">This week</string>
-    <plurals name="home_week_workouts">
-        <item quantity="one">%d workout</item>
-        <item quantity="other">%d workouts</item>
-    </plurals>
-    <plurals name="home_week_sets">
-        <item quantity="one">%d set</item>
-        <item quantity="other">%d sets</item>
-    </plurals>
-    <string name="home_week_none">No workout yet this week</string>
-    <string name="home_week_last">Last week %1$s kg</string>
-    <string name="home_week_best">Best of the last 12 weeks</string>
     <!-- The seven bars, for a screen reader: "Volume per day this week: Monday 3 020 kg, Wednesday 4 420 kg" or "…: nothing yet" -->
-    <string name="home_week_days_description">Volume per day this week: %1$s</string>
-    <string name="home_week_day_volume">%1$s %2$s kg</string>
-    <string name="home_week_days_none">nothing yet</string>
     <!-- The small body on Home: "Muscles worked this week: chest 50 %, …" -->
-    <string name="home_muscles_description">Muscles worked this week: %1$s</string>
     <!-- A finished workout's row without a routine and without exercises -->
-    <string name="workout_row_untitled">Workout</string>
 
     <!-- Workout list rows and stats -->
-    <string name="duration_hours_minutes">%1$d h %2$d min</string>
-    <string name="duration_minutes">%1$d min</string>
     <string name="volume_kg">%1$s kg</string>
     <string name="stat_duration">Duration</string>
     <string name="stat_sets">Sets</string>
@@ -55,7 +29,6 @@
     <string name="workout_remove_exercise">Remove exercise</string>
     <string name="workout_exercise_menu">Options for %1$s</string>
     <string name="workout_previous">Last: %1$s × %2$d</string>
-    <string name="workout_unit_kg">kg</string>
     <string name="workout_reps_empty">–</string>
     <string name="workout_set_number_description">Set %1$d</string>
     <string name="workout_edit_weight">Change weight, %1$s kilos</string>
@@ -67,10 +40,6 @@
     <!-- The Delete button a swipe reveals behind a set row (issue #81) -->
     <string name="workout_delete_set_number">Delete set %1$d</string>
     <!-- Discard the workout in progress (issue #81): the workout's menu, and the menu on Home's Resume card -->
-    <string name="workout_discard">Discard workout…</string>
-    <string name="workout_discard_title">Discard this workout?</string>
-    <string name="workout_discard_body">The sets you logged are deleted.</string>
-    <string name="workout_discard_confirm">Discard</string>
     <string name="workout_elapsed_description">Time since start %1$s</string>
     <string name="workout_finish_title">Finish workout?</string>
     <!-- The finish dialog says what goes: the sets that are not ticked (or ticked with no reps), and exercises with no set. -->
@@ -250,7 +219,6 @@
     <string name="set_value">%1$s × %2$d</string>
 
     <!-- Routines -->
-    <string name="routines_all">All</string>
     <string name="routine_save_as">Save as routine</string>
     <string name="routine_save">Save</string>
     <string name="routine_saved">Saved as routine: %1$s</string>
@@ -258,17 +226,9 @@
     <string name="nav_routines">Routines</string>
 
     <!-- Home: Today, from the active program (the program screens are in ui) -->
-    <string name="today_fixed">Today: %1$s</string>
-    <string name="today_rotating">%1$s: %2$s</string>
-    <string name="today_rest">Rest day</string>
-    <string name="today_start_description">Start today’s routine, %1$s</string>
-    <string name="today_choose_another">Choose another</string>
-    <string name="today_choose_title">Choose a day</string>
-    <string name="today_day_gone">That day is no longer in the program.</string>
 
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- Settings and sync -->
-    <string name="settings_title">Settings</string>
     <!-- Settings' groups (issue #67) -->
     <string name="settings_group_account">Account</string>
     <string name="settings_group_devices">Devices</string>
@@ -422,8 +382,6 @@
     <!-- Assistant: in-app AI with your own key (BYOK) -->
     <!-- The language this resource set is in, as a BCP 47 tag: what the assistant is told to write in (issue #75). Each translation sets its own tag. -->
     <string name="ai_language_tag">en</string>
-    <string name="ai_title">Assistant</string>
-    <string name="ai_entry_hint">A program, today\'s workout or where you are stuck, from a model with your own key</string>
     <string name="ai_intro">Each button sends your training history, routines and programs to the provider set up in Settings, with your own key, and only when you tap it. Never your email, name or device.</string>
     <string name="ai_ask_program">Suggest a program</string>
     <string name="ai_ask_next">Next workout</string>

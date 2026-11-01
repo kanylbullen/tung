@@ -2,12 +2,18 @@ package io.github.kanylbullen.tung.ui.common
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import platform.Foundation.NSCalendar
+import platform.Foundation.NSCalendarUnitYear
+import platform.Foundation.NSDate
 import platform.Foundation.NSDateFormatter
 import platform.Foundation.NSLocale
 import platform.Foundation.NSNumber
 import platform.Foundation.NSNumberFormatter
+import platform.Foundation.NSNumberFormatterDecimalStyle
 import platform.Foundation.NSNumberFormatterPercentStyle
 import platform.Foundation.autoupdatingCurrentLocale
+import platform.Foundation.dateWithTimeIntervalSince1970
+import kotlin.math.roundToLong
 import platform.UIKit.UISelectionFeedbackGenerator
 
 /**
@@ -36,9 +42,34 @@ private val weekdayFormat: NSDateFormatter by lazy {
     NSDateFormatter().apply { locale = NSLocale.autoupdatingCurrentLocale }
 }
 
-actual fun weekdayName(isoWeekday: Int, short: Boolean): String {
-    val symbols = if (short) weekdayFormat.shortStandaloneWeekdaySymbols else weekdayFormat.standaloneWeekdaySymbols
+actual fun weekdayName(isoWeekday: Int, style: WeekdayStyle): String {
+    val symbols = when (style) {
+        WeekdayStyle.NARROW -> weekdayFormat.veryShortStandaloneWeekdaySymbols
+        WeekdayStyle.SHORT -> weekdayFormat.shortStandaloneWeekdaySymbols
+        WeekdayStyle.FULL -> weekdayFormat.standaloneWeekdaySymbols
+    }
     // Foundation's lists start on Sunday; ISO weekday 7 is Sunday.
     val name = symbols[isoWeekday % 7] as String
     return name.replaceFirstChar { it.uppercase() }
+}
+
+private val volumeFormat: NSNumberFormatter by lazy {
+    NSNumberFormatter().apply {
+        numberStyle = NSNumberFormatterDecimalStyle
+        maximumFractionDigits = 0u
+    }
+}
+
+actual fun localVolume(kg: Double): String =
+    volumeFormat.stringFromNumber(NSNumber(kg.roundToLong().toDouble())) ?: kg.roundToLong().toString()
+
+internal actual fun dateText(epochMillis: Long, pattern: String, patternWithYear: String): String {
+    val date = NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0)
+    val calendar = NSCalendar.currentCalendar
+    val sameYear = calendar.component(NSCalendarUnitYear, fromDate = date) == calendar.component(NSCalendarUnitYear, fromDate = NSDate())
+    val formatter = NSDateFormatter().apply {
+        locale = NSLocale.autoupdatingCurrentLocale
+        dateFormat = if (sameYear) pattern else patternWithYear
+    }
+    return formatter.stringFromDate(date).replaceFirstChar { it.uppercase() }
 }

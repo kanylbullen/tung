@@ -9,34 +9,8 @@
     <string name="action_close">Stäng</string>
 
     <!-- Home -->
-    <string name="home_start_workout">Starta pass</string>
-    <string name="home_resume_workout">Fortsätt pass</string>
-    <string name="home_workout_menu">Val för pågående pass</string>
-    <string name="home_in_progress_since">Pågår sedan %1$s</string>
-    <string name="home_recent">Senaste passen</string>
-    <string name="home_empty">Inga pass än. Starta ditt första så hamnar det här.</string>
-    <string name="home_show_all">Visa alla</string>
-    <string name="home_this_week">Den här veckan</string>
-    <plurals name="home_week_workouts">
-        <item quantity="one">%d pass</item>
-        <item quantity="other">%d pass</item>
-    </plurals>
-    <plurals name="home_week_sets">
-        <item quantity="one">%d set</item>
-        <item quantity="other">%d set</item>
-    </plurals>
-    <string name="home_week_none">Inget pass än den här veckan</string>
-    <string name="home_week_last">Förra veckan %1$s kg</string>
-    <string name="home_week_best">Bäst på 12 veckor</string>
-    <string name="home_week_days_description">Volym per dag den här veckan: %1$s</string>
-    <string name="home_week_day_volume">%1$s %2$s kg</string>
-    <string name="home_week_days_none">inget än</string>
-    <string name="home_muscles_description">Muskler tränade den här veckan: %1$s</string>
-    <string name="workout_row_untitled">Pass</string>
 
     <!-- Workout list rows and stats -->
-    <string name="duration_hours_minutes">%1$d h %2$d min</string>
-    <string name="duration_minutes">%1$d min</string>
     <string name="volume_kg">%1$s kg</string>
     <string name="stat_duration">Varaktighet</string>
     <string name="stat_sets">Set</string>
@@ -51,7 +25,6 @@
     <string name="workout_remove_exercise">Ta bort övning</string>
     <string name="workout_exercise_menu">Val för %1$s</string>
     <string name="workout_previous">Förra: %1$s × %2$d</string>
-    <string name="workout_unit_kg">kg</string>
     <string name="workout_reps_empty">–</string>
     <string name="workout_set_number_description">Set %1$d</string>
     <string name="workout_edit_weight">Ändra vikt, %1$s kilo</string>
@@ -61,10 +34,6 @@
     <string name="workout_delete_set">Ta bort set</string>
     <string name="workout_delete">Ta bort</string>
     <string name="workout_delete_set_number">Ta bort set %1$d</string>
-    <string name="workout_discard">Kasta pass…</string>
-    <string name="workout_discard_title">Kasta det här passet?</string>
-    <string name="workout_discard_body">Seten du loggat tas bort.</string>
-    <string name="workout_discard_confirm">Kasta</string>
     <string name="workout_elapsed_description">Tid sedan start %1$s</string>
     <string name="workout_finish_title">Avsluta pass?</string>
     <plurals name="workout_finish_unlogged">
@@ -235,7 +204,6 @@
     <string name="set_value">%1$s × %2$d</string>
 
     <!-- Routines -->
-    <string name="routines_all">Alla</string>
     <string name="routine_save_as">Spara som rutin</string>
     <string name="routine_save">Spara</string>
     <string name="routine_saved">Sparat som rutin: %1$s</string>
@@ -243,17 +211,9 @@
     <string name="nav_routines">Rutiner</string>
 
     <!-- Home: Today, from the active program (the program screens are in ui) -->
-    <string name="today_fixed">Idag: %1$s</string>
-    <string name="today_rotating">%1$s: %2$s</string>
-    <string name="today_rest">Vilodag</string>
-    <string name="today_start_description">Starta dagens rutin, %1$s</string>
-    <string name="today_choose_another">Välj en annan</string>
-    <string name="today_choose_title">Välj en dag</string>
-    <string name="today_day_gone">Den dagen finns inte längre i programmet.</string>
 
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- Inställningar och synk -->
-    <string name="settings_title">Inställningar</string>
     <!-- Settings' groups (issue #67) -->
     <string name="settings_group_account">Konto</string>
     <string name="settings_group_devices">Enheter</string>
@@ -402,8 +362,6 @@
 
     <!-- Assistant: in-app AI with your own key (BYOK) -->
     <string name="ai_language_tag">sv</string>
-    <string name="ai_title">Assistent</string>
-    <string name="ai_entry_hint">Ett program, dagens pass eller var du har kört fast, från en modell med din egen nyckel</string>
     <string name="ai_intro">Varje knapp skickar din träningshistorik, dina rutiner och program till leverantören du ställt in under Inställningar, med din egen nyckel, och bara när du trycker. Aldrig din e-post, ditt namn eller din enhet.</string>
     <string name="ai_ask_program">Föreslå ett program</string>
     <string name="ai_ask_next">Nästa pass</string>

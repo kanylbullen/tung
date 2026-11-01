@@ -155,4 +155,48 @@
     <string name="program_delete_title">Radera program?</string>
     <string name="program_delete_body">Programmet raderas. Dess rutiner, och passen du har gjort från det, finns kvar.</string>
     <string name="program_not_found">Programmet finns inte längre.</string>
+    <!-- Home -->
+    <string name="ai_entry_hint">Ett program, dagens pass eller var du har kört fast, från en modell med din egen nyckel</string>
+    <string name="ai_title">Assistent</string>
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="home_empty">Inga pass än. Starta ditt första så hamnar det här.</string>
+    <string name="home_in_progress_since">Pågår sedan %1$s</string>
+    <string name="home_muscles_description">Muskler tränade den här veckan: %1$s</string>
+    <string name="home_recent">Senaste passen</string>
+    <string name="home_resume_workout">Fortsätt pass</string>
+    <string name="home_show_all">Visa alla</string>
+    <string name="home_start_workout">Starta pass</string>
+    <string name="home_this_week">Den här veckan</string>
+    <string name="home_week_best">Bäst på 12 veckor</string>
+    <string name="home_week_day_volume">%1$s %2$s kg</string>
+    <string name="home_week_days_description">Volym per dag den här veckan: %1$s</string>
+    <string name="home_week_days_none">inget än</string>
+    <string name="home_week_last">Förra veckan %1$s kg</string>
+    <string name="home_week_none">Inget pass än den här veckan</string>
+    <plurals name="home_week_sets">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d set</item>
+    </plurals>
+    <plurals name="home_week_workouts">
+        <item quantity="one">%1$d pass</item>
+        <item quantity="other">%1$d pass</item>
+    </plurals>
+    <string name="home_workout_menu">Val för pågående pass</string>
+    <string name="routines_all">Alla</string>
+    <string name="settings_title">Inställningar</string>
+    <string name="today_choose_another">Välj en annan</string>
+    <string name="today_choose_title">Välj en dag</string>
+    <string name="today_day_gone">Den dagen finns inte längre i programmet.</string>
+    <string name="today_fixed">Idag: %1$s</string>
+    <string name="today_rest">Vilodag</string>
+    <string name="today_rotating">%1$s: %2$s</string>
+    <string name="today_start_description">Starta dagens rutin, %1$s</string>
+    <string name="workout_discard">Kasta pass…</string>
+    <string name="workout_discard_body">Seten du loggat tas bort.</string>
+    <string name="workout_discard_confirm">Kasta</string>
+    <string name="workout_discard_title">Kasta det här passet?</string>
+    <string name="workout_row_untitled">Pass</string>
+    <string name="workout_unit_kg">kg</string>
+    <string name="home_wordmark">Tung</string>
 </resources>

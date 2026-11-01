@@ -18,8 +18,19 @@ expect fun exerciseDisplayName(nameKey: String?, name: String): String
 @Composable
 expect fun rememberTickHaptic(): () -> Unit
 
+/** How long a weekday's name is: "M", "Mon" or "Monday". */
+enum class WeekdayStyle { NARROW, SHORT, FULL }
+
+/** The name of ISO weekday [isoWeekday] (1 = Monday) in the device's language, capitalised. */
+expect fun weekdayName(isoWeekday: Int, style: WeekdayStyle): String
+
+/** Whole kilos with the locale's grouping: 12 450. */
+expect fun localVolume(kg: Double): String
+
 /**
- * The name of ISO weekday [isoWeekday] (1 = Monday) in the device's language,
- * capitalised: "Mon" or "Monday" ([short] or not).
+ * [epochMillis] in the device's zone and language by the date pattern
+ * [pattern] ("EEE d MMM"), or by [patternWithYear] when it is not this year,
+ * first letter capitalised. The patterns are the ones `java.time` and
+ * `NSDateFormatter` read alike.
  */
-expect fun weekdayName(isoWeekday: Int, short: Boolean): String
+internal expect fun dateText(epochMillis: Long, pattern: String, patternWithYear: String): String
