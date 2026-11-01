@@ -147,7 +147,9 @@ class WelcomeMail(
                     """
                     |Hej!
                     |
-                    |Ditt Tung-konto på $host är klart. Din träning synkas nu mellan telefonen, klockan och webbappen.
+                    |Ditt Tung-konto på $host är klart. Din träning synkas nu mellan dina enheter och webbappen.
+                    |
+                    |Tung är i beta. Appen och servern kan ha fel och störningar. Tjänsten är gratis och drivs på bästa förmåga, utan garantier under testperioden om att den finns kvar eller fungerar. Din träning finns alltid kvar på telefonen också.
                     |
                     |Webbappen: $url/app/
                     |Säg vad du tycker: Inställningar → Feedback i appen.
@@ -166,7 +168,9 @@ class WelcomeMail(
                     """
                     |Hi,
                     |
-                    |Your Tung account on $host is ready. Your training now syncs between your phone, your watch and the web app.
+                    |Your Tung account on $host is ready. Your training now syncs between your devices and the web app.
+                    |
+                    |Tung is in beta. The app and the server can have bugs and outages. The service is free and run on a best-effort basis, with no guarantee during the test period that it stays available or keeps working. Your training always stays on your phone as well.
                     |
                     |The web app: $url/app/
                     |Tell us what you think: Settings → Feedback in the app.
@@ -193,6 +197,8 @@ class WelcomeMail(
                     |
                     |Tills dess kan du prova webbappen: $url/app/
                     |
+                    |Tung är i beta. Appen och servern kan ha fel och störningar. Tjänsten är gratis och drivs på bästa förmåga, utan garantier under testperioden om att den finns kvar eller fungerar.
+                    |
                     |Har du inte anmält dig? Strunta i mejlet, eller svara så tar vi bort adressen.
                     |
                     |Tung
@@ -208,6 +214,8 @@ class WelcomeMail(
                     |Thanks for signing up to test Tung on Android. When the next test round opens, an invitation from Google Play comes to this address.
                     |
                     |Until then you can try the web app: $url/app/
+                    |
+                    |Tung is in beta. The app and the server can have bugs and outages. The service is free and run on a best-effort basis, with no guarantee during the test period that it stays available or keeps working.
                     |
                     |Didn't sign up? Ignore this email, or reply and we remove the address.
                     |
