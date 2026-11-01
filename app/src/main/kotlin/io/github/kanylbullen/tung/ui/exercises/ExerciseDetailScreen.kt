@@ -183,7 +183,7 @@ fun ExerciseDetailScreen(
                         StatRow {
                             history.best?.let { best ->
                                 Stat(
-                                    stringResource(R.string.exercise_set_value, localWeight(best.weightKg), best.reps),
+                                    stringResource(Res.string.exercise_set_value, localWeight(best.weightKg), best.reps),
                                     stringResource(R.string.exercise_best_set),
                                     Modifier.weight(1f),
                                 )

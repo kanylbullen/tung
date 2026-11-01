@@ -57,7 +57,7 @@ Eight Gradle modules:
 | `core/` | Kotlin Multiplatform (JVM, JS, iOS klibs) | — | Domain rules, commands, sync and watch protocols |
 | `data/` | Kotlin Multiplatform (Android, iOS klibs) | `core` | Room, repositories, the CommandHandler, sync client, settings, rest timer, `TungContainer` |
 | `data-fixtures/` | Android library (tests only) | `core`, `data` | The test doubles of data's seams: `FakeSyncServer`, `MemoryTokenStore`, `FakePushEnvironment`, `FakeHealthConnect` |
-| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs, and the programs list and one program with theirs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); Home (`ui/home/`); the active workout with its ViewModel, the rest sheet, the voice controls and `SpeechInput` (`ui/workout/`, `voice/`), whose platform is a `WorkoutPlatform` and whose timer a `RestTimerStore` (data's commonMain, `RestTimerController` on Android), and the discard dialog; History and a finished workout's page with their ViewModels (`ui/history/`) and `defaultRoutineName` (`ui/routines/`); the buttons, `RoutineName`, `WorkoutRow`, `Stat`/`StatRow`, `WorkoutReport`, the labels (`durationText`, `localDate`, `shortLocalDate`, `localWeekday`, `localWeight`) and the platform seams `exerciseDisplayName`, `weekdayName`, `localVolume`, `dateText` and `decimalSeparator` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
+| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs, and the programs list and one program with theirs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); Home (`ui/home/`); the active workout with its ViewModel, the rest sheet, the voice controls and `SpeechInput` (`ui/workout/`, `voice/`), whose platform is a `WorkoutPlatform` and whose timer a `RestTimerStore` (data's commonMain, `RestTimerController` on Android), the Progress tab, an exercise's progress, the sheet in a workout and the charts (`ui/progress/`, `ui/common/charts/`), and the discard dialog; History and a finished workout's page with their ViewModels (`ui/history/`) and `defaultRoutineName` (`ui/routines/`); the buttons, `RoutineName`, `WorkoutRow`, `Stat`/`StatRow`, `WorkoutReport`, the labels (`durationText`, `localDate`, `shortLocalDate`, `localWeekday`, `localWeight`) and the platform seams `exerciseDisplayName`, `weekdayName`, `localVolume`, `dateText` and `decimalSeparator` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
 | `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
 | `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
 | `server/` | Ktor server | `core` | tung-server |
@@ -202,11 +202,11 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (`ActiveWorkoutRoute` around the `ui/` screen: the ViewModel, the phone's `WorkoutPlatform` and the progress sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (`HistoryRoute` and `WorkoutDetailRoute` around the `ui/` screens; the detail's "Saved as routine" toast is the route's), `summary` (see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (`ActiveWorkoutRoute` around the `ui/` screen: the ViewModel, the phone's `WorkoutPlatform` and the progress sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (`HistoryRoute` and `WorkoutDetailRoute` around the `ui/` screens; the detail's "Saved as routine" toast is the route's), `summary` (see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (`ProgressRoutes.kt` around the `ui/` screens and the sheet in a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `AndroidSpeechInput` (the phone's `SpeechRecognizer`) behind ui's `SpeechInput`, made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in the `ui/` module's `ui/workout/Voice*.kt`. See "Voice". |
-| `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`; `charts/` holds the Canvas charts (`LineChart`, `BarChart`, `Sparkline`, `niceTicks`; see "Progress"). |
+| `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`; the Canvas charts are in the `ui/` module's `charts/` (see "Progress"). |
 | `ui/theme/` | In the `ui/` module now (`ui/src/commonMain/.../ui/theme/`, same package): colour tokens, typography, theme. The font families are composable (`archivoFamily()`, `archivoWideFamily()`), since Compose Resources loads the font; `TungTheme` builds the typography and number styles from them. |
 | `wear/` | The phone's side of the Data Layer for a companion watch (section "Wear"). |
 | `../catalog/` | The exercise catalogue as open data (CC0): `core.json`, `extended.json`, generator and import scripts. Shipped as an asset directory of `data/`. See `catalog/README.md`. |
@@ -836,8 +836,11 @@ exercise id and start, as `ProgressSetRow` (a query result in
 workouts are ordinary finished workouts and count the same; the workout in
 progress never counts.
 
-**app, `ui/progress/`** (`ProgressViewModel` and `ExerciseProgressViewModel`
-compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
+**`ui/progress/`, in the `ui/` module** (`ProgressViewModel` and `ExerciseProgressViewModel`
+compute on `Dispatchers.Default`; today and the zone are functions app's
+`ProgressRoutes.kt` builds over `container.clock`; the dates go through
+`skeletonDate`, `getBestDateTimePattern` on Android and
+`dateFormatFromTemplate` on iOS):
 
 - **The Progress tab** (`Routes.PROGRESS`, `ProgressScreen`, icon
   `ic_trending_up`): "Last 12 weeks" with workouts and weeks in a row, bars
@@ -890,7 +893,7 @@ compute on `Dispatchers.Default`; today and the zone are `container.clock`'s):
   tests' 411 dp the exercise screen's metrics are the menu and every other
   choice is chips.
 
-**Charts, `ui/common/charts/`**, drawn with Compose `Canvas`, no chart
+**Charts, `ui/common/charts/` (the `ui/` module)**, drawn with Compose `Canvas`, no chart
 library: `LineChart` (line plus a dot per point, the last one larger, x
 proportional to the date), `BarChart` (a zero is a short baseline mark), and
 `Sparkline` (no axes). One accent (`Tung.colors.accent`) for the data,

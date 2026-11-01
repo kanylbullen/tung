@@ -33,15 +33,13 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
-import androidx.compose.ui.res.stringResource
 
 @Composable
-internal fun ProgressHeading(text: String, modifier: Modifier = Modifier) {
+fun ProgressHeading(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
         style = MaterialTheme.typography.titleMedium,
@@ -51,7 +49,7 @@ internal fun ProgressHeading(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun ProgressMuted(text: String, modifier: Modifier = Modifier) {
+fun ProgressMuted(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
@@ -71,7 +69,7 @@ private enum class ChoiceSlot { PROBE, CHIPS, MENU }
  * width, font size and language.
  */
 @Composable
-internal fun <T> ChoiceChips(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
+fun <T> ChoiceChips(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
     SubcomposeLayout(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) { constraints ->
         // Measured, never placed, and without semantics, so neither a screen reader nor a test sees it.
         val probe = subcompose(ChoiceSlot.PROBE) {
@@ -128,7 +126,7 @@ private fun <T> ChoiceMenu(options: List<T>, selected: T, label: @Composable (T)
         AssistChip(
             onClick = { open = true },
             label = { Text(label(selected)) },
-            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = stringResource(R.string.progress_show_choices)) },
+            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = stringResource(Res.string.progress_show_choices)) },
             shape = TungCorner,
             colors = AssistChipDefaults.assistChipColors(
                 containerColor = Tung.colors.text,
@@ -167,7 +165,7 @@ internal fun SessionLine(date: String, sets: List<LoggedSet>) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp).semantics(mergeDescendants = true) {}) {
         Text(date, style = Tung.numbers.inline, color = Tung.colors.muted, maxLines = 1, modifier = Modifier.width(112.dp))
         Text(
-            sets.map { stringResource(R.string.exercise_set_value, localWeight(it.weightKg), it.reps) }.joinToString(sep),
+            sets.map { stringResource(Res.string.exercise_set_value, localWeight(it.weightKg), it.reps) }.joinToString(sep),
             style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
             color = Tung.colors.text,
         )

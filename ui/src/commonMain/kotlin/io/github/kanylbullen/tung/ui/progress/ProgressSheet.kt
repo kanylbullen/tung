@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.progress
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -14,10 +16,8 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.progress.TREND_METRICS
 import io.github.kanylbullen.tung.core.progress.beatsRecord
@@ -39,8 +39,7 @@ private const val SHEET_SESSIONS = 3
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProgressSheet(exerciseId: String, exerciseName: String, proposed: LoggedSet?, onDismiss: () -> Unit) {
-    val vm = exerciseProgressViewModel(exerciseId, shared = true)
+fun ProgressSheet(vm: ExerciseProgressViewModel, exerciseName: String, proposed: LoggedSet?, onDismiss: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -51,14 +50,14 @@ fun ProgressSheet(exerciseId: String, exerciseName: String, proposed: LoggedSet?
     ) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp).verticalScroll(rememberScrollState())) {
             Text(
-                stringResource(R.string.progress_sheet_title, exerciseName),
+                stringResource(Res.string.progress_sheet_title, exerciseName),
                 style = MaterialTheme.typography.titleMedium,
                 color = Tung.colors.muted,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             if (state.loading) return@Column
             if (state.sessions.isEmpty()) {
-                ProgressMuted(stringResource(R.string.progress_no_history), Modifier.padding(vertical = 12.dp))
+                ProgressMuted(stringResource(Res.string.progress_no_history), Modifier.padding(vertical = 12.dp))
                 return@Column
             }
             proposed?.let { set ->
@@ -77,7 +76,7 @@ fun ProgressSheet(exerciseId: String, exerciseName: String, proposed: LoggedSet?
             ChoiceChips(TREND_METRICS, state.metric, { metricLabel(it) }, vm::setMetric)
             ProgressChart(state.sessions, state.metric, state.range, state.today, height = 140.dp, span = trendRangeLongLabel(state.range))
             ChoiceChips(TREND_RANGES, state.range, { trendRangeLabel(it) }, vm::setRange)
-            ProgressHeading(stringResource(R.string.progress_last_sessions), Modifier.padding(top = 0.dp))
+            ProgressHeading(stringResource(Res.string.progress_last_sessions), Modifier.padding(top = 0.dp))
             state.sessions.takeLast(SHEET_SESSIONS).reversed().forEach { session ->
                 SessionLine(mediumDate(session.date), session.sets)
             }

@@ -110,7 +110,7 @@ class ExercisesTabFlowTest : FlowTest() {
         screenshot("1-page")
 
         val page = compose.onNode(hasTestTag(EXERCISE_PAGE_TAG))
-        page.performScrollToNode(hasText(str(R.string.exercise_set_value, "100", 5)))
+        page.performScrollToNode(hasText(str(Res.string.exercise_set_value, "100", 5)))
         assertShown(hasText(str(R.string.exercise_best_set)))
         assertShown(hasText(plural(R.plurals.exercise_sessions, 1)))
         page.performScrollToNode(hasText(str(Res.string.detail_set_line, "100", 5)))

@@ -20,7 +20,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.progress.ProgressSheet
+import io.github.kanylbullen.tung.ui.progress.ProgressSheetRoute
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -102,7 +102,7 @@ fun ActiveWorkoutRoute(
         vm = vm,
         platform = platform,
         assistantConfigured = assistantConfigured,
-        progressSheet = { exerciseId, exerciseName, proposed, onDismiss -> ProgressSheet(exerciseId, exerciseName, proposed, onDismiss) },
+        progressSheet = { exerciseId, exerciseName, proposed, onDismiss -> ProgressSheetRoute(exerciseId, exerciseName, proposed, onDismiss) },
         onBack = onBack,
         askToFinish = askToFinish,
         onFinishAsked = onFinishAsked,

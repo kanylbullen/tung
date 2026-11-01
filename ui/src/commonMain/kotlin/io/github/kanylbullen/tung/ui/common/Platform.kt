@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.ui.common
 
 import androidx.compose.runtime.Composable
+import kotlinx.datetime.LocalDate
 
 /**
  * An exercise's displayed name: the catalogue name in the app's language for
@@ -45,4 +46,11 @@ expect fun decimalSeparator(): Char
 /** Keeps the screen on while it is composed: the workout, where the phone lies on a bench between sets. */
 @Composable
 expect fun KeepScreenOn()
+
+/**
+ * [date] as the device's language writes the date skeleton [skeleton]
+ * ("MMMd" is "Oct 21" or "21 okt."): the best pattern for it, Android's
+ * `DateFormat.getBestDateTimePattern` or iOS's `dateFormatFromTemplate`.
+ */
+expect fun skeletonDate(date: LocalDate, skeleton: String): String
 

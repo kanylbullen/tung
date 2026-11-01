@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import org.jetbrains.compose.resources.StringResource
 import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -51,18 +52,18 @@ class ProgressFlowTest : FlowTest() {
         seedFinishedWorkout(at("2026-10-21", hour = 8), catalogExerciseId("back_squat"), 110.0, 5)
     }
 
-    private fun summary(metric: Int, range: Int, from: String, to: String) =
-        str(R.string.progress_chart_summary, str(metric), str(range), from, to)
+    private fun summary(metric: StringResource, range: StringResource, from: String, to: String) =
+        str(Res.string.progress_chart_summary, str(metric), str(range), from, to)
 
     private suspend fun trendMetric() = app.container.progressSettings.trendMetric.first()
     private suspend fun trendRange() = app.container.progressSettings.trendRange.first()
 
     /** Picks [option] from a chart's choice shown as a menu, because its chips do not fit on one line. */
     private fun chooseFromMenu(option: String) {
-        clickDescription(str(R.string.progress_show_choices))
+        clickDescription(str(Res.string.progress_show_choices))
         clickText(option)
         // The menu closes and its chip names the new choice.
-        waitFor(hasContentDescription(str(R.string.progress_show_choices)) and hasText(option))
+        waitFor(hasContentDescription(str(Res.string.progress_show_choices)) and hasText(option))
     }
 
     private fun openTab() {
@@ -71,7 +72,7 @@ class ProgressFlowTest : FlowTest() {
     }
 
     private val benchRow get() =
-        "${str(R.string.progress_e1rm_value, "112")}${str(Res.string.row_separator)}${str(R.string.progress_change_3m, str(R.string.progress_change_up, "14"))}"
+        "${str(Res.string.progress_e1rm_value, "112")}${str(Res.string.row_separator)}${str(Res.string.progress_change_3m, str(Res.string.progress_change_up, "14"))}"
 
     /**
      * The tab's overview says 5 workouts in the last 12 weeks, 2 this week;
@@ -82,31 +83,31 @@ class ProgressFlowTest : FlowTest() {
     fun theTabShowsTheOverviewTheExercisesAndTheRecords() {
         seed()
         openTab()
-        assertShown(hasContentDescription(str(R.string.progress_workouts_summary, 5, 2)))
-        assertShown(hasContentDescription(str(R.string.progress_volume_summary, "2,400", "1,030")))
-        assertShown(hasText(str(R.string.progress_workouts_total)))
-        assertShown(hasText(plural(R.plurals.progress_streak_label, 1)))
+        assertShown(hasContentDescription(str(Res.string.progress_workouts_summary, 5, 2)))
+        assertShown(hasContentDescription(str(Res.string.progress_volume_summary, "2,400", "1,030")))
+        assertShown(hasText(str(Res.string.progress_workouts_total)))
+        assertShown(hasText(plural(Res.plurals.progress_streak_label, 1)))
         screenshot("1-overview")
 
         val list = compose.onNode(hasTestTag(PROGRESS_LIST_TAG))
         list.performScrollToNode(hasText(benchRow))
         assertShown(hasText(benchPress) and hasText(benchRow))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_3m_long, "98", "112")))
         // Squat (trained today) is above bench press (yesterday).
-        val squatTop = compose.onNode(hasText(squat) and hasText(str(R.string.progress_e1rm_value, "128"), substring = true)).fetchSemanticsNode().boundsInRoot.top
+        val squatTop = compose.onNode(hasText(squat) and hasText(str(Res.string.progress_e1rm_value, "128"), substring = true)).fetchSemanticsNode().boundsInRoot.top
         val benchTop = compose.onNode(hasText(benchRow)).fetchSemanticsNode().boundsInRoot.top
         check(squatTop < benchTop) { "squat $squatTop, bench $benchTop" }
 
-        list.performScrollToNode(hasText(str(R.string.progress_records_recent)))
+        list.performScrollToNode(hasText(str(Res.string.progress_records_recent)))
         list.performScrollToNode(hasText(str(Res.string.detail_set_line, "96", 5)))
         assertShown(hasText(str(Res.string.detail_set_line, "110", 5)))
         // Both latest sessions are the heaviest yet.
-        waitUntil { compose.onAllNodes(hasText(str(R.string.progress_record_heaviest), substring = true)).fetchSemanticsNodes().size == 2 }
+        waitUntil { compose.onAllNodes(hasText(str(Res.string.progress_record_heaviest), substring = true)).fetchSemanticsNodes().size == 2 }
         screenshot("2-exercises-and-records")
 
         compose.onNode(hasText(benchRow)).performClick()
         waitFor(hasTestTag(EXERCISE_PROGRESS_TAG))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_3m_long, "98", "112")))
     }
 
     /**
@@ -124,26 +125,26 @@ class ProgressFlowTest : FlowTest() {
         openTab()
 
         val sep = str(Res.string.row_separator)
-        val threeMonths = "${str(R.string.progress_e1rm_value, "112")}$sep${plural(R.plurals.progress_sessions_3m, 1, 1)}"
-        val twelveMonths = "${str(R.string.progress_e1rm_value, "112")}$sep${str(R.string.progress_change_12m, str(R.string.progress_change_up, "14"))}"
-        val sparkline12 = summary(R.string.progress_metric_e1rm_long, R.string.progress_range_12m_long, "98", "112")
+        val threeMonths = "${str(Res.string.progress_e1rm_value, "112")}$sep${plural(Res.plurals.progress_sessions_3m, 1, 1)}"
+        val twelveMonths = "${str(Res.string.progress_e1rm_value, "112")}$sep${str(Res.string.progress_change_12m, str(Res.string.progress_change_up, "14"))}"
+        val sparkline12 = summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_12m_long, "98", "112")
         val list = compose.onNode(hasTestTag(PROGRESS_LIST_TAG))
         waitFor(hasText(threeMonths))
         list.performScrollToNode(hasText(threeMonths))
         assertShown(hasText(benchPress) and hasText(threeMonths))
-        check(compose.onAllNodes(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112"))).fetchSemanticsNodes().isEmpty())
-        check(compose.onAllNodes(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "112", "112"))).fetchSemanticsNodes().isEmpty())
+        check(compose.onAllNodes(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_3m_long, "98", "112"))).fetchSemanticsNodes().isEmpty())
+        check(compose.onAllNodes(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_3m_long, "112", "112"))).fetchSemanticsNodes().isEmpty())
         screenshot("1-rows-3m")
 
-        list.performScrollToNode(hasText(str(R.string.progress_range_12m)))
-        clickText(str(R.string.progress_range_12m))
+        list.performScrollToNode(hasText(str(Res.string.progress_range_12m)))
+        clickText(str(Res.string.progress_range_12m))
         // The list is one exercise long, so the row is composed; wait for the new range to reach it.
         waitFor(hasText(twelveMonths))
         list.performScrollToNode(hasText(twelveMonths))
         assertShown(hasText(benchPress) and hasText(twelveMonths))
         assertShown(hasContentDescription(sparkline12))
         // The weekly bars do not follow: one workout (2 months ago) in the last 12 weeks.
-        waitFor(hasContentDescription(str(R.string.progress_workouts_summary, 1, 0)))
+        waitFor(hasContentDescription(str(Res.string.progress_workouts_summary, 1, 0)))
         waitUntilStored(ProgressRange.ONE_YEAR) { trendRange() }
         screenshot("2-rows-12m")
 
@@ -154,8 +155,8 @@ class ProgressFlowTest : FlowTest() {
         list.performScrollToNode(hasText(twelveMonths))
         assertShown(hasContentDescription(sparkline12))
 
-        list.performScrollToNode(hasText(str(R.string.progress_range_3m)))
-        clickText(str(R.string.progress_range_3m))
+        list.performScrollToNode(hasText(str(Res.string.progress_range_3m)))
+        clickText(str(Res.string.progress_range_3m))
         waitFor(hasText(threeMonths))
         list.performScrollToNode(hasText(threeMonths))
         assertShown(hasText(threeMonths))
@@ -177,29 +178,29 @@ class ProgressFlowTest : FlowTest() {
         seedFinishedWorkout(at("2026-10-19"), bench(), 85.0, 5)
         seedFinishedWorkout(at("2026-10-20"), bench(), 90.0, 5)
         openTab()
-        val bars = hasContentDescription(str(R.string.progress_volume_summary, "1,625", "875"))
+        val bars = hasContentDescription(str(Res.string.progress_volume_summary, "1,625", "875"))
         assertShown(bars)
 
         val sep = str(Res.string.row_separator)
-        val perSession = "${str(R.string.progress_session_volume_value, "450")}$sep${str(R.string.progress_change_3m, str(R.string.progress_change_up, "100"))}"
-        val perWeek = "${str(R.string.progress_weekly_volume_value, "875")}$sep${str(R.string.progress_change_3m, str(R.string.progress_change_up, "525"))}"
+        val perSession = "${str(Res.string.progress_session_volume_value, "450")}$sep${str(Res.string.progress_change_3m, str(Res.string.progress_change_up, "100"))}"
+        val perWeek = "${str(Res.string.progress_weekly_volume_value, "875")}$sep${str(Res.string.progress_change_3m, str(Res.string.progress_change_up, "525"))}"
         val list = compose.onNode(hasTestTag(PROGRESS_LIST_TAG))
 
-        list.performScrollToNode(hasText(str(R.string.progress_metric_volume)))
-        clickText(str(R.string.progress_metric_volume))
+        list.performScrollToNode(hasText(str(Res.string.progress_metric_volume)))
+        clickText(str(Res.string.progress_metric_volume))
         waitFor(hasText(perSession))
         list.performScrollToNode(hasText(perSession))
         assertShown(hasText(benchPress) and hasText(perSession))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_volume_long, R.string.progress_range_3m_long, "350", "450")))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_volume_long, Res.string.progress_range_3m_long, "350", "450")))
         waitUntilStored(ProgressMetric.VOLUME) { trendMetric() }
         screenshot("1-rows-session-volume")
 
-        list.performScrollToNode(hasText(str(R.string.progress_metric_weekly_volume)))
-        clickText(str(R.string.progress_metric_weekly_volume))
+        list.performScrollToNode(hasText(str(Res.string.progress_metric_weekly_volume)))
+        clickText(str(Res.string.progress_metric_weekly_volume))
         waitFor(hasText(perWeek))
         list.performScrollToNode(hasText(perWeek))
         assertShown(hasText(benchPress) and hasText(perWeek))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_weekly_volume_long, R.string.progress_range_3m_long, "350", "875")))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_weekly_volume_long, Res.string.progress_range_3m_long, "350", "875")))
         waitUntilStored(ProgressMetric.WEEKLY_VOLUME) { trendMetric() }
         screenshot("2-rows-weekly-volume")
 
@@ -227,35 +228,35 @@ class ProgressFlowTest : FlowTest() {
         clickText(str(R.string.exercise_progress))
         waitFor(hasTestTag(EXERCISE_PROGRESS_TAG))
 
-        assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_3m_long, "98", "112")))
         // The menu's chip names the choice; the other metrics are only in the menu.
-        check(compose.onAllNodes(hasText(str(R.string.progress_metric_top_set))).fetchSemanticsNodes().isEmpty())
-        assertShown(hasText(str(R.string.progress_metric_e1rm)) and hasContentDescription(str(R.string.progress_show_choices)))
+        check(compose.onAllNodes(hasText(str(Res.string.progress_metric_top_set))).fetchSemanticsNodes().isEmpty())
+        assertShown(hasText(str(Res.string.progress_metric_e1rm)) and hasContentDescription(str(Res.string.progress_show_choices)))
         screenshot("1-e1rm-3m")
 
-        clickDescription(str(R.string.progress_show_choices))
-        assertShown(hasText(str(R.string.progress_metric_weekly_volume)))
+        clickDescription(str(Res.string.progress_show_choices))
+        assertShown(hasText(str(Res.string.progress_metric_weekly_volume)))
         screenshot("1b-metric-menu")
-        clickText(str(R.string.progress_metric_top_set))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_top_set_long, R.string.progress_range_3m_long, "84", "96")))
+        clickText(str(Res.string.progress_metric_top_set))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_top_set_long, Res.string.progress_range_3m_long, "84", "96")))
 
-        clickText(str(R.string.progress_range_all))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_top_set_long, R.string.progress_range_all_long, "60", "96")))
+        clickText(str(Res.string.progress_range_all))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_top_set_long, Res.string.progress_range_all_long, "60", "96")))
         screenshot("2-top-set-all")
 
-        chooseFromMenu(str(R.string.progress_metric_volume))
-        clickText(str(R.string.progress_range_1y))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_volume_long, R.string.progress_range_1y_long, "420", "480")))
+        chooseFromMenu(str(Res.string.progress_metric_volume))
+        clickText(str(Res.string.progress_range_1y))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_volume_long, Res.string.progress_range_1y_long, "420", "480")))
         // One session a week, so the weeks are the sessions; the screen's choice is not the tab's.
-        chooseFromMenu(str(R.string.progress_metric_weekly_volume))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_weekly_volume_long, R.string.progress_range_1y_long, "420", "480")))
+        chooseFromMenu(str(Res.string.progress_metric_weekly_volume))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_weekly_volume_long, Res.string.progress_range_1y_long, "420", "480")))
         waitUntilStored(ProgressMetric.E1RM to ProgressRange.THREE_MONTHS) { trendMetric() to trendRange() }
 
         val list = compose.onNode(hasTestTag(EXERCISE_PROGRESS_TAG))
-        list.performScrollToNode(hasText(str(R.string.progress_record_e1rm)))
-        assertShown(hasText(str(R.string.progress_e1rm_from, "112", "96", 5)))
-        list.performScrollToNode(hasText(str(R.string.progress_last_sessions)))
-        list.performScrollToNode(hasText(str(R.string.exercise_set_value, "60", 10)))
+        list.performScrollToNode(hasText(str(Res.string.progress_record_e1rm)))
+        assertShown(hasText(str(Res.string.progress_e1rm_from, "112", "96", 5)))
+        list.performScrollToNode(hasText(str(Res.string.progress_last_sessions)))
+        list.performScrollToNode(hasText(str(Res.string.exercise_set_value, "60", 10)))
         screenshot("3-records-and-sessions")
     }
 
@@ -273,18 +274,18 @@ class ProgressFlowTest : FlowTest() {
         waitForDescription(str(Res.string.workout_edit_weight, "96"))
 
         val progressFor = str(Res.string.workout_progress_for, benchPress)
-        val chart = summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")
+        val chart = summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_3m_long, "98", "112")
         clickDescription(progressFor)
         assertShown(hasContentDescription(chart))
-        assertShown(hasText(str(R.string.progress_beats_e1rm, "96", 6)))
-        assertShown(hasText(str(R.string.exercise_set_value, "90", 5)))
+        assertShown(hasText(str(Res.string.progress_beats_e1rm, "96", 6)))
+        assertShown(hasText(str(Res.string.exercise_set_value, "90", 5)))
         screenshot("1-sheet")
         dismissSheet(chart)
         assertShown(hasContentDescription(str(Res.string.workout_edit_weight, "96")))
 
         enterInSheet(str(Res.string.workout_edit_reps, "5"), str(Res.string.input_field_reps), "7", str(Res.string.workout_edit_reps, "7"))
         clickDescription(progressFor)
-        assertShown(hasText(str(R.string.progress_beats_e1rm, "96", 7)))
+        assertShown(hasText(str(Res.string.progress_beats_e1rm, "96", 7)))
         screenshot("2-sheet-record")
         dismissSheet(chart)
         assertShown(hasContentDescription(str(Res.string.workout_edit_reps, "7")))
@@ -312,15 +313,15 @@ class ProgressFlowTest : FlowTest() {
         waitForDescription(str(Res.string.workout_edit_weight, "96"))
 
         clickDescription(str(Res.string.workout_progress_for, benchPress))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_3m_long, "98", "112")))
         screenshot("1-sheet-3m")
 
-        clickText(str(R.string.progress_range_12m))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_12m_long, "84", "112")))
-        clickText(str(R.string.progress_metric_volume))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_volume_long, R.string.progress_range_12m_long, "360", "480")))
-        clickText(str(R.string.progress_metric_weekly_volume))
-        val weekly = summary(R.string.progress_metric_weekly_volume_long, R.string.progress_range_12m_long, "360", "930")
+        clickText(str(Res.string.progress_range_12m))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_12m_long, "84", "112")))
+        clickText(str(Res.string.progress_metric_volume))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_volume_long, Res.string.progress_range_12m_long, "360", "480")))
+        clickText(str(Res.string.progress_metric_weekly_volume))
+        val weekly = summary(Res.string.progress_metric_weekly_volume_long, Res.string.progress_range_12m_long, "360", "930")
         assertShown(hasContentDescription(weekly))
         waitUntilStored(ProgressMetric.WEEKLY_VOLUME to ProgressRange.ONE_YEAR) { trendMetric() to trendRange() }
         screenshot("2-sheet-weekly-12m")
@@ -331,7 +332,7 @@ class ProgressFlowTest : FlowTest() {
         clickDescription(str(Res.string.action_back))
         openTab()
         val sep = str(Res.string.row_separator)
-        val row = "${str(R.string.progress_weekly_volume_value, "930")}$sep${str(R.string.progress_change_12m, str(R.string.progress_change_up, "570"))}"
+        val row = "${str(Res.string.progress_weekly_volume_value, "930")}$sep${str(Res.string.progress_change_12m, str(Res.string.progress_change_up, "570"))}"
         val list = compose.onNode(hasTestTag(PROGRESS_LIST_TAG))
         waitFor(hasText(row))
         list.performScrollToNode(hasText(row))
@@ -346,15 +347,15 @@ class ProgressFlowTest : FlowTest() {
     fun darkTheme() {
         seed()
         openTab()
-        assertShown(hasContentDescription(str(R.string.progress_workouts_summary, 5, 2)))
+        assertShown(hasContentDescription(str(Res.string.progress_workouts_summary, 5, 2)))
         screenshot("1-overview")
         val list = compose.onNode(hasTestTag(PROGRESS_LIST_TAG))
         list.performScrollToNode(hasText(benchRow))
         compose.onNode(hasText(benchRow)).performClick()
         waitFor(hasTestTag(EXERCISE_PROGRESS_TAG))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")))
-        clickText(str(R.string.progress_range_all))
-        assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_all_long, "80", "112")))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_3m_long, "98", "112")))
+        clickText(str(Res.string.progress_range_all))
+        assertShown(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_all_long, "80", "112")))
         screenshot("2-exercise")
     }
 }

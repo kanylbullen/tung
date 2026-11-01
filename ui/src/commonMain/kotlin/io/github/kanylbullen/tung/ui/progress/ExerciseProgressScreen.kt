@@ -28,23 +28,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.progress.PersonalRecord
 import io.github.kanylbullen.tung.core.progress.ProgressMetric
 import io.github.kanylbullen.tung.core.progress.ProgressRange
 import io.github.kanylbullen.tung.core.progress.SessionPoint
-import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.charts.LineChart
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.theme.Tung
 import kotlinx.datetime.LocalDate
 
@@ -55,28 +50,6 @@ const val EXERCISE_PROGRESS_TAG = "exercise-progress"
 private const val LAST_SESSIONS = 5
 
 /**
- * The exercise progress screen's view model, keyed `progress-<exerciseId>`;
- * with [shared] (the sheet in a workout, keyed `progress-sheet-<exerciseId>`)
- * its metric and span are the Progress tab's, remembered in [ProgressSettings][io.github.kanylbullen.tung.data.ProgressSettings].
- */
-@Composable
-internal fun exerciseProgressViewModel(exerciseId: String, shared: Boolean = false): ExerciseProgressViewModel {
-    val container = appContainer()
-    return viewModel(
-        key = if (shared) "progress-sheet-$exerciseId" else "progress-$exerciseId",
-        factory = factoryOf {
-            ExerciseProgressViewModel(
-                exerciseId,
-                container.workoutRepository,
-                container.exerciseRepository,
-                container.clock,
-                settings = if (shared) container.progressSettings else null,
-            )
-        },
-    )
-}
-
-/**
  * One exercise's progress (route `progress/{exerciseId}`): a chart with a
  * metric (estimated 1RM, top set, session or weekly volume) and a range (3
  * months, 1 year, all), the records with their dates, and the last sessions'
@@ -84,8 +57,7 @@ internal fun exerciseProgressViewModel(exerciseId: String, shared: Boolean = fal
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExerciseProgressScreen(exerciseId: String, onBack: () -> Unit) {
-    val vm = exerciseProgressViewModel(exerciseId)
+fun ExerciseProgressScreen(vm: ExerciseProgressViewModel, onBack: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val name = state.exercise?.let { exerciseDisplayName(it.nameKey, it.name) }.orEmpty()
 
@@ -119,11 +91,11 @@ fun ExerciseProgressScreen(exerciseId: String, onBack: () -> Unit) {
             }
             val records = state.records.all
             if (records.isNotEmpty()) {
-                item(key = "records") { ProgressHeading(stringResource(R.string.progress_records)) }
+                item(key = "records") { ProgressHeading(stringResource(Res.string.progress_records)) }
                 items(records, key = { "pr-${it.kind}" }) { RecordRow(it) }
             }
             if (state.sessions.isNotEmpty()) {
-                item(key = "sessions") { ProgressHeading(stringResource(R.string.progress_last_sessions)) }
+                item(key = "sessions") { ProgressHeading(stringResource(Res.string.progress_last_sessions)) }
                 items(state.sessions.takeLast(LAST_SESSIONS).reversed(), key = { "s-${it.workoutId}" }) { session ->
                     SessionLine(mediumDate(session.date), session.sets)
                 }
@@ -139,7 +111,7 @@ fun ExerciseProgressScreen(exerciseId: String, onBack: () -> Unit) {
  * range as [span] says it.
  */
 @Composable
-internal fun ProgressChart(
+fun ProgressChart(
     sessions: List<SessionPoint>,
     metric: ProgressMetric,
     range: ProgressRange,
@@ -155,7 +127,7 @@ internal fun ProgressChart(
             Modifier.fillMaxWidth().heightIn(min = height / 2).clearAndSetSemantics { contentDescription = summary },
             verticalArrangement = Arrangement.Center,
         ) {
-            ProgressMuted(stringResource(R.string.progress_chart_empty))
+            ProgressMuted(stringResource(Res.string.progress_chart_empty))
         }
         return
     }
