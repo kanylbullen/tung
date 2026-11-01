@@ -89,4 +89,32 @@ class SyncFlowTest : FlowTest() {
         waitUntil(5_000) { (nowWork() - before).isNotEmpty() }
         assertTrue(nowWork().containsAll(before))
     }
+
+    @Test
+    fun aNewAccountIsAskedToConfirmItsEmailAndSyncsOnceItHas() {
+        fake.emailVerified = false
+        openSettingsGroup(R.string.settings_group_account)
+        useServer(fake.baseUrl)
+        fill(str(R.string.sync_email), "new@example.org")
+        fill(str(R.string.sync_password), "correct horse battery")
+        clickText(str(R.string.sync_create_account))
+        waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
+
+        // The first sync is refused until the emailed link is opened: the screen says what to do.
+        clickText(str(R.string.sync_now))
+        waitForText(str(R.string.sync_confirm_email, "lifter@example.org"))
+        waitForText(str(R.string.sync_error_email_not_verified))
+        screenshot("1-confirm-email")
+
+        clickText(str(R.string.sync_confirm_resend))
+        waitForText(str(R.string.sync_confirm_sent))
+        assertEquals(1, fake.resends)
+        screenshot("2-link-sent")
+
+        // The link is opened (on the server); Sync now goes through and the notice goes.
+        fake.emailVerified = true
+        clickText(str(R.string.sync_now))
+        waitForText(str(R.string.sync_status_just_now))
+        waitGone(hasText(str(R.string.sync_confirm_email, "lifter@example.org")))
+    }
 }

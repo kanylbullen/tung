@@ -25,6 +25,13 @@ enum class SyncFailure(val key: String) {
 
     /** The server refused the request with another 4xx. Not retried until something changes. */
     REJECTED("rejected"),
+
+    /**
+     * 403 `email_not_verified`: the account has not opened the link in its
+     * confirmation email yet. Not retried; the next sync after the link is
+     * opened goes through.
+     */
+    EMAIL_NOT_VERIFIED("email_not_verified"),
     ;
 
     companion object {

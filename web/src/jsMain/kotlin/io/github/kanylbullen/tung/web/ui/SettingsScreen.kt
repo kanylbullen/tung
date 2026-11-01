@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.web.ui
 
+import io.github.kanylbullen.tung.web.sync.ResendResult
+import io.github.kanylbullen.tung.core.sync.SyncFailure
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
@@ -116,6 +118,7 @@ fun SettingsScreen(container: WebContainer, account: Account) {
         Div({ classes("setting", "column") }) {
             Span { Text(strings.signedInAs(account.email)) }
             P({ classes("hint", "flush") }) { Text(account.serverUrl) }
+            ConfirmEmail(container, account.email)
             Div({ classes("setting-buttons") }) {
                 Button({
                     classes("secondary")
@@ -281,4 +284,37 @@ private fun DeleteAccount(container: WebContainer, account: Account) {
             }) { Text(strings.deleteAccountConfirm) }
         }
     }
+}
+
+/**
+ * While the server has not seen the account's email confirmed (its last
+ * sync was refused with `email_not_verified`): what to do, and "Send the
+ * link again", as on the phone.
+ */
+@Composable
+private fun ConfirmEmail(container: WebContainer, email: String) {
+    val strings = container.strings
+    val lastError = container.settings.syncState.collectAsState().value.lastError
+    if (SyncFailure.fromKey(lastError) != SyncFailure.EMAIL_NOT_VERIFIED) return
+    val scope = rememberCoroutineScope()
+    var sending by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<ResendResult?>(null) }
+    P({ classes("notice", "flush"); attr("role", "status") }) { Text(strings.confirmEmail(email)) }
+    Div({ classes("setting-buttons") }) {
+        Button({
+            classes("secondary")
+            if (sending) disabled()
+            onClick {
+                sending = true
+                scope.launch {
+                    try {
+                        result = container.resendConfirmation()
+                    } finally {
+                        sending = false
+                    }
+                }
+            }
+        }) { Text(strings.confirmResend) }
+    }
+    result?.let { P({ classes("hint", "flush") }) { Text(strings.confirmResult(it)) } }
 }

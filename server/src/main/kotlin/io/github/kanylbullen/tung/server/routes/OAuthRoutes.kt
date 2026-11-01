@@ -146,6 +146,10 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
                     call.consentPage(request, cookie, email, "Wrong email or password.")
                     return@post
                 }
+                if (!proof.user.emailVerified) {
+                    call.consentPage(request, cookie, email, "Confirm your email first: open the link we sent you, then connect again.")
+                    return@post
+                }
                 guard = { with(accounts) { requirePassword(proof) } }
                 proof.user.id
             }

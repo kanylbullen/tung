@@ -84,6 +84,14 @@ class SyncLoopTest {
         assertEquals(1, refusing.requests.size)
         assertEquals(SyncFailure.REJECTED, session.lastFailure)
 
+        val unconfirmed = FakeSession()
+        val waiting = Script(SyncReply.Status(403, EMAIL_NOT_VERIFIED_CODE))
+        assertEquals(SyncResult.Failed(SyncFailure.EMAIL_NOT_VERIFIED), loop(FakeLocal(), unconfirmed, waiting).syncOnce())
+        assertEquals(1, waiting.requests.size)
+        assertEquals(SyncFailure.EMAIL_NOT_VERIFIED, unconfirmed.lastFailure)
+        // Another 403 is a refusal like any.
+        assertEquals(SyncResult.Failed(SyncFailure.REJECTED), loop(FakeLocal(), FakeSession(), Script(SyncReply.Status(403, "insufficient_scope"))).syncOnce())
+
         val unreadable = Script(SyncReply.Unreadable, SyncReply.Unreadable, SyncReply.Unreadable)
         assertEquals(SyncResult.Failed(SyncFailure.SERVER), loop(FakeLocal(), FakeSession(), unreadable).syncOnce())
         assertEquals(3, unreadable.requests.size)

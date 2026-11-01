@@ -29,8 +29,11 @@ object Tokens {
         MessageDigest.getInstance("SHA-256").digest(token.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 }
 
-/** Who a request is from: the user and the token they sent. */
-data class TokenPrincipal(val userId: String, val tokenId: String, val scope: String)
+/**
+ * Who a request is from: the user and the token they sent, and whether the
+ * user's email is confirmed ([RequireConfirmedEmail]).
+ */
+data class TokenPrincipal(val userId: String, val tokenId: String, val scope: String, val emailVerified: Boolean = true)
 
 /**
  * Inside a transaction that issues a credential because [principal]'s token

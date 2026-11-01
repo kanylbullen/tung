@@ -85,6 +85,12 @@ class FakeSyncServer : Dispatcher() {
     val paths = CopyOnWriteArrayList<String>()
     val authPaths = CopyOnWriteArrayList<String>()
 
+    /** False: the account's email is not confirmed, and every sync is 403 `email_not_verified`. */
+    @Volatile var emailVerified = true
+
+    /** How many times `POST /api/v1/auth/verify/resend` was asked. */
+    @Volatile var resends = 0
+
     /** Answer the next n sync requests with this status instead. */
     @Volatile var failNext: Int = 0
     @Volatile var failStatus: Int = 503
@@ -217,6 +223,11 @@ class FakeSyncServer : Dispatcher() {
                 json(201, """{"id":"f-${feedback.size}"}""")
             }
         }
+        "/api/v1/auth/verify/resend" -> {
+            authPaths += request.path
+            resends++
+            MockResponse().setResponseCode(202)
+        }
         "/api/v1/link/claim" -> {
             authPaths += request.path
             val sent = Regex("\"code\"\\s*:\\s*\"([^\"]*)\"").find(request.body.readUtf8())?.groupValues?.get(1)
@@ -243,6 +254,9 @@ class FakeSyncServer : Dispatcher() {
         }
         if (request.getHeader("Authorization") != "Bearer $token") {
             return json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
+        }
+        if (!emailVerified) {
+            return json(403, """{"error":{"code":"email_not_verified","message":"Confirm your email first."}}""")
         }
         duringSync(body)
         val response = synchronized(this) {

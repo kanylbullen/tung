@@ -403,7 +403,7 @@ a.text-button { text-decoration: none; display: inline-flex; align-items: center
 .setting-control { display: flex; align-items: center; gap: 8px; }
 .setting-value { min-width: 3.5em; text-align: center; font-weight: 700; font-size: 18px; }
 .setting-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
-.hint.flush, .chips.flush { margin-left: 0; padding-left: 0; }
+.hint.flush, .chips.flush, .notice.flush { margin-left: 0; padding-left: 0; }
 .chips.wrap { flex-wrap: wrap; overflow: visible; }
 .checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 4px 12px; }
 .check { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }

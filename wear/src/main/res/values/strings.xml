@@ -67,6 +67,7 @@
     <string name="sync_error_server">The server had a problem. Tries again later.</string>
     <string name="sync_error_signed_out">Signed out by the server. Link the watch again.</string>
     <string name="sync_error_rejected">The server refused the sync.</string>
+    <string name="sync_error_email_not_verified">Confirm your email on the phone first.</string>
     <string name="sign_out">Sign out</string>
     <string name="standalone_explainer">Link the watch to your Tung server to log without the phone.</string>
     <string name="link_to_server">Link to %1$s</string>

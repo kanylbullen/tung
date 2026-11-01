@@ -16,23 +16,26 @@ const val MAX_ADMIN_USERS = 1_000
  * The one place that decides it, for `/me`'s `is_admin`, the account list
  * and the test sign-ups.
  *
- * Registering with a password proves nothing about the email, so on a server
- * with Sign in with Google ([requireGoogleLink]) an admin's account must also
- * be linked to Google, which verified the address. Otherwise anyone could
- * register an admin's address before its owner first signs in, and be admin.
- * A server without Google has no way to verify an email; there the admins
- * should register their accounts before the server is opened to others.
+ * Registering with a password proves nothing about the email, so an
+ * admin's address must be proven: linked to Google or confirmed by its
+ * emailed link. On a server with Sign in with Google ([requireProof]) only
+ * that counts; elsewhere an account from before email verification
+ * (`email_verified_at` 0) counts too, so an admin of a server without
+ * Google keeps it, but a new account must confirm its address first.
+ * Otherwise anyone could register an admin's address before its owner, and
+ * be admin.
  */
-class Admins(private val db: Db, private val emails: Set<String>, private val requireGoogleLink: Boolean = false) {
+class Admins(private val db: Db, private val emails: Set<String>, private val requireProof: Boolean = false) {
 
     suspend fun isAdmin(userId: String): Boolean {
         if (emails.isEmpty()) return false
         val row = db.tx { Users.selectAll().where { Users.id eq userId }.singleOrNull() } ?: return false
-        return isAdmin(row[Users.email], googleLinked = row[Users.googleSub] != null)
+        return isAdmin(row[Users.email], row[Users.googleSub] != null, row[Users.emailVerifiedAt])
     }
 
-    fun isAdmin(email: String, googleLinked: Boolean): Boolean =
-        email.lowercase() in emails && (googleLinked || !requireGoogleLink)
+    fun isAdmin(email: String, googleLinked: Boolean, emailVerifiedAt: Long?): Boolean =
+        email.lowercase() in emails &&
+            (googleLinked || proven(emailVerifiedAt) || (!requireProof && emailVerifiedAt != null))
 
     /**
      * Only a write token: a `read` token is what an admin hands an assistant
@@ -46,8 +49,8 @@ class Admins(private val db: Db, private val emails: Set<String>, private val re
         if (!isAdmin(principal.userId)) {
             throw forbidden(
                 "not_admin",
-                if (requireGoogleLink) {
-                    "Only the server's admins (TUNG_ADMIN_EMAILS, signed in with Google once) may see this."
+                if (requireProof) {
+                    "Only the server's admins (TUNG_ADMIN_EMAILS, confirmed by email or signed in with Google once) may see this."
                 } else {
                     "Only the server's admins (TUNG_ADMIN_EMAILS) may see this."
                 },
@@ -64,6 +67,8 @@ data class AdminUserDto(
     val createdAt: Long,
     val hasPassword: Boolean,
     val googleLinked: Boolean,
+    /** The email is confirmed, or the account is from before confirmation; false while its link is not opened. */
+    val emailVerified: Boolean = true,
     val isAdmin: Boolean,
     /** The latest use of any of the account's tokens, null when none was ever used. */
     val lastSeenAt: Long?,
@@ -108,7 +113,12 @@ class AdminStore(private val db: Db, private val admins: Admins, private val tes
                                     createdAt = rows.getLong("created_at"),
                                     hasPassword = rows.getBoolean("has_password"),
                                     googleLinked = rows.getBoolean("google_linked"),
-                                    isAdmin = admins.isAdmin(email, googleLinked = rows.getBoolean("google_linked")),
+                                    emailVerified = rows.getLong("email_verified_at").let { !rows.wasNull() },
+                                    isAdmin = admins.isAdmin(
+                                        email,
+                                        rows.getBoolean("google_linked"),
+                                        rows.getLong("email_verified_at").takeUnless { rows.wasNull() },
+                                    ),
                                     lastSeenAt = rows.getLong("last_seen_at").takeUnless { rows.wasNull() },
                                     activeTokens = rows.getInt("active_tokens"),
                                     workouts = rows.getInt("workouts"),
@@ -128,6 +138,7 @@ class AdminStore(private val db: Db, private val admins: Admins, private val tes
             SELECT u.id, u.email, u.created_at,
                    u.password_hash IS NOT NULL AS has_password,
                    u.google_sub IS NOT NULL AS google_linked,
+                   u.email_verified_at,
                    t.last_seen_at, coalesce(t.active_tokens, 0) AS active_tokens,
                    coalesce(w.workouts, 0) AS workouts, w.last_workout_at
             FROM users u

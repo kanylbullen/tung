@@ -22,11 +22,26 @@ import io.github.kanylbullen.tung.server.auth.GoogleIdentity
 import io.github.kanylbullen.tung.server.oauth.OAuthCodes
 import io.github.kanylbullen.tung.server.oauth.OAuthRefreshTokens
 import io.github.kanylbullen.tung.server.routes.LinkCodes
+import io.github.kanylbullen.tung.server.routes.SlidingWindowLimiter
 import org.jetbrains.exposed.sql.ResultRow
 
 private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+$")
 private const val MIN_PASSWORD = 8
 private const val MAX_PASSWORD = 1024
+
+/** How long an emailed confirmation link works. */
+const val EMAIL_CONFIRM_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000L
+
+/**
+ * An address registered but never confirmed blocks a new registration of it
+ * this long; after that the unconfirmed account (which holds nothing on the
+ * server, as it could not sync) gives way, so nobody can hold an address
+ * they do not own.
+ */
+const val UNCONFIRMED_HOLD_MS = 24 * 60 * 60 * 1000L
+
+/** Confirmation emails one account may ask for again, per day (and each ask counts against the sign-in rate limit). */
+const val CONFIRM_RESENDS_PER_DAY = 3
 
 /** last_used_at is written at most this often per token, so reads do not each cost a write. */
 private const val LAST_USED_RESOLUTION_MS = 60_000L
@@ -36,7 +51,21 @@ private const val LAST_USED_RESOLUTION_MS = 60_000L
  * holds both kinds of token. [google] is null when the instance has no
  * Google client id (`TUNG_GOOGLE_CLIENT_ID`).
  */
-class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private val welcome: WelcomeMail? = null) {
+class Accounts(
+    private val db: Db,
+    val google: GoogleIdTokens? = null,
+    private val welcome: WelcomeMail? = null,
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
+
+    /**
+     * Whether a new password account must confirm its email before it may
+     * sync: only when this server can send the link (`TUNG_RESEND_API_KEY`).
+     * Without mail every account counts as confirmed, as before.
+     */
+    val verifiesEmail: Boolean get() = welcome?.canSend == true
+
+    private val resends = SlidingWindowLimiter(CONFIRM_RESENDS_PER_DAY, 24 * 60 * 60 * 1000L, clock)
 
     suspend fun register(credentials: Credentials): SessionDto {
         val email = normalizeEmail(credentials.email)
@@ -45,22 +74,38 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
             throw badRequest("The password must be $MIN_PASSWORD to $MAX_PASSWORD characters.", "weak_password")
         }
         val hash = withContext(Dispatchers.Default) { Passwords.hash(password) }
-        val now = System.currentTimeMillis()
+        val now = clock()
+        val confirming = verifiesEmail
         return try {
-            db.tx {
-                if (!Users.selectAll().where { Users.email eq email }.empty()) throw emailTaken()
+            val (session, confirmToken) = db.tx {
+                Users.selectAll().where { Users.email eq email }.singleOrNull()?.let { held ->
+                    // An address someone registered and never confirmed gives way after a day: see UNCONFIRMED_HOLD_MS.
+                    val unconfirmed = held[Users.emailVerifiedAt] == null && held[Users.googleSub] == null
+                    if (!(confirming && unconfirmed && held[Users.createdAt] <= now - UNCONFIRMED_HOLD_MS)) throw emailTaken()
+                    // Under its lock and only if it is still unconfirmed: a confirmation or a Google link may have
+                    // committed since the read.
+                    lockUser(held[Users.id])
+                    val gone = Users.deleteWhere {
+                        (Users.id eq held[Users.id]) and Users.emailVerifiedAt.isNull() and Users.googleSub.isNull()
+                    }
+                    if (gone != 1) throw emailTaken()
+                }
                 val userId = newId()
                 Users.insert {
                     it[id] = userId
                     it[Users.email] = email
                     it[passwordHash] = hash
                     it[createdAt] = now
+                    // Without mail nothing is confirmed: 0 counts for syncing and proves nothing (V14).
+                    it[emailVerifiedAt] = if (confirming) null else 0L
                 }
                 SessionDto(
                     insertToken(userId, Tokens.SESSION_NAME, Tokens.SCOPE_WRITE, now).token,
-                    UserDto(userId, email, now, hasPassword = true, googleLinked = false),
-                )
-            }.also { welcome?.account(email, credentials.language) }
+                    UserDto(userId, email, now, hasPassword = true, googleLinked = false, emailVerified = !confirming),
+                ) to (if (confirming) newConfirmToken(userId, now) else null)
+            }
+            welcome?.account(email, credentials.language, confirmToken)
+            session
         } catch (e: ExposedSQLException) {
             if (e.sqlState == "23505") throw emailTaken() else throw e
         }
@@ -121,9 +166,10 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
      * email, which gets the `google_sub` (the link); else a new account
      * without a password.
      *
-     * A password account's email was never verified: anyone could have
-     * registered someone else's address and waited for its owner to sign in
-     * with Google. So the link hands the account to the verified owner and
+     * A password account may have been registered by anyone, with someone
+     * else's address, and waited for its owner to sign in with Google; even a
+     * confirmed one, since confirming proves only that someone at the inbox
+     * pressed a button. So the link hands the account to the verified owner and
      * shuts out whoever else may hold it: the password is removed, and every
      * token, OAuth grant and link code of the account is revoked
      * ([evictUnverifiedHolders]). The owner signs in with Google from then on,
@@ -148,7 +194,14 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
 
     /** The user, and whether this call created it. */
     private fun Transaction.resolveGoogleUser(identity: GoogleIdentity): Pair<UserDto, Boolean> {
-        Users.selectAll().where { Users.googleSub eq identity.sub }.singleOrNull()?.let { return it.toUserDto() to false }
+        Users.selectAll().where { Users.googleSub eq identity.sub }.singleOrNull()?.let { row ->
+            // Google verified the address when it was linked: an account confirmed by nothing else is confirmed now.
+            if (!proven(row[Users.emailVerifiedAt])) {
+                Users.update({ Users.id eq row[Users.id] }) { it[emailVerifiedAt] = clock() }
+                return user(row[Users.id]) to false
+            }
+            return row.toUserDto() to false
+        }
         val email = identity.email
         if (email == null || !identity.emailVerified) {
             throw unauthorized(
@@ -167,11 +220,13 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
             if (linked != null) {
                 throw conflict("google_account_mismatch", "This email belongs to an account linked to another Google account. Sign in with that one or with your password.")
             }
+            val now = clock()
             Users.update({ (Users.id eq userId) and Users.googleSub.isNull() }) {
                 it[googleSub] = identity.sub
                 it[passwordHash] = null
+                it[emailVerifiedAt] = now
             }
-            evictUnverifiedHolders(userId, System.currentTimeMillis())
+            evictUnverifiedHolders(userId, now)
             return user(userId) to false
         }
         if (email.length > 254 || !EMAIL_PATTERN.matches(email)) throw unauthorized("invalid_google_token", "The Google account has no usable email address.")
@@ -183,6 +238,7 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
             it[passwordHash] = null
             it[googleSub] = identity.sub
             it[createdAt] = now
+            it[emailVerifiedAt] = now
         }
         return UserDto(userId, email, now, hasPassword = false, googleLinked = true) to true
     }
@@ -237,8 +293,75 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
                 (ApiTokens.id eq tokenId) and
                     (ApiTokens.lastUsedAt.isNull() or (ApiTokens.lastUsedAt less now - LAST_USED_RESOLUTION_MS))
             }) { it[lastUsedAt] = now }
-            TokenPrincipal(row[ApiTokens.userId], tokenId, row[ApiTokens.scope])
+            // A server that stopped sending mail cannot confirm anyone: its unconfirmed accounts count as confirmed.
+            val verified = !verifiesEmail ||
+                Users.select(Users.emailVerifiedAt).where { Users.id eq row[ApiTokens.userId] }.single()[Users.emailVerifiedAt] != null
+            TokenPrincipal(row[ApiTokens.userId], tokenId, row[ApiTokens.scope], emailVerified = verified)
         }
+    }
+
+    /**
+     * `POST /verify-email` (the button on the link's page): the account of
+     * an unexpired confirmation link is confirmed. False for a link that is
+     * unknown, expired, or replaced by a newer one. Opening the link (a GET,
+     * which mail scanners do by themselves) only shows the button: it is the
+     * press that confirms. The link keeps working until it expires, so a
+     * second press still says "confirmed".
+     */
+    suspend fun confirmEmail(token: String): Boolean {
+        val now = clock()
+        return db.tx {
+            val row = EmailTokens.selectAll().where {
+                (EmailTokens.tokenHash eq Tokens.hash(token)) and (EmailTokens.kind eq EmailTokens.KIND_VERIFY)
+            }.singleOrNull() ?: return@tx false
+            val userId = row[EmailTokens.userId]
+            if (row[EmailTokens.expiresAt] <= now) return@tx false
+            Users.update({ (Users.id eq userId) and Users.emailVerifiedAt.isNull() }) { it[emailVerifiedAt] = now }
+            true
+        }
+    }
+
+    /**
+     * `POST /auth/verify/resend`: a new confirmation link to [principal]'s
+     * address, the earlier ones spent. Nothing for an account already
+     * confirmed. [CONFIRM_RESENDS_PER_DAY] per account; 404
+     * `not_configured` on a server that sends no mail.
+     */
+    suspend fun resendConfirmation(principal: TokenPrincipal, language: String?) {
+        val welcome = welcome?.takeIf { verifiesEmail } ?: throw ApiException(
+            HttpStatusCode.NotFound,
+            "not_configured",
+            "This server sends no email, so there is nothing to confirm.",
+        )
+        val now = clock()
+        val (email, token) = db.tx {
+            val row = Users.selectAll().where { Users.id eq principal.userId }.single()
+            if (row[Users.emailVerifiedAt] != null) return@tx null
+            if (!resends.tryAcquire(principal.userId)) throw rateLimited()
+            EmailTokens.deleteWhere { (EmailTokens.userId eq principal.userId) and (EmailTokens.kind eq EmailTokens.KIND_VERIFY) }
+            row[Users.email] to newConfirmToken(principal.userId, now)
+        } ?: return
+        welcome.confirmAgain(email, language, token)
+    }
+
+    /** Whether [token] is a confirmation link that still works: its page shows the button only then. */
+    suspend fun confirmLinkWorks(token: String): Boolean = db.tx {
+        EmailTokens.selectAll().where {
+            (EmailTokens.tokenHash eq Tokens.hash(token)) and (EmailTokens.kind eq EmailTokens.KIND_VERIFY) and (EmailTokens.expiresAt greater clock())
+        }.empty().not()
+    }
+
+    /** A fresh confirmation link's token for [userId]; only its hash is stored. */
+    private fun Transaction.newConfirmToken(userId: String, now: Long): String {
+        val token = Tokens.generate()
+        EmailTokens.insert {
+            it[tokenHash] = Tokens.hash(token)
+            it[EmailTokens.userId] = userId
+            it[kind] = EmailTokens.KIND_VERIFY
+            it[createdAt] = now
+            it[expiresAt] = now + EMAIL_CONFIRM_LIFETIME_MS
+        }
+        return token
     }
 
     suspend fun me(userId: String): UserDto = db.tx { user(userId) }
@@ -253,6 +376,7 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
         createdAt = this[Users.createdAt],
         hasPassword = this[Users.passwordHash] != null,
         googleLinked = this[Users.googleSub] != null,
+        emailVerified = this[Users.emailVerifiedAt] != null,
     )
 
     suspend fun listTokens(principal: TokenPrincipal): TokenList = db.tx {
@@ -359,3 +483,10 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private v
  * issued on it.
  */
 class PasswordProof(val user: UserDto, internal val hash: String)
+
+/**
+ * Whether `email_verified_at` proves the address: the link or Google, not
+ * null (unconfirmed) and not 0 (an account from before verification, which
+ * counts as confirmed for syncing but proves nothing; see V14).
+ */
+internal fun proven(emailVerifiedAt: Long?): Boolean = emailVerifiedAt != null && emailVerifiedAt > 0

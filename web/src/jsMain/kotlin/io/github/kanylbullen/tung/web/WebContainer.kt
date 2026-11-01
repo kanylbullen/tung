@@ -24,6 +24,7 @@ import io.github.kanylbullen.tung.web.store.WebExerciseResolver
 import io.github.kanylbullen.tung.web.store.Write
 import io.github.kanylbullen.tung.web.sync.AuthResult
 import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
+import io.github.kanylbullen.tung.web.sync.ResendResult
 import io.github.kanylbullen.tung.web.sync.PeriodicSync
 import io.github.kanylbullen.tung.web.sync.WebAuth
 import io.github.kanylbullen.tung.web.sync.WebSettings
@@ -238,6 +239,13 @@ class WebContainer(
         val token = settings.token
         settings.signedOut(failure = null)
         if (account != null && token != null) auth.signOut(account.serverUrl, token)
+    }
+
+    /** A new link to confirm the account's email, in the app's language. */
+    suspend fun resendConfirmation(): ResendResult {
+        val account = settings.account.value ?: return ResendResult.FAILED
+        val token = settings.token ?: return ResendResult.FAILED
+        return auth.resendConfirmation(account.serverUrl, token, languageTag())
     }
 
     /**

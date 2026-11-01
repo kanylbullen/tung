@@ -41,6 +41,8 @@ fun forbidden(code: String, message: String) = ApiException(HttpStatusCode.Forbi
 
 fun unauthorized(code: String, message: String) = ApiException(HttpStatusCode.Unauthorized, code, message)
 
+fun rateLimited() = ApiException(HttpStatusCode.TooManyRequests, "rate_limited", "Too many requests. Wait a minute and try again.")
+
 fun payloadTooLarge(code: String, message: String) = ApiException(HttpStatusCode.PayloadTooLarge, code, message)
 
 fun Application.installErrorPages() {

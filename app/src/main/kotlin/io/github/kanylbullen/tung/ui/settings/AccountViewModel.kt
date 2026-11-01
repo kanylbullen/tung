@@ -12,6 +12,7 @@ import io.github.kanylbullen.tung.sync.AuthFailure
 import io.github.kanylbullen.tung.sync.AuthMethodsResult
 import io.github.kanylbullen.tung.sync.AuthResult
 import io.github.kanylbullen.tung.sync.DeleteAccountOutcome
+import io.github.kanylbullen.tung.sync.ResendOutcome
 import io.github.kanylbullen.tung.sync.SyncAccount
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -62,7 +63,15 @@ data class AccountUiState(
     val deletion: AccountDeletion? = null,
     /** The account was just deleted: said above the sign-in form. */
     val deleted: Boolean = false,
+    /** What asking for a new confirmation link gave, while it is said; [ResendState.Sending] while it runs. */
+    val resend: ResendState? = null,
 )
+
+/** "Send the link again" under "Confirm your email". */
+sealed interface ResendState {
+    data object Sending : ResendState
+    data class Done(@StringRes val message: Int) : ResendState
+}
 
 /**
  * Settings' Account: the server and the account. Sign-in, sign-out and "Sync
@@ -75,9 +84,10 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
     private val form = MutableStateFlow(SignInForm())
     private val deletion = MutableStateFlow<AccountDeletion?>(null)
     private val deleted = MutableStateFlow(false)
+    private val resend = MutableStateFlow<ResendState?>(null)
 
-    val state: StateFlow<AccountUiState> = combine(account.state, form, deletion, deleted) { a, f, d, gone ->
-        AccountUiState(a, f, defaultServerUrl, d, gone)
+    val state: StateFlow<AccountUiState> = combine(account.state, form, deletion, deleted, resend) { a, f, d, gone, r ->
+        AccountUiState(a, f, defaultServerUrl, d, gone, r)
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountUiState(defaultServerUrl = defaultServerUrl))
 
@@ -195,6 +205,21 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
 
     fun syncNow() {
         viewModelScope.launch { account.syncNow() }
+    }
+
+    /** "Send the link again": a new link to confirm the email, and one line on how it went. */
+    fun resendConfirmation() {
+        if (resend.value == ResendState.Sending) return
+        resend.value = ResendState.Sending
+        viewModelScope.launch {
+            resend.value = ResendState.Done(
+                when (account.resendConfirmation()) {
+                    ResendOutcome.SENT -> R.string.sync_confirm_sent
+                    ResendOutcome.RATE_LIMITED -> R.string.sync_confirm_rate_limited
+                    ResendOutcome.NETWORK, ResendOutcome.FAILED -> R.string.sync_confirm_failed
+                },
+            )
+        }
     }
 
     fun openDeletion() = deletion.update { it ?: AccountDeletion() }

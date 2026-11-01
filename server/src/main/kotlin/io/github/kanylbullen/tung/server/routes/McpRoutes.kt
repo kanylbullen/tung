@@ -5,6 +5,7 @@ import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.ServerConfig
 import io.github.kanylbullen.tung.server.TokenPrincipal
 import io.github.kanylbullen.tung.server.badRequest
+import io.github.kanylbullen.tung.server.emailNotConfirmed
 import io.github.kanylbullen.tung.server.mcp.MCP_PROTOCOL_VERSIONS
 import io.github.kanylbullen.tung.server.mcp.McpExchange
 import io.github.kanylbullen.tung.server.mcp.TungMcp
@@ -27,11 +28,14 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.utils.io.readRemaining
+import io.modelcontextprotocol.kotlin.sdk.InitializeResult
 import io.modelcontextprotocol.kotlin.sdk.JSONRPCMessage
 import io.modelcontextprotocol.kotlin.sdk.JSONRPCRequest
 import io.modelcontextprotocol.kotlin.sdk.JSONRPCResponse
-import io.modelcontextprotocol.kotlin.sdk.InitializeResult
 import io.modelcontextprotocol.kotlin.sdk.shared.AbstractTransport
+import java.security.SecureRandom
+import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import kotlinx.io.readByteArray
@@ -47,9 +51,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
-import java.security.SecureRandom
-import java.util.Base64
-import java.util.concurrent.ConcurrentHashMap
 
 /** The largest JSON-RPC body `/mcp` reads. A plan of 50 sets for a dozen exercises is a few kilobytes. */
 private const val MAX_MCP_BODY_BYTES = 1L * 1024 * 1024
@@ -203,6 +204,8 @@ private suspend fun ApplicationCall.mcpPrincipal(config: ServerConfig, accounts:
     val header = runCatching { request.parseAuthorizationHeader() }.getOrNull() as? HttpAuthHeader.Single
     val token = header?.takeIf { it.authScheme.equals("Bearer", ignoreCase = true) }?.blob
     val principal = token?.let { accounts.authenticate(it) }
+    // Only a session can be unconfirmed (no other token is issued before the email is), but a session works here too.
+    if (principal != null && !principal.emailVerified) throw emailNotConfirmed()
     if (principal != null) return principal
     throw ApiException(
         HttpStatusCode.Unauthorized,

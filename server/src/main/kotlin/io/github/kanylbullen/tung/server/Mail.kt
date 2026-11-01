@@ -90,7 +90,16 @@ class WelcomeMail(
     private var day = -1L
     private var sentToday = 0
 
-    fun account(email: String, language: String?) = send { url -> accountMessage(email, swedish(language), url, testInvite) }
+    /** Whether this server sends mail at all; email verification ([Accounts.verifiesEmail]) depends on it. */
+    val canSend: Boolean get() = mailer != null && publicUrl != null
+
+    /** The welcome to a new account; with [confirmToken], it asks to confirm the address by its link first. */
+    fun account(email: String, language: String?, confirmToken: String? = null) =
+        send { url -> accountMessage(email, swedish(language), url, testInvite, confirmToken?.let { confirmLink(url, it) }) }
+
+    /** A new confirmation link, asked for from the app. */
+    fun confirmAgain(email: String, language: String?, token: String) =
+        send { url -> confirmMessage(email, swedish(language), confirmLink(url, token)) }
 
     fun tester(email: String, language: String?) = send { url -> testerMessage(email, swedish(language), url) }
 
@@ -140,16 +149,19 @@ class WelcomeMail(
         const val MAX_WELCOME_MAILS_PER_DAY = 200
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 
-        internal fun accountMessage(email: String, swedish: Boolean, url: String, testInvite: Boolean = false): MailMessage {
+        /** The page that confirms an address: `GET /verify-email?token=…` (SiteRoutes). */
+        internal fun confirmLink(url: String, token: String) = "$url/verify-email?token=$token"
+
+        internal fun accountMessage(email: String, swedish: Boolean, url: String, testInvite: Boolean = false, confirmLink: String? = null): MailMessage {
             val host = URI(url).host ?: url
             return if (swedish) {
                 MailMessage(
                     email,
-                    "Välkommen till Tung",
+                    if (confirmLink != null) "Bekräfta din e-post för Tung" else "Välkommen till Tung",
                     """
                     |Hej!
                     |
-                    |Ditt Tung-konto på $host är klart. Din träning synkas nu mellan dina enheter och webbappen.
+                    |${if (confirmLink != null) "Ditt Tung-konto på $host är skapat. Bekräfta adressen, så börjar din träning synkas mellan dina enheter och webbappen:\n\n$confirmLink\n\nLänken fungerar i sju dagar." else "Ditt Tung-konto på $host är klart. Din träning synkas nu mellan dina enheter och webbappen."}
                     |
                     |Tung är i beta. Appen och servern kan ha fel och störningar. Tjänsten är gratis och drivs på bästa förmåga, utan garantier under testperioden om att den finns kvar eller fungerar. Din träning finns alltid kvar på telefonen också.
                     |
@@ -168,11 +180,11 @@ class WelcomeMail(
             } else {
                 MailMessage(
                     email,
-                    "Welcome to Tung",
+                    if (confirmLink != null) "Confirm your email for Tung" else "Welcome to Tung",
                     """
                     |Hi,
                     |
-                    |Your Tung account on $host is ready. Your training now syncs between your devices and the web app.
+                    |${if (confirmLink != null) "Your Tung account on $host is created. Confirm this address, and your training starts syncing between your devices and the web app:\n\n$confirmLink\n\nThe link works for seven days." else "Your Tung account on $host is ready. Your training now syncs between your devices and the web app."}
                     |
                     |Tung is in beta. The app and the server can have bugs and outages. The service is free and run on a best-effort basis, with no guarantee during the test period that it stays available or keeps working. Your training always stays on your phone as well.
                     |
@@ -190,6 +202,45 @@ class WelcomeMail(
                 )
             }
         }
+
+        internal fun confirmMessage(email: String, swedish: Boolean, confirmLink: String): MailMessage =
+            if (swedish) {
+                MailMessage(
+                    email,
+                    "Bekräfta din e-post för Tung",
+                    """
+                    |Hej!
+                    |
+                    |Här är en ny länk för att bekräfta adressen till ditt Tung-konto. När den är bekräftad börjar träningen synkas:
+                    |
+                    |$confirmLink
+                    |
+                    |Länken fungerar i sju dagar. Tidigare länkar fungerar inte längre.
+                    |
+                    |Har du inte bett om det här? Strunta i mejlet.
+                    |
+                    |Tung
+                    """.trimMargin(),
+                )
+            } else {
+                MailMessage(
+                    email,
+                    "Confirm your email for Tung",
+                    """
+                    |Hi,
+                    |
+                    |Here is a new link to confirm the address of your Tung account. Once it is confirmed, your training starts syncing:
+                    |
+                    |$confirmLink
+                    |
+                    |The link works for seven days. Earlier links no longer work.
+                    |
+                    |Didn't ask for this? Ignore this email.
+                    |
+                    |Tung
+                    """.trimMargin(),
+                )
+            }
 
         internal fun testerMessage(email: String, swedish: Boolean, url: String): MailMessage =
             if (swedish) {

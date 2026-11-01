@@ -6,11 +6,13 @@ import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.ApiTokens
 import io.github.kanylbullen.tung.server.BEARER
 import io.github.kanylbullen.tung.server.Db
+import io.github.kanylbullen.tung.server.RequireConfirmedEmail
 import io.github.kanylbullen.tung.server.SessionDto
 import io.github.kanylbullen.tung.server.TokenPrincipal
 import io.github.kanylbullen.tung.server.Tokens
 import io.github.kanylbullen.tung.server.forbidden
 import io.github.kanylbullen.tung.server.lockUser
+import io.github.kanylbullen.tung.server.rateLimited
 import io.github.kanylbullen.tung.server.requireLiveToken
 import io.github.kanylbullen.tung.server.unauthorized
 import io.ktor.http.HttpStatusCode
@@ -102,6 +104,7 @@ fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::cur
     val random = SecureRandom()
 
     authenticate(BEARER) {
+        install(RequireConfirmedEmail)
         post("/link/start") {
             val principal = call.principal<TokenPrincipal>()
                 ?: throw unauthorized("unauthorized", "Send a valid API token as 'Authorization: Bearer tung_…'.")
@@ -184,9 +187,6 @@ private const val ALL_CLIENTS = "*"
 
 private fun invalidCode() =
     ApiException(HttpStatusCode.NotFound, "invalid_code", "That code is not valid. A code works once, for ten minutes; ask for a new one.")
-
-private fun rateLimited() =
-    ApiException(HttpStatusCode.TooManyRequests, "rate_limited", "Too many requests. Wait a minute and try again.")
 
 /**
  * At most [limit] acquisitions per key in any [windowMillis]. In memory, so

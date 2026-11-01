@@ -63,7 +63,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             is SyncResult.Success, SyncResult.NotSignedIn -> Result.success()
             is SyncResult.Failed -> when (result.failure) {
                 SyncFailure.NETWORK, SyncFailure.SERVER -> Result.retry()
-                SyncFailure.SIGNED_OUT, SyncFailure.REJECTED -> Result.failure()
+                SyncFailure.SIGNED_OUT, SyncFailure.REJECTED, SyncFailure.EMAIL_NOT_VERIFIED -> Result.failure()
             }
         }
     }

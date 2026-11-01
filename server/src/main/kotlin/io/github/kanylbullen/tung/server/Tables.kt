@@ -15,7 +15,26 @@ object Users : Table("users") {
     /** V10: the `sub` of the linked Google account, null when none is linked. */
     val googleSub = text("google_sub").nullable()
     val createdAt = long("created_at")
+    /**
+     * V14: when the email was proven (the emailed link, or Google), null while
+     * it is not; 0 for an account from before verification, counted verified
+     * but proving nothing ([Accounts], [Admins]).
+     */
+    val emailVerifiedAt = long("email_verified_at").nullable()
     override val primaryKey = PrimaryKey(id)
+}
+
+/** V14: one-use links sent by email, by the SHA-256 of their token. */
+object EmailTokens : Table("email_tokens") {
+    val tokenHash = text("token_hash")
+    val userId = text("user_id")
+    /** [KIND_VERIFY] (or `reset`). */
+    val kind = text("kind")
+    val createdAt = long("created_at")
+    val expiresAt = long("expires_at")
+    override val primaryKey = PrimaryKey(tokenHash)
+
+    const val KIND_VERIFY = "verify"
 }
 
 object ApiTokens : Table("api_tokens") {

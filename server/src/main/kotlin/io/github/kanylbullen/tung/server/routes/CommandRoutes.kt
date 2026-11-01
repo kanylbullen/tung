@@ -6,6 +6,7 @@ import io.github.kanylbullen.tung.core.command.CommandWire
 import io.github.kanylbullen.tung.core.command.WireDecoding
 import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.BEARER
+import io.github.kanylbullen.tung.server.RequireConfirmedEmail
 import io.github.kanylbullen.tung.server.TokenPrincipal
 import io.github.kanylbullen.tung.server.Tokens
 import io.github.kanylbullen.tung.server.badRequest
@@ -43,6 +44,7 @@ private const val MAX_COMMAND_BODY_BYTES = 256L * 1024
 fun Route.commandRoutes(commands: CommandService) {
     route("/api/v1") {
         authenticate(BEARER) {
+            install(RequireConfirmedEmail)
             post("/commands/{name}") {
                 val principal = call.principal<TokenPrincipal>()
                     ?: throw unauthorized("unauthorized", "Send a valid API token as 'Authorization: Bearer tung_…'.")

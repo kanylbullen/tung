@@ -230,6 +230,12 @@
     <string name="sync_error_server">Servern fick ett fel vid senaste synken. Synken försöker igen senare.</string>
     <string name="sync_error_signed_out">Servern loggade ut dig. Logga in igen för att fortsätta synka.</string>
     <string name="sync_error_rejected">Servern avvisade senaste synken. Kontrollera att appen och servern är uppdaterade.</string>
+    <string name="sync_error_email_not_verified">Inte synkat än: din e-post är inte bekräftad.</string>
+    <string name="sync_confirm_email">Bekräfta din e-post för att börja synka: öppna länken vi skickade till %1$s och tryck sedan på Synka nu.</string>
+    <string name="sync_confirm_resend">Skicka länken igen</string>
+    <string name="sync_confirm_sent">Vi har skickat en ny länk. Titta i inkorgen.</string>
+    <string name="sync_confirm_rate_limited">Du har redan bett om flera länkar. Vänta en stund och försök igen.</string>
+    <string name="sync_confirm_failed">Kunde inte skicka en ny länk. Kontrollera uppkopplingen och försök igen.</string>
     <string name="sync_error_url">Ange serverns adress, till exempel https://tung.example.org.</string>
     <string name="sync_error_url_https">Använd https://. Okrypterad http fungerar bara mot localhost och adresser i ditt eget nätverk.</string>
     <string name="sync_error_fields">Ange e-post och lösenord.</string>
