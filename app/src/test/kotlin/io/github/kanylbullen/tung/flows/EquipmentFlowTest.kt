@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -86,7 +87,7 @@ class EquipmentFlowTest : FlowTest() {
     fun thePickerKeepsToItAndKeepsTheWorkoutsExercises() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
-        clickText(str(R.string.workout_add_exercise))
+        clickText(str(Res.string.workout_add_exercise))
         waitForText(str(R.string.picker_title))
         assertShown(chip(str(R.string.my_equipment_chip_all)))
 

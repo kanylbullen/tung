@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager
@@ -111,7 +112,7 @@ class OngoingNotificationFlowTest : FlowTest() {
         waitFor(isDialog())
         screenshot("1-finish-dialog-from-the-notification")
         assertEquals(1, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL"))
-        clickInDialog(str(R.string.workout_finish_confirm))
+        clickInDialog(str(Res.string.workout_finish_confirm))
 
         waitUntil { ongoing() == null }
         assertEquals(0, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL"))

@@ -137,10 +137,10 @@ class RoutinesTabFlowTest : FlowTest() {
         screenshot("5-tab-start-enabled")
         compose.onNode(start).performClick()
 
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(benchPress)
-        waitForDescription(str(R.string.workout_mark_done, 3))
-        compose.onNode(hasContentDescription(str(R.string.workout_mark_done, 4))).assertDoesNotExist()
+        waitForDescription(str(Res.string.workout_mark_done, 3))
+        compose.onNode(hasContentDescription(str(Res.string.workout_mark_done, 4))).assertDoesNotExist()
         assertEquals(
             1,
             count("SELECT COUNT(*) FROM workout w JOIN routine r ON w.routineId = r.id WHERE w.endedAt IS NULL AND r.name = 'Legs'"),

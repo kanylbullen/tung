@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.ui
 
+import io.github.kanylbullen.tung.ui.resources.*
 import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -64,7 +66,7 @@ import io.github.kanylbullen.tung.ui.settings.SettingsGroup
 import io.github.kanylbullen.tung.ui.settings.settingsGraph
 import io.github.kanylbullen.tung.ui.summary.SummaryScreen
 import io.github.kanylbullen.tung.ui.theme.Tung
-import io.github.kanylbullen.tung.ui.workout.ActiveWorkoutScreen
+import io.github.kanylbullen.tung.ui.workout.ActiveWorkoutRoute
 
 private object Routes {
     const val HOME = "home"
@@ -329,7 +331,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
             }
             composable(Routes.WORKOUT, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
-                ActiveWorkoutScreen(
+                ActiveWorkoutRoute(
                     workoutId = id,
                     askToFinish = finishRequest == id,
                     onFinishAsked = { finishRequest = null },
@@ -383,6 +385,6 @@ private fun tabIcon(route: String): Painter = when (route) {
     Routes.HISTORY -> painterResource(R.drawable.ic_history)
     Routes.EXERCISES -> painterResource(R.drawable.ic_dumbbell)
     Routes.ROUTINES -> rememberVectorPainter(Icons.AutoMirrored.Filled.List)
-    Routes.PROGRESS -> painterResource(R.drawable.ic_trending_up)
+    Routes.PROGRESS -> painterResource(Res.drawable.ic_trending_up)
     else -> rememberVectorPainter(Icons.Filled.Home)
 }

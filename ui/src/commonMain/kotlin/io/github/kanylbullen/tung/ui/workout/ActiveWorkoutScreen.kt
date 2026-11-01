@@ -1,15 +1,8 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import org.jetbrains.compose.resources.PluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import io.github.kanylbullen.tung.ui.resources.*
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import android.view.HapticFeedbackConstants
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.PluralsRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.tween
@@ -66,6 +59,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.intl.Locale
+import io.github.kanylbullen.tung.ui.common.KeepScreenOn
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
@@ -84,11 +80,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -100,21 +92,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.LoggedSet
-import io.github.kanylbullen.tung.ui.progress.ProgressSheet
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.res.painterResource
-import io.github.kanylbullen.tung.TungApp
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.core.isLogged
@@ -125,7 +108,6 @@ import io.github.kanylbullen.tung.core.voice.VoiceLanguage
 import io.github.kanylbullen.tung.core.voice.parseUtterance
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
-import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.clockText
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.localWeight
@@ -135,7 +117,6 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 import io.github.kanylbullen.tung.voice.SpeechErrorKind
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
-import kotlinx.coroutines.flow.map
 
 private enum class Field { WEIGHT, REPS }
 
@@ -149,7 +130,12 @@ private data class EditTarget(val setId: String, val field: Field, val firstTime
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveWorkoutScreen(
-    workoutId: String,
+    vm: ActiveWorkoutViewModel,
+    platform: WorkoutPlatform,
+    /** Whether the in-app assistant is set up, for "Ask the assistant" on words the grammar missed. */
+    assistantConfigured: Boolean,
+    /** The progress sheet for one exercise (the phone's `ProgressSheet`): id, displayed name, the set it would log, dismiss. */
+    progressSheet: @Composable (exerciseId: String, exerciseName: String, proposed: LoggedSet?, onDismiss: () -> Unit) -> Unit,
     onBack: () -> Unit,
     /** The ongoing notification's "Finish" was tapped: open the finish dialog once, then call [onFinishAsked]. */
     askToFinish: Boolean = false,
@@ -161,53 +147,25 @@ fun ActiveWorkoutScreen(
     /** "Ask the assistant" on words the voice grammar did not understand: the Assistant screen with them. */
     onAskAssistant: (String) -> Unit = {},
 ) {
-    val container = appContainer()
-    val vm: ActiveWorkoutViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer {
-                ActiveWorkoutViewModel(
-                    workoutId = workoutId,
-                    repo = container.workoutRepository,
-                    commands = container.commands,
-                    restTimer = container.restTimer,
-                    savedState = createSavedStateHandle(),
-                )
-            }
-        }
-    )
     val state by vm.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val discardedMessage = stringResource(R.string.workout_discarded)
+    val discardedMessage = stringResource(Res.string.workout_discarded)
     val currentOnFinished by rememberUpdatedState(onFinished)
     val currentOnDiscarded by rememberUpdatedState(onDiscarded)
 
     // Between sets the phone lies on a bench; the screen must not sleep.
-    val view = LocalView.current
-    DisposableEffect(view) {
-        view.keepScreenOn = true
-        onDispose { view.keepScreenOn = false }
-    }
-
-    // Asked once, the first time a workout is on screen, for the ongoing notification and "Rest over".
-    // Denied is fine: the workout, the countdown and the buzz still work.
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    KeepScreenOn()
 
     LaunchedEffect(vm) {
         vm.events.collect { event ->
             when (event) {
                 is ActiveWorkoutEvent.Finished -> {
-                    if (!event.saved) Toast.makeText(context, discardedMessage, Toast.LENGTH_LONG).show()
+                    if (!event.saved) platform.showMessage(discardedMessage)
                     currentOnFinished(event.workoutId, event.saved)
                 }
                 is ActiveWorkoutEvent.Discarded -> currentOnDiscarded()
-                ActiveWorkoutEvent.AskForNotifications -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                        PackageManager.PERMISSION_GRANTED
-                    ) {
-                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                }
+                // Asked once, the first time a workout is on screen, for the ongoing notification and
+                // "Rest over". Denied is fine: the workout, the countdown and the buzz still work.
+                ActiveWorkoutEvent.AskForNotifications -> platform.askForNotifications()
             }
         }
     }
@@ -227,13 +185,13 @@ fun ActiveWorkoutScreen(
     // Voice (CLAUDE.md, "Voice"): the grammar in core turns what is heard into an intent, voiceAction
     // into what the ViewModel's own functions do. The controller runs on this screen's scope, so it
     // stops when the screen leaves; it also stops when the app goes to the background.
-    val app = context.applicationContext as TungApp
     val voiceScope = rememberCoroutineScope()
-    val voice = remember { VoiceController(app.createSpeechInput(), voiceScope) }
+    val voice = remember { VoiceController(platform.speech, voiceScope) }
     val voiceState by voice.state.collectAsStateWithLifecycle()
-    val aiConfigured by remember { container.aiSettings.config.map { it.configured } }.collectAsStateWithLifecycle(false)
-    val locale = LocalConfiguration.current.locales[0]
-    val language = VoiceLanguage.of(locale.toLanguageTag())
+    val aiConfigured = assistantConfigured
+    // The app's language, which the platform keeps as the default locale.
+    val locale = Locale.current.toLanguageTag()
+    val language = VoiceLanguage.of(locale)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(voice, lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) voice.stop() }
@@ -261,37 +219,21 @@ fun ActiveWorkoutScreen(
         }
         echo
     }
-    var pendingHandsFree by remember { mutableStateOf<Boolean?>(null) }
     fun startVoice(handsFree: Boolean) {
         if (handsFree) {
-            voice.startHandsFree(locale, handleUtterance) {
-                view.performHapticFeedback(
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CLOCK_TICK,
-                )
-            }
+            voice.startHandsFree(locale, handleUtterance) { platform.confirmHaptic() }
         } else {
             voice.listenOnce(locale, handleUtterance)
         }
     }
-    // RECORD_AUDIO is asked for the first time the mic is used; denied, the echo says how to allow it.
-    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        val handsFree = pendingHandsFree
-        pendingHandsFree = null
-        when {
-            !granted -> voice.show(VoiceEcho.Failed(SpeechErrorKind.PERMISSION))
-            handsFree != null -> startVoice(handsFree)
-        }
-    }
+    // The microphone is asked for the first time it is used; denied, the echo says how to allow it.
     fun onMic(handsFree: Boolean) {
         if (voice.active && !handsFree) {
             voice.stop()
             return
         }
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            startVoice(handsFree)
-        } else {
-            pendingHandsFree = handsFree
-            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        platform.withMicrophone { granted ->
+            if (granted) startVoice(handsFree) else voice.show(VoiceEcho.Failed(SpeechErrorKind.PERMISSION))
         }
     }
 
@@ -357,7 +299,7 @@ fun ActiveWorkoutScreen(
                     if (!state.loading && !state.missing) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             val clock = clockText(now - state.startedAt)
-                            val description = stringResource(R.string.workout_elapsed_description, clock)
+                            val description = stringResource(Res.string.workout_elapsed_description, clock)
                             Text(
                                 clock,
                                 style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.8f),
@@ -374,7 +316,7 @@ fun ActiveWorkoutScreen(
                     if (!state.loading && !state.missing) {
                         TextButton(onClick = { confirmFinish = true }, modifier = Modifier.heightIn(min = 48.dp)) {
                             Text(
-                                stringResource(R.string.workout_finish),
+                                stringResource(Res.string.workout_finish),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = Tung.colors.accentText,
                             )
@@ -414,7 +356,7 @@ fun ActiveWorkoutScreen(
                 val echoText = if (echoShown && echo != null) voiceEchoText(echo) else null
                 val line = voiceState.partial
                     ?: echoText
-                    ?: if (voiceState.listening && !voiceState.handsFree) stringResource(R.string.voice_listening) else null
+                    ?: if (voiceState.listening && !voiceState.handsFree) stringResource(Res.string.voice_listening) else null
                 LogSetBar(
                     sticky = sticky,
                     voice = voiceState,
@@ -453,7 +395,7 @@ fun ActiveWorkoutScreen(
         when {
             state.loading -> Box(Modifier.fillMaxSize().padding(padding))
             state.missing -> Text(
-                stringResource(R.string.workout_not_found),
+                stringResource(Res.string.workout_not_found),
                 style = MaterialTheme.typography.bodyLarge,
                 color = Tung.colors.muted,
                 modifier = Modifier.padding(padding).padding(20.dp),
@@ -544,12 +486,11 @@ fun ActiveWorkoutScreen(
             // The set "Log set" would log if it is this exercise's, else the exercise's first open set.
             val set = current?.takeIf { it.exercise.workoutExerciseId == weId }?.set
                 ?: exercise.sets.firstOrNull { !it.completed }
-            ProgressSheet(
-                exerciseId = exercise.exerciseId,
-                exerciseName = exerciseDisplayName(exercise.nameKey, exercise.name),
-                proposed = set?.let { LoggedSet(it.weightKg, it.reps) },
-                onDismiss = { progressFor = null },
-            )
+            progressSheet(
+                exercise.exerciseId,
+                exerciseDisplayName(exercise.nameKey, exercise.name),
+                set?.let { LoggedSet(it.weightKg, it.reps) },
+            ) { progressFor = null }
         }
     }
 
@@ -574,26 +515,26 @@ fun ActiveWorkoutScreen(
             onDismissRequest = { confirmFinish = false },
             containerColor = Tung.colors.raised,
             tonalElevation = 0.dp,
-            title = { Text(stringResource(R.string.workout_finish_title)) },
+            title = { Text(stringResource(Res.string.workout_finish_title)) },
             text = {
                 val body = when {
-                    empty -> stringResource(R.string.workout_finish_body_empty)
-                    unlogged == 0 && emptyExercises == 0 -> stringResource(R.string.workout_finish_body_clean)
+                    empty -> stringResource(Res.string.workout_finish_body_empty)
+                    unlogged == 0 && emptyExercises == 0 -> stringResource(Res.string.workout_finish_body_clean)
                     else -> listOfNotNull(
-                        unlogged.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.workout_finish_unlogged, it, it) },
-                        emptyExercises.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.workout_finish_empty_exercises, it, it) },
+                        unlogged.takeIf { it > 0 }?.let { pluralStringResource(Res.plurals.workout_finish_unlogged, it, it) },
+                        emptyExercises.takeIf { it > 0 }?.let { pluralStringResource(Res.plurals.workout_finish_empty_exercises, it, it) },
                     ).joinToString(" ")
                 }
                 Text(body, color = Tung.colors.muted)
             },
             confirmButton = {
                 TextButton(onClick = { confirmFinish = false; vm.finish() }) {
-                    Text(stringResource(R.string.workout_finish_confirm), color = Tung.colors.accentText)
+                    Text(stringResource(Res.string.workout_finish_confirm), color = Tung.colors.accentText)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmFinish = false }) {
-                    Text(stringResource(R.string.workout_keep_training), color = Tung.colors.text)
+                    Text(stringResource(Res.string.workout_keep_training), color = Tung.colors.text)
                 }
             },
         )
@@ -615,12 +556,12 @@ fun ActiveWorkoutScreen(
             containerColor = Tung.colors.raised,
             tonalElevation = 0.dp,
             title = {
-                Text(pluralStringResource(R.plurals.workout_remove_exercise_title, logged, exerciseDisplayName(exercise.nameKey, exercise.name), logged))
+                Text(pluralStringResource(Res.plurals.workout_remove_exercise_title, logged, exerciseDisplayName(exercise.nameKey, exercise.name), logged))
             },
-            text = { Text(stringResource(R.string.workout_remove_exercise_body), color = Tung.colors.muted) },
+            text = { Text(stringResource(Res.string.workout_remove_exercise_body), color = Tung.colors.muted) },
             confirmButton = {
                 TextButton(onClick = { confirmRemoveId = null; vm.removeExercise(exercise.workoutExerciseId) }) {
-                    Text(stringResource(R.string.workout_remove_exercise_confirm), color = Tung.colors.accentText)
+                    Text(stringResource(Res.string.workout_remove_exercise_confirm), color = Tung.colors.accentText)
                 }
             },
             dismissButton = {
@@ -665,7 +606,7 @@ private fun LogSetBar(
             VoiceEchoLine(
                 text = line,
                 muted = lineMuted,
-                actionLabel = askAssistant?.let { stringResource(R.string.voice_ask_assistant) },
+                actionLabel = askAssistant?.let { stringResource(Res.string.voice_ask_assistant) },
                 onAction = { askAssistant?.invoke() },
             )
         }
@@ -674,18 +615,18 @@ private fun LogSetBar(
             val text = when (sticky) {
                 is StickyButton.LogSet -> {
                     val set = sticky.current.set
-                    val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
+                    val reps = if (set.reps > 0) set.reps.toString() else stringResource(Res.string.workout_reps_empty)
                     val name = exerciseDisplayName(sticky.current.exercise.nameKey, sticky.current.exercise.name)
-                    stringResource(R.string.workout_log_set, name, localWeight(set.weightKg), reps)
+                    stringResource(Res.string.workout_log_set, name, localWeight(set.weightKg), reps)
                 }
                 is StickyButton.AddSet -> {
                     val name = exerciseDisplayName(sticky.exercise.nameKey, sticky.exercise.name)
                     val set = sticky.copyOf
                     if (set == null) {
-                        stringResource(R.string.workout_sticky_add_set_empty, name)
+                        stringResource(Res.string.workout_sticky_add_set_empty, name)
                     } else {
-                        val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
-                        stringResource(R.string.workout_sticky_add_set, name, localWeight(set.weightKg), reps)
+                        val reps = if (set.reps > 0) set.reps.toString() else stringResource(Res.string.workout_reps_empty)
+                        stringResource(Res.string.workout_sticky_add_set, name, localWeight(set.weightKg), reps)
                     }
                 }
             }
@@ -699,8 +640,8 @@ private fun LogSetBar(
 private fun RestCountdown(timer: RestTimer, now: Long, onClick: () -> Unit) {
     // Rounded up, so 89.4 s left reads 1:30 and 0:00 never shows; capped, so a clock a tick behind never shows 1:31.
     val left = clockText(minOf(timer.remainingAt(now) + 999, timer.durationMillis))
-    val title = stringResource(R.string.rest_title)
-    val remaining = stringResource(R.string.rest_remaining, left)
+    val title = stringResource(Res.string.rest_title)
+    val remaining = stringResource(Res.string.rest_remaining, left)
     Box(
         modifier = Modifier
             .heightIn(min = 48.dp)
@@ -724,19 +665,19 @@ private fun RestCountdown(timer: RestTimer, now: Long, onClick: () -> Unit) {
 
 @Composable
 private fun RestControls(onSkip: () -> Unit, onAdd: () -> Unit) {
-    val addDescription = stringResource(R.string.rest_add_description)
+    val addDescription = stringResource(Res.string.rest_add_description)
     Row(
         modifier = Modifier.fillMaxWidth().background(Tung.colors.background).padding(start = 56.dp, end = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         TextButton(onClick = onSkip, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(stringResource(R.string.rest_skip), style = MaterialTheme.typography.labelLarge, color = Tung.colors.text)
+            Text(stringResource(Res.string.rest_skip), style = MaterialTheme.typography.labelLarge, color = Tung.colors.text)
         }
         TextButton(
             onClick = onAdd,
             modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = addDescription },
         ) {
-            Text(stringResource(R.string.rest_add), style = MaterialTheme.typography.labelLarge, color = Tung.colors.text)
+            Text(stringResource(Res.string.rest_add), style = MaterialTheme.typography.labelLarge, color = Tung.colors.text)
         }
     }
 }
@@ -810,7 +751,7 @@ private fun WorkoutList(
         if (state.exercises.isEmpty()) {
             item(key = EMPTY_KEY) {
                 Text(
-                    stringResource(R.string.workout_empty),
+                    stringResource(Res.string.workout_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Tung.colors.muted,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -849,7 +790,7 @@ private fun WorkoutList(
             }
             item(key = addSetKey(exercise.workoutExerciseId)) {
                 val description = stringResource(
-                    R.string.workout_add_set_description,
+                    Res.string.workout_add_set_description,
                     exerciseDisplayName(exercise.nameKey, exercise.name),
                 )
                 TextButton(
@@ -860,7 +801,7 @@ private fun WorkoutList(
                         .semantics { contentDescription = description },
                 ) {
                     Text(
-                        stringResource(R.string.workout_add_set),
+                        stringResource(Res.string.workout_add_set),
                         style = MaterialTheme.typography.labelLarge,
                         color = Tung.colors.text,
                     )
@@ -868,7 +809,7 @@ private fun WorkoutList(
             }
         }
         item(key = ADD_EXERCISE_KEY) {
-            val text = stringResource(R.string.workout_add_exercise)
+            val text = stringResource(Res.string.workout_add_exercise)
             Box(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
                 if (state.exercises.isEmpty()) {
                     PrimaryButton(text = text, onClick = onAddExercise)
@@ -890,7 +831,7 @@ private fun ExerciseHeader(
     onRemove: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val selectDescription = stringResource(R.string.workout_select_exercise, name)
+    val selectDescription = stringResource(Res.string.workout_select_exercise, name)
     Row(
         modifier = Modifier.fillMaxWidth().padding(end = 4.dp, top = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -916,8 +857,8 @@ private fun ExerciseHeader(
         }
         IconButton(onClick = onProgress) {
             Icon(
-                painterResource(R.drawable.ic_trending_up),
-                contentDescription = stringResource(R.string.workout_progress_for, name),
+                painterResource(Res.drawable.ic_trending_up),
+                contentDescription = stringResource(Res.string.workout_progress_for, name),
                 tint = Tung.colors.muted,
             )
         }
@@ -925,7 +866,7 @@ private fun ExerciseHeader(
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
                     Icons.Filled.MoreVert,
-                    contentDescription = stringResource(R.string.workout_exercise_menu, name),
+                    contentDescription = stringResource(Res.string.workout_exercise_menu, name),
                     tint = Tung.colors.muted,
                 )
             }
@@ -936,11 +877,11 @@ private fun ExerciseHeader(
                 shape = TungCorner,
             ) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.workout_rest_timer)) },
+                    text = { Text(stringResource(Res.string.workout_rest_timer)) },
                     onClick = { menuOpen = false; onRestTimer() },
                 )
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.workout_remove_exercise)) },
+                    text = { Text(stringResource(Res.string.workout_remove_exercise)) },
                     onClick = { menuOpen = false; onRemove() },
                 )
             }
@@ -1005,7 +946,7 @@ private fun SwipeableSetRow(
     LaunchedEffect(swipe) {
         snapshotFlow { swipe.settledValue }.collect { currentOnOpenChange(it == RowSwipe.Open) }
     }
-    val deleteLabel = stringResource(R.string.workout_delete_set)
+    val deleteLabel = stringResource(Res.string.workout_delete_set)
     // The accessible way to delete: a custom action on every part of the row a
     // screen reader can focus. The row container itself is never focused, so an
     // action there would be out of reach.
@@ -1016,7 +957,7 @@ private fun SwipeableSetRow(
     val revealed by remember(swipe) { derivedStateOf { swipe.requireOffset() < 0f } }
     Box(Modifier.fillMaxWidth()) {
         if (revealed) {
-            val description = stringResource(R.string.workout_delete_set_number, set.number)
+            val description = stringResource(Res.string.workout_delete_set_number, set.number)
             Box(
                 modifier = Modifier.matchParentSize().background(Tung.colors.danger),
                 contentAlignment = Alignment.CenterEnd,
@@ -1030,7 +971,7 @@ private fun SwipeableSetRow(
                         .semantics { contentDescription = description },
                 ) {
                     Text(
-                        stringResource(R.string.workout_delete),
+                        stringResource(Res.string.workout_delete),
                         style = MaterialTheme.typography.labelLarge,
                         color = Tung.colors.onDanger,
                     )
@@ -1066,10 +1007,10 @@ private fun SetRow(
     onToggle: () -> Unit,
 ) {
     val weight = localWeight(set.weightKg)
-    val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.workout_reps_empty)
-    val setDescription = stringResource(R.string.workout_set_number_description, set.number)
-    val selectDescription = stringResource(R.string.workout_select_set, set.number)
-    val currentState = stringResource(R.string.workout_current_set)
+    val reps = if (set.reps > 0) set.reps.toString() else stringResource(Res.string.workout_reps_empty)
+    val setDescription = stringResource(Res.string.workout_set_number_description, set.number)
+    val selectDescription = stringResource(Res.string.workout_select_set, set.number)
+    val currentState = stringResource(Res.string.workout_current_set)
     val accent = Tung.colors.accent
     // Any other un-ticked set can be made the current one by tapping its number.
     val selectable = !set.completed && !isCurrent
@@ -1109,22 +1050,22 @@ private fun SetRow(
                 NumberCell(
                     value = weight,
                     unit = stringResource(Res.string.workout_unit_kg),
-                    description = stringResource(R.string.workout_edit_weight, weight),
+                    description = stringResource(Res.string.workout_edit_weight, weight),
                     actions = deleteAction,
                     onClick = onEditWeight,
                 )
-                Text(stringResource(R.string.times_sign), style = Tung.numbers.inline, color = Tung.colors.muted)
+                Text(stringResource(Res.string.times_sign), style = Tung.numbers.inline, color = Tung.colors.muted)
                 NumberCell(
                     value = reps,
                     unit = stringResource(Res.string.workout_unit_reps),
-                    description = stringResource(R.string.workout_edit_reps, reps),
+                    description = stringResource(Res.string.workout_edit_reps, reps),
                     actions = deleteAction,
                     onClick = onEditReps,
                 )
             }
             set.previous?.let { prev ->
                 Text(
-                    stringResource(R.string.workout_previous, localWeight(prev.weightKg), prev.reps),
+                    stringResource(Res.string.workout_previous, localWeight(prev.weightKg), prev.reps),
                     style = Tung.numbers.inline,
                     color = Tung.colors.muted,
                     modifier = Modifier.padding(start = 8.dp),
@@ -1173,7 +1114,7 @@ private fun DoneCheck(
     val ring by animateColorAsState(if (completed) Tung.colors.accent else Tung.colors.muted, label = "check-ring")
     val tint by animateColorAsState(if (completed) Tung.colors.onAccent else Color.Transparent, label = "check-tint")
     val description = stringResource(
-        if (completed) R.string.workout_mark_undone else R.string.workout_mark_done,
+        if (completed) Res.string.workout_mark_undone else Res.string.workout_mark_done,
         number,
     )
     Box(
@@ -1203,7 +1144,7 @@ private val CURRENT_BAR_WIDTH = 3.dp
 
 /** "Increase by 1 kilo", "Increase by 2.5 kilos": a whole step picks its plural, a fraction is "other". */
 @Composable
-private fun stepDescription(@PluralsRes id: Int, stepKg: Double): String {
+private fun stepDescription(id: PluralStringResource, stepKg: Double): String {
     val quantity = if (stepKg % 1.0 == 0.0) stepKg.toInt() else 2
     return pluralStringResource(id, quantity, localWeight(stepKg))
 }
@@ -1211,19 +1152,19 @@ private fun stepDescription(@PluralsRes id: Int, stepKg: Double): String {
 @Composable
 private fun weightSpec(initial: String): NumberInputSpec {
     return NumberInputSpec(
-        title = stringResource(R.string.input_weight_title),
+        title = stringResource(Res.string.input_weight_title),
         unit = stringResource(Res.string.workout_unit_kg),
         initialText = initial,
         keyboardType = KeyboardType.Decimal,
-        fieldDescription = stringResource(R.string.input_field_weight),
+        fieldDescription = stringResource(Res.string.input_field_weight),
         minusDescription = { text ->
-            stepDescription(R.plurals.input_minus_weight, WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0))
+            stepDescription(Res.plurals.input_minus_weight, WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0))
         },
         plusDescription = { text ->
-            stepDescription(R.plurals.input_plus_weight, WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0))
+            stepDescription(Res.plurals.input_plus_weight, WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0))
         },
         hint = stringResource(Res.string.input_hint),
-        errorText = stringResource(R.string.input_error_weight),
+        errorText = stringResource(Res.string.input_error_weight),
         doneText = stringResource(Res.string.input_done),
         minusText = stringResource(Res.string.input_minus),
         plusText = stringResource(Res.string.input_plus),
@@ -1233,8 +1174,8 @@ private fun weightSpec(initial: String): NumberInputSpec {
         ruler = WEIGHT_RULER,
         toValue = ::parseWeight,
         fromValue = ::localWeight,
-        rulerDescription = stringResource(R.string.input_ruler_weight),
-        rulerState = { stringResource(R.string.input_ruler_weight_state, localWeight(it)) },
+        rulerDescription = stringResource(Res.string.input_ruler_weight),
+        rulerState = { stringResource(Res.string.input_ruler_weight_state, localWeight(it)) },
     )
 }
 

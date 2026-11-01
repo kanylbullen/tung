@@ -70,7 +70,7 @@ class SuggestionsFlowTest : FlowTest() {
     fun coldStartSuggestsTricepsAfterBiceps() {
         startWorkoutFromHome()
         addExercise("barbell curl", str(R.string.ex_barbell_curl))
-        clickText(str(R.string.workout_add_exercise))
+        clickText(str(Res.string.workout_add_exercise))
 
         val rows = waitForSuggestions()
         screenshot("1-suggested")
@@ -81,7 +81,7 @@ class SuggestionsFlowTest : FlowTest() {
 
         val first = rows.first().name
         compose.onAllNodes(hasTestTag(SUGGESTION_TAG))[0].performClick()
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(first)
         screenshot("2-suggestion-added")
         val exercise = runBlocking {
@@ -101,7 +101,7 @@ class SuggestionsFlowTest : FlowTest() {
 
         startWorkoutFromHome()
         addExercise("barbell curl", str(R.string.ex_barbell_curl))
-        clickText(str(R.string.workout_add_exercise))
+        clickText(str(Res.string.workout_add_exercise))
 
         val rows = waitForSuggestions()
         screenshot("1-learned")
@@ -114,7 +114,7 @@ class SuggestionsFlowTest : FlowTest() {
     fun searchHidesTheSuggestions() {
         startWorkoutFromHome()
         addExercise("barbell curl", str(R.string.ex_barbell_curl))
-        clickText(str(R.string.workout_add_exercise))
+        clickText(str(Res.string.workout_add_exercise))
         waitForSuggestions()
 
         searchPicker("bench")
@@ -132,7 +132,7 @@ class SuggestionsFlowTest : FlowTest() {
     @Test
     fun anEmptyWorkoutHasNoSuggestions() {
         startWorkoutFromHome()
-        clickText(str(R.string.workout_add_exercise))
+        clickText(str(Res.string.workout_add_exercise))
         waitForText(str(R.string.ex_bench_press))
         assertTrue(compose.onAllNodes(hasText(str(R.string.picker_suggested))).fetchSemanticsNodes().isEmpty())
     }

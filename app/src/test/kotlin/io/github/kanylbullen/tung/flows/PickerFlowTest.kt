@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
@@ -24,7 +25,7 @@ class PickerFlowTest : FlowTest() {
     @Test
     fun searchFindsCoreNothingAndExtended() {
         startWorkoutFromHome()
-        clickText(str(R.string.workout_add_exercise))
+        clickText(str(Res.string.workout_add_exercise))
 
         searchPicker("bench")
         waitForText(str(R.string.ex_bench_press))
@@ -54,7 +55,7 @@ class PickerFlowTest : FlowTest() {
         screenshot("3-more-exercises")
 
         clickText(first.displayName)
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(first.displayName)
         screenshot("4-extended-in-workout")
 

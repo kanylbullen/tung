@@ -25,8 +25,8 @@ import org.junit.Test
 
 class RulerFlowTest : FlowTest() {
 
-    private val field get() = compose.onNode(hasContentDescription(str(R.string.input_field_weight)))
-    private val ruler get() = compose.onNode(hasContentDescription(str(R.string.input_ruler_weight)))
+    private val field get() = compose.onNode(hasContentDescription(str(Res.string.input_field_weight)))
+    private val ruler get() = compose.onNode(hasContentDescription(str(Res.string.input_ruler_weight)))
     private val done get() = compose.onNode(hasText(str(Res.string.input_done)))
     private val applyToAll get() = compose.onNode(hasText(str(Res.string.input_apply_all)))
 
@@ -35,8 +35,8 @@ class RulerFlowTest : FlowTest() {
 
     /** The ruler, saying it points at [kilos] (as the app writes it, "82.5"). */
     private fun rulerAt(kilos: String) =
-        hasContentDescription(str(R.string.input_ruler_weight)) and
-            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, str(R.string.input_ruler_weight_state, kilos))
+        hasContentDescription(str(Res.string.input_ruler_weight)) and
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, str(Res.string.input_ruler_weight_state, kilos))
 
     /** Weight, reps and ticked for each set of the workout in progress, in order. */
     private fun activeSets(): List<Triple<Double, Int, Boolean>> =
@@ -60,8 +60,8 @@ class RulerFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
 
-        clickDescription(str(R.string.workout_edit_weight, "0"))
-        waitForDescription(str(R.string.input_field_weight))
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.input_field_weight))
         assertShown(rulerAt("0"))
         screenshot("1-ruler-at-zero")
 
@@ -79,7 +79,7 @@ class RulerFlowTest : FlowTest() {
         screenshot("2-after-swipe")
 
         done.performClick()
-        waitForDescription(str(R.string.workout_edit_weight, text))
+        waitForDescription(str(Res.string.workout_edit_weight, text))
         assertEquals(listOf(kg), activeSets().map { it.first })
     }
 
@@ -91,30 +91,30 @@ class RulerFlowTest : FlowTest() {
     fun stepsFollowTheLocalStep() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
-        clickDescription(str(R.string.workout_edit_weight, "0"))
-        waitForDescription(str(R.string.input_field_weight))
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.input_field_weight))
 
         field.performTextReplacement("20")
-        clickDescription(plural(R.plurals.input_plus_weight, 1, "1"))
+        clickDescription(plural(Res.plurals.input_plus_weight, 1, "1"))
         field.assert(hasText("21"))
         assertShown(rulerAt("21"))
         screenshot("1-twenty-plus-one")
 
         // At 30 the step up is 2.5 and the step down is 1, and the buttons say so.
         field.performTextReplacement("30")
-        clickDescription(plural(R.plurals.input_plus_weight, 2, "2.5"))
+        clickDescription(plural(Res.plurals.input_plus_weight, 2, "2.5"))
         field.assert(hasText("32.5"))
         assertShown(rulerAt("32.5"))
         screenshot("2-thirty-plus")
 
         field.performTextReplacement("30")
-        clickDescription(plural(R.plurals.input_minus_weight, 1, "1"))
+        clickDescription(plural(Res.plurals.input_minus_weight, 1, "1"))
         field.assert(hasText("29"))
         assertShown(rulerAt("29"))
         screenshot("3-thirty-minus")
 
         done.performClick()
-        waitForDescription(str(R.string.workout_edit_weight, "29"))
+        waitForDescription(str(Res.string.workout_edit_weight, "29"))
         assertEquals(listOf(29.0), activeSets().map { it.first })
     }
 
@@ -126,8 +126,8 @@ class RulerFlowTest : FlowTest() {
     fun tappingTheRulerJumpsToATen() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
-        clickDescription(str(R.string.workout_edit_weight, "0"))
-        waitForDescription(str(R.string.input_field_weight))
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.input_field_weight))
         assertShown(rulerAt("0"))
 
         // About 120 dp right of the centre line: some 8 or 9 ticks of 1 kg, so 10 kg.
@@ -141,7 +141,7 @@ class RulerFlowTest : FlowTest() {
         screenshot("1-after-tap")
 
         done.performClick()
-        waitForDescription(str(R.string.workout_edit_weight, text))
+        waitForDescription(str(Res.string.workout_edit_weight, text))
         assertEquals(listOf(kg), activeSets().map { it.first })
     }
 
@@ -153,8 +153,8 @@ class RulerFlowTest : FlowTest() {
     fun typingMovesTheRulerAndWins() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
-        clickDescription(str(R.string.workout_edit_weight, "0"))
-        waitForDescription(str(R.string.input_field_weight))
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.input_field_weight))
 
         field.performTextReplacement("82,5")
         assertShown(rulerAt("82.5"))
@@ -172,7 +172,7 @@ class RulerFlowTest : FlowTest() {
         field.assert(hasText("600"))
 
         done.performClick()
-        waitForDescription(str(R.string.workout_edit_weight, "600"))
+        waitForDescription(str(Res.string.workout_edit_weight, "600"))
         assertEquals(listOf(600.0), activeSets().map { it.first })
     }
 
@@ -188,24 +188,24 @@ class RulerFlowTest : FlowTest() {
         startWorkoutFromHome()
         val benchPress = str(R.string.ex_bench_press)
         addExercise("bench", benchPress)
-        repeat(2) { clickDescription(str(R.string.workout_add_set_description, benchPress)) }
+        repeat(2) { clickDescription(str(Res.string.workout_add_set_description, benchPress)) }
         waitUntil(5_000) { activeSets().size == 3 }
         assertEquals(List(3) { Triple(80.0, 8, false) }, activeSets())
 
-        clickDescription(str(R.string.workout_mark_done, 1))
-        waitForDescription(str(R.string.workout_mark_undone, 1))
+        clickDescription(str(Res.string.workout_mark_done, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
 
-        val weightCells = hasContentDescription(str(R.string.workout_edit_weight, "80"))
+        val weightCells = hasContentDescription(str(Res.string.workout_edit_weight, "80"))
         waitUntil(5_000) { compose.onAllNodes(weightCells).fetchSemanticsNodes().size == 3 }
         compose.onAllNodes(weightCells)[1].performClick()
-        waitForDescription(str(R.string.input_field_weight))
+        waitForDescription(str(Res.string.input_field_weight))
         field.performTextReplacement("90")
         applyToAll.assertIsOff()
         applyToAll.performClick()
         applyToAll.assertIsOn()
         screenshot("1-apply-to-all-on")
         done.performClick()
-        waitGone(hasContentDescription(str(R.string.input_field_weight)))
+        waitGone(hasContentDescription(str(Res.string.input_field_weight)))
 
         waitUntil(5_000) { activeSets().map { it.first } == listOf(80.0, 90.0, 90.0) }
         assertEquals(
@@ -215,10 +215,10 @@ class RulerFlowTest : FlowTest() {
         screenshot("2-sets-after-apply")
 
         // Off by default every time the sheet opens.
-        val cell90 = hasContentDescription(str(R.string.workout_edit_weight, "90"))
+        val cell90 = hasContentDescription(str(Res.string.workout_edit_weight, "90"))
         waitUntil(5_000) { compose.onAllNodes(cell90).fetchSemanticsNodes().size == 2 }
         compose.onAllNodes(cell90)[1].performClick()
-        waitForDescription(str(R.string.input_field_weight))
+        waitForDescription(str(Res.string.input_field_weight))
         applyToAll.assertIsOff()
         assertTrue(activeSets()[0].third)
     }

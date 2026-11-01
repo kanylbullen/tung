@@ -99,7 +99,7 @@ class SiteScreensFlowTest : FlowTest() {
      * (CI's slower runner, where no screenshot gives the screen time).
      */
     private fun logNextSet() {
-        waitFor(hasStateDescription(str(R.string.workout_current_set)) and hasContentDescription(str(R.string.workout_set_number_description, nextSetNumber())))
+        waitFor(hasStateDescription(str(Res.string.workout_current_set)) and hasContentDescription(str(Res.string.workout_set_number_description, nextSetNumber())))
         val before = ticked()
         val logSet = hasText("Log set ·", substring = true)
         waitFor(logSet)
@@ -114,7 +114,7 @@ class SiteScreensFlowTest : FlowTest() {
         screenshot("1-home")
 
         clickDescription(str(Res.string.routine_start_description, "Push day"))
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(str(R.string.ex_bench_press))
         // Started 38 minutes ago, so the clock and the summary's duration read like a real workout.
         db.openHelper.writableDatabase.execSQL("UPDATE workout SET startedAt = startedAt - ${38 * 60_000L} WHERE endedAt IS NULL")

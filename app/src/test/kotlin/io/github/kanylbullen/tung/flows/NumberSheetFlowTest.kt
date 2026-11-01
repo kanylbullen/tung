@@ -16,7 +16,7 @@ import org.junit.Test
 
 class NumberSheetFlowTest : FlowTest() {
 
-    private val field get() = compose.onNode(hasContentDescription(str(R.string.input_field_weight)))
+    private val field get() = compose.onNode(hasContentDescription(str(Res.string.input_field_weight)))
     private val done get() = compose.onNode(hasText(str(Res.string.input_done)))
 
     private fun savedWeight(): Double =
@@ -37,13 +37,13 @@ class NumberSheetFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
 
-        clickDescription(str(R.string.workout_edit_weight, "0"))
-        waitForDescription(str(R.string.input_field_weight))
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.input_field_weight))
         field.assert(hasText("0"))
 
         // Below 30 kg the step is 1 kg (#17); it used to be 2.5 kg everywhere.
-        val plus = compose.onNode(hasContentDescription(plural(R.plurals.input_plus_weight, 1, "1")))
-        val minus = compose.onNode(hasContentDescription(plural(R.plurals.input_minus_weight, 1, "1")))
+        val plus = compose.onNode(hasContentDescription(plural(Res.plurals.input_plus_weight, 1, "1")))
+        val minus = compose.onNode(hasContentDescription(plural(Res.plurals.input_minus_weight, 1, "1")))
         plus.performClick(); field.assert(hasText("1"))
         plus.performClick(); field.assert(hasText("2"))
         minus.performClick(); field.assert(hasText("1"))
@@ -56,14 +56,14 @@ class NumberSheetFlowTest : FlowTest() {
         done.assertIsEnabled()
         screenshot("1-typed-82-5")
         done.performClick()
-        waitForDescription(str(R.string.workout_edit_weight, "82.5"))
+        waitForDescription(str(Res.string.workout_edit_weight, "82.5"))
         assertEquals(82.5, savedWeight(), 0.0)
 
-        clickDescription(str(R.string.workout_edit_weight, "82.5"))
-        waitForDescription(str(R.string.input_field_weight))
+        clickDescription(str(Res.string.workout_edit_weight, "82.5"))
+        waitForDescription(str(Res.string.input_field_weight))
 
         field.performTextReplacement("1000")
-        assertShown(hasText(str(R.string.input_error_weight)))
+        assertShown(hasText(str(Res.string.input_error_weight)))
         done.assertIsNotEnabled()
         screenshot("2-too-heavy")
 
@@ -73,7 +73,7 @@ class NumberSheetFlowTest : FlowTest() {
         done.assertIsEnabled()
         screenshot("3-minus-filtered")
         done.performClick()
-        waitForDescription(str(R.string.workout_edit_weight, "5"))
+        waitForDescription(str(Res.string.workout_edit_weight, "5"))
         assertEquals(5.0, savedWeight(), 0.0)
     }
 
@@ -100,21 +100,21 @@ class NumberSheetFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
 
-        clickDescription(str(R.string.workout_edit_weight, "80"))
-        waitForDescription(str(R.string.input_field_weight))
+        clickDescription(str(Res.string.workout_edit_weight, "80"))
+        waitForDescription(str(Res.string.input_field_weight))
         field.assert(hasText("80"))
         field.performClick()
         field.performTextInput("82,5")
         field.assert(hasText("82,5"))
         screenshot("1-weight-replaced")
         done.performClick()
-        waitForDescription(str(R.string.workout_edit_weight, "82.5"))
+        waitForDescription(str(Res.string.workout_edit_weight, "82.5"))
         assertEquals(82.5, activeSet().first, 0.0)
         assertTrue(compose.onAllNodes(hasText("8082", substring = true)).fetchSemanticsNodes().isEmpty())
         assertTrue(compose.onAllNodes(hasContentDescription("8082", substring = true)).fetchSemanticsNodes().isEmpty())
 
         val repsField = compose.onNode(hasContentDescription(str(Res.string.input_field_reps)))
-        clickDescription(str(R.string.workout_edit_reps, "8"))
+        clickDescription(str(Res.string.workout_edit_reps, "8"))
         waitForDescription(str(Res.string.input_field_reps))
         repsField.assert(hasText("8"))
         repsField.performClick()
@@ -122,7 +122,7 @@ class NumberSheetFlowTest : FlowTest() {
         repsField.assert(hasText("10"))
         screenshot("2-reps-replaced")
         done.performClick()
-        waitForDescription(str(R.string.workout_edit_reps, "10"))
+        waitForDescription(str(Res.string.workout_edit_reps, "10"))
         assertEquals(10, activeSet().second)
         assertTrue(compose.onAllNodes(hasContentDescription("810", substring = true)).fetchSemanticsNodes().isEmpty())
     }
@@ -136,17 +136,17 @@ class NumberSheetFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
 
-        clickDescription(str(R.string.workout_edit_weight, "0"))
-        waitForDescription(str(R.string.input_field_weight))
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.input_field_weight))
         field.performClick()
         field.performTextInput("80")
         field.assert(hasText("80"))
-        compose.onNode(hasContentDescription(plural(R.plurals.input_plus_weight, 2, "2.5"))).performClick()
+        compose.onNode(hasContentDescription(plural(Res.plurals.input_plus_weight, 2, "2.5"))).performClick()
         field.assert(hasText("82.5"))
-        compose.onNode(hasContentDescription(plural(R.plurals.input_minus_weight, 2, "2.5"))).performClick()
+        compose.onNode(hasContentDescription(plural(Res.plurals.input_minus_weight, 2, "2.5"))).performClick()
         field.assert(hasText("80"))
         done.performClick()
-        waitForDescription(str(R.string.workout_edit_weight, "80"))
+        waitForDescription(str(Res.string.workout_edit_weight, "80"))
         assertEquals(80.0, activeSet().first, 0.0)
     }
 

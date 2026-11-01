@@ -1,5 +1,8 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.pluralStringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,14 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.command.DEFAULT_ROUTINE_TARGET_SETS
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -40,21 +40,20 @@ const val FIRST_TIME_DEFAULT_SETS = DEFAULT_ROUTINE_TARGET_SETS
  */
 @Composable
 fun SetCountChips(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
     Row(
         modifier = modifier.fillMaxWidth().selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            stringResource(R.string.workout_first_sets_label),
+            stringResource(Res.string.workout_first_sets_label),
             style = MaterialTheme.typography.bodyLarge,
             color = Tung.colors.muted,
             modifier = Modifier.padding(end = 4.dp),
         )
         FIRST_TIME_SET_CHOICES.forEach { count ->
             val isSelected = count == selected
-            val description = context.resources.getQuantityString(R.plurals.workout_first_sets_choice, count, count)
+            val description = pluralStringResource(Res.plurals.workout_first_sets_choice, count, count)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier

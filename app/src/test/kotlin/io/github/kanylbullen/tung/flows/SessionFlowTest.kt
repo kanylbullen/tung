@@ -30,23 +30,23 @@ class SessionFlowTest : FlowTest() {
         addExercise("bench", benchPress)
 
         // The first set is there already; with no history it starts at 0 kg and no reps.
-        waitForDescription(str(R.string.workout_edit_weight, "0"))
-        waitForDescription(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)))
+        waitForDescription(str(Res.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.workout_edit_reps, str(Res.string.workout_reps_empty)))
         screenshot("3-workout-first-set")
 
-        clickDescription(str(R.string.workout_edit_weight, "0"))
-        waitForDescription(str(R.string.input_field_weight))
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.input_field_weight))
         screenshot("4-weight-sheet")
-        compose.onNode(hasContentDescription(str(R.string.input_field_weight)))
+        compose.onNode(hasContentDescription(str(Res.string.input_field_weight)))
             .performTextReplacement("80")
         clickText(str(Res.string.input_done))
-        waitForDescription(str(R.string.workout_edit_weight, "80"))
+        waitForDescription(str(Res.string.workout_edit_weight, "80"))
 
-        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(Res.string.input_field_reps), "8", str(R.string.workout_edit_reps, "8"))
-        waitForDescription(str(R.string.workout_edit_reps, "8"))
+        enterInSheet(str(Res.string.workout_edit_reps, str(Res.string.workout_reps_empty)), str(Res.string.input_field_reps), "8", str(Res.string.workout_edit_reps, "8"))
+        waitForDescription(str(Res.string.workout_edit_reps, "8"))
 
-        clickDescription(str(R.string.workout_mark_done, 1))
-        waitForDescription(str(R.string.workout_mark_undone, 1))
+        clickDescription(str(Res.string.workout_mark_done, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
         screenshot("5-set-ticked")
 
         finishWorkout(screenshotStep = "6-finish-dialog")
@@ -79,13 +79,13 @@ class SessionFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", benchPress)
 
-        waitForText(str(R.string.workout_previous, "80", 8))
-        waitForDescription(str(R.string.workout_edit_weight, "80"))
-        waitForDescription(str(R.string.workout_edit_reps, "8"))
+        waitForText(str(Res.string.workout_previous, "80", 8))
+        waitForDescription(str(Res.string.workout_edit_weight, "80"))
+        waitForDescription(str(Res.string.workout_edit_reps, "8"))
         screenshot("1-last-time")
 
         // Prefilled, not ticked: the new set is a suggestion until the user confirms it.
-        assertShown(hasContentDescription(str(R.string.workout_mark_done, 1)))
+        assertShown(hasContentDescription(str(Res.string.workout_mark_done, 1)))
         assertEquals(
             1,
             count(
@@ -106,17 +106,17 @@ class SessionFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", benchPress)
 
-        clickText(str(R.string.workout_finish))
+        clickText(str(Res.string.workout_finish))
         waitFor(isDialog())
-        assertShown(hasText(str(R.string.workout_finish_body_empty)))
+        assertShown(hasText(str(Res.string.workout_finish_body_empty)))
         screenshot("1-finish-empty-dialog")
-        clickInDialog(str(R.string.workout_finish_confirm))
+        clickInDialog(str(Res.string.workout_finish_confirm))
 
         waitForText(str(Res.string.home_empty))
         assertShown(hasText(str(Res.string.home_start_workout)))
         screenshot("2-home-empty-again")
 
-        assertEquals(str(R.string.workout_discarded), ShadowToast.getTextOfLatestToast())
+        assertEquals(str(Res.string.workout_discarded), ShadowToast.getTextOfLatestToast())
         assertEquals(0, count("SELECT COUNT(*) FROM workout"))
         assertEquals(0, count("SELECT COUNT(*) FROM workout_exercise"))
         assertEquals(0, count("SELECT COUNT(*) FROM set_entry"))
@@ -143,7 +143,7 @@ class SessionFlowTest : FlowTest() {
 
         clickText(str(Res.string.home_resume_workout))
         waitForText(benchPress)
-        waitForDescription(str(R.string.workout_mark_done, 1))
+        waitForDescription(str(Res.string.workout_mark_done, 1))
         screenshot("2-resumed")
 
         assertEquals(1, count("SELECT COUNT(*) FROM workout"))
@@ -185,27 +185,27 @@ class SessionFlowTest : FlowTest() {
         seedFinishedWorkout(System.currentTimeMillis() - 86_400_000L, bench(), 80.0, 8)
         startWorkoutFromHome()
         addExercise("bench", benchPress)
-        clickText(str(R.string.workout_add_set))
-        waitForDescription(str(R.string.workout_mark_done, 2))
-        clickDescription(str(R.string.workout_mark_done, 1))
-        waitForDescription(str(R.string.workout_mark_undone, 1))
-        clickDescription(str(R.string.workout_mark_done, 2))
-        waitForDescription(str(R.string.workout_mark_undone, 2))
+        clickText(str(Res.string.workout_add_set))
+        waitForDescription(str(Res.string.workout_mark_done, 2))
+        clickDescription(str(Res.string.workout_mark_done, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
+        clickDescription(str(Res.string.workout_mark_done, 2))
+        waitForDescription(str(Res.string.workout_mark_undone, 2))
 
-        clickText(str(R.string.workout_finish))
+        clickText(str(Res.string.workout_finish))
         waitFor(isDialog())
-        assertShown(hasText(str(R.string.workout_finish_body_clean)))
+        assertShown(hasText(str(Res.string.workout_finish_body_clean)))
         screenshot("1-finish-dialog-clean")
-        clickInDialog(str(R.string.workout_keep_training))
+        clickInDialog(str(Res.string.workout_keep_training))
         waitGone(isDialog())
 
-        clickDescription(str(R.string.workout_mark_undone, 2))
-        waitForDescription(str(R.string.workout_mark_done, 2))
-        clickText(str(R.string.workout_finish))
+        clickDescription(str(Res.string.workout_mark_undone, 2))
+        waitForDescription(str(Res.string.workout_mark_done, 2))
+        clickText(str(Res.string.workout_finish))
         waitFor(isDialog())
-        assertShown(hasText(plural(R.plurals.workout_finish_unlogged, 1, 1)))
+        assertShown(hasText(plural(Res.plurals.workout_finish_unlogged, 1, 1)))
         screenshot("2-finish-dialog-counts")
-        clickInDialog(str(R.string.workout_finish_confirm))
+        clickInDialog(str(Res.string.workout_finish_confirm))
 
         waitForText(str(R.string.summary_title))
         assertShown(hasText("1") and hasText(str(R.string.stat_sets)))
@@ -224,32 +224,32 @@ class SessionFlowTest : FlowTest() {
         seedFinishedWorkout(System.currentTimeMillis() - 86_400_000L, bench(), 80.0, 8)
         startWorkoutFromHome()
         addExercise("bench", benchPress)
-        clickDescription(str(R.string.workout_mark_done, 1))
-        waitForDescription(str(R.string.workout_mark_undone, 1))
+        clickDescription(str(Res.string.workout_mark_done, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
 
-        clickDescription(str(R.string.workout_exercise_menu, benchPress))
-        clickText(str(R.string.workout_remove_exercise))
+        clickDescription(str(Res.string.workout_exercise_menu, benchPress))
+        clickText(str(Res.string.workout_remove_exercise))
         waitFor(isDialog())
-        assertShown(hasText(plural(R.plurals.workout_remove_exercise_title, 1, benchPress, 1)))
+        assertShown(hasText(plural(Res.plurals.workout_remove_exercise_title, 1, benchPress, 1)))
         screenshot("1-remove-asks")
         clickInDialog(str(Res.string.action_cancel))
         waitGone(isDialog())
         assertShown(hasText(benchPress))
         assertEquals(1, count(open))
 
-        clickDescription(str(R.string.workout_exercise_menu, benchPress))
-        clickText(str(R.string.workout_remove_exercise))
-        clickInDialog(str(R.string.workout_remove_exercise_confirm))
+        clickDescription(str(Res.string.workout_exercise_menu, benchPress))
+        clickText(str(Res.string.workout_remove_exercise))
+        clickInDialog(str(Res.string.workout_remove_exercise_confirm))
         waitUntil { count(open) == 0 }
-        waitForText(str(R.string.workout_empty))
+        waitForText(str(Res.string.workout_empty))
 
         // Nothing logged: no question, the exercise goes at once.
         addExercise("bench", benchPress)
         waitUntil { count(open) == 1 }
-        clickDescription(str(R.string.workout_exercise_menu, benchPress))
-        clickText(str(R.string.workout_remove_exercise))
+        clickDescription(str(Res.string.workout_exercise_menu, benchPress))
+        clickText(str(Res.string.workout_remove_exercise))
         waitUntil { count(open) == 0 }
-        waitForText(str(R.string.workout_empty))
+        waitForText(str(Res.string.workout_empty))
         screenshot("2-removed")
     }
 }

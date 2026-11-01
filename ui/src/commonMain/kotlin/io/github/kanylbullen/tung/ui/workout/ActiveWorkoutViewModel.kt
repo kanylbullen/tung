@@ -15,7 +15,8 @@ import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
-import io.github.kanylbullen.tung.timer.RestTimerController
+import io.github.kanylbullen.tung.data.systemMillis
+import io.github.kanylbullen.tung.timer.RestTimerStore
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -40,9 +41,9 @@ class ActiveWorkoutViewModel(
     private val repo: WorkoutRepository,
     /** Every change to the workout goes through a command. */
     private val commands: CommandHandler,
-    private val restTimer: RestTimerController,
+    private val restTimer: RestTimerStore,
     private val savedState: SavedStateHandle,
-    private val clock: () -> Long = System::currentTimeMillis,
+    private val clock: () -> Long = ::systemMillis,
 ) : ViewModel() {
 
     /**

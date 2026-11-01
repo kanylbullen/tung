@@ -15,87 +15,11 @@
     <string name="stat_sets">Set</string>
 
     <!-- Active workout -->
-    <string name="workout_finish">Avsluta pass</string>
-    <string name="workout_add_exercise">Lägg till övning</string>
-    <string name="workout_add_set">+ Set</string>
-    <string name="workout_add_set_description">Lägg till set i %1$s</string>
-    <string name="workout_empty">Lägg till en övning för att börja.</string>
-    <string name="workout_remove_exercise">Ta bort övning</string>
-    <string name="workout_exercise_menu">Val för %1$s</string>
-    <string name="workout_previous">Förra: %1$s × %2$d</string>
-    <string name="workout_reps_empty">–</string>
-    <string name="workout_set_number_description">Set %1$d</string>
-    <string name="workout_edit_weight">Ändra vikt, %1$s kilo</string>
-    <string name="workout_edit_reps">Ändra reps, %1$s</string>
-    <string name="workout_mark_done">Markera set %1$d som klart</string>
-    <string name="workout_mark_undone">Markera set %1$d som inte klart</string>
-    <string name="workout_delete_set">Ta bort set</string>
-    <string name="workout_delete">Ta bort</string>
-    <string name="workout_delete_set_number">Ta bort set %1$d</string>
-    <string name="workout_elapsed_description">Tid sedan start %1$s</string>
-    <string name="workout_finish_title">Avsluta pass?</string>
-    <plurals name="workout_finish_unlogged">
-        <item quantity="one">%d set som inte är bockat tas bort.</item>
-        <item quantity="other">%d set som inte är bockade tas bort.</item>
-    </plurals>
-    <plurals name="workout_finish_empty_exercises">
-        <item quantity="one">%d övning utan set tas också bort.</item>
-        <item quantity="other">%d övningar utan set tas också bort.</item>
-    </plurals>
-    <string name="workout_finish_body_clean">Alla set är loggade.</string>
-    <string name="workout_finish_body_empty">Inga set är bockade, så passet sparas inte.</string>
-    <string name="workout_finish_confirm">Avsluta</string>
-    <string name="workout_keep_training">Fortsätt träna</string>
-    <plurals name="workout_remove_exercise_title">
-        <item quantity="one">Ta bort %1$s och dess loggade set?</item>
-        <item quantity="other">Ta bort %1$s och dess %2$d loggade set?</item>
-    </plurals>
-    <string name="workout_remove_exercise_body">Det du loggat för den i det här passet raderas.</string>
-    <string name="workout_remove_exercise_confirm">Ta bort</string>
-    <string name="workout_discarded">Passet sparades inte eftersom inga set var bockade.</string>
-    <string name="workout_not_found">Passet finns inte längre. Gå tillbaka och starta ett nytt.</string>
-    <string name="workout_log_set">Logga set · %1$s · %2$s × %3$s</string>
-    <string name="workout_sticky_add_set">Lägg till set · %1$s · %2$s × %3$s</string>
-    <string name="workout_sticky_add_set_empty">Lägg till set · %1$s</string>
-    <string name="workout_select_exercise">Logga set i %1$s härnäst</string>
-    <string name="workout_select_set">Gör set %1$d till aktuellt set</string>
-    <string name="workout_current_set">Aktuellt set</string>
-    <string name="workout_rest_timer">Vilotimer…</string>
     <!-- The first time an exercise is added (no history): the reps sheet asks how many sets, as chips. -->
-    <string name="workout_first_sets_label">Set</string>
-    <plurals name="workout_first_sets_choice">
-        <item quantity="one">%d set</item>
-        <item quantity="other">%d set</item>
-    </plurals>
 
     <!-- Rest timer -->
-    <string name="rest_title">Vilotimer</string>
-    <string name="rest_between_sets">Vila mellan seten i %1$s</string>
-    <string name="rest_off">Av</string>
-    <string name="rest_minus">−30 s</string>
-    <string name="rest_plus">+30 s</string>
-    <string name="rest_shorter">30 sekunder kortare</string>
-    <string name="rest_longer">30 sekunder längre</string>
-    <string name="rest_hint">Stega ner till Av för ingen timer på den här övningen.</string>
-    <string name="rest_remaining">%1$s kvar</string>
-    <string name="rest_skip">Hoppa över</string>
-    <string name="rest_add">+30 s</string>
-    <string name="rest_add_description">Lägg till 30 sekunder</string>
 
     <!-- Number input sheet -->
-    <string name="input_weight_title">Vikt</string>
-    <plurals name="input_minus_weight">
-        <item quantity="one">Minska med %1$s kilo</item>
-        <item quantity="other">Minska med %1$s kilo</item>
-    </plurals>
-    <plurals name="input_plus_weight">
-        <item quantity="one">Öka med %1$s kilo</item>
-        <item quantity="other">Öka med %1$s kilo</item>
-    </plurals>
-    <string name="input_error_weight">Skriv en vikt mellan 0 och 999, till exempel 82,5.</string>
-    <string name="input_field_weight">Vikt i kilo</string>
-    <string name="input_ruler_weight">Viktlinjal</string>
-    <string name="input_ruler_weight_state">%1$s kilo</string>
 
     <!-- Exercises -->
     <string name="exercises_title">Övningar</string>
@@ -188,7 +112,6 @@
     </plurals>
     <string name="summary_record">Nytt rekord</string>
     <string name="summary_done">Klar</string>
-    <string name="times_sign">×</string>
     <string name="set_value">%1$s × %2$d</string>
 
     <!-- Routines -->
@@ -414,33 +337,6 @@
     <string name="ai_error_model">Ange modellens namn.</string>
 
     <!-- Voice: the active workout's microphone (CLAUDE.md, "Voice"). -->
-    <string name="voice_mic">Röstinmatning</string>
-    <string name="voice_mic_idle">Lyssnar inte</string>
-    <string name="voice_mic_listening">Lyssnar</string>
-    <string name="voice_mic_tap">Säg vikt och reps</string>
-    <string name="voice_mic_stop">Sluta lyssna</string>
-    <string name="voice_hands_free_start">Slå på handsfree-läget</string>
-    <string name="voice_hands_free_chip">Lyssnar</string>
-    <string name="voice_hands_free_description">Handsfree-läget är på: lyssnar mellan seten</string>
-    <string name="voice_hands_free_stop">Stäng av handsfree-läget</string>
-    <string name="voice_listening">Lyssnar…</string>
-    <string name="voice_echo_values">%1$s × %2$s</string>
-    <string name="voice_echo_logged">%1$s × %2$s loggat</string>
-    <string name="voice_echo_next">Nästa: %1$s, set %2$d</string>
-    <string name="voice_echo_set_added">Set tillagt i %1$s</string>
-    <string name="voice_echo_rest">Vilan har startat</string>
-    <string name="voice_echo_rest_off">Vilotimern är av för %1$s</string>
-    <string name="voice_echo_no_set">Det finns inget set att logga</string>
-    <string name="voice_echo_no_previous">Det finns inget tidigare set att kopiera</string>
-    <string name="voice_echo_no_next">Det finns inget annat set att gå till</string>
-    <string name="voice_echo_not_logged">Setet loggades inte. Försök igen.</string>
-    <string name="voice_echo_not_understood">Uppfattade inte: ”%1$s”</string>
-    <string name="voice_echo_heard_nothing">Hörde ingenting</string>
-    <string name="voice_echo_unavailable">Taligenkänning finns inte på den här telefonen</string>
-    <string name="voice_echo_permission">Tung behöver mikrofonen för att höra dig. Tillåt den i systeminställningarna.</string>
-    <string name="voice_echo_network">Taligenkänningen behöver nätverk på den här telefonen</string>
-    <string name="voice_echo_failed">Taligenkänningen misslyckades. Försök igen.</string>
-    <string name="voice_ask_assistant">Fråga assistenten</string>
     <string name="ai_voice_heard">Du sa: ”%1$s”</string>
 
     <!-- Import från andra appar (ui/importing/, Inställningar) -->
@@ -655,7 +551,6 @@
     <string name="progress_record_volume">Största volym per pass</string>
     <string name="progress_kg">%1$s kg</string>
     <string name="progress_e1rm_from">%1$s kg (%2$s × %3$d)</string>
-    <string name="workout_progress_for">Framsteg för %1$s</string>
     <string name="progress_sheet_title">%1$s · framsteg</string>
     <string name="progress_no_history">Inga avslutade pass med övningen än</string>
     <string name="progress_beats_heaviest">%1$s × %2$d vore din tyngsta vikt</string>

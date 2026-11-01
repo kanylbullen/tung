@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.settings
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -58,7 +60,7 @@ class TrainingSettingsViewModel(private val restTimer: RestTimerController) : Vi
 /** "1:30", or "Off" for 0. */
 @Composable
 internal fun restText(seconds: Int): String =
-    if (seconds <= 0) stringResource(R.string.rest_off) else clockText(seconds * 1000L)
+    if (seconds <= 0) stringResource(Res.string.rest_off) else clockText(seconds * 1000L)
 
 /**
  * Settings' Training: the default rest between sets for exercises without
@@ -77,16 +79,16 @@ fun TrainingScreen(onBack: () -> Unit) {
         rest?.let { seconds ->
             Text(restText(seconds), style = Tung.numbers.stat, color = Tung.colors.text)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                val shorter = stringResource(R.string.rest_shorter)
-                val longer = stringResource(R.string.rest_longer)
+                val shorter = stringResource(Res.string.rest_shorter)
+                val longer = stringResource(Res.string.rest_longer)
                 SecondaryButton(
-                    text = stringResource(R.string.rest_minus),
+                    text = stringResource(Res.string.rest_minus),
                     onClick = { vm.stepRest(-1) },
                     enabled = seconds > 0,
                     modifier = Modifier.weight(1f).semantics { contentDescription = shorter },
                 )
                 SecondaryButton(
-                    text = stringResource(R.string.rest_plus),
+                    text = stringResource(Res.string.rest_plus),
                     onClick = { vm.stepRest(1) },
                     enabled = seconds < MAX_REST_SECONDS,
                     modifier = Modifier.weight(1f).semantics { contentDescription = longer },

@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.performClick
@@ -21,9 +22,9 @@ class SwipeDeleteFlowTest : FlowTest() {
     fun swipeRevealsDeleteATapOnTheRowClosesItAndATapOnDeleteDeletes() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
-        val weightCell = hasContentDescription(str(R.string.workout_edit_weight, "0"))
+        val weightCell = hasContentDescription(str(Res.string.workout_edit_weight, "0"))
         waitFor(weightCell)
-        val deleteButton = hasContentDescription(str(R.string.workout_delete_set_number, 1))
+        val deleteButton = hasContentDescription(str(Res.string.workout_delete_set_number, 1))
 
         // Past the row's threshold and fast, as a thumb does it; [index] among the rows with 0 kg.
         fun swipeTheRow(index: Int = 0) = compose.onAllNodes(weightCell)[index].performTouchInput {
@@ -41,12 +42,12 @@ class SwipeDeleteFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))
         assertTrue(
             "the tap reached the weight cell",
-            compose.onAllNodes(hasContentDescription(str(R.string.input_field_weight))).fetchSemanticsNodes().isEmpty(),
+            compose.onAllNodes(hasContentDescription(str(Res.string.input_field_weight))).fetchSemanticsNodes().isEmpty(),
         )
 
         // One row open at a time: opening set 2 closes set 1.
-        clickDescription(str(R.string.workout_add_set_description, str(R.string.ex_bench_press)))
-        val deleteButton2 = hasContentDescription(str(R.string.workout_delete_set_number, 2))
+        clickDescription(str(Res.string.workout_add_set_description, str(R.string.ex_bench_press)))
+        val deleteButton2 = hasContentDescription(str(Res.string.workout_delete_set_number, 2))
         waitUntil { compose.onAllNodes(weightCell).fetchSemanticsNodes().size == 2 }
         swipeTheRow()
         waitFor(deleteButton)

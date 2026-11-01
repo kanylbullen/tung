@@ -24,10 +24,10 @@ import kotlinx.coroutines.flow.map
 class RestTimerController(
     private val context: Context,
     private val settings: DataStore<Preferences>,
-) {
+) : RestTimerStore {
 
     /** The rest for exercises without their own setting; Settings' Training sets it ([setDefaultSeconds]). */
-    val defaultSeconds: Flow<Int> = settings.data.map { it[DEFAULT_SECONDS] ?: DEFAULT_REST_SECONDS }
+    override val defaultSeconds: Flow<Int> = settings.data.map { it[DEFAULT_SECONDS] ?: DEFAULT_REST_SECONDS }
 
     /** Stores the default rest, clamped to 0 (off) .. [MAX_REST_SECONDS]. */
     suspend fun setDefaultSeconds(seconds: Int) {
@@ -35,7 +35,7 @@ class RestTimerController(
     }
 
     /** The timer stored for [workoutId], or null if none is (or it belongs to another workout). */
-    suspend fun stored(workoutId: String): RestTimer? {
+    override suspend fun stored(workoutId: String): RestTimer? {
         val prefs = settings.data.first()
         if (prefs[WORKOUT_ID] != workoutId) return null
         val endsAt = prefs[ENDS_AT] ?: return null
@@ -47,7 +47,7 @@ class RestTimerController(
      * the alarm that ends it and stores it. A new or cleared timer also takes
      * away a "Rest over" notification still showing from the last one.
      */
-    suspend fun set(workoutId: String, timer: RestTimer?) {
+    override suspend fun set(workoutId: String, timer: RestTimer?) {
         RestAlerts.cancelNotification(context)
         if (timer == null) RestAlarm.cancel(context) else RestAlarm.schedule(context, workoutId, timer.endsAtMillis)
         settings.edit { prefs ->
@@ -70,7 +70,7 @@ class RestTimerController(
      * ([io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier]) and "Rest
      * over" share the one permission and the one question.
      */
-    suspend fun firstTimeAskingForNotifications(): Boolean {
+    override suspend fun firstTimeAskingForNotifications(): Boolean {
         var first = false
         settings.edit { prefs ->
             first = prefs[NOTIFICATIONS_ASKED] != true
@@ -80,7 +80,7 @@ class RestTimerController(
     }
 
     /** The rest is over while the workout is on screen: the same alert as the alarm's. */
-    fun restOver(workoutId: String, endsAtMillis: Long) = RestAlerts.restOver(context, workoutId, endsAtMillis)
+    override fun restOver(workoutId: String, endsAtMillis: Long) = RestAlerts.restOver(context, workoutId, endsAtMillis)
 
     private companion object {
         val DEFAULT_SECONDS = intPreferencesKey("rest_default_seconds")

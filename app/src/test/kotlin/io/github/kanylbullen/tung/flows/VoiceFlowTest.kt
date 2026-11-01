@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import android.Manifest
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -34,11 +35,11 @@ import org.robolectric.annotation.Config
  */
 class VoiceFlowTest : FlowTest() {
 
-    private val mic get() = hasContentDescription(str(R.string.voice_mic))
-    private val chip get() = hasContentDescription(str(R.string.voice_hands_free_description))
+    private val mic get() = hasContentDescription(str(Res.string.voice_mic))
+    private val chip get() = hasContentDescription(str(Res.string.voice_hands_free_description))
     private val benchPress get() = str(R.string.ex_bench_press)
 
-    private fun logSet(weight: String, reps: String) = str(R.string.workout_log_set, benchPress, weight, reps)
+    private fun logSet(weight: String, reps: String) = str(Res.string.workout_log_set, benchPress, weight, reps)
 
     @Before
     fun allowTheMicrophone() {
@@ -54,7 +55,7 @@ class VoiceFlowTest : FlowTest() {
     private fun benchWorkout() {
         startWorkoutFromHome()
         addExercise(if (str(R.string.ex_bench_press) == "Bänkpress") "bänk" else "bench", benchPress)
-        waitForText(logSet("0", str(R.string.workout_reps_empty)))
+        waitForText(logSet("0", str(Res.string.workout_reps_empty)))
     }
 
     private fun loggedSets(): Int = count("SELECT COUNT(*) FROM set_entry WHERE completed = 1 AND weightKg = 80.0 AND reps = 8")
@@ -66,30 +67,30 @@ class VoiceFlowTest : FlowTest() {
         benchWorkout()
         tapMic()
         screenshot("1-listening")
-        assertEquals("sv", app.speech.lastLocale?.language)
+        assertEquals("sv", app.speech.lastLanguageTag?.substringBefore('-'))
         app.speech.say("åttio kilo åtta reps")
         waitForText(logSet("80", "8"))
-        waitForText(str(R.string.voice_echo_values, "80", "8"))
+        waitForText(str(Res.string.voice_echo_values, "80", "8"))
         waitUntil { !app.speech.listening }
         screenshot("2-understood")
         assertEquals(0, loggedSets())
 
         tapMic()
         app.speech.say("klar")
-        waitForDescription(str(R.string.workout_mark_undone, 1))
-        waitForText(str(R.string.voice_echo_logged, "80", "8"))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
+        waitForText(str(Res.string.voice_echo_logged, "80", "8"))
         screenshot("3-logged")
         assertEquals(1, loggedSets())
         // As the button: no set is added (issue #64), the button offers one, and the rest runs.
-        waitForText(str(R.string.workout_sticky_add_set, benchPress, "80", "8"))
-        waitFor(hasContentDescription(str(R.string.rest_title)))
+        waitForText(str(Res.string.workout_sticky_add_set, benchPress, "80", "8"))
+        waitFor(hasContentDescription(str(Res.string.rest_title)))
         assertEquals(2, app.speech.listens)
         assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))
 
         // "Klar" with nothing left to log adds nothing either: it says so.
         tapMic()
         app.speech.say("klar")
-        waitForText(str(R.string.voice_echo_no_set))
+        waitForText(str(Res.string.voice_echo_no_set))
         assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))
     }
 
@@ -111,11 +112,11 @@ class VoiceFlowTest : FlowTest() {
 
         tapMic()
         app.speech.say("klar")
-        waitForText(str(R.string.voice_echo_not_logged))
-        waitForText(logSet("80", str(R.string.workout_reps_empty)))
+        waitForText(str(Res.string.voice_echo_not_logged))
+        waitForText(logSet("80", str(Res.string.workout_reps_empty)))
         screenshot("1-not-logged")
-        compose.onNode(hasText(str(R.string.voice_echo_logged, "80", "8"))).assertDoesNotExist()
-        compose.onNode(hasContentDescription(str(R.string.rest_title))).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.voice_echo_logged, "80", "8"))).assertDoesNotExist()
+        compose.onNode(hasContentDescription(str(Res.string.rest_title))).assertDoesNotExist()
         assertEquals(0, count("SELECT COUNT(*) FROM set_entry WHERE completed = 1"))
     }
 
@@ -135,7 +136,7 @@ class VoiceFlowTest : FlowTest() {
         // Listening again by itself, a moment after the result.
         waitUntil(timeoutMillis = 10_000) { app.speech.listens >= 2 && app.speech.listening }
         app.speech.say("klar")
-        waitForDescription(str(R.string.workout_mark_undone, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
         waitUntil(timeoutMillis = 10_000) { app.speech.listens >= 3 && app.speech.listening }
         assertEquals(1, loggedSets())
         screenshot("2-two-utterances")
@@ -154,11 +155,11 @@ class VoiceFlowTest : FlowTest() {
         benchWorkout()
         tapMic()
         app.speech.say("eighty something")
-        waitForText(str(R.string.voice_echo_not_understood, "eighty something"))
+        waitForText(str(Res.string.voice_echo_not_understood, "eighty something"))
         screenshot("1-not-understood")
         // No assistant set up, so none is offered.
-        assertTrue(compose.onAllNodes(hasText(str(R.string.voice_ask_assistant))).fetchSemanticsNodes().isEmpty())
-        waitForText(logSet("0", str(R.string.workout_reps_empty)))
+        assertTrue(compose.onAllNodes(hasText(str(Res.string.voice_ask_assistant))).fetchSemanticsNodes().isEmpty())
+        waitForText(logSet("0", str(Res.string.workout_reps_empty)))
         assertEquals(0, count("SELECT COUNT(*) FROM set_entry WHERE reps > 0 OR weightKg > 0"))
     }
 
@@ -192,9 +193,9 @@ class VoiceFlowTest : FlowTest() {
             tapMic()
             val heard = "then three sets of squats at sixty"
             app.speech.say(heard)
-            waitForText(str(R.string.voice_echo_not_understood, heard))
+            waitForText(str(Res.string.voice_echo_not_understood, heard))
             screenshot("1-ask-the-assistant")
-            clickText(str(R.string.voice_ask_assistant))
+            clickText(str(Res.string.voice_ask_assistant))
 
             waitForText(str(R.string.ai_voice_heard, heard))
             waitForText(str(R.string.ai_payload_title))
@@ -209,7 +210,7 @@ class VoiceFlowTest : FlowTest() {
             compose.onNode(start).performScrollTo().performClick()
 
             waitForText(str(R.string.ex_back_squat))
-            waitForText(str(R.string.workout_finish))
+            waitForText(str(Res.string.workout_finish))
             assertEquals(3, count("SELECT COUNT(*) FROM set_entry WHERE weightKg = 60.0 AND reps = 8 AND completed = 0"))
         } finally {
             server.shutdown()

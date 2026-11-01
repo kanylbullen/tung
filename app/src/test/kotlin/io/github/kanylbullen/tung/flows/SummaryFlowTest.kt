@@ -48,9 +48,9 @@ class SummaryFlowTest : FlowTest() {
         seedFinishedWorkout(at("2026-09-30"), bench(), 90.0, 5)
         startWorkoutFromHome()
         addExercise("bench", benchPress)
-        enterInSheet(str(R.string.workout_edit_reps, "5"), str(Res.string.input_field_reps), "6", str(R.string.workout_edit_reps, "6"))
-        clickDescription(str(R.string.workout_mark_done, 1))
-        waitForDescription(str(R.string.workout_mark_undone, 1))
+        enterInSheet(str(Res.string.workout_edit_reps, "5"), str(Res.string.input_field_reps), "6", str(Res.string.workout_edit_reps, "6"))
+        clickDescription(str(Res.string.workout_mark_done, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
         finishWorkout()
         // The top bar shows at once; the list and Done come with the report.
         waitForText(str(R.string.summary_done))

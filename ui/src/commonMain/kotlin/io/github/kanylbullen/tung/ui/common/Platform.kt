@@ -42,3 +42,7 @@ internal expect fun dateText(epochMillis: Long, pattern: String, patternWithYear
 /** The locale's decimal separator: ',' in Swedish, '.' in English. */
 expect fun decimalSeparator(): Char
 
+/** Keeps the screen on while it is composed: the workout, where the phone lies on a bench between sets. */
+@Composable
+expect fun KeepScreenOn()
+

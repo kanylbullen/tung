@@ -115,3 +115,13 @@ fun localWeight(kg: Double): String = formatWeight(kg, decimalSeparator())
 fun localWeekday(epochMillis: Long): String =
     weekdayName(dateOf(epochMillis, TimeZone.currentSystemDefault()).dayOfWeek.isoDayNumber, WeekdayStyle.FULL)
 
+/** A running clock: "4:07" or "1:12:30". */
+fun clockText(millis: Long): String {
+    val totalSeconds = millis.coerceAtLeast(0L) / 1000L
+    val h = totalSeconds / 3600
+    val m = (totalSeconds % 3600) / 60
+    val s = totalSeconds % 60
+    fun two(n: Long) = n.toString().padStart(2, '0')
+    return if (h > 0) "$h:${two(m)}:${two(s)}" else "$m:${two(s)}"
+}
+

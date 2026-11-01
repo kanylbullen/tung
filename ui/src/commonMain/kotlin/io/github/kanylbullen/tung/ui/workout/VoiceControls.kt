@@ -1,5 +1,8 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,8 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -34,7 +35,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.theme.Tung
@@ -53,8 +53,8 @@ const val VOICE_ECHO_WITH_ACTION_MILLIS = 8_000L
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MicButton(active: Boolean, onTap: () -> Unit, onLongPress: () -> Unit) {
-    val description = stringResource(R.string.voice_mic)
-    val state = stringResource(if (active) R.string.voice_mic_listening else R.string.voice_mic_idle)
+    val description = stringResource(Res.string.voice_mic)
+    val state = stringResource(if (active) Res.string.voice_mic_listening else Res.string.voice_mic_idle)
     Box(
         modifier = Modifier
             .size(56.dp)
@@ -63,8 +63,8 @@ fun MicButton(active: Boolean, onTap: () -> Unit, onLongPress: () -> Unit) {
             .border(2.dp, Tung.colors.accent, CircleShape)
             .combinedClickable(
                 role = Role.Button,
-                onClickLabel = stringResource(if (active) R.string.voice_mic_stop else R.string.voice_mic_tap),
-                onLongClickLabel = stringResource(R.string.voice_hands_free_start),
+                onClickLabel = stringResource(if (active) Res.string.voice_mic_stop else Res.string.voice_mic_tap),
+                onLongClickLabel = stringResource(Res.string.voice_hands_free_start),
                 onLongClick = onLongPress,
                 onClick = onTap,
             )
@@ -75,7 +75,7 @@ fun MicButton(active: Boolean, onTap: () -> Unit, onLongPress: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            painterResource(R.drawable.ic_mic),
+            painterResource(Res.drawable.ic_mic),
             contentDescription = null,
             tint = if (active) Tung.colors.onAccent else Tung.colors.accentText,
         )
@@ -85,8 +85,8 @@ fun MicButton(active: Boolean, onTap: () -> Unit, onLongPress: () -> Unit) {
 /** Shown as long as hands-free mode is on; a tap turns it off. */
 @Composable
 fun HandsFreeChip(onStop: () -> Unit) {
-    val description = stringResource(R.string.voice_hands_free_description)
-    val stop = stringResource(R.string.voice_hands_free_stop)
+    val description = stringResource(Res.string.voice_hands_free_description)
+    val stop = stringResource(Res.string.voice_hands_free_stop)
     Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
@@ -107,7 +107,7 @@ fun HandsFreeChip(onStop: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(Tung.colors.accent))
-        Text(stringResource(R.string.voice_hands_free_chip), style = MaterialTheme.typography.labelLarge, color = Tung.colors.text)
+        Text(stringResource(Res.string.voice_hands_free_chip), style = MaterialTheme.typography.labelLarge, color = Tung.colors.text)
     }
 }
 
@@ -138,30 +138,30 @@ fun VoiceEchoLine(text: String, muted: Boolean, actionLabel: String?, onAction: 
 @Composable
 fun voiceEchoText(echo: VoiceEcho): String? {
     @Composable
-    fun reps(reps: Int) = if (reps > 0) reps.toString() else stringResource(R.string.workout_reps_empty)
+    fun reps(reps: Int) = if (reps > 0) reps.toString() else stringResource(Res.string.workout_reps_empty)
 
     return when (echo) {
-        is VoiceEcho.Values -> stringResource(R.string.voice_echo_values, localWeight(echo.set.weightKg), reps(echo.set.reps))
-        is VoiceEcho.Logged -> stringResource(R.string.voice_echo_logged, localWeight(echo.set.weightKg), reps(echo.set.reps))
-        is VoiceEcho.Next -> stringResource(R.string.voice_echo_next, exerciseDisplayName(echo.nameKey, echo.name), echo.setNumber)
-        is VoiceEcho.SetAdded -> stringResource(R.string.voice_echo_set_added, exerciseDisplayName(echo.nameKey, echo.name))
-        VoiceEcho.RestStarted -> stringResource(R.string.voice_echo_rest)
+        is VoiceEcho.Values -> stringResource(Res.string.voice_echo_values, localWeight(echo.set.weightKg), reps(echo.set.reps))
+        is VoiceEcho.Logged -> stringResource(Res.string.voice_echo_logged, localWeight(echo.set.weightKg), reps(echo.set.reps))
+        is VoiceEcho.Next -> stringResource(Res.string.voice_echo_next, exerciseDisplayName(echo.nameKey, echo.name), echo.setNumber)
+        is VoiceEcho.SetAdded -> stringResource(Res.string.voice_echo_set_added, exerciseDisplayName(echo.nameKey, echo.name))
+        VoiceEcho.RestStarted -> stringResource(Res.string.voice_echo_rest)
         VoiceEcho.FinishAsked -> null
         is VoiceEcho.Problem -> when (echo.problem) {
-            VoiceProblem.NO_CURRENT_SET -> stringResource(R.string.voice_echo_no_set)
-            VoiceProblem.NO_PREVIOUS_SET -> stringResource(R.string.voice_echo_no_previous)
-            VoiceProblem.NO_NEXT_SET -> stringResource(R.string.voice_echo_no_next)
-            VoiceProblem.REST_OFF -> stringResource(R.string.voice_echo_rest_off, exerciseDisplayName(echo.nameKey, echo.name.orEmpty()))
-            VoiceProblem.NOT_LOGGED -> stringResource(R.string.voice_echo_not_logged)
+            VoiceProblem.NO_CURRENT_SET -> stringResource(Res.string.voice_echo_no_set)
+            VoiceProblem.NO_PREVIOUS_SET -> stringResource(Res.string.voice_echo_no_previous)
+            VoiceProblem.NO_NEXT_SET -> stringResource(Res.string.voice_echo_no_next)
+            VoiceProblem.REST_OFF -> stringResource(Res.string.voice_echo_rest_off, exerciseDisplayName(echo.nameKey, echo.name.orEmpty()))
+            VoiceProblem.NOT_LOGGED -> stringResource(Res.string.voice_echo_not_logged)
         }
-        is VoiceEcho.NotUnderstood -> stringResource(R.string.voice_echo_not_understood, echo.text)
+        is VoiceEcho.NotUnderstood -> stringResource(Res.string.voice_echo_not_understood, echo.text)
         is VoiceEcho.Failed -> stringResource(
             when (echo.kind) {
-                SpeechErrorKind.NO_SPEECH -> R.string.voice_echo_heard_nothing
-                SpeechErrorKind.UNAVAILABLE -> R.string.voice_echo_unavailable
-                SpeechErrorKind.PERMISSION -> R.string.voice_echo_permission
-                SpeechErrorKind.NETWORK -> R.string.voice_echo_network
-                SpeechErrorKind.OTHER -> R.string.voice_echo_failed
+                SpeechErrorKind.NO_SPEECH -> Res.string.voice_echo_heard_nothing
+                SpeechErrorKind.UNAVAILABLE -> Res.string.voice_echo_unavailable
+                SpeechErrorKind.PERMISSION -> Res.string.voice_echo_permission
+                SpeechErrorKind.NETWORK -> Res.string.voice_echo_network
+                SpeechErrorKind.OTHER -> Res.string.voice_echo_failed
             },
         )
     }

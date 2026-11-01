@@ -57,7 +57,7 @@ Eight Gradle modules:
 | `core/` | Kotlin Multiplatform (JVM, JS, iOS klibs) | — | Domain rules, commands, sync and watch protocols |
 | `data/` | Kotlin Multiplatform (Android, iOS klibs) | `core` | Room, repositories, the CommandHandler, sync client, settings, rest timer, `TungContainer` |
 | `data-fixtures/` | Android library (tests only) | `core`, `data` | The test doubles of data's seams: `FakeSyncServer`, `MemoryTokenStore`, `FakePushEnvironment`, `FakeHealthConnect` |
-| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs, and the programs list and one program with theirs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); Home (`ui/home/`) and the discard dialog (`ui/workout/`); History and a finished workout's page with their ViewModels (`ui/history/`) and `defaultRoutineName` (`ui/routines/`); the buttons, `RoutineName`, `WorkoutRow`, `Stat`/`StatRow`, `WorkoutReport`, the labels (`durationText`, `localDate`, `shortLocalDate`, `localWeekday`, `localWeight`) and the platform seams `exerciseDisplayName`, `weekdayName`, `localVolume`, `dateText` and `decimalSeparator` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
+| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs, and the programs list and one program with theirs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); Home (`ui/home/`); the active workout with its ViewModel, the rest sheet, the voice controls and `SpeechInput` (`ui/workout/`, `voice/`), whose platform is a `WorkoutPlatform` and whose timer a `RestTimerStore` (data's commonMain, `RestTimerController` on Android), and the discard dialog; History and a finished workout's page with their ViewModels (`ui/history/`) and `defaultRoutineName` (`ui/routines/`); the buttons, `RoutineName`, `WorkoutRow`, `Stat`/`StatRow`, `WorkoutReport`, the labels (`durationText`, `localDate`, `shortLocalDate`, `localWeekday`, `localWeight`) and the platform seams `exerciseDisplayName`, `weekdayName`, `localVolume`, `dateText` and `decimalSeparator` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
 | `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
 | `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
 | `server/` | Ktor server | `core` | tung-server |
@@ -202,10 +202,10 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (active workout, the rest sheet; the input sheet is in `ui/`), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (`HistoryRoute` and `WorkoutDetailRoute` around the `ui/` screens; the detail's "Saved as routine" toast is the route's), `summary` (see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (`ActiveWorkoutRoute` around the `ui/` screen: the ViewModel, the phone's `WorkoutPlatform` and the progress sheet), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (`HistoryRoute` and `WorkoutDetailRoute` around the `ui/` screens; the detail's "Saved as routine" toast is the route's), `summary` (see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
-| `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
+| `voice/` | `AndroidSpeechInput` (the phone's `SpeechRecognizer`) behind ui's `SpeechInput`, made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in the `ui/` module's `ui/workout/Voice*.kt`. See "Voice". |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`; `charts/` holds the Canvas charts (`LineChart`, `BarChart`, `Sparkline`, `niceTicks`; see "Progress"). |
 | `ui/theme/` | In the `ui/` module now (`ui/src/commonMain/.../ui/theme/`, same package): colour tokens, typography, theme. The font families are composable (`archivoFamily()`, `archivoWideFamily()`), since Compose Resources loads the font; `TungTheme` builds the typography and number styles from them. |
 | `wear/` | The phone's side of the Data Layer for a companion watch (section "Wear"). |
@@ -1828,9 +1828,9 @@ fallback, and only on a tap.
   Weights 0–999 in steps of 0.5, reps 0–999, else `Unknown`.
   `VoiceGrammarTest` is the table (over 100 utterances) and checks every
   spoken number 0–200 in both languages; a new phrase goes in the table.
-- **Speech, `app/.../voice/`:** `SpeechInput.listenOnce(locale)` is a Flow of
+- **Speech:** `SpeechInput.listenOnce(languageTag)` (the `ui/` module's `voice/`) is a Flow of
   `Listening`, `Partial`, then one `Result` or `Error(kind)`.
-  `AndroidSpeechInput` wraps `SpeechRecognizer` (`ACTION_RECOGNIZE_SPEECH`,
+  `AndroidSpeechInput` (app's `voice/`) wraps `SpeechRecognizer` (`ACTION_RECOGNIZE_SPEECH`,
   `EXTRA_LANGUAGE` from the app locale, `EXTRA_PREFER_OFFLINE`,
   `EXTRA_PARTIAL_RESULTS`) and answers `UNAVAILABLE` when
   `isRecognitionAvailable` is false, which on Android 11+ needs the
@@ -1838,7 +1838,8 @@ fallback, and only on a tap.
   The factory is `TungApp.createSpeechInput()`, an open function the flow
   tests' `FlowTestApp` overrides with `FakeSpeechInput` (`say`, `fail`); it is
   deliberately not a `TungContainer` seam, since nothing in `data/` hears.
-  `RECORD_AUDIO` is asked for the first time the mic is used.
+  `RECORD_AUDIO` is asked for the first time the mic is used, through
+  `WorkoutPlatform.withMicrophone`.
 - **The mic, `ui/workout/`:** a round button left of Log set, as tall as it,
   accent outline, filled while listening (`VoiceControls.kt`). `voiceAction`
   (`VoiceActions.kt`, pure, `VoiceActionsTest` without Robolectric) decides
@@ -2442,7 +2443,7 @@ Weight and reps are the only things that matter; everything else is scenery.
   dividers where space is enough, no all-caps labels, no illustrations.
 - One corner radius: 12dp (`TungCorner`) on buttons, sheets and dialogs. 0 on list rows.
 - Motion only in response to an action (the check fills, the sheet slides up).
-- The screen is kept on during the active workout (`view.keepScreenOn`).
+- The screen is kept on during the active workout (`KeepScreenOn()`: `view.keepScreenOn` on Android, `idleTimerDisabled` on iOS).
 - Dark/light follows the system. Dynamic colours are **off**.
 - Typeface: Archivo (variable, OFL) — one family.
 
