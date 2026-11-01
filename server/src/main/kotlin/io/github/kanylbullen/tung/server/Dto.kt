@@ -27,7 +27,7 @@ data class UserDto(
     val id: String,
     val email: String,
     val createdAt: Long,
-    /** False for an account made with Google that never set a password: password login is refused. */
+    /** False for an account made with Google or Apple that never set a password: password login is refused. */
     val hasPassword: Boolean,
     /** A Google account is linked: signing in with Google reaches this user. */
     val googleLinked: Boolean,
@@ -39,6 +39,8 @@ data class UserDto(
      * the emailed link is opened (`POST /auth/verify/resend` sends a new one).
      */
     val emailVerified: Boolean = true,
+    /** An Apple ID is linked: Sign in with Apple reaches this user. */
+    val appleLinked: Boolean = false,
 )
 
 /**
@@ -48,9 +50,12 @@ data class UserDto(
 @Serializable
 data class DeleteAccountInput(val email: String)
 
-/** `POST /api/v1/auth/google`: a Google ID token (a JWT) from Credential Manager or Google Identity Services. */
+/**
+ * `POST /api/v1/auth/google` and `/auth/apple`: an ID token (a JWT) from Credential
+ * Manager or Google Identity Services, or from Sign in with Apple.
+ */
 @Serializable
-data class GoogleSignIn(
+data class IdTokenSignIn(
     val idToken: String,
     /** The app's language for the welcome email, should this sign-in make a new account. */
     val language: String? = null,
@@ -58,11 +63,15 @@ data class GoogleSignIn(
 
 /** `GET /api/v1/auth/methods`: how this instance lets users sign in. */
 @Serializable
-data class AuthMethods(val password: Boolean, val google: GoogleMethod?)
+data class AuthMethods(val password: Boolean, val google: ProviderMethod?, val apple: ProviderMethod? = null)
 
-/** The OAuth client id clients pass to Google (Credential Manager's `serverClientId`). */
+/**
+ * The client id clients pass to the provider: Google's OAuth client id
+ * (Credential Manager's `serverClientId`), or Apple's Services ID for Sign in
+ * with Apple on the web (an iPhone app's tokens carry its bundle id instead).
+ */
 @Serializable
-data class GoogleMethod(val clientId: String)
+data class ProviderMethod(val clientId: String)
 
 @Serializable
 data class SessionDto(val token: String, val user: UserDto)

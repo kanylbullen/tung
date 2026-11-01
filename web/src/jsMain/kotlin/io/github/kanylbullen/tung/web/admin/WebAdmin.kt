@@ -29,6 +29,7 @@ data class AdminUser(
     @SerialName("created_at") val createdAt: Long,
     @SerialName("has_password") val hasPassword: Boolean,
     @SerialName("google_linked") val googleLinked: Boolean,
+    @SerialName("apple_linked") val appleLinked: Boolean = false,
     @SerialName("is_admin") val isAdmin: Boolean = false,
     @SerialName("last_seen_at") val lastSeenAt: Long? = null,
     @SerialName("active_tokens") val activeTokens: Int = 0,

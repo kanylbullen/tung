@@ -13,8 +13,9 @@ info:
     requests. MCP clients get their tokens through OAuth 2.1 (`/oauth/…`):
     ordinary API tokens named `mcp:<client>` that expire unless refreshed.
     An instance with a Google client id also signs users in with a Google ID
-    token (`/api/v1/auth/google`); `/api/v1/auth/methods` says which methods
-    it offers.
+    token (`/api/v1/auth/google`), and one with an Apple client id with an
+    Apple ID token (`/api/v1/auth/apple`); `/api/v1/auth/methods` says which
+    methods it offers.
 
     **Ids and `updated_at`.** Training data keeps the ids the client generated
     (lower-case UUIDs). Every row has `updated_at` (epoch milliseconds), and a
@@ -259,7 +260,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/GoogleSignIn" }
+            schema: { $ref: "#/components/schemas/IdTokenSignIn" }
       responses:
         "200":
           description: Signed in.
@@ -289,6 +290,58 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/auth/apple:
+    post:
+      tags: [auth]
+      summary: Sign in with Apple
+      description: |
+        Trades an Apple ID token (from Sign in with Apple JS on the web, or
+        `ASAuthorizationAppleIDCredential.identityToken` in an iPhone app) for
+        a session token, exactly as `/auth/login` answers. The token must be
+        RS256, issued by `https://appleid.apple.com`, for one of the configured
+        client ids (the web's Services ID or the app's bundle id), unexpired
+        (60 s leeway) and signed with a key from Apple's JWK set. The user is
+        found and linked as in `/auth/google`, also when the account is
+        already linked to Google: it is handed over all the same. A private relay
+        address (`…@privaterelay.appleid.com`) is an address like any other.
+        Rate-limited per client address like login. Without
+        `TUNG_APPLE_CLIENT_ID` the route answers 404 `not_configured`.
+      operationId: signInWithApple
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IdTokenSignIn" }
+      responses:
+        "200":
+          description: Signed in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401":
+          description: "`invalid_apple_token` (expired, wrong audience, bad signature, unknown key) or `email_not_verified` (no email shared, or not verified)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: "`not_configured`: this instance has no Apple client id."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: "`apple_account_mismatch`: the email's account is linked to another Apple ID."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503":
+          description: "`apple_unavailable`: Apple's signing keys could not be fetched."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/auth/methods:
     get:
       tags: [auth]
@@ -296,7 +349,9 @@ paths:
       description: |
         Password sign-in is always offered. `google` names the OAuth client id
         to request Google ID tokens for (Credential Manager's
-        `serverClientId`), or is null when the instance has none.
+        `serverClientId`), or is null when the instance has none. `apple`
+        names the Services ID the web passes to Sign in with Apple JS, or is
+        null (absent from older servers) when the instance has none.
       operationId: authMethods
       security: []
       responses:
@@ -1737,10 +1792,13 @@ components:
         created_at: { $ref: "#/components/schemas/Millis" }
         has_password:
           type: boolean
-          description: False for an account made with Google that has no password; password login is refused for it.
+          description: False for an account made with Google or Apple that has no password; password login is refused for it.
         google_linked:
           type: boolean
           description: A Google account is linked, so Sign in with Google reaches this user.
+        apple_linked:
+          type: boolean
+          description: An Apple ID is linked, so Sign in with Apple reaches this user. Absent from older servers.
         is_admin:
           type: boolean
           description: The account is one of the server's admins (`TUNG_ADMIN_EMAILS`). Only `/me` sets it; elsewhere it is false.
@@ -1790,6 +1848,7 @@ components:
         created_at: { $ref: "#/components/schemas/Millis" }
         has_password: { type: boolean }
         google_linked: { type: boolean }
+        apple_linked: { type: boolean }
         email_verified: { type: boolean, description: "False while the account's confirmation link is not opened." }
         is_admin: { type: boolean }
         last_seen_at:
@@ -1807,11 +1866,11 @@ components:
           format: int64
           description: When the latest of them started.
 
-    GoogleSignIn:
+    IdTokenSignIn:
       type: object
       required: [id_token]
       properties:
-        id_token: { type: string, description: "A Google ID token (JWT) issued to the instance's client id." }
+        id_token: { type: string, description: "A Google or Apple ID token (JWT) issued to one of the instance's client ids." }
         language:
           type: string
           description: The app's language (`en`, `sv`) for the welcome email, should this sign-in create an account.
@@ -1827,6 +1886,13 @@ components:
               required: [client_id]
               properties:
                 client_id: { type: string, examples: ["1234-abc.apps.googleusercontent.com"] }
+            - { type: "null" }
+        apple:
+          oneOf:
+            - type: object
+              required: [client_id]
+              properties:
+                client_id: { type: string, examples: ["fun.xuper.tung.web"] }
             - { type: "null" }
 
     Session:

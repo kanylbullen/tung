@@ -205,6 +205,7 @@ private fun UserRow(user: AdminUser, container: WebContainer, now: Long) {
                 listOfNotNull(
                     strings.joined(shortDate(user.createdAt, container.locale, now)),
                     strings.signInGoogle.takeIf { user.googleLinked },
+                    strings.signInApple.takeIf { user.appleLinked },
                     strings.signInPassword.takeIf { user.hasPassword },
                     strings.adminBadge.takeIf { user.isAdmin },
                 ).joinToString(strings.separator),
