@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 const val LOGIN_PATH = "/api/v1/auth/login"
+const val REGISTER_PATH = "/api/v1/auth/register"
 const val LOGOUT_PATH = "/api/v1/auth/logout"
 const val GOOGLE_PATH = "/api/v1/auth/google"
 const val METHODS_PATH = "/api/v1/auth/methods"
@@ -38,6 +39,12 @@ enum class DeleteAccountResult {
 enum class AuthFailure {
     /** 401 on login. */
     INVALID_CREDENTIALS,
+
+    /** 409 on register: an account with that email exists. */
+    ACCOUNT_EXISTS,
+
+    /** 400 `weak_password` on register: under 8 characters. */
+    WEAK_PASSWORD,
 
     /** 400: most likely the email. */
     INVALID_REQUEST,
@@ -116,13 +123,7 @@ class WebAuth(
             return AuthResult.Failed(AuthFailure.NETWORK)
         }
         if (!reply.isSuccess) {
-            val code = try {
-                json.decodeFromString(ErrorBody.serializer(), reply.body).error.code
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                null
-            }
+            val code = errorCode(reply.body)
             return AuthResult.Failed(
                 when (code) {
                     "invalid_google_token" -> AuthFailure.GOOGLE_REJECTED
@@ -137,14 +138,40 @@ class WebAuth(
     }
 
     /** `POST /api/v1/auth/login` at [baseUrl]. */
-    suspend fun signIn(baseUrl: String, email: String, password: String): AuthResult {
+    suspend fun signIn(baseUrl: String, email: String, password: String): AuthResult =
+        credentials(baseUrl + LOGIN_PATH, Credentials(email, password))
+
+    /**
+     * `POST /api/v1/auth/register` at [baseUrl]: a new account, answered with
+     * a session as login is. [language] (`en`, `sv`) is for the welcome email.
+     */
+    suspend fun register(baseUrl: String, email: String, password: String, language: String? = null): AuthResult =
+        credentials(baseUrl + REGISTER_PATH, Credentials(email, password, language))
+
+    private suspend fun credentials(url: String, credentials: Credentials): AuthResult {
         val reply = try {
-            post(baseUrl + LOGIN_PATH, json.encodeToString(Credentials.serializer(), Credentials(email, password)), emptyMap())
+            post(url, json.encodeToString(Credentials.serializer(), credentials), emptyMap())
         } catch (e: HttpUnreachable) {
             return AuthResult.Failed(AuthFailure.NETWORK)
         }
-        if (!reply.isSuccess) return AuthResult.Failed(failureOf(reply.status))
-        return session(reply.body, fallbackEmail = email)
+        if (!reply.isSuccess) {
+            return AuthResult.Failed(
+                when {
+                    reply.status == 409 -> AuthFailure.ACCOUNT_EXISTS
+                    reply.status == 400 && errorCode(reply.body) == "weak_password" -> AuthFailure.WEAK_PASSWORD
+                    else -> failureOf(reply.status)
+                },
+            )
+        }
+        return session(reply.body, fallbackEmail = credentials.email)
+    }
+
+    private fun errorCode(body: String): String? = try {
+        json.decodeFromString(ErrorBody.serializer(), body).error.code
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
     }
 
     private fun session(body: String, fallbackEmail: String?): AuthResult {
@@ -180,13 +207,7 @@ class WebAuth(
             return DeleteAccountResult.NETWORK
         }
         if (reply.isSuccess) return DeleteAccountResult.DELETED
-        val code = try {
-            json.decodeFromString(ErrorBody.serializer(), reply.body).error.code
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            null
-        }
+        val code = errorCode(reply.body)
         return when {
             reply.status == 401 -> DeleteAccountResult.SIGNED_OUT
             code == "email_mismatch" -> DeleteAccountResult.EMAIL_MISMATCH
@@ -205,7 +226,7 @@ class WebAuth(
     }
 
     @Serializable
-    private data class Credentials(val email: String, val password: String)
+    private data class Credentials(val email: String, val password: String, val language: String? = null)
 
     @Serializable
     private data class Confirmation(val email: String)

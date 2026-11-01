@@ -189,4 +189,32 @@ class WebSyncTest {
         assertEquals(AuthResult.Failed(AuthFailure.NETWORK), answer { throw HttpUnreachable(null) })
         assertIs<AuthResult.Failed>(answer { HttpReply(401, "") })
     }
+
+    @Test
+    fun registerPostsTheLanguageAndNamesEachFailure() = runTest {
+        var url = ""
+        var body = ""
+        suspend fun answer(reply: () -> HttpReply): AuthResult {
+            val auth = WebAuth(post = { u, b, _ -> url = u; body = b; reply() })
+            return auth.register("https://tung.example.org", "x@example.org", "secret123", "sv")
+        }
+        assertEquals(
+            AuthResult.Success("tung_new", "x@example.org"),
+            answer { HttpReply(201, """{"token":"tung_new","user":{"id":"u","email":"x@example.org","created_at":1,"has_password":true,"google_linked":false}}""") },
+        )
+        assertEquals("https://tung.example.org/api/v1/auth/register", url)
+        assertEquals("""{"email":"x@example.org","password":"secret123","language":"sv"}""", body)
+        assertEquals(AuthResult.Failed(AuthFailure.ACCOUNT_EXISTS), answer { HttpReply(409, """{"error":{"code":"email_taken"}}""") })
+        assertEquals(AuthResult.Failed(AuthFailure.WEAK_PASSWORD), answer { HttpReply(400, """{"error":{"code":"weak_password","message":"…"}}""") })
+        assertEquals(AuthResult.Failed(AuthFailure.INVALID_REQUEST), answer { HttpReply(400, """{"error":{"code":"invalid_email"}}""") })
+        assertEquals(AuthResult.Failed(AuthFailure.RATE_LIMITED), answer { HttpReply(429, "") })
+        assertEquals(AuthResult.Failed(AuthFailure.NETWORK), answer { throw HttpUnreachable(null) })
+    }
+
+    @Test
+    fun signInSendsNoLanguage() = runTest {
+        var body = ""
+        WebAuth(post = { _, b, _ -> body = b; HttpReply(401, "") }).signIn("https://tung.example.org", "x@example.org", "secret123")
+        assertEquals("""{"email":"x@example.org","password":"secret123"}""", body)
+    }
 }

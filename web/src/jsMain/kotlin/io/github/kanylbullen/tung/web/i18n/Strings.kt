@@ -33,6 +33,8 @@ interface Strings {
     val useAnotherServer: String
     val signIn: String
     val signingIn: String
+    val createAccount: String
+    val creatingAccount: String
 
     /** Under the Google button, above the email form. */
     val googleHint: String
@@ -458,6 +460,8 @@ object English : Strings {
     override val useAnotherServer = "Use another server"
     override val signIn = "Sign in"
     override val signingIn = "Signing in…"
+    override val createAccount = "Create account"
+    override val creatingAccount = "Creating account…"
     override val googleHint = "Choose your Google account in the window that opens."
     override val orWithEmail = "Or with email and password"
     override val errorFields = "Enter your email and password."
@@ -465,6 +469,8 @@ object English : Strings {
     override val errorUrlHttps = "Use https://. Plain http only works for localhost and addresses on your own network."
     override fun authFailure(failure: AuthFailure): String = when (failure) {
         AuthFailure.INVALID_CREDENTIALS -> "Wrong email or password."
+        AuthFailure.ACCOUNT_EXISTS -> "There is already an account with that email. Sign in instead."
+        AuthFailure.WEAK_PASSWORD -> "The password needs at least 8 characters."
         AuthFailure.INVALID_REQUEST -> "The server did not accept that email address. Check it and try again."
         AuthFailure.RATE_LIMITED -> "Too many attempts. Wait a minute and try again."
         AuthFailure.NOT_A_SERVER -> "No Tung server answers at that address. Check it and try again."
@@ -1000,6 +1006,8 @@ object Swedish : Strings {
     override val useAnotherServer = "Använd en annan server"
     override val signIn = "Logga in"
     override val signingIn = "Loggar in…"
+    override val createAccount = "Skapa konto"
+    override val creatingAccount = "Skapar konto…"
     override val googleHint = "Välj ditt Google-konto i fönstret som öppnas."
     override val orWithEmail = "Eller med e-post och lösenord"
     override val errorFields = "Ange e-post och lösenord."
@@ -1007,6 +1015,8 @@ object Swedish : Strings {
     override val errorUrlHttps = "Använd https://. Okrypterad http fungerar bara mot localhost och adresser i ditt eget nätverk."
     override fun authFailure(failure: AuthFailure): String = when (failure) {
         AuthFailure.INVALID_CREDENTIALS -> "Fel e-post eller lösenord."
+        AuthFailure.ACCOUNT_EXISTS -> "Det finns redan ett konto med den e-posten. Logga in i stället."
+        AuthFailure.WEAK_PASSWORD -> "Lösenordet behöver minst 8 tecken."
         AuthFailure.INVALID_REQUEST -> "Servern godtog inte den e-postadressen. Kontrollera den och försök igen."
         AuthFailure.RATE_LIMITED -> "För många försök. Vänta en minut och försök igen."
         AuthFailure.NOT_A_SERVER -> "Ingen Tung-server svarar på den adressen. Kontrollera den och försök igen."

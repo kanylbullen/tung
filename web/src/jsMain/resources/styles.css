@@ -121,6 +121,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   font-size: 17px;
 }
 .secondary { background: var(--raised); border: 1px solid var(--border); }
+/* "Create account" under Sign in: as wide, quieter. */
+.primary + .secondary.wide { display: block; width: calc(100% - 40px); margin: 12px 20px 0; color: var(--text); }
 .text-button { color: var(--accent-text); font-weight: 600; padding: 0 12px; }
 
 /* --- Fields --- */
