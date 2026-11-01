@@ -30,9 +30,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.toKotlinLocalDate
-import kotlinx.datetime.toKotlinTimeZone
-import java.time.Clock
+import kotlinx.datetime.TimeZone
 
 /** One exercise of the workout with every session of it, this workout's included, for its progress chart. */
 data class ExerciseSessions(
@@ -62,8 +60,8 @@ data class SummaryUiState(
  * custom exercises have none), and each exercise's progress over every
  * finished workout, this one included, charted with the compact trends'
  * metric and span, which a choice here changes for the Progress tab and the
- * workout sheet too. Computed off the main thread; "today" and the zone are
- * [clock]'s.
+ * workout sheet too. Computed off the main thread; "today" and the zone come
+ * from [currentDate] and [currentZone].
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SummaryViewModel(
@@ -72,7 +70,8 @@ class SummaryViewModel(
     private val commands: CommandHandler,
     catalogueMuscles: CatalogueMuscles,
     private val settings: ProgressSettings,
-    private val clock: Clock,
+    private val currentDate: () -> LocalDate,
+    private val currentZone: () -> TimeZone,
 ) : ViewModel() {
     private val report =
         combine(repo.observeWorkout(workoutId), repo.observeExercises(workoutId)) { w, e -> w to e }
@@ -86,9 +85,9 @@ class SummaryViewModel(
                 loading = false,
                 report = report,
                 muscles = muscleBreakdown(exercises.map { ExerciseWork(index.musclesOf(it.exerciseId), it.sets.size) }),
-                today = java.time.LocalDate.now(clock).toKotlinLocalDate(),
+                today = currentDate(),
                 progress = exercises.distinctBy { it.exerciseId }.map { e ->
-                    ExerciseSessions(e.exerciseId, e.name, e.nameKey, sessionPoints(byExercise[e.exerciseId].orEmpty(), clock.zone.toKotlinTimeZone()))
+                    ExerciseSessions(e.exerciseId, e.name, e.nameKey, sessionPoints(byExercise[e.exerciseId].orEmpty(), currentZone()))
                 },
             )
         }.flowOn(Dispatchers.Default)

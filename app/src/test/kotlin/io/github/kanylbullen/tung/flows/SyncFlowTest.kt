@@ -83,7 +83,7 @@ class SyncFlowTest : FlowTest() {
         clickDescription(str(Res.string.workout_mark_done, 1))
         waitForDescription(str(Res.string.workout_mark_undone, 1))
         finishWorkout()
-        waitForText(str(R.string.summary_title))
+        waitForText(str(Res.string.summary_title))
 
         // FinishWorkout, through the command handler, enqueued one more sync.
         waitUntil(5_000) { (nowWork() - before).isNotEmpty() }

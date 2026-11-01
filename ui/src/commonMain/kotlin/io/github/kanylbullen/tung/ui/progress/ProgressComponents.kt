@@ -39,7 +39,7 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 @Composable
-fun ProgressHeading(text: String, modifier: Modifier = Modifier) {
+internal fun ProgressHeading(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
         style = MaterialTheme.typography.titleMedium,
@@ -49,7 +49,7 @@ fun ProgressHeading(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ProgressMuted(text: String, modifier: Modifier = Modifier) {
+internal fun ProgressMuted(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
@@ -69,7 +69,7 @@ private enum class ChoiceSlot { PROBE, CHIPS, MENU }
  * width, font size and language.
  */
 @Composable
-fun <T> ChoiceChips(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
+internal fun <T> ChoiceChips(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
     SubcomposeLayout(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) { constraints ->
         // Measured, never placed, and without semantics, so neither a screen reader nor a test sees it.
         val probe = subcompose(ChoiceSlot.PROBE) {

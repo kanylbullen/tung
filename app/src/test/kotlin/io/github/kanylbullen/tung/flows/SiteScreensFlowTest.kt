@@ -124,9 +124,9 @@ class SiteScreensFlowTest : FlowTest() {
 
         repeat(4) { logNextSet() }
         finishWorkout()
-        waitForText(str(R.string.summary_done))
+        waitForText(str(Res.string.summary_done))
         val list = compose.onNode(hasTestTag(SUMMARY_LIST_TAG))
-        list.performScrollToNode(hasContentDescription(str(R.string.summary_muscles) + ":", substring = true))
+        list.performScrollToNode(hasContentDescription(str(Res.string.summary_muscles) + ":", substring = true))
         screenshot("3-summary")
     }
 

@@ -6,13 +6,10 @@
     <string name="nav_home">Hem</string>
     <string name="nav_history">Historik</string>
     <string name="nav_exercises">Övningar</string>
-    <string name="action_close">Stäng</string>
 
     <!-- Home -->
 
     <!-- Workout list rows and stats -->
-    <string name="volume_kg">%1$s kg</string>
-    <string name="stat_sets">Set</string>
 
     <!-- Active workout -->
     <!-- The first time an exercise is added (no history): the reps sheet asks how many sets, as chips. -->
@@ -95,23 +92,6 @@
 
     <!-- History -->
     <!-- Health Connect's values on a finished workout, one muted line: "Heart rate 128 avg · 171 max · 342 kcal" -->
-
-    <!-- Summary -->
-    <string name="summary_title">Pass klart</string>
-    <string name="summary_exercises">Övningar</string>
-    <plurals name="summary_sets">
-        <item quantity="one">%d set</item>
-        <item quantity="other">%d set</item>
-    </plurals>
-    <string name="summary_muscles">Tränade muskler</string>
-    <string name="summary_muscles_description">Tränade muskler: %1$s</string>
-    <plurals name="summary_muscles_uncounted">
-        <item quantity="one">%d set av en egen övning räknas inte: egna övningar har inga muskler</item>
-        <item quantity="other">%d set av egna övningar räknas inte: egna övningar har inga muskler</item>
-    </plurals>
-    <string name="summary_record">Nytt rekord</string>
-    <string name="summary_done">Klar</string>
-    <string name="set_value">%1$s × %2$d</string>
 
     <!-- Routines -->
     <string name="routine_saved">Sparat som rutin: %1$s</string>

@@ -51,10 +51,10 @@ class SessionFlowTest : FlowTest() {
 
         finishWorkout(screenshotStep = "6-finish-dialog")
 
-        waitForText(str(R.string.summary_title))
-        assertShown(hasText("1") and hasText(str(R.string.stat_sets)))
+        waitForText(str(Res.string.summary_title))
+        assertShown(hasText("1") and hasText(str(Res.string.stat_sets)))
         assertShown(hasText("640") and hasText(str(Res.string.stat_volume)))
-        assertShown(hasText(str(R.string.set_value, "80", 8)))
+        assertShown(hasText(str(Res.string.set_value, "80", 8)))
         screenshot("7-summary")
 
         assertEquals(1, count("SELECT COUNT(*) FROM workout"))
@@ -207,8 +207,8 @@ class SessionFlowTest : FlowTest() {
         screenshot("2-finish-dialog-counts")
         clickInDialog(str(Res.string.workout_finish_confirm))
 
-        waitForText(str(R.string.summary_title))
-        assertShown(hasText("1") and hasText(str(R.string.stat_sets)))
+        waitForText(str(Res.string.summary_title))
+        assertShown(hasText("1") and hasText(str(Res.string.stat_sets)))
         // The seeded workout's set and the one kept here; the un-ticked one is gone.
         assertEquals(2, count("SELECT COUNT(*) FROM set_entry"))
     }

@@ -229,7 +229,7 @@ private fun ProgramProposal(proposal: AiProposal.Program, defaultName: String) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(routine.name, style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
             routine.exercises.forEach { e ->
-                val target = e.targetReps?.let { stringResource(R.string.set_value, e.targetSets.toString(), it) }
+                val target = e.targetReps?.let { stringResource(Res.string.set_value, e.targetSets.toString(), it) }
                     ?: pluralStringResource(R.plurals.ai_target_sets, e.targetSets, e.targetSets)
                 ExerciseLine(name(e.exercise), target)
             }
@@ -245,7 +245,7 @@ private fun WorkoutProposal(proposal: AiProposal.NextWorkout) {
     proposal.exercises.forEach { e ->
         val sets = e.sets.map { set ->
             val kg = set.weightKg?.let(::localWeight) ?: noWeight
-            set.reps?.let { stringResource(R.string.set_value, kg, it) } ?: kg
+            set.reps?.let { stringResource(Res.string.set_value, kg, it) } ?: kg
         }
         ExerciseLine(name(e.exercise), sets.joinToString(separator))
     }
