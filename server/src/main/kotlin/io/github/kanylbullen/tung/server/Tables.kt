@@ -14,6 +14,8 @@ object Users : Table("users") {
     val passwordHash = text("password_hash").nullable()
     /** V10: the `sub` of the linked Google account, null when none is linked. */
     val googleSub = text("google_sub").nullable()
+    /** V15: the `sub` of the linked Apple ID (Sign in with Apple), null when none is linked. */
+    val appleSub = text("apple_sub").nullable()
     val createdAt = long("created_at")
     /**
      * V14: when the email was proven (the emailed link, or Google), null while

@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.core.sync.PUSH_ENDPOINTS_PATH
 import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
 import io.github.kanylbullen.tung.core.sync.SyncRequest
+import io.github.kanylbullen.tung.server.auth.IdProvider
 import io.github.kanylbullen.tung.server.command.CommandService
 import io.github.kanylbullen.tung.server.push.ChangeNotifier
 import io.github.kanylbullen.tung.server.push.PushStore
@@ -122,7 +123,7 @@ fun Route.apiRoutes(
     get("/openapi.yaml") { call.respondText(spec, ContentType.parse("application/yaml")) }
     swaggerUI(path = "docs", swaggerFile = "openapi/openapi.yaml")
 
-    val admins = Admins(db, config.adminEmails, requireProof = accounts.google != null)
+    val admins = Admins(db, config.adminEmails, requireProof = accounts.google != null || accounts.apple != null)
     val testers = Testers(db, admins, config.testerSignups, config.clock, welcome)
     val adminStore = AdminStore(db, admins, config.testerSignups, config.clock)
     val feedback = FeedbackStore(db, admins, config.clock)
@@ -138,12 +139,22 @@ fun Route.apiRoutes(
                 call.respond(HttpStatusCode.Accepted)
             }
             post("/auth/google") {
-                val body = call.receive<GoogleSignIn>()
-                call.respond(accounts.signInWithGoogle(body.idToken, body.language))
+                val body = call.receive<IdTokenSignIn>()
+                call.respond(accounts.signInWith(IdProvider.GOOGLE, body.idToken, body.language))
+            }
+            post("/auth/apple") {
+                val body = call.receive<IdTokenSignIn>()
+                call.respond(accounts.signInWith(IdProvider.APPLE, body.idToken, body.language))
             }
         }
         get("/auth/methods") {
-            call.respond(AuthMethods(password = true, google = accounts.google?.let { GoogleMethod(it.clientIds.first()) }))
+            call.respond(
+                AuthMethods(
+                    password = true,
+                    google = accounts.google?.let { ProviderMethod(it.clientIds.first()) },
+                    apple = accounts.apple?.let { ProviderMethod(it.clientIds.first()) },
+                ),
+            )
         }
 
         authenticate(BEARER) {

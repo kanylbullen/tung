@@ -1,7 +1,8 @@
 package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.core.CoreCatalog
-import io.github.kanylbullen.tung.server.auth.GoogleIdTokens
+import io.github.kanylbullen.tung.server.auth.IdProvider
+import io.github.kanylbullen.tung.server.auth.IdTokens
 import io.github.kanylbullen.tung.server.command.CommandService
 import io.github.kanylbullen.tung.server.command.ServerCatalogue
 import io.github.kanylbullen.tung.server.mcp.McpReads
@@ -97,10 +98,12 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     }
 
     // Sign in with Google (issue #51), only with a client id.
-    val google = config.googleClientIds.takeIf { it.isNotEmpty() }?.let { GoogleIdTokens(it, config.googleJwksUrl, config.clock) }
+    val google = config.googleClientIds.takeIf { it.isNotEmpty() }?.let { IdTokens(IdProvider.GOOGLE, it, config.googleJwksUrl, config.clock) }
+    // Sign in with Apple, only with a Services ID (the web) or a bundle id (an iPhone app).
+    val apple = config.appleClientIds.takeIf { it.isNotEmpty() }?.let { IdTokens(IdProvider.APPLE, it, config.appleJwksUrl, config.clock) }
     // Welcome emails (a new account, a test sign-up), only with TUNG_RESEND_API_KEY; sent on the application's scope.
     val welcome = WelcomeMail(config.mailer, config.publicUrl, this, testInvite = config.testerSignups)
-    val accounts = Accounts(db, google, welcome, config.clock)
+    val accounts = Accounts(db, google, welcome, config.clock, apple)
     val exercises = ExerciseStore(db)
     val workouts = WorkoutStore(db, exercises)
 

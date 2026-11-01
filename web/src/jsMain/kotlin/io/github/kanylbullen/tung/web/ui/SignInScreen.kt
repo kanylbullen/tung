@@ -15,6 +15,7 @@ import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 import io.github.kanylbullen.tung.web.sync.AuthResult
 import io.github.kanylbullen.tung.web.sync.ForgotResult
+import io.github.kanylbullen.tung.web.sync.SignInMethods
 import kotlinx.browser.window
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AutoComplete
@@ -55,15 +56,19 @@ fun SignInScreen(container: WebContainer) {
     // Said once, right after "Delete account" here.
     val deleted = remember { container.accountDeleted.also { container.accountDeleted = false } }
 
-    // Sign in with Google, when the page is served by the server it signs in
-    // to: Google only runs its button on origins the server's client id has
-    // authorised, and that is the server's own. The client id comes from the
-    // server (`/auth/methods`), never from the app.
+    // Sign in with Google and Apple, when the page is served by the server it
+    // signs in to: Google only runs its button on origins the server's client
+    // id has authorised, and Apple only answers the Services ID's own domain
+    // and Return URL, both the server's. The ids come from the server
+    // (`/auth/methods`), never from the app.
     val sameOrigin = (checkServerUrl(server) as? ServerUrlCheck.Valid)?.url?.takeIf { it == window.location.origin }
-    var googleClientId by remember { mutableStateOf<String?>(null) }
+    var methods by remember { mutableStateOf(SignInMethods(null, null)) }
     LaunchedEffect(sameOrigin) {
-        googleClientId = sameOrigin?.let { container.auth.googleClientId(it) }
+        methods = sameOrigin?.let { container.auth.methods(it) } ?: SignInMethods(null, null)
     }
+    var appleReady by remember { mutableStateOf(false) }
+    // Apple's window is open: one at a time.
+    var applePopup by remember { mutableStateOf(false) }
 
     fun signInWithGoogle(url: String, idToken: String) {
         if (busy) return
@@ -73,6 +78,27 @@ fun SignInScreen(container: WebContainer) {
             val result = container.signInWithGoogle(url, idToken)
             busy = false
             if (result is AuthResult.Failed) error = strings.authFailure(result.failure)
+        }
+    }
+
+    fun signInWithApple(url: String, clientId: String) {
+        if (busy || applePopup) return
+        error = null
+        applePopup = true
+        signInWithApple(clientId) { outcome ->
+            applePopup = false
+            when (outcome) {
+                is AppleOutcome.Token -> {
+                    busy = true
+                    scope.launch {
+                        val result = container.signInWithApple(url, outcome.idToken)
+                        busy = false
+                        if (result is AuthResult.Failed) error = strings.authFailure(result.failure)
+                    }
+                }
+                AppleOutcome.Closed -> Unit
+                AppleOutcome.Failed -> error = strings.authFailure(AuthFailure.APPLE_FAILED)
+            }
         }
     }
 
@@ -141,22 +167,41 @@ fun SignInScreen(container: WebContainer) {
         Div({ classes("wordmark") }) { Text(strings.appName) }
         P({ classes("intro") }) { Text(strings.signInIntro) }
         if (deleted) P({ classes("notice"); attr("role", "status") }) { Text(strings.accountDeleted) }
-        val clientId = googleClientId
-        val googleUrl = sameOrigin
-        if (clientId != null && googleUrl != null) {
+        val clientId = methods.google
+        val appleId = methods.apple
+        val providerUrl = sameOrigin
+        if (clientId != null && providerUrl != null) {
             Div({
                 classes("google")
                 ref { element ->
                     loadGoogleIdentity(
                         ready = {
-                            renderGoogleButton(element, clientId, strings.tag) { token -> signInWithGoogle(googleUrl, token) }
+                            renderGoogleButton(element, clientId, strings.tag) { token -> signInWithGoogle(providerUrl, token) }
                         },
                         failed = { error = strings.authFailure(AuthFailure.GOOGLE_FAILED) },
                     )
                     onDispose { }
                 }
             })
-            P({ classes("google-hint") }) { Text(strings.googleHint) }
+        }
+        if (appleId != null && providerUrl != null) {
+            Button({
+                classes("apple")
+                attr("type", "button")
+                if (busy || applePopup || !appleReady) disabled()
+                onClick { signInWithApple(providerUrl, appleId) }
+                ref {
+                    loadAppleSignIn(
+                        strings.tag,
+                        ready = { appleReady = true },
+                        failed = { error = strings.authFailure(AuthFailure.APPLE_FAILED) },
+                    )
+                    onDispose { }
+                }
+            }) { Text(strings.continueWithApple) }
+        }
+        if (providerUrl != null && (clientId != null || appleId != null)) {
+            P({ classes("google-hint") }) { Text(if (appleId != null) strings.signInWindowHint else strings.googleHint) }
             P({ classes("or") }) { Text(strings.orWithEmail) }
         }
         Form(attrs = {

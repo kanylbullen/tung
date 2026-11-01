@@ -9,6 +9,7 @@ const val LOGIN_PATH = "/api/v1/auth/login"
 const val REGISTER_PATH = "/api/v1/auth/register"
 const val LOGOUT_PATH = "/api/v1/auth/logout"
 const val GOOGLE_PATH = "/api/v1/auth/google"
+const val APPLE_PATH = "/api/v1/auth/apple"
 const val METHODS_PATH = "/api/v1/auth/methods"
 const val ACCOUNT_PATH = "/api/v1/me"
 const val RESEND_CONFIRMATION_PATH = "/api/v1/auth/verify/resend"
@@ -84,7 +85,25 @@ enum class AuthFailure {
 
     /** Google's own sign-in could not run in this browser (blocked, closed, no account). */
     GOOGLE_FAILED,
+
+    /** 401 `invalid_apple_token`: the server did not accept Apple's token. */
+    APPLE_REJECTED,
+
+    /** 401 `email_not_verified` from `/auth/apple`: Apple gave no address Tung can use. */
+    APPLE_EMAIL_UNVERIFIED,
+
+    /** 409 `apple_account_mismatch`: the email's account is linked to another Apple ID. */
+    APPLE_ACCOUNT_MISMATCH,
+
+    /** 404 `not_configured` from `/auth/apple`: this server does not offer Sign in with Apple. */
+    APPLE_NOT_OFFERED,
+
+    /** Apple's own sign-in could not run in this browser (blocked, failed). */
+    APPLE_FAILED,
 }
+
+/** The client ids a server hands out for signing in with Google and Apple (`/auth/methods`); null where it has none. */
+data class SignInMethods(val google: String?, val apple: String?)
 
 sealed interface AuthResult {
     data class Success(val token: String, val email: String) : AuthResult
@@ -100,49 +119,65 @@ class WebAuth(
 ) {
 
     /**
-     * The Google client id [baseUrl] offers for Sign in with Google, from
-     * `GET /api/v1/auth/methods`, or null: no Google there, an older server
-     * (404), or no answer. The web never hardcodes one, as the phone.
+     * The Google client id and the Apple Services ID [baseUrl] offers, from
+     * `GET /api/v1/auth/methods`; each null when it offers none, and both on
+     * an older server (404) or no answer. The web never hardcodes one, as the phone.
      */
-    suspend fun googleClientId(baseUrl: String): String? {
+    suspend fun methods(baseUrl: String): SignInMethods {
+        val none = SignInMethods(null, null)
         val reply = try {
             get(baseUrl + METHODS_PATH)
         } catch (e: HttpUnreachable) {
-            return null
+            return none
         }
-        if (!reply.isSuccess) return null
+        if (!reply.isSuccess) return none
         return try {
-            json.decodeFromString(Methods.serializer(), reply.body).google?.clientId
+            json.decodeFromString(Methods.serializer(), reply.body).let { SignInMethods(it.google?.clientId, it.apple?.clientId) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            null
+            none
         }
     }
+
+    /** The Google client id of [methods], for callers that only offer Google. */
+    suspend fun googleClientId(baseUrl: String): String? = methods(baseUrl).google
 
     /**
      * `POST /api/v1/auth/google {id_token, language}`: Google's ID token for a
      * session, as the phone does; [language] (`en`, `sv`) is for the welcome
      * email, should the sign-in make a new account.
      */
-    suspend fun signInWithGoogle(baseUrl: String, idToken: String, language: String? = null): AuthResult {
+    suspend fun signInWithGoogle(baseUrl: String, idToken: String, language: String? = null): AuthResult =
+        idTokenSignIn(baseUrl + GOOGLE_PATH, idToken, language) { code ->
+            when (code) {
+                "invalid_google_token" -> AuthFailure.GOOGLE_REJECTED
+                "email_not_verified" -> AuthFailure.GOOGLE_EMAIL_UNVERIFIED
+                "google_account_mismatch" -> AuthFailure.GOOGLE_ACCOUNT_MISMATCH
+                "not_configured" -> AuthFailure.GOOGLE_NOT_OFFERED
+                else -> null
+            }
+        }
+
+    /** `POST /api/v1/auth/apple {id_token, language}`: Sign in with Apple's ID token for a session, as Google's. */
+    suspend fun signInWithApple(baseUrl: String, idToken: String, language: String? = null): AuthResult =
+        idTokenSignIn(baseUrl + APPLE_PATH, idToken, language) { code ->
+            when (code) {
+                "invalid_apple_token" -> AuthFailure.APPLE_REJECTED
+                "email_not_verified" -> AuthFailure.APPLE_EMAIL_UNVERIFIED
+                "apple_account_mismatch" -> AuthFailure.APPLE_ACCOUNT_MISMATCH
+                "not_configured" -> AuthFailure.APPLE_NOT_OFFERED
+                else -> null
+            }
+        }
+
+    private suspend fun idTokenSignIn(url: String, idToken: String, language: String?, failure: (String?) -> AuthFailure?): AuthResult {
         val reply = try {
-            post(baseUrl + GOOGLE_PATH, json.encodeToString(GoogleToken.serializer(), GoogleToken(idToken, language)), emptyMap())
+            post(url, json.encodeToString(IdToken.serializer(), IdToken(idToken, language)), emptyMap())
         } catch (e: HttpUnreachable) {
             return AuthResult.Failed(AuthFailure.NETWORK)
         }
-        if (!reply.isSuccess) {
-            val code = errorCode(reply.body)
-            return AuthResult.Failed(
-                when (code) {
-                    "invalid_google_token" -> AuthFailure.GOOGLE_REJECTED
-                    "email_not_verified" -> AuthFailure.GOOGLE_EMAIL_UNVERIFIED
-                    "google_account_mismatch" -> AuthFailure.GOOGLE_ACCOUNT_MISMATCH
-                    "not_configured" -> AuthFailure.GOOGLE_NOT_OFFERED
-                    else -> failureOf(reply.status)
-                },
-            )
-        }
+        if (!reply.isSuccess) return AuthResult.Failed(failure(errorCode(reply.body)) ?: failureOf(reply.status))
         return session(reply.body, fallbackEmail = null)
     }
 
@@ -285,13 +320,13 @@ class WebAuth(
     private data class Forgot(val email: String, val language: String? = null)
 
     @Serializable
-    private data class GoogleToken(@SerialName("id_token") val idToken: String, val language: String? = null)
+    private data class IdToken(@SerialName("id_token") val idToken: String, val language: String? = null)
 
     @Serializable
-    private data class Methods(val google: GoogleMethod? = null)
+    private data class Methods(val google: ProviderMethod? = null, val apple: ProviderMethod? = null)
 
     @Serializable
-    private data class GoogleMethod(@SerialName("client_id") val clientId: String)
+    private data class ProviderMethod(@SerialName("client_id") val clientId: String)
 
     @Serializable
     private data class ErrorBody(val error: ErrorDetail)

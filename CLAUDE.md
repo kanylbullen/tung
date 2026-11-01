@@ -2021,8 +2021,8 @@ fallback, and only on a tap.
   are tokens named `session`. A `read` token gets 403 on anything but GET.
   `api_tokens.expires_at` (V5) is null except on OAuth tokens; `authenticate`
   refuses expired ones.
-- **Sign in with Google** (issue #51; `auth/GoogleIdTokens.kt`,
-  `Accounts.googleUser`, V10): only with `TUNG_GOOGLE_CLIENT_ID` (comma-separated
+- **Sign in with Google** (issue #51; `auth/IdTokens.kt`,
+  `Accounts.providerUser`, V10): only with `TUNG_GOOGLE_CLIENT_ID` (comma-separated
   ids; the first is what `GET /api/v1/auth/methods` hands clients; without it
   `/auth/google` is 404 `not_configured` and nothing Google is shown). An ID
   token is verified by hand with `java.security`: RS256, Google's issuer,
@@ -2052,6 +2052,16 @@ fallback, and only on a tap.
   and client) that `POST /oauth/authorize` takes instead of the password.
   Tests: `GoogleSignInTest` (a test RSA key and a JWK set on a JDK
   `HttpServer`; `ServerConfig.clock` exists for expiry).
+- **Sign in with Apple** (`IdProvider.APPLE`, `users.apple_sub`, V15): only
+  with `TUNG_APPLE_CLIENT_ID` (the web's Services ID first, then the iPhone
+  app's bundle id). `POST /api/v1/auth/apple` verifies like Google
+  (issuer `https://appleid.apple.com`) and links by the same rule, also an
+  account already linked to the other provider (handed over, never joined
+  silently). The web's button (`web/.../ui/AppleButton.kt`) is Apple JS in
+  popup mode with `redirectURI` `<origin>/app/`, offered only on the server's
+  own origin. Setup and the private relay's mail: `server/README.md`, "Sign
+  in with Apple". Not yet: the consent page, the phone, token revocation on
+  account deletion (needs a `.p8` key). `AppleSignInTest`.
 - **Email verification** (`V14__email_verification.sql`, `Accounts`,
   `RequireConfirmedEmail` in `Routes.kt`, the page `GET /verify-email` in
   `SiteRoutes.kt`), only on a server that sends mail

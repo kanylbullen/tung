@@ -43,6 +43,10 @@ interface Strings {
 
     /** Under the Google button, above the email form. */
     val googleHint: String
+    /** The same with Apple's button there too. */
+    val signInWindowHint: String
+    /** Sign in with Apple's button, in Apple's own wording. */
+    val continueWithApple: String
     val orWithEmail: String
     val errorFields: String
     val errorUrl: String
@@ -389,6 +393,7 @@ interface Strings {
     fun accountsShown(shown: Int, total: Int): String
     fun joined(date: String): String
     val signInGoogle: String
+    val signInApple: String
     val signInPassword: String
     val adminBadge: String
     fun lastSeen(date: String): String
@@ -496,6 +501,8 @@ object English : Strings {
         ForgotResult.FAILED -> "The server had a problem. Try again in a while."
     }
     override val googleHint = "Choose your Google account in the window that opens."
+    override val signInWindowHint = "Choose your account in the window that opens."
+    override val continueWithApple = "Continue with Apple"
     override val orWithEmail = "Or with email and password"
     override val errorFields = "Enter your email and password."
     override val errorUrl = "Enter the server address, for example https://tung.example.org."
@@ -514,6 +521,11 @@ object English : Strings {
         AuthFailure.GOOGLE_ACCOUNT_MISMATCH -> "This email belongs to an account linked to another Google account. Sign in with that one or with your password."
         AuthFailure.GOOGLE_NOT_OFFERED -> "This server does not offer Sign in with Google. Use your email and password."
         AuthFailure.GOOGLE_FAILED -> "Google sign-in did not work. Try again, or use your email and password."
+        AuthFailure.APPLE_REJECTED -> "The server did not accept the Apple sign-in. Try again."
+        AuthFailure.APPLE_EMAIL_UNVERIFIED -> "Apple did not give an email address Tung can use. Use your email and password."
+        AuthFailure.APPLE_ACCOUNT_MISMATCH -> "This email belongs to an account linked to another Apple ID. Sign in with that one or with your password."
+        AuthFailure.APPLE_NOT_OFFERED -> "This server does not offer Sign in with Apple. Use your email and password."
+        AuthFailure.APPLE_FAILED -> "Apple sign-in did not work. Try again, or use your email and password."
     }
 
     override val home = "Home"
@@ -949,6 +961,7 @@ object English : Strings {
     override fun accountsShown(shown: Int, total: Int): String = "The newest $shown of $total."
     override fun joined(date: String): String = "Joined $date"
     override val signInGoogle = "Google"
+    override val signInApple = "Apple"
     override val signInPassword = "Password"
     override val adminBadge = "Admin"
     override fun lastSeen(date: String): String = "Last seen $date"
@@ -1075,6 +1088,8 @@ object Swedish : Strings {
         ForgotResult.FAILED -> "Servern fick ett fel. Försök igen om en stund."
     }
     override val googleHint = "Välj ditt Google-konto i fönstret som öppnas."
+    override val signInWindowHint = "Välj ditt konto i fönstret som öppnas."
+    override val continueWithApple = "Fortsätt med Apple"
     override val orWithEmail = "Eller med e-post och lösenord"
     override val errorFields = "Ange e-post och lösenord."
     override val errorUrl = "Ange serverns adress, till exempel https://tung.example.org."
@@ -1093,6 +1108,11 @@ object Swedish : Strings {
         AuthFailure.GOOGLE_ACCOUNT_MISMATCH -> "E-postadressen hör till ett konto som är kopplat till ett annat Google-konto. Logga in med det eller med ditt lösenord."
         AuthFailure.GOOGLE_NOT_OFFERED -> "Den här servern erbjuder inte inloggning med Google. Använd e-post och lösenord."
         AuthFailure.GOOGLE_FAILED -> "Google-inloggningen fungerade inte. Försök igen, eller använd e-post och lösenord."
+        AuthFailure.APPLE_REJECTED -> "Servern godtog inte Apple-inloggningen. Försök igen."
+        AuthFailure.APPLE_EMAIL_UNVERIFIED -> "Apple gav ingen e-postadress som Tung kan använda. Använd e-post och lösenord."
+        AuthFailure.APPLE_ACCOUNT_MISMATCH -> "E-postadressen hör till ett konto som är kopplat till ett annat Apple-ID. Logga in med det eller med ditt lösenord."
+        AuthFailure.APPLE_NOT_OFFERED -> "Den här servern erbjuder inte inloggning med Apple. Använd e-post och lösenord."
+        AuthFailure.APPLE_FAILED -> "Apple-inloggningen fungerade inte. Försök igen, eller använd e-post och lösenord."
     }
 
     override val home = "Hem"
@@ -1528,6 +1548,7 @@ object Swedish : Strings {
     override fun accountsShown(shown: Int, total: Int): String = "De $shown senaste av $total."
     override fun joined(date: String): String = "Skapat $date"
     override val signInGoogle = "Google"
+    override val signInApple = "Apple"
     override val signInPassword = "Lösenord"
     override val adminBadge = "Admin"
     override fun lastSeen(date: String): String = "Senast sedd $date"
