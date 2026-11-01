@@ -68,6 +68,8 @@ class WelcomeMailTest {
         assertEquals("Välkommen till Tung", mail.subject)
         assertTrue("https://tung.example.org/app/" in mail.text, mail.text)
         assertTrue("https://tung.example.org/delete-account" in mail.text, mail.text)
+        assertTrue("Tung är i beta" in mail.text, "the beta notice: ${mail.text}")
+        assertTrue("flytta till en annan Tung-server" in mail.text, "how to move: ${mail.text}")
 
         // Signing in again sends nothing.
         client.post("/api/v1/auth/login") { jsonBody("""{"email": "$email", "password": "correct horse battery"}""") }
