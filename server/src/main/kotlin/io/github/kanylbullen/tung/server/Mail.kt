@@ -151,6 +151,8 @@ class WelcomeMail(
                     |
                     |Tung är i beta. Appen och servern kan ha fel och störningar. Tjänsten är gratis och drivs på bästa förmåga, utan garantier under testperioden om att den finns kvar eller fungerar. Din träning finns alltid kvar på telefonen också.
                     |
+                    |Du kan när som helst flytta till en annan Tung-server, till exempel en egen: logga in på den under Inställningar → Konto, så följer all träning på telefonen med dit.
+                    |
                     |Webbappen: $url/app/
                     |Säg vad du tycker: Inställningar → Feedback i appen.
                     |Integritet: $url/privacy
@@ -171,6 +173,8 @@ class WelcomeMail(
                     |Your Tung account on $host is ready. Your training now syncs between your devices and the web app.
                     |
                     |Tung is in beta. The app and the server can have bugs and outages. The service is free and run on a best-effort basis, with no guarantee during the test period that it stays available or keeps working. Your training always stays on your phone as well.
+                    |
+                    |You can move to another Tung server at any time, your own for example: sign in to it under Settings → Account, and all the training on your phone goes with you.
                     |
                     |The web app: $url/app/
                     |Tell us what you think: Settings → Feedback in the app.
