@@ -377,6 +377,8 @@ interface Strings {
     val testerSignupsHint: String
     val testersEmpty: String
     val copyAddresses: String
+    val copyPlayAddresses: String
+    val playAddressesHint: String
     val copied: String
     fun removeTester(email: String): String
     val removeTesterBody: String
@@ -902,6 +904,8 @@ object English : Strings {
     override val testerSignupsHint = "Addresses left on the front page for the Android test on Google Play. Add them to the testers' list in the Play Console, then remove them here."
     override val testersEmpty = "No one is waiting for an invitation."
     override val copyAddresses = "Copy addresses"
+    override val copyPlayAddresses = "Copy every address for Play"
+    override val playAddressesHint = "The sign-ups and every account, each once, for the Play Console's tester list. An account made with a password may not be a Google address."
     override val copied = "Copied"
     override fun removeTester(email: String): String = "Remove $email"
     override val removeTesterBody = "Do it once the address is invited in the Play Console."
@@ -1442,6 +1446,8 @@ object Swedish : Strings {
     override val testerSignupsHint = "Adresser från startsidan till Android-testet på Google Play. Lägg in dem i testarlistan i Play Console och ta sedan bort dem här."
     override val testersEmpty = "Ingen väntar på en inbjudan."
     override val copyAddresses = "Kopiera adresser"
+    override val copyPlayAddresses = "Kopiera alla adresser för Play"
+    override val playAddressesHint = "Anmälningarna och alla konton, en gång var, för testarlistan i Play Console. Ett konto skapat med lösenord har inte alltid en Google-adress."
     override val copied = "Kopierat"
     override fun removeTester(email: String): String = "Ta bort $email"
     override val removeTesterBody = "Gör det när adressen är inbjuden i Play Console."

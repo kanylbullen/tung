@@ -1,7 +1,10 @@
 package io.github.kanylbullen.tung.web
 
 import io.github.kanylbullen.tung.web.admin.AdminResult
+import io.github.kanylbullen.tung.web.admin.AdminUser
+import io.github.kanylbullen.tung.web.admin.TesterSignup
 import io.github.kanylbullen.tung.web.admin.WebAdmin
+import io.github.kanylbullen.tung.web.admin.playAddresses
 import io.github.kanylbullen.tung.web.sync.HttpReply
 import io.github.kanylbullen.tung.web.sync.HttpUnreachable
 import kotlin.test.Test
@@ -68,5 +71,14 @@ class WebAdminTest {
         }).removeTester("https://s", "t", "a+b@x.org")
         assertTrue(removed)
         assertEquals("https://s/api/v1/testers/a%2Bb%40x.org", asked)
+    }
+
+    @Test
+    fun playAddressesAreTheSignUpsThenTheAccountsEachOnce() {
+        fun user(email: String) = AdminUser(id = email, email = email, createdAt = 0, hasPassword = true, googleLinked = false)
+        val testers = listOf(TesterSignup("a@gmail.com", 1, "sv"), TesterSignup("b@gmail.com", 2, null))
+        val users = listOf(user("B@gmail.com"), user("c@example.org"), user(" a@gmail.com "))
+        assertEquals("a@gmail.com, b@gmail.com, c@example.org", playAddresses(testers, users))
+        assertEquals("", playAddresses(emptyList(), emptyList()))
     }
 }
