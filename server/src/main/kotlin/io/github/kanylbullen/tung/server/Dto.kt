@@ -7,7 +7,12 @@ import kotlinx.serialization.Serializable
 // the wire format and must change with these classes.
 
 @Serializable
-data class Credentials(val email: String, val password: String)
+data class Credentials(
+    val email: String,
+    val password: String,
+    /** `POST /auth/register` only: the app's language (`en`, `sv`) for the welcome email; English when absent. */
+    val language: String? = null,
+)
 
 @Serializable
 data class UserDto(
@@ -31,7 +36,11 @@ data class DeleteAccountInput(val email: String)
 
 /** `POST /api/v1/auth/google`: a Google ID token (a JWT) from Credential Manager or Google Identity Services. */
 @Serializable
-data class GoogleSignIn(val idToken: String)
+data class GoogleSignIn(
+    val idToken: String,
+    /** The app's language for the welcome email, should this sign-in make a new account. */
+    val language: String? = null,
+)
 
 /** `GET /api/v1/auth/methods`: how this instance lets users sign in. */
 @Serializable

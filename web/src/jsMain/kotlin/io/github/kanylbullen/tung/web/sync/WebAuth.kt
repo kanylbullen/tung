@@ -104,10 +104,14 @@ class WebAuth(
         }
     }
 
-    /** `POST /api/v1/auth/google {id_token}`: Google's ID token for a session, as the phone does. */
-    suspend fun signInWithGoogle(baseUrl: String, idToken: String): AuthResult {
+    /**
+     * `POST /api/v1/auth/google {id_token, language}`: Google's ID token for a
+     * session, as the phone does; [language] (`en`, `sv`) is for the welcome
+     * email, should the sign-in make a new account.
+     */
+    suspend fun signInWithGoogle(baseUrl: String, idToken: String, language: String? = null): AuthResult {
         val reply = try {
-            post(baseUrl + GOOGLE_PATH, json.encodeToString(GoogleToken.serializer(), GoogleToken(idToken)), emptyMap())
+            post(baseUrl + GOOGLE_PATH, json.encodeToString(GoogleToken.serializer(), GoogleToken(idToken, language)), emptyMap())
         } catch (e: HttpUnreachable) {
             return AuthResult.Failed(AuthFailure.NETWORK)
         }
@@ -207,7 +211,7 @@ class WebAuth(
     private data class Confirmation(val email: String)
 
     @Serializable
-    private data class GoogleToken(@SerialName("id_token") val idToken: String)
+    private data class GoogleToken(@SerialName("id_token") val idToken: String, val language: String? = null)
 
     @Serializable
     private data class Methods(val google: GoogleMethod? = null)
