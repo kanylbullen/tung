@@ -21,17 +21,17 @@ import org.robolectric.shadows.ShadowAlarmManager
 class LogSetFlowTest : FlowTest() {
 
     private val benchPress get() = str(R.string.ex_bench_press)
-    private val countdown get() = hasContentDescription(str(R.string.rest_title))
+    private val countdown get() = hasContentDescription(str(Res.string.rest_title))
     private val alarms: ShadowAlarmManager get() = shadowOf(app.getSystemService(AlarmManager::class.java))
 
-    private fun logSet(weight: String, reps: String) = str(R.string.workout_log_set, benchPress, weight, reps)
-    private fun addSet(weight: String, reps: String) = str(R.string.workout_sticky_add_set, benchPress, weight, reps)
+    private fun logSet(weight: String, reps: String) = str(Res.string.workout_log_set, benchPress, weight, reps)
+    private fun addSet(weight: String, reps: String) = str(Res.string.workout_sticky_add_set, benchPress, weight, reps)
 
     /** Seconds the countdown in the top bar says are left, read from its state description ("1:28 left"). */
     private fun restSecondsLeft(): Int {
         waitFor(countdown)
         val state = compose.onNode(countdown).fetchSemanticsNode().config.getOrNull(SemanticsProperties.StateDescription)
-        val clock = checkNotNull(state).removeSuffix(str(R.string.rest_remaining, "").trim()).trim()
+        val clock = checkNotNull(state).removeSuffix(str(Res.string.rest_remaining, "").trim()).trim()
         val (m, s) = clock.split(':').map { it.toInt() }
         return m * 60 + s
     }
@@ -70,12 +70,12 @@ class LogSetFlowTest : FlowTest() {
         screenshot("1-log-set-button")
 
         clickText(logSet("80", "8"))
-        waitForDescription(str(R.string.workout_mark_undone, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
         waitFor(countdown)
         assertTrue(restSecondsLeft() in 85..90)
         waitForText(addSet("80", "8"))
         compose.onNode(hasText(logSet("80", "8"))).assertDoesNotExist()
-        compose.onNode(hasContentDescription(str(R.string.workout_mark_done, 2))).assertDoesNotExist()
+        compose.onNode(hasContentDescription(str(Res.string.workout_mark_done, 2))).assertDoesNotExist()
         screenshot("2-logged-add-set")
 
         assertEquals(1, activeSets("s.completed = 1 AND s.weightKg = 80.0 AND s.reps = 8 AND s.position = 0"))
@@ -83,9 +83,9 @@ class LogSetFlowTest : FlowTest() {
         assertTrue(alarmInMillis() in 85_000L..90_000L)
 
         clickText(addSet("80", "8"))
-        waitForDescription(str(R.string.workout_mark_done, 2))
+        waitForDescription(str(Res.string.workout_mark_done, 2))
         waitForText(logSet("80", "8"))
-        assertShown(hasContentDescription(str(R.string.workout_mark_done, 2)))
+        assertShown(hasContentDescription(str(Res.string.workout_mark_done, 2)))
         compose.onNode(hasText(addSet("80", "8"))).assertDoesNotExist()
         screenshot("3-added-set-is-current")
         assertEquals(1, activeSets("s.completed = 0 AND s.weightKg = 80.0 AND s.reps = 8 AND s.position = 1"))
@@ -93,7 +93,7 @@ class LogSetFlowTest : FlowTest() {
 
         // The next tap logs the added set, and the button offers Add set again.
         clickText(logSet("80", "8"))
-        waitForDescription(str(R.string.workout_mark_undone, 2))
+        waitForDescription(str(Res.string.workout_mark_undone, 2))
         waitForText(addSet("80", "8"))
         assertEquals(2, activeSets("s.completed = 1"))
         assertEquals(2, activeSets("1"))
@@ -117,17 +117,17 @@ class LogSetFlowTest : FlowTest() {
         assertTrue(restSecondsLeft() in 80..90)
 
         compose.onNode(countdown).performClick()
-        waitForText(str(R.string.rest_skip))
+        waitForText(str(Res.string.rest_skip))
         // +30 s first: the countdown and the alarm both move half a minute.
-        clickDescription(str(R.string.rest_add_description))
+        clickDescription(str(Res.string.rest_add_description))
         waitUntil(5_000) { restSecondsLeft() > 90 }
         // The alarm follows the countdown once the previous rest's DataStore write is done.
         waitUntil(5_000) { runCatching { alarmInMillis() in 110_000L..120_000L }.getOrDefault(false) }
         screenshot("1-rest-controls")
 
-        clickText(str(R.string.rest_skip))
+        clickText(str(Res.string.rest_skip))
         waitGone(countdown)
-        compose.onNode(hasText(str(R.string.rest_skip))).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.rest_skip))).assertDoesNotExist()
         waitUntil(15_000) { alarms.scheduledAlarms.isEmpty() }
         screenshot("2-skipped")
     }
@@ -145,17 +145,17 @@ class LogSetFlowTest : FlowTest() {
             checkNotNull(routines.start(checkNotNull(routines.saveFromWorkout(source, "Push day"))))
         }
         clickText(str(Res.string.home_resume_workout))
-        waitForDescription(str(R.string.workout_mark_done, 3))
+        waitForDescription(str(Res.string.workout_mark_done, 3))
         screenshot("1-routine-workout")
 
         for (n in 1..3) {
             clickText(logSet("80", "8"))
-            waitForDescription(str(R.string.workout_mark_undone, n))
+            waitForDescription(str(Res.string.workout_mark_undone, n))
         }
         waitForText(addSet("80", "8"))
         compose.onNode(hasText(logSet("80", "8"))).assertDoesNotExist()
-        compose.onNode(hasContentDescription(str(R.string.workout_mark_done, 4))).assertDoesNotExist()
-        assertShown(hasText(str(R.string.workout_finish)))
+        compose.onNode(hasContentDescription(str(Res.string.workout_mark_done, 4))).assertDoesNotExist()
+        assertShown(hasText(str(Res.string.workout_finish)))
         screenshot("2-three-logged")
 
         assertEquals(3, activeSets("s.completed = 1"))
@@ -173,15 +173,15 @@ class LogSetFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", benchPress)
 
-        clickDescription(str(R.string.workout_exercise_menu, benchPress))
-        clickText(str(R.string.workout_rest_timer))
-        waitForText(str(R.string.rest_between_sets, benchPress))
+        clickDescription(str(Res.string.workout_exercise_menu, benchPress))
+        clickText(str(Res.string.workout_rest_timer))
+        waitForText(str(Res.string.rest_between_sets, benchPress))
         waitForText("1:30")
         screenshot("1-rest-sheet")
-        clickDescription(str(R.string.rest_shorter))
+        clickDescription(str(Res.string.rest_shorter))
         waitForText("1:00")
         clickText(str(Res.string.input_done))
-        waitGone(hasContentDescription(str(R.string.rest_shorter)))
+        waitGone(hasContentDescription(str(Res.string.rest_shorter)))
 
         waitUntil(5_000) { count("SELECT COUNT(*) FROM exercise WHERE id = '${bench()}' AND restSeconds = 60") == 1 }
         assertEquals(1, count("SELECT COUNT(*) FROM exercise WHERE id = '${bench()}' AND updatedAt > 0"))
@@ -194,9 +194,9 @@ class LogSetFlowTest : FlowTest() {
         screenshot("2-one-minute-rest")
 
         // The sheet opens on the stored value next time.
-        clickDescription(str(R.string.workout_exercise_menu, benchPress))
-        clickText(str(R.string.workout_rest_timer))
-        waitForText(str(R.string.rest_between_sets, benchPress))
+        clickDescription(str(Res.string.workout_exercise_menu, benchPress))
+        clickText(str(Res.string.workout_rest_timer))
+        waitForText(str(Res.string.rest_between_sets, benchPress))
         assertShown(hasText("1:00"))
     }
 
@@ -208,7 +208,7 @@ class LogSetFlowTest : FlowTest() {
     fun logSetWithoutRepsAsksForThem() {
         startWorkoutFromHome()
         addExercise("bench", benchPress)
-        clickText(logSet("0", str(R.string.workout_reps_empty)))
+        clickText(logSet("0", str(Res.string.workout_reps_empty)))
         waitForDescription(str(Res.string.input_field_reps))
         screenshot("1-reps-sheet")
         compose.onNode(countdown).assertDoesNotExist()
@@ -233,7 +233,7 @@ class LogSetFlowTest : FlowTest() {
         db.openHelper.writableDatabase.execSQL("UPDATE set_entry SET reps = 0 WHERE completed = 0")
         clickText(logSet("80", "8"))
         // The command's own transaction brought the change to the screen: the same set, without reps, still current.
-        waitForText(logSet("80", str(R.string.workout_reps_empty)))
+        waitForText(logSet("80", str(Res.string.workout_reps_empty)))
         screenshot("1-refused")
         compose.onNode(countdown).assertDoesNotExist()
         assertEquals(0, activeSets("s.completed = 1"))

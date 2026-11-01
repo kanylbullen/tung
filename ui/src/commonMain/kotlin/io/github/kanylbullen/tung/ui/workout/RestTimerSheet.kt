@@ -22,11 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.stepRestSeconds
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.clockText
@@ -36,7 +34,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 /** "1:30", or "Off" for 0. */
 @Composable
 fun restSecondsText(seconds: Int): String =
-    if (seconds <= 0) stringResource(R.string.rest_off) else clockText(seconds * 1000L)
+    if (seconds <= 0) stringResource(Res.string.rest_off) else clockText(seconds * 1000L)
 
 /**
  * The rest timer of one exercise, from its menu in the active workout: the
@@ -68,9 +66,9 @@ fun RestTimerSheet(
                 .padding(bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(stringResource(R.string.rest_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
+            Text(stringResource(Res.string.rest_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
             Text(
-                stringResource(R.string.rest_between_sets, exerciseName),
+                stringResource(Res.string.rest_between_sets, exerciseName),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Tung.colors.muted,
                 textAlign = TextAlign.Center,
@@ -83,17 +81,17 @@ fun RestTimerSheet(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
             Text(
-                stringResource(R.string.rest_hint),
+                stringResource(Res.string.rest_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Tung.colors.muted,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StepButton(stringResource(R.string.rest_minus), stringResource(R.string.rest_shorter), Modifier.weight(1f), 32.sp) {
+                StepButton(stringResource(Res.string.rest_minus), stringResource(Res.string.rest_shorter), Modifier.weight(1f), 32.sp) {
                     seconds = stepRestSeconds(seconds, -1)
                 }
-                StepButton(stringResource(R.string.rest_plus), stringResource(R.string.rest_longer), Modifier.weight(1f), 32.sp) {
+                StepButton(stringResource(Res.string.rest_plus), stringResource(Res.string.rest_longer), Modifier.weight(1f), 32.sp) {
                     seconds = stepRestSeconds(seconds, 1)
                 }
             }

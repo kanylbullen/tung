@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -29,22 +30,22 @@ class AccessibilityFlowTest : FlowTest() {
     fun swipeBackgroundIsHiddenAndTheDeleteActionWorks() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
-        val weightCell = hasContentDescription(str(R.string.workout_edit_weight, "0"))
+        val weightCell = hasContentDescription(str(Res.string.workout_edit_weight, "0"))
         waitFor(weightCell)
         assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))
 
         assertTrue(
             "the swipe background is in the semantics tree",
-            compose.onAllNodes(hasText(str(R.string.workout_delete)))
+            compose.onAllNodes(hasText(str(Res.string.workout_delete)))
                 .fetchSemanticsNodes().isEmpty(),
         )
 
-        val deleteSet = str(R.string.workout_delete_set)
+        val deleteSet = str(Res.string.workout_delete_set)
         for (part in listOf(
-            hasContentDescription(str(R.string.workout_set_number_description, 1)),
+            hasContentDescription(str(Res.string.workout_set_number_description, 1)),
             weightCell,
-            hasContentDescription(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty))),
-            hasContentDescription(str(R.string.workout_mark_done, 1)),
+            hasContentDescription(str(Res.string.workout_edit_reps, str(Res.string.workout_reps_empty))),
+            hasContentDescription(str(Res.string.workout_mark_done, 1)),
         )) {
             compose.onNode(part and hasCustomAction(deleteSet)).assertExists()
         }

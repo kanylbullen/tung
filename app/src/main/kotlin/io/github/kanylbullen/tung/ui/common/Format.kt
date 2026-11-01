@@ -14,15 +14,6 @@ import java.util.Locale
 fun localDateWithYear(epochMillis: Long): String =
     DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.getDefault()).format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
 
-/** A running clock: "4:07" or "1:12:30". */
-fun clockText(millis: Long): String {
-    val totalSeconds = millis.coerceAtLeast(0L) / 1000L
-    val h = totalSeconds / 3600
-    val m = (totalSeconds % 3600) / 60
-    val s = totalSeconds % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
-}
-
 @Composable
 fun muscleGroupLabel(group: MuscleGroup): String = stringResource(
     when (group) {

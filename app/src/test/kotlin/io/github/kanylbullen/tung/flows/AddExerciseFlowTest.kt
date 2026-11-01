@@ -21,9 +21,9 @@ import org.junit.Test
  */
 class AddExerciseFlowTest : FlowTest() {
 
-    private val weightField get() = str(R.string.input_field_weight)
+    private val weightField get() = str(Res.string.input_field_weight)
     private val repsField get() = str(Res.string.input_field_reps)
-    private fun chip(count: Int) = hasContentDescription(plural(R.plurals.workout_first_sets_choice, count, count))
+    private fun chip(count: Int) = hasContentDescription(plural(Res.plurals.workout_first_sets_choice, count, count))
 
     /** Weight and reps of every set of the workout in progress, in order. */
     private fun activeSets(): List<Pair<Double, Int>> = db.openHelper.readableDatabase.query(
@@ -64,11 +64,11 @@ class AddExerciseFlowTest : FlowTest() {
         waitGone(hasContentDescription(repsField))
 
         waitUntil { activeSets() == List(4) { 60.0 to 8 } }
-        waitForDescription(str(R.string.workout_select_set, 4))
+        waitForDescription(str(Res.string.workout_select_set, 4))
         // Set 1 is the current set: the Log set button acts on it.
-        waitForText(str(R.string.workout_log_set, str(R.string.ex_bench_press), "60", "8"))
-        val current = hasContentDescription(str(R.string.workout_set_number_description, 1)) and
-            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, str(R.string.workout_current_set))
+        waitForText(str(Res.string.workout_log_set, str(R.string.ex_bench_press), "60", "8"))
+        val current = hasContentDescription(str(Res.string.workout_set_number_description, 1)) and
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, str(Res.string.workout_current_set))
         assertShown(current)
         screenshot("3-four-sets")
     }
@@ -80,7 +80,7 @@ class AddExerciseFlowTest : FlowTest() {
         waitForDescription(weightField)
         dismissSheet(weightField)
         assertEquals(listOf(0.0 to 0), activeSets())
-        waitForDescription(str(R.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.workout_edit_weight, "0"))
         assertTrue("no reps sheet followed", compose.onAllNodes(hasContentDescription(repsField)).fetchSemanticsNodes().isEmpty())
     }
 
@@ -113,7 +113,7 @@ class AddExerciseFlowTest : FlowTest() {
         addExerciseFirstTime("bench", str(R.string.ex_bench_press))
 
         waitUntil { activeSets() == listOf(80.0 to 8, 85.0 to 6, 85.0 to 5) }
-        waitForDescription(str(R.string.workout_select_set, 3))
+        waitForDescription(str(Res.string.workout_select_set, 3))
         screenshot("1-prefilled")
         assertTrue(
             "no sheet opens when the sets are already filled",

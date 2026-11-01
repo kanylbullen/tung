@@ -222,7 +222,7 @@ abstract class FlowTest {
         val start = hasText(str(Res.string.home_start_workout)) and isEnabled()
         waitFor(start)
         compose.onNode(start).performClick()
-        waitForText(str(R.string.workout_empty))
+        waitForText(str(Res.string.workout_empty))
     }
 
     protected fun searchPicker(query: String) {
@@ -239,17 +239,17 @@ abstract class FlowTest {
     protected fun addExercise(query: String, name: String) {
         addExerciseFirstTime(query, name)
         if (lastAddedIsEmpty()) {
-            waitForDescription(str(R.string.input_field_weight))
-            dismissSheet(str(R.string.input_field_weight))
+            waitForDescription(str(Res.string.input_field_weight))
+            dismissSheet(str(Res.string.input_field_weight))
         }
     }
 
     /** [addExercise] without dismissing the first-time weight sheet. */
     protected fun addExerciseFirstTime(query: String, name: String) {
-        clickText(str(R.string.workout_add_exercise))
+        clickText(str(Res.string.workout_add_exercise))
         searchPicker(query)
         clickText(name)
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(name)
     }
 
@@ -299,10 +299,10 @@ abstract class FlowTest {
 
     /** Taps "Finish workout" in the top bar and confirms it in the dialog. */
     protected fun finishWorkout(screenshotStep: String? = null) {
-        clickText(str(R.string.workout_finish))
+        clickText(str(Res.string.workout_finish))
         waitFor(isDialog())
         screenshotStep?.let { screenshot(it) }
-        clickInDialog(str(R.string.workout_finish_confirm))
+        clickInDialog(str(Res.string.workout_finish_confirm))
     }
 
     // --- database ---

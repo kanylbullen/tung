@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.ui.common
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import android.view.HapticFeedbackConstants
 import androidx.compose.ui.platform.LocalView
@@ -56,3 +57,13 @@ internal actual fun dateText(epochMillis: Long, pattern: String, patternWithYear
 }
 
 actual fun decimalSeparator(): Char = DecimalFormatSymbols.getInstance().decimalSeparator
+
+@Composable
+actual fun KeepScreenOn() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+}
+

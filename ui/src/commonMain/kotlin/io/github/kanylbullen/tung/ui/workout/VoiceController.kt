@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import io.github.kanylbullen.tung.data.systemMillis
 import io.github.kanylbullen.tung.voice.SpeechErrorKind
 import io.github.kanylbullen.tung.voice.SpeechEvent
 import io.github.kanylbullen.tung.voice.SpeechInput
@@ -14,7 +15,6 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 data class VoiceUiState(
     /** A recogniser is open: the mic button is filled. */
@@ -42,7 +42,7 @@ data class VoiceUiState(
 class VoiceController(
     private val speech: SpeechInput,
     private val scope: CoroutineScope,
-    private val clock: () -> Long = System::currentTimeMillis,
+    private val clock: () -> Long = ::systemMillis,
 ) {
     private val mutableState = MutableStateFlow(VoiceUiState())
     val state: StateFlow<VoiceUiState> = mutableState.asStateFlow()
@@ -50,23 +50,23 @@ class VoiceController(
 
     val active: Boolean get() = job?.isActive == true
 
-    fun listenOnce(locale: Locale, handle: suspend (String) -> VoiceEcho) {
+    fun listenOnce(languageTag: String, handle: suspend (String) -> VoiceEcho) {
         stop()
         job = scope.launch {
-            val echo = listen(locale, handle)
+            val echo = listen(languageTag, handle)
             show(echo)
         }
     }
 
     /** [onUnderstood] after each utterance that changed something: the haptic. */
-    fun startHandsFree(locale: Locale, handle: suspend (String) -> VoiceEcho, onUnderstood: () -> Unit) {
+    fun startHandsFree(languageTag: String, handle: suspend (String) -> VoiceEcho, onUnderstood: () -> Unit) {
         stop()
         mutableState.update { it.copy(handsFree = true) }
         job = scope.launch {
             try {
                 var failures = 0
                 while (failures < MAX_ERRORS) {
-                    val echo = listen(locale, handle)
+                    val echo = listen(languageTag, handle)
                     val silence = echo is VoiceEcho.Failed && echo.kind == SpeechErrorKind.NO_SPEECH
                     if (!silence) show(echo)
                     if (echo.understood) onUnderstood()
@@ -95,10 +95,10 @@ class VoiceController(
         mutableState.update { it.copy(echo = null) }
     }
 
-    private suspend fun listen(locale: Locale, handle: suspend (String) -> VoiceEcho): VoiceEcho {
+    private suspend fun listen(languageTag: String, handle: suspend (String) -> VoiceEcho): VoiceEcho {
         mutableState.update { it.copy(listening = true, partial = null) }
         val last = try {
-            speech.listenOnce(locale)
+            speech.listenOnce(languageTag)
                 .onEach { e -> if (e is SpeechEvent.Partial) mutableState.update { it.copy(partial = e.text) } }
                 .firstOrNull { it is SpeechEvent.Result || it is SpeechEvent.Error }
         } finally {

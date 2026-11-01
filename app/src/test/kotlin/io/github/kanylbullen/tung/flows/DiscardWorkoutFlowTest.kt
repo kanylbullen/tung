@@ -32,7 +32,7 @@ class DiscardWorkoutFlowTest : FlowTest() {
         screenshot("1-dialog")
         clickInDialog(str(Res.string.action_cancel))
         waitGone(isDialog())
-        assertShown(hasText(str(R.string.workout_finish)))
+        assertShown(hasText(str(Res.string.workout_finish)))
         assertEquals("cancel keeps the workout", 1, count("SELECT COUNT(*) FROM workout"))
 
         clickDescription(str(Res.string.action_more))

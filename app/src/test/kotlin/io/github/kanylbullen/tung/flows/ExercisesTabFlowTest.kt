@@ -170,7 +170,7 @@ class ExercisesTabFlowTest : FlowTest() {
         )
         openPage("bench", benchPress)
         clickText(str(R.string.exercise_add_to_workout))
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(benchPress)
         waitUntil { count("SELECT COUNT(*) FROM workout_exercise WHERE workoutId = '$workoutId' AND exerciseId = '${bench()}'") == 1 }
         screenshot("1-in-workout")

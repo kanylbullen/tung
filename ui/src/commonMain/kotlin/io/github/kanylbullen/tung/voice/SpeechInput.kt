@@ -1,23 +1,22 @@
 package io.github.kanylbullen.tung.voice
 
 import kotlinx.coroutines.flow.Flow
-import java.util.Locale
 
 /**
  * Speech to text for one utterance. The phone's own recogniser in the app
- * ([AndroidSpeechInput]); the flow tests script a fake through
+ * (`AndroidSpeechInput`); the flow tests script a fake through
  * `TungApp.createSpeechInput()`. What it hears is only text: turning it into
  * an intent is core's grammar (`core/voice/`), and into a change the
  * workout's commands.
  */
 interface SpeechInput {
     /**
-     * Listens once in [locale]: [SpeechEvent.Listening] when the recogniser is
+     * Listens once in the language of [languageTag] (a BCP 47 tag, "sv-SE"): [SpeechEvent.Listening] when the recogniser is
      * ready, [SpeechEvent.Partial] while words come in, then exactly one
      * [SpeechEvent.Result] or [SpeechEvent.Error], after which the flow ends.
      * Cancelling the collection stops listening.
      */
-    fun listenOnce(locale: Locale): Flow<SpeechEvent>
+    fun listenOnce(languageTag: String): Flow<SpeechEvent>
 }
 
 sealed interface SpeechEvent {

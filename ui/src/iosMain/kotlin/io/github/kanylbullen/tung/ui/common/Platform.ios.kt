@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.ui.common
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import platform.Foundation.NSCalendar
 import platform.Foundation.NSCalendarUnitYear
@@ -15,6 +16,7 @@ import platform.Foundation.autoupdatingCurrentLocale
 import platform.Foundation.dateWithTimeIntervalSince1970
 import platform.Foundation.decimalSeparator
 import kotlin.math.roundToLong
+import platform.UIKit.UIApplication
 import platform.UIKit.UISelectionFeedbackGenerator
 
 /**
@@ -83,3 +85,12 @@ internal actual fun dateText(epochMillis: Long, pattern: String, patternWithYear
 private val dateFormats = mutableMapOf<String, NSDateFormatter>()
 
 actual fun decimalSeparator(): Char = NSLocale.autoupdatingCurrentLocale.decimalSeparator.firstOrNull() ?: '.'
+
+@Composable
+actual fun KeepScreenOn() {
+    DisposableEffect(Unit) {
+        UIApplication.sharedApplication.idleTimerDisabled = true
+        onDispose { UIApplication.sharedApplication.idleTimerDisabled = false }
+    }
+}
+

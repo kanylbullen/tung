@@ -88,10 +88,10 @@ class ProgramFlowTest : FlowTest() {
         val start = startToday("Push day") and isEnabled()
         waitFor(start)
         compose.onNode(start).performClick()
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(benchPress)
-        clickDescription(str(R.string.workout_mark_done, 1))
-        waitForDescription(str(R.string.workout_mark_undone, 1))
+        clickDescription(str(Res.string.workout_mark_done, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
         finishWorkout()
         waitForText(str(R.string.summary_title))
         clickText(str(R.string.summary_done))
@@ -185,7 +185,7 @@ class ProgramFlowTest : FlowTest() {
         // "Pull day" is on Home too, in Routines; the sheet's row is the one with its place in the program.
         clickText(dayOf(2, 2))
 
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(barbellRow)
         compose.onNode(hasText(benchPress)).assertDoesNotExist()
         screenshot("2-active-workout")
@@ -228,7 +228,7 @@ class ProgramFlowTest : FlowTest() {
         screenshot("1-day-gone")
         // The refusing command's own transaction brought the removal to the card.
         waitForText(rotatingLine(1, 1, "Pull day"))
-        compose.onNode(hasText(str(R.string.workout_finish))).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.workout_finish))).assertDoesNotExist()
         assertEquals(0, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL"))
         assertEquals(1, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$pull'"))
     }

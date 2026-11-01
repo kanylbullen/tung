@@ -38,13 +38,13 @@ class RoutineFlowTest : FlowTest() {
     fun saveAFinishedWorkoutAsARoutine() {
         startWorkoutFromHome()
         addExercise("bench", benchPress)
-        enterInSheet(str(R.string.workout_edit_weight, "0"), str(R.string.input_field_weight), "80", str(R.string.workout_edit_weight, "80"))
-        enterInSheet(str(R.string.workout_edit_reps, str(R.string.workout_reps_empty)), str(Res.string.input_field_reps), "8", str(R.string.workout_edit_reps, "8"))
-        clickDescription(str(R.string.workout_mark_done, 1))
-        clickDescription(str(R.string.workout_add_set_description, benchPress))
+        enterInSheet(str(Res.string.workout_edit_weight, "0"), str(Res.string.input_field_weight), "80", str(Res.string.workout_edit_weight, "80"))
+        enterInSheet(str(Res.string.workout_edit_reps, str(Res.string.workout_reps_empty)), str(Res.string.input_field_reps), "8", str(Res.string.workout_edit_reps, "8"))
+        clickDescription(str(Res.string.workout_mark_done, 1))
+        clickDescription(str(Res.string.workout_add_set_description, benchPress))
         // The second set copies the first: 80 × 8.
-        clickDescription(str(R.string.workout_mark_done, 2))
-        waitForDescription(str(R.string.workout_mark_undone, 2))
+        clickDescription(str(Res.string.workout_mark_done, 2))
+        waitForDescription(str(Res.string.workout_mark_undone, 2))
         finishWorkout()
 
         waitForText(str(R.string.summary_title))
@@ -105,12 +105,12 @@ class RoutineFlowTest : FlowTest() {
         waitFor(start)
         compose.onNode(start).performClick()
 
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(benchPress)
-        waitForDescription(str(R.string.workout_mark_done, 2))
-        assertEquals(2, compose.onAllNodes(hasContentDescription(str(R.string.workout_edit_weight, "80"))).fetchSemanticsNodes().size)
-        assertEquals(2, compose.onAllNodes(hasContentDescription(str(R.string.workout_edit_reps, "8"))).fetchSemanticsNodes().size)
-        compose.onNode(hasContentDescription(str(R.string.workout_mark_done, 3))).assertDoesNotExist()
+        waitForDescription(str(Res.string.workout_mark_done, 2))
+        assertEquals(2, compose.onAllNodes(hasContentDescription(str(Res.string.workout_edit_weight, "80"))).fetchSemanticsNodes().size)
+        assertEquals(2, compose.onAllNodes(hasContentDescription(str(Res.string.workout_edit_reps, "8"))).fetchSemanticsNodes().size)
+        compose.onNode(hasContentDescription(str(Res.string.workout_mark_done, 3))).assertDoesNotExist()
         screenshot("2-active-workout")
 
         assertEquals(1, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL AND routineId = '$routineId'"))

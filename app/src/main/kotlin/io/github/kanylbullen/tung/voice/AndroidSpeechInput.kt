@@ -23,7 +23,8 @@ import java.util.Locale
  */
 class AndroidSpeechInput(private val context: Context) : SpeechInput {
 
-    override fun listenOnce(locale: Locale): Flow<SpeechEvent> = callbackFlow {
+    override fun listenOnce(languageTag: String): Flow<SpeechEvent> = callbackFlow {
+        val locale = Locale.forLanguageTag(languageTag)
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
             trySend(SpeechEvent.Error(SpeechErrorKind.UNAVAILABLE))
             close()

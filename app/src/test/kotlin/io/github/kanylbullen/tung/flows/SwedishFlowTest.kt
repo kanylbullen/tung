@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
@@ -31,7 +32,7 @@ class SwedishFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bänk", benchPress)
 
-        val description = str(R.string.workout_add_set_description, benchPress)
+        val description = str(Res.string.workout_add_set_description, benchPress)
         assertShown(hasContentDescription(description))
         compose.onNode(hasContentDescription("Bench press", substring = true)).assertDoesNotExist()
         screenshot("1-workout-sv")

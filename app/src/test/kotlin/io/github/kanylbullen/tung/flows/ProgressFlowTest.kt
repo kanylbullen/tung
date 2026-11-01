@@ -270,9 +270,9 @@ class ProgressFlowTest : FlowTest() {
         seed()
         startWorkoutFromHome()
         addExercise("bench", benchPress)
-        waitForDescription(str(R.string.workout_edit_weight, "96"))
+        waitForDescription(str(Res.string.workout_edit_weight, "96"))
 
-        val progressFor = str(R.string.workout_progress_for, benchPress)
+        val progressFor = str(Res.string.workout_progress_for, benchPress)
         val chart = summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")
         clickDescription(progressFor)
         assertShown(hasContentDescription(chart))
@@ -280,14 +280,14 @@ class ProgressFlowTest : FlowTest() {
         assertShown(hasText(str(R.string.exercise_set_value, "90", 5)))
         screenshot("1-sheet")
         dismissSheet(chart)
-        assertShown(hasContentDescription(str(R.string.workout_edit_weight, "96")))
+        assertShown(hasContentDescription(str(Res.string.workout_edit_weight, "96")))
 
-        enterInSheet(str(R.string.workout_edit_reps, "5"), str(Res.string.input_field_reps), "7", str(R.string.workout_edit_reps, "7"))
+        enterInSheet(str(Res.string.workout_edit_reps, "5"), str(Res.string.input_field_reps), "7", str(Res.string.workout_edit_reps, "7"))
         clickDescription(progressFor)
         assertShown(hasText(str(R.string.progress_beats_e1rm, "96", 7)))
         screenshot("2-sheet-record")
         dismissSheet(chart)
-        assertShown(hasContentDescription(str(R.string.workout_edit_reps, "7")))
+        assertShown(hasContentDescription(str(Res.string.workout_edit_reps, "7")))
         check(count("SELECT COUNT(*) FROM set_entry s JOIN workout_exercise we ON s.workoutExerciseId = we.id JOIN workout w ON we.workoutId = w.id WHERE w.endedAt IS NULL AND s.completed = 1") == 0)
     }
 
@@ -309,9 +309,9 @@ class ProgressFlowTest : FlowTest() {
         seedFinishedWorkout(at("2026-10-20"), bench(), 96.0, 5)
         startWorkoutFromHome()
         addExercise("bench", benchPress)
-        waitForDescription(str(R.string.workout_edit_weight, "96"))
+        waitForDescription(str(Res.string.workout_edit_weight, "96"))
 
-        clickDescription(str(R.string.workout_progress_for, benchPress))
+        clickDescription(str(Res.string.workout_progress_for, benchPress))
         assertShown(hasContentDescription(summary(R.string.progress_metric_e1rm_long, R.string.progress_range_3m_long, "98", "112")))
         screenshot("1-sheet-3m")
 
@@ -325,7 +325,7 @@ class ProgressFlowTest : FlowTest() {
         waitUntilStored(ProgressMetric.WEEKLY_VOLUME to ProgressRange.ONE_YEAR) { trendMetric() to trendRange() }
         screenshot("2-sheet-weekly-12m")
         dismissSheet(weekly)
-        assertShown(hasContentDescription(str(R.string.workout_edit_weight, "96")))
+        assertShown(hasContentDescription(str(Res.string.workout_edit_weight, "96")))
         check(count("SELECT COUNT(*) FROM set_entry s JOIN workout_exercise we ON s.workoutExerciseId = we.id JOIN workout w ON we.workoutId = w.id WHERE w.endedAt IS NULL AND s.completed = 1") == 0)
 
         clickDescription(str(Res.string.action_back))

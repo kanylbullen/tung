@@ -34,13 +34,13 @@ class CurrentSetFlowTest : FlowTest() {
     private val overheadPress get() = str(R.string.ex_overhead_press)
 
     private fun logSet(exercise: String, weight: String, reps: String) =
-        hasText(str(R.string.workout_log_set, exercise, weight, reps))
+        hasText(str(Res.string.workout_log_set, exercise, weight, reps))
 
-    private fun header(exercise: String) = hasContentDescription(str(R.string.workout_select_exercise, exercise))
+    private fun header(exercise: String) = hasContentDescription(str(Res.string.workout_select_exercise, exercise))
 
     /** A set number marked as the current set. */
-    private fun markedCurrent(number: Int) = hasContentDescription(str(R.string.workout_set_number_description, number)) and
-        SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, str(R.string.workout_current_set))
+    private fun markedCurrent(number: Int) = hasContentDescription(str(Res.string.workout_set_number_description, number)) and
+        SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, str(Res.string.workout_current_set))
 
     /**
      * Someone adds Bench press and then Back squat; the squat, just added, is
@@ -52,15 +52,15 @@ class CurrentSetFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", benchPress)
         addExercise("squat", backSquat)
-        val empty = str(R.string.workout_reps_empty)
+        val empty = str(Res.string.workout_reps_empty)
         waitFor(logSet(backSquat, "0", empty))
         screenshot("1-squat-current")
 
-        clickDescription(str(R.string.workout_select_exercise, benchPress))
+        clickDescription(str(Res.string.workout_select_exercise, benchPress))
         waitFor(logSet(benchPress, "0", empty))
         screenshot("2-bench-current")
 
-        clickDescription(str(R.string.workout_select_exercise, backSquat))
+        clickDescription(str(Res.string.workout_select_exercise, backSquat))
         waitFor(logSet(backSquat, "0", empty))
     }
 
@@ -77,14 +77,14 @@ class CurrentSetFlowTest : FlowTest() {
         waitFor(markedCurrent(1))
         screenshot("1-set-1-current")
 
-        clickDescription(str(R.string.workout_select_set, 2))
+        clickDescription(str(Res.string.workout_select_set, 2))
         waitFor(logSet(benchPress, "85", "6"))
         waitFor(markedCurrent(2))
-        compose.onNode(hasContentDescription(str(R.string.workout_select_set, 1))).assertExists()
+        compose.onNode(hasContentDescription(str(Res.string.workout_select_set, 1))).assertExists()
         screenshot("2-set-2-current")
 
         compose.onNode(logSet(benchPress, "85", "6")).performSemanticsAction(SemanticsActions.OnClick)
-        waitForDescription(str(R.string.workout_mark_undone, 2))
+        waitForDescription(str(Res.string.workout_mark_undone, 2))
         waitUntil(5_000) { activeSets("s.completed = 1") == 1 }
         assertEquals(1, activeSets("s.completed = 1 AND s.position = 1 AND s.weightKg = 85.0"))
     }
@@ -108,7 +108,7 @@ class CurrentSetFlowTest : FlowTest() {
         clickText(str(Res.string.home_resume_workout))
         waitFor(logSet(benchPress, "80", "8"))
 
-        clickDescription(str(R.string.workout_select_exercise, backSquat))
+        clickDescription(str(Res.string.workout_select_exercise, backSquat))
         waitFor(logSet(backSquat, "100", "5"))
         screenshot("1-squat-picked")
 
@@ -136,7 +136,7 @@ class CurrentSetFlowTest : FlowTest() {
         val squatButton = logSet(backSquat, "100", "5")
         waitFor(squatButton)
 
-        val addBenchSet = hasContentDescription(str(R.string.workout_add_set_description, benchPress))
+        val addBenchSet = hasContentDescription(str(Res.string.workout_add_set_description, benchPress))
         waitFor(addBenchSet)
         // The premise: without a scroll the new set, which takes the place of "+ Set", would be hidden.
         assertTrue(
@@ -147,7 +147,7 @@ class CurrentSetFlowTest : FlowTest() {
         // Through the semantics action: the row sits under the Log set button, where a tap would hit the button.
         compose.onNode(addBenchSet).performSemanticsAction(SemanticsActions.OnClick)
 
-        val newSet = hasContentDescription(str(R.string.workout_mark_done, 7))
+        val newSet = hasContentDescription(str(Res.string.workout_mark_done, 7))
         waitFor(newSet)
         // Adding a set touches bench press, and with no set picked by hand its first open set is current.
         val button = logSet(benchPress, "80", "8")
@@ -171,13 +171,13 @@ class CurrentSetFlowTest : FlowTest() {
         clickText(str(Res.string.home_resume_workout))
         waitFor(logSet(backSquat, "100", "5"))
 
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(str(R.string.workout_add_exercise)))
-        compose.onNode(hasText(str(R.string.workout_add_exercise))).performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(str(Res.string.workout_add_exercise)))
+        compose.onNode(hasText(str(Res.string.workout_add_exercise))).performSemanticsAction(SemanticsActions.OnClick)
         searchPicker("overhead press")
         clickText(overheadPress)
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
 
-        val button = logSet(overheadPress, "0", str(R.string.workout_reps_empty))
+        val button = logSet(overheadPress, "0", str(Res.string.workout_reps_empty))
         waitFor(button)
         val newHeader = header(overheadPress)
         waitFor(newHeader)
@@ -196,7 +196,7 @@ class CurrentSetFlowTest : FlowTest() {
         seedActiveWorkout(bench() to listOf(80.0 to 8, 85.0 to 6, 90.0 to 4))
         clickText(str(Res.string.home_resume_workout))
         waitFor(logSet(benchPress, "80", "8"))
-        clickDescription(str(R.string.workout_select_set, 3))
+        clickDescription(str(Res.string.workout_select_set, 3))
         waitFor(logSet(benchPress, "90", "4"))
 
         compose.activityRule.scenario.recreate()

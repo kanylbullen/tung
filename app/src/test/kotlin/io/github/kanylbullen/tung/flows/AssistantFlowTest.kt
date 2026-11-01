@@ -175,7 +175,7 @@ class AssistantFlowTest : FlowTest() {
         screenshot("1-next-workout")
 
         scrollAndClick(str(R.string.ai_start_workout))
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(str(R.string.ex_bench_press))
         assertEquals(2, count("SELECT COUNT(*) FROM set_entry WHERE weightKg = 82.5 AND completed = 0"))
     }

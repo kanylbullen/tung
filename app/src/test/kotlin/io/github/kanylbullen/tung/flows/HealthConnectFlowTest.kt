@@ -39,9 +39,9 @@ class HealthConnectFlowTest : FlowTest() {
         waitForText(str(Res.string.home_recent))
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
-        waitForDescription(str(R.string.workout_edit_reps, "8"))
-        clickDescription(str(R.string.workout_mark_done, 1))
-        waitForDescription(str(R.string.workout_mark_undone, 1))
+        waitForDescription(str(Res.string.workout_edit_reps, "8"))
+        clickDescription(str(Res.string.workout_mark_done, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
         finishWorkout()
         waitForText(str(R.string.summary_title))
     }

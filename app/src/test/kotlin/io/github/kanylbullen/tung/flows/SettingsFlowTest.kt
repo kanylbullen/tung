@@ -119,14 +119,14 @@ class SettingsFlowTest : FlowTest() {
     fun trainingsDefaultRestIsStored() {
         openSettingsGroup(R.string.settings_group_training)
         waitForText("1:30")
-        clickDescription(str(R.string.rest_longer))
+        clickDescription(str(Res.string.rest_longer))
         waitForText("2:00")
         waitForRestDefault(120)
         screenshot("1-rest-2-00")
-        repeat(4) { clickDescription(str(R.string.rest_shorter)) }
-        waitForText(str(R.string.rest_off))
+        repeat(4) { clickDescription(str(Res.string.rest_shorter)) }
+        waitForText(str(Res.string.rest_off))
         waitForRestDefault(0)
-        clickDescription(str(R.string.rest_longer))
+        clickDescription(str(Res.string.rest_longer))
         waitForRestDefault(30)
 
         clickDescription(str(Res.string.action_back))

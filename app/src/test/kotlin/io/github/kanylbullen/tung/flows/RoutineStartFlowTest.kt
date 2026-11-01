@@ -30,7 +30,7 @@ class RoutineStartFlowTest : FlowTest() {
         waitFor(start and isEnabled())
         screenshot("1-routine")
         compose.onNode(start).performClick()
-        waitForText(str(R.string.workout_finish))
+        waitForText(str(Res.string.workout_finish))
         waitForText(str(R.string.ex_bench_press))
         screenshot("2-workout")
         assertEquals(1, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL AND routineId = '$routineId'"))

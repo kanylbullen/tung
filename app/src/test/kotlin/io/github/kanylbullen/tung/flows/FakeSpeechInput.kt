@@ -6,7 +6,6 @@ import io.github.kanylbullen.tung.voice.SpeechInput
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import java.util.Locale
 
 /**
  * The microphone of the flow tests: each [listenOnce] reports
@@ -28,7 +27,7 @@ class FakeSpeechInput : SpeechInput {
         private set
 
     @Volatile
-    var lastLocale: Locale? = null
+    var lastLanguageTag: String? = null
         private set
 
     fun say(text: String) {
@@ -39,9 +38,9 @@ class FakeSpeechInput : SpeechInput {
         heard.trySend(SpeechEvent.Error(kind))
     }
 
-    override fun listenOnce(locale: Locale): Flow<SpeechEvent> = flow {
+    override fun listenOnce(languageTag: String): Flow<SpeechEvent> = flow {
         listens++
-        lastLocale = locale
+        lastLanguageTag = languageTag
         listening = true
         try {
             emit(SpeechEvent.Listening)

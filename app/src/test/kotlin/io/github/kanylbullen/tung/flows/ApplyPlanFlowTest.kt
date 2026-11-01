@@ -74,33 +74,33 @@ class ApplyPlanFlowTest : FlowTest() {
 
         clickText(str(Res.string.home_resume_workout))
         waitForText(deadlift)
-        val logDeadlift = str(R.string.workout_log_set, deadlift, "50", "10")
+        val logDeadlift = str(Res.string.workout_log_set, deadlift, "50", "10")
         waitForText(logDeadlift)
-        waitFor(hasContentDescription(str(R.string.workout_mark_done, 5)))
+        waitFor(hasContentDescription(str(Res.string.workout_mark_done, 5)))
         screenshot("1-planned-workout")
 
         // Bench press: its header, then its first row at 60 × 10. Tapping the header makes that row current.
         val list = compose.onNode(hasScrollAction())
         list.performScrollToNode(hasText(benchPress))
-        waitFor(hasContentDescription(str(R.string.workout_edit_weight, "60")))
-        waitFor(hasContentDescription(str(R.string.workout_edit_reps, "10")))
-        clickDescription(str(R.string.workout_select_exercise, benchPress))
-        waitForText(str(R.string.workout_log_set, benchPress, "60", "10"))
+        waitFor(hasContentDescription(str(Res.string.workout_edit_weight, "60")))
+        waitFor(hasContentDescription(str(Res.string.workout_edit_reps, "10")))
+        clickDescription(str(Res.string.workout_select_exercise, benchPress))
+        waitForText(str(Res.string.workout_log_set, benchPress, "60", "10"))
         screenshot("2-bench-press")
 
         list.performScrollToNode(hasText(barbellCurl))
-        waitFor(hasContentDescription(str(R.string.workout_edit_weight, "20")))
-        list.performScrollToNode(hasContentDescription(str(R.string.workout_add_set_description, barbellCurl)))
+        waitFor(hasContentDescription(str(Res.string.workout_edit_weight, "20")))
+        list.performScrollToNode(hasContentDescription(str(Res.string.workout_add_set_description, barbellCurl)))
 
         // Back to the deadlift and log its first set.
         list.performScrollToNode(hasText(deadlift))
-        clickDescription(str(R.string.workout_select_exercise, deadlift))
+        clickDescription(str(Res.string.workout_select_exercise, deadlift))
         clickText(logDeadlift)
-        waitForDescription(str(R.string.workout_mark_undone, 1))
+        waitForDescription(str(Res.string.workout_mark_undone, 1))
         assertEquals(1, setsOf("deadlift", "s.completed = 1"))
 
         finishWorkout(screenshotStep = "3-finish")
-        waitGone(hasText(str(R.string.workout_finish_title)))
+        waitGone(hasText(str(Res.string.workout_finish_title)))
         waitUntil(15_000) { count("SELECT COUNT(*) FROM workout WHERE endedAt IS NOT NULL") == 1 }
         assertEquals("one workout, saved", 1, count("SELECT COUNT(*) FROM workout"))
         assertEquals("with the one logged set", 1, count("SELECT COUNT(*) FROM set_entry"))
