@@ -6,14 +6,45 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 const val LOGIN_PATH = "/api/v1/auth/login"
+const val REGISTER_PATH = "/api/v1/auth/register"
 const val LOGOUT_PATH = "/api/v1/auth/logout"
 const val GOOGLE_PATH = "/api/v1/auth/google"
 const val METHODS_PATH = "/api/v1/auth/methods"
+const val ACCOUNT_PATH = "/api/v1/me"
+
+/** What deleting the account gave, as the phone's `DeleteAccountOutcome` names it. */
+enum class DeleteAccountResult {
+    DELETED,
+
+    /** 400 `email_mismatch`: the typed email is not the account's. */
+    EMAIL_MISMATCH,
+
+    /** 403 `session_required`: this token is not a sign-in session. */
+    NOT_ALLOWED,
+
+    /** 401: the token is no longer valid. */
+    SIGNED_OUT,
+
+    /** 404 or 405: a server from before account deletion. */
+    NOT_A_SERVER,
+
+    /** No connection, refused, blocked. */
+    NETWORK,
+
+    /** 5xx, another 4xx, or an answer that is not what the API returns. */
+    SERVER,
+}
 
 /** Why a sign-in failed, as the phone's `AuthFailure` names it. */
 enum class AuthFailure {
     /** 401 on login. */
     INVALID_CREDENTIALS,
+
+    /** 409 on register: an account with that email exists. */
+    ACCOUNT_EXISTS,
+
+    /** 400 `weak_password` on register: under 8 characters. */
+    WEAK_PASSWORD,
 
     /** 400: most likely the email. */
     INVALID_REQUEST,
@@ -56,6 +87,7 @@ class WebAuth(
     private val json: Json = AuthJson,
     private val post: PostJson = ::postJson,
     private val get: GetJson = { getJson(it) },
+    private val delete: PostJson = ::deleteJson,
 ) {
 
     /**
@@ -79,21 +111,19 @@ class WebAuth(
         }
     }
 
-    /** `POST /api/v1/auth/google {id_token}`: Google's ID token for a session, as the phone does. */
-    suspend fun signInWithGoogle(baseUrl: String, idToken: String): AuthResult {
+    /**
+     * `POST /api/v1/auth/google {id_token, language}`: Google's ID token for a
+     * session, as the phone does; [language] (`en`, `sv`) is for the welcome
+     * email, should the sign-in make a new account.
+     */
+    suspend fun signInWithGoogle(baseUrl: String, idToken: String, language: String? = null): AuthResult {
         val reply = try {
-            post(baseUrl + GOOGLE_PATH, json.encodeToString(GoogleToken.serializer(), GoogleToken(idToken)), emptyMap())
+            post(baseUrl + GOOGLE_PATH, json.encodeToString(GoogleToken.serializer(), GoogleToken(idToken, language)), emptyMap())
         } catch (e: HttpUnreachable) {
             return AuthResult.Failed(AuthFailure.NETWORK)
         }
         if (!reply.isSuccess) {
-            val code = try {
-                json.decodeFromString(ErrorBody.serializer(), reply.body).error.code
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                null
-            }
+            val code = errorCode(reply.body)
             return AuthResult.Failed(
                 when (code) {
                     "invalid_google_token" -> AuthFailure.GOOGLE_REJECTED
@@ -108,14 +138,40 @@ class WebAuth(
     }
 
     /** `POST /api/v1/auth/login` at [baseUrl]. */
-    suspend fun signIn(baseUrl: String, email: String, password: String): AuthResult {
+    suspend fun signIn(baseUrl: String, email: String, password: String): AuthResult =
+        credentials(baseUrl + LOGIN_PATH, Credentials(email, password))
+
+    /**
+     * `POST /api/v1/auth/register` at [baseUrl]: a new account, answered with
+     * a session as login is. [language] (`en`, `sv`) is for the welcome email.
+     */
+    suspend fun register(baseUrl: String, email: String, password: String, language: String? = null): AuthResult =
+        credentials(baseUrl + REGISTER_PATH, Credentials(email, password, language))
+
+    private suspend fun credentials(url: String, credentials: Credentials): AuthResult {
         val reply = try {
-            post(baseUrl + LOGIN_PATH, json.encodeToString(Credentials.serializer(), Credentials(email, password)), emptyMap())
+            post(url, json.encodeToString(Credentials.serializer(), credentials), emptyMap())
         } catch (e: HttpUnreachable) {
             return AuthResult.Failed(AuthFailure.NETWORK)
         }
-        if (!reply.isSuccess) return AuthResult.Failed(failureOf(reply.status))
-        return session(reply.body, fallbackEmail = email)
+        if (!reply.isSuccess) {
+            return AuthResult.Failed(
+                when {
+                    reply.status == 409 -> AuthFailure.ACCOUNT_EXISTS
+                    reply.status == 400 && errorCode(reply.body) == "weak_password" -> AuthFailure.WEAK_PASSWORD
+                    else -> failureOf(reply.status)
+                },
+            )
+        }
+        return session(reply.body, fallbackEmail = credentials.email)
+    }
+
+    private fun errorCode(body: String): String? = try {
+        json.decodeFromString(ErrorBody.serializer(), body).error.code
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
     }
 
     private fun session(body: String, fallbackEmail: String?): AuthResult {
@@ -139,6 +195,28 @@ class WebAuth(
         }
     }
 
+    /** `DELETE /api/v1/me {email}`: the server deletes the account and everything of it. Stores nothing. */
+    suspend fun deleteAccount(baseUrl: String, token: String, email: String): DeleteAccountResult {
+        val reply = try {
+            delete(
+                baseUrl + ACCOUNT_PATH,
+                json.encodeToString(Confirmation.serializer(), Confirmation(email.trim())),
+                mapOf("Authorization" to "Bearer $token"),
+            )
+        } catch (e: HttpUnreachable) {
+            return DeleteAccountResult.NETWORK
+        }
+        if (reply.isSuccess) return DeleteAccountResult.DELETED
+        val code = errorCode(reply.body)
+        return when {
+            reply.status == 401 -> DeleteAccountResult.SIGNED_OUT
+            code == "email_mismatch" -> DeleteAccountResult.EMAIL_MISMATCH
+            code == "session_required" -> DeleteAccountResult.NOT_ALLOWED
+            reply.status == 404 || reply.status == 405 -> DeleteAccountResult.NOT_A_SERVER
+            else -> DeleteAccountResult.SERVER
+        }
+    }
+
     private fun failureOf(status: Int): AuthFailure = when (status) {
         401 -> AuthFailure.INVALID_CREDENTIALS
         429 -> AuthFailure.RATE_LIMITED
@@ -148,10 +226,13 @@ class WebAuth(
     }
 
     @Serializable
-    private data class Credentials(val email: String, val password: String)
+    private data class Credentials(val email: String, val password: String, val language: String? = null)
 
     @Serializable
-    private data class GoogleToken(@SerialName("id_token") val idToken: String)
+    private data class Confirmation(val email: String)
+
+    @Serializable
+    private data class GoogleToken(@SerialName("id_token") val idToken: String, val language: String? = null)
 
     @Serializable
     private data class Methods(val google: GoogleMethod? = null)

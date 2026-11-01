@@ -10,7 +10,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,12 +32,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
@@ -49,9 +54,12 @@ import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.HorizontalPageIndicator
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.PageIndicatorState
+import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
+import androidx.wear.compose.material.Vignette
+import androidx.wear.compose.material.VignettePosition
 import androidx.wear.compose.material.dialog.Alert
 import androidx.wear.compose.material.dialog.Dialog
 import io.github.kanylbullen.tung.core.RestTimer
@@ -63,8 +71,8 @@ import io.github.kanylbullen.tung.wear.R
 import io.github.kanylbullen.tung.wear.WatchLogButton
 import io.github.kanylbullen.tung.wear.focusExerciseIndex
 import io.github.kanylbullen.tung.wear.focusSet
-import io.github.kanylbullen.tung.wear.logButton
 import io.github.kanylbullen.tung.wear.lastTimeFor
+import io.github.kanylbullen.tung.wear.logButton
 import kotlinx.coroutines.delay
 
 /**
@@ -120,7 +128,7 @@ fun WorkoutScreen(
         if (index != pagerState.currentPage) pagerState.animateScrollToPage(index)
     }
 
-    Scaffold(timeText = { TimeText() }) {
+    Scaffold(timeText = { TimeText() }, vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) }) {
         Box(Modifier.fillMaxSize()) {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 HierarchicalFocusCoordinator(requiresFocus = { page == pagerState.currentPage }) {
@@ -169,68 +177,74 @@ private fun ExercisePage(
     onAdjust: (AdjustField, String) -> Unit,
 ) {
     val focus = exercise.focusSet(currentSetId)
-    val listState = rememberScalingLazyListState(initialCenterItemIndex = 1)
-    ScalingLazyColumn(
-        state = listState,
-        autoCentering = AutoCenteringParams(itemIndex = 1),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        item {
-            Text(
-                text = exercise.name,
-                style = MaterialTheme.typography.title3,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                // A tap on the name makes this exercise the current one, as the header does on the phone.
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = focus != null && focus.setId != currentSetId) { focus?.let { onSelectSet(it.setId) } },
-            )
-        }
-        if (focus == null) {
-            item { Text(stringResource(R.string.all_logged), color = TungColors.muted, textAlign = TextAlign.Center) }
-            // Every set of the workout is ticked: logging added none, so the button offers another (issue #64).
-            if (button is WatchLogButton.AddSet) {
+    val diameter = screenDiameter()
+    // The set's numbers open a little above the centre, so Log set right under them is whole on a round screen.
+    val lift = with(LocalDensity.current) { (diameter * 0.09f).roundToPx() }
+    val listState = rememberScalingLazyListState(initialCenterItemIndex = 1, initialCenterItemScrollOffset = lift)
+    val padding = rememberListPadding()
+    val textInset = diameter * RoundGeometry.TEXT_SIDE_FRACTION
+    Box(Modifier.fillMaxSize()) {
+        ScalingLazyColumn(
+            state = listState,
+            autoCentering = AutoCenteringParams(itemIndex = 1),
+            // The sides of the responsive padding; autoCentering takes care of the top and bottom.
+            contentPadding = PaddingValues(start = padding.calculateStartPadding(LayoutDirection.Ltr), end = padding.calculateEndPadding(LayoutDirection.Ltr)),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            item {
+                Text(
+                    text = exercise.name,
+                    style = MaterialTheme.typography.title3,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    // A tap on the name makes this exercise the current one, as the header does on the phone.
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = textInset)
+                        .clickable(enabled = focus != null && focus.setId != currentSetId) { focus?.let { onSelectSet(it.setId) } },
+                )
+            }
+            if (focus == null) {
+                item { ListText(stringResource(R.string.all_logged), style = MaterialTheme.typography.body1) }
+                // Every set of the workout is ticked: logging added none, so the button offers another (issue #64).
+                if (button is WatchLogButton.AddSet) {
+                    item {
+                        Chip(
+                            label = { Text(stringResource(R.string.add_set), maxLines = 1) },
+                            onClick = { onAddSet(button.workoutExerciseId) },
+                            colors = accentChipColors(),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            } else {
+                item { BigSet(focus, onAdjust) }
                 item {
                     Chip(
-                        label = { Text(stringResource(R.string.add_set), maxLines = 1) },
-                        onClick = { onAddSet(button.workoutExerciseId) },
+                        label = { Text(stringResource(R.string.log_set), maxLines = 1) },
+                        // With 0 reps there is nothing to log yet: ask for the reps first, as the phone does.
+                        onClick = { if (focus.reps <= 0) onAdjust(AdjustField.Reps, focus.setId) else onLogSet(focus.setId) },
                         colors = accentChipColors(),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-            }
-        } else {
-            item { BigSet(focus, onAdjust) }
-            exercise.lastTimeFor(focus)?.let { last ->
-                item {
-                    Text(
-                        text = stringResource(R.string.previous, localWeight(last.weightKg), last.reps),
-                        color = TungColors.muted,
-                        style = MaterialTheme.typography.caption1,
-                    )
+                exercise.lastTimeFor(focus)?.let { last ->
+                    item { ListText(stringResource(R.string.previous, localWeight(last.weightKg), last.reps)) }
                 }
             }
-            item {
-                Chip(
-                    label = { Text(stringResource(R.string.log_set), maxLines = 1) },
-                    // With 0 reps there is nothing to log yet: ask for the reps first, as the phone does.
-                    onClick = { if (focus.reps <= 0) onAdjust(AdjustField.Reps, focus.setId) else onLogSet(focus.setId) },
-                    colors = accentChipColors(),
-                    modifier = Modifier.fillMaxWidth(),
+            if (phoneUnreachable) item { UnreachableNote() }
+            items(exercise.sets, key = { it.setId }) { set ->
+                SetRow(
+                    number = exercise.sets.indexOf(set) + 1,
+                    set = set,
+                    isFocus = set.setId == focus?.setId,
+                    onSelect = { onSelectSet(set.setId) },
                 )
             }
         }
-        if (phoneUnreachable) item { UnreachableNote() }
-        items(exercise.sets, key = { it.setId }) { set ->
-            SetRow(
-                number = exercise.sets.indexOf(set) + 1,
-                set = set,
-                isFocus = set.setId == focus?.setId,
-                onSelect = { onSelectSet(set.setId) },
-            )
-        }
+        PositionIndicator(scalingLazyListState = listState)
     }
 }
 
@@ -241,19 +255,25 @@ private fun BigSet(set: WatchSet, onAdjust: (AdjustField, String) -> Unit) {
     val reps = if (set.reps > 0) set.reps.toString() else stringResource(R.string.reps_empty)
     val weightDescription = stringResource(R.string.edit_weight, weight)
     val repsDescription = stringResource(R.string.edit_reps, reps)
+    // Sized by the screen, not the font scale: "102.5 × 12" must stay on one line across the circle.
+    val diameter = screenDiameter()
+    val numbers = with(LocalDensity.current) { (diameter * 0.16f).toSp() }
+    val times = with(LocalDensity.current) { (diameter * 0.1f).toSp() }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         Text(
             text = weight,
-            style = numberStyle(34.sp),
+            style = numberStyle(numbers),
+            maxLines = 1,
             modifier = Modifier
                 .clickable { onAdjust(AdjustField.Weight, set.setId) }
                 .semantics { contentDescription = weightDescription }
                 .padding(4.dp),
         )
-        Text(stringResource(R.string.times), style = numberStyle(22.sp), color = TungColors.muted)
+        Text(stringResource(R.string.times), style = numberStyle(times), color = TungColors.muted)
         Text(
             text = reps,
-            style = numberStyle(34.sp),
+            style = numberStyle(numbers),
+            maxLines = 1,
             modifier = Modifier
                 .clickable { onAdjust(AdjustField.Reps, set.setId) }
                 .semantics { contentDescription = repsDescription }
@@ -337,6 +357,9 @@ private fun FinishPage(phoneUnreachable: Boolean, onFinish: () -> Unit) {
 private fun RestScreen(rest: RestTimer, now: Long, onSkip: () -> Unit, onAdd: () -> Unit) {
     val remaining = rest.remainingAt(now)
     val progress = if (rest.durationMillis > 0) remaining.toFloat() / rest.durationMillis else 0f
+    // The countdown is sized by the screen, not the font scale, so it and the chips under it stay inside the ring.
+    val diameter = screenDiameter()
+    val countdownSize = with(LocalDensity.current) { (diameter * 0.2f).toSp() }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(
             progress = progress,
@@ -347,8 +370,8 @@ private fun RestScreen(rest: RestTimer, now: Long, onSkip: () -> Unit, onAdd: ()
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(stringResource(R.string.rest_title), color = TungColors.muted)
-            Text(countdown(remaining), style = numberStyle(44.sp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(countdown(remaining), style = numberStyle(countdownSize), maxLines = 1)
+            Row(horizontalArrangement = Arrangement.spacedBy(diameter * 0.03f)) {
                 CompactChip(
                     label = { Text(stringResource(R.string.rest_skip)) },
                     onClick = onSkip,

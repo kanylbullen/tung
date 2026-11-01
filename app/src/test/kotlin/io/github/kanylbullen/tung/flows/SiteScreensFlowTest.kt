@@ -1,11 +1,15 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.ui.resources.Res
+import io.github.kanylbullen.tung.ui.resources.routine_start_description
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.WorkoutRepository
@@ -80,8 +84,22 @@ class SiteScreensFlowTest : FlowTest() {
 
     private fun ticked() = count("SELECT COUNT(*) FROM set_entry s JOIN workout_exercise we ON s.workoutExerciseId = we.id JOIN workout w ON we.workoutId = w.id WHERE w.endedAt IS NULL AND s.completed = 1")
 
-    /** Taps Log set and waits until the set is ticked, so the next tap logs the next set. */
+    /** The number, within its exercise, of the first open set: the one Log set ticks next. */
+    private fun nextSetNumber() = count(
+        "SELECT (SELECT COUNT(*) FROM set_entry o WHERE o.workoutExerciseId = s.workoutExerciseId AND o.position <= s.position) " +
+            "FROM set_entry s JOIN workout_exercise we ON s.workoutExerciseId = we.id JOIN workout w ON we.workoutId = w.id " +
+            "WHERE w.endedAt IS NULL AND s.completed = 0 ORDER BY we.position, s.position LIMIT 1",
+    )
+
+    /**
+     * Taps Log set and waits until the set is ticked, so the next tap logs the
+     * next set. First it waits for the screen to mark that set as current: the
+     * button carries the set it showed, and a tap before the screen caught up
+     * with the last tick would log the ticked set again, which does nothing
+     * (CI's slower runner, where no screenshot gives the screen time).
+     */
     private fun logNextSet() {
+        waitFor(hasStateDescription(str(R.string.workout_current_set)) and hasContentDescription(str(R.string.workout_set_number_description, nextSetNumber())))
         val before = ticked()
         val logSet = hasText("Log set ·", substring = true)
         waitFor(logSet)
@@ -92,10 +110,10 @@ class SiteScreensFlowTest : FlowTest() {
     private fun screens() {
         seed()
         waitForText("Leg day")
-        waitForText(str(R.string.home_this_week))
+        waitForText(str(Res.string.home_this_week))
         screenshot("1-home")
 
-        clickDescription(str(R.string.routine_start_description, "Push day"))
+        clickDescription(str(Res.string.routine_start_description, "Push day"))
         waitForText(str(R.string.workout_finish))
         waitForText(str(R.string.ex_bench_press))
         // Started 38 minutes ago, so the clock and the summary's duration read like a real workout.

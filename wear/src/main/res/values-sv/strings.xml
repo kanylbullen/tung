@@ -9,7 +9,7 @@
         <item quantity="one">%d övning</item>
         <item quantity="other">%d övningar</item>
     </plurals>
-    <string name="open_phone_hint">Öppna Tung i telefonen för att se passet här, eller länka klockan till en server under Inställningar.</string>
+    <string name="open_phone_hint">Öppna Tung i telefonen, eller länka klockan under Inställningar.</string>
     <string name="phone_unreachable">Telefonen nås inte</string>
 
     <!-- Active workout -->

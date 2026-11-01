@@ -37,7 +37,7 @@ class RoutineStartFlowTest : FlowTest() {
 
         // Back lands on Home, since the page was popped under the workout; opened again, Start is disabled.
         clickDescription(str(Res.string.action_back))
-        waitForText(str(R.string.home_resume_workout))
+        waitForText(str(Res.string.home_resume_workout))
         clickText("Push day")
         waitFor(start and isNotEnabled())
         screenshot("3-disabled")

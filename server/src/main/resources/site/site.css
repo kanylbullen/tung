@@ -314,6 +314,8 @@
 .platforms .name { font-weight: 700; }
 .platforms .state { color: var(--muted); }
 .platforms .state a { color: var(--accent-text); font-weight: 600; }
+.beta { margin: 14vh 0 0; }
+.beta p { margin: 0; max-width: var(--measure); color: var(--muted); }
 
 /* --- Code to copy --- */
 .copyable { display: flex; flex-direction: column; gap: 8px; }

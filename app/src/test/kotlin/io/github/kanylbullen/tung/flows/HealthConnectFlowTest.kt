@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isOff
 import androidx.compose.ui.test.isOn
@@ -35,7 +36,7 @@ class HealthConnectFlowTest : FlowTest() {
     /** Bench press with last time's 80 × 8 pre-filled: start, tick, finish. */
     private fun logAndFinishOneSet() {
         seedFinishedWorkout(System.currentTimeMillis() - 2 * DAY, bench(), weightKg = 80.0, reps = 8)
-        waitForText(str(R.string.home_recent))
+        waitForText(str(Res.string.home_recent))
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
         waitForDescription(str(R.string.workout_edit_reps, "8"))
@@ -86,7 +87,7 @@ class HealthConnectFlowTest : FlowTest() {
         val startedAt = longQuery("SELECT startedAt FROM workout WHERE healthConnectId IS NOT NULL")
         clickText(shortLocalDate(startedAt))
         waitForText(str(R.string.ex_bench_press))
-        assertShown(hasText(str(R.string.detail_heart_rate, 130, 150) + " · " + str(R.string.detail_calories, 87)))
+        assertShown(hasText(str(Res.string.detail_heart_rate, 130, 150) + " · " + str(Res.string.detail_calories, 87)))
         screenshot("3-detail-with-heart-rate")
 
         assertEquals(1, fake.written.size)
@@ -121,8 +122,8 @@ class HealthConnectFlowTest : FlowTest() {
         val startedAt = longQuery("SELECT MAX(startedAt) FROM workout")
         clickText(shortLocalDate(startedAt))
         waitForText(str(R.string.ex_bench_press))
-        compose.onNode(hasText(str(R.string.detail_calories, 0).removePrefix("0"), substring = true)).assertDoesNotExist()
-        compose.onNode(hasText(str(R.string.detail_heart_rate_one, 0).removeSuffix("0"), substring = true)).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.detail_calories, 0).removePrefix("0"), substring = true)).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.detail_heart_rate_one, 0).removeSuffix("0"), substring = true)).assertDoesNotExist()
     }
 
     /** Where Health Connect is missing, the section says so and has no switches. */

@@ -23,9 +23,9 @@ class HistoryFlowTest : FlowTest() {
         val olderDate = shortLocalDate(OLDER)
         val newerDate = shortLocalDate(NEWER)
 
-        waitForText(str(R.string.home_recent))
+        waitForText(str(Res.string.home_recent))
         clickText(str(R.string.nav_history))
-        waitGone(hasText(str(R.string.home_recent))) // left Home, which lists the same dates
+        waitGone(hasText(str(Res.string.home_recent))) // left Home, which lists the same dates
         waitForText(newerDate)
         waitForText(olderDate)
         screenshot("1-history")
@@ -36,15 +36,15 @@ class HistoryFlowTest : FlowTest() {
 
         clickText(newerDate)
         waitForText(str(R.string.ex_bench_press))
-        assertShown(hasText(str(R.string.detail_set_line, "80", 8)))
+        assertShown(hasText(str(Res.string.detail_set_line, "80", 8)))
         compose.onNode(hasText(str(R.string.ex_back_squat))).assertDoesNotExist()
         screenshot("2-detail")
 
         clickDescription(str(Res.string.action_more))
-        clickText(str(R.string.detail_delete))
-        assertShown(hasText(str(R.string.detail_delete_body)))
+        clickText(str(Res.string.detail_delete))
+        assertShown(hasText(str(Res.string.detail_delete_body)))
         screenshot("3-delete-dialog")
-        clickInDialog(str(R.string.detail_delete_confirm))
+        clickInDialog(str(Res.string.detail_delete_confirm))
 
         waitForText(olderDate)
         waitGone(hasText(newerDate))

@@ -64,6 +64,11 @@ data class ServerConfig(
     val googleJwksUrl: String = GOOGLE_JWKS_URL,
     /** The time for Google token expiry. Not an environment variable: tests set it. */
     val clock: () -> Long = System::currentTimeMillis,
+    /**
+     * Sends the welcome emails (`TUNG_RESEND_API_KEY` with `TUNG_MAIL_FROM`,
+     * through Resend); null sends none. Tests hand in their own.
+     */
+    val mailer: Mailer? = null,
 ) {
     companion object {
         const val DEFAULT_PORT = 8080
@@ -99,8 +104,17 @@ data class ServerConfig(
                 "true", "1", "yes" -> true
                 else -> throw ConfigException("TUNG_TESTER_SIGNUPS must be true or false, got '$raw'.")
             }
+            val resendKey = value("TUNG_RESEND_API_KEY")
+            val mailFrom = value("TUNG_MAIL_FROM")
+            if (resendKey != null && (mailFrom == null || publicUrl == null)) {
+                throw ConfigException(
+                    "TUNG_RESEND_API_KEY needs TUNG_MAIL_FROM (a sender on a domain verified in Resend, such as " +
+                        "'Tung <tung@example.org>') and TUNG_PUBLIC_URL (for the links in the email).",
+                )
+            }
             return ServerConfig(
                 databaseUrl = url,
+                mailer = resendKey?.let { ResendMailer(it, checkNotNull(mailFrom)) },
                 databaseUser = value("DATABASE_USER"),
                 databasePassword = env["DATABASE_PASSWORD"],
                 port = port,

@@ -1,6 +1,12 @@
 package io.github.kanylbullen.tung.ui.settings
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.window.DialogProperties
+import io.github.kanylbullen.tung.ui.resources.Res
+import io.github.kanylbullen.tung.ui.resources.action_cancel
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
@@ -59,9 +65,10 @@ fun AccountScreen(onBack: () -> Unit) {
         val account = state.account
         when (account?.signedIn) {
             null -> Unit
-            true -> SignedIn(account, onSyncNow = vm::syncNow, onSignOut = vm::signOut)
+            true -> SignedIn(account, onSyncNow = vm::syncNow, onSignOut = vm::signOut, onDelete = vm::openDeletion)
             false -> SignInForm(
                 form = state.form,
+                deleted = state.deleted,
                 lastError = account.sync.lastError,
                 onUseAnotherServer = vm::useAnotherServer,
                 onServerUrl = vm::onServerUrl,
@@ -73,10 +80,20 @@ fun AccountScreen(onBack: () -> Unit) {
             )
         }
     }
+    val deletion = state.deletion
+    if (deletion != null && state.account?.signedIn == true) {
+        DeleteAccountDialog(
+            serverUrl = state.account?.serverUrl.orEmpty(),
+            deletion = deletion,
+            onEmail = vm::onDeletionEmail,
+            onConfirm = vm::confirmDeletion,
+            onDismiss = vm::cancelDeletion,
+        )
+    }
 }
 
 @Composable
-private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: () -> Unit) {
+private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: () -> Unit, onDelete: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             stringResource(R.string.sync_signed_in_as, account.email.orEmpty()),
@@ -96,11 +113,69 @@ private fun SignedIn(account: AccountState, onSyncNow: () -> Unit, onSignOut: ()
     )
     SecondaryButton(text = stringResource(R.string.sync_sign_out), onClick = onSignOut)
     Text(stringResource(R.string.sync_sign_out_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+    // Quiet and last: a destructive action that asks before it does anything.
+    TextButton(onClick = onDelete) {
+        Text(stringResource(R.string.sync_delete_account), color = Tung.colors.muted)
+    }
+}
+
+/**
+ * "Delete your account?": what goes (everything on [serverUrl]) and what
+ * stays (the workouts on this phone), the account's email typed to confirm,
+ * and the server's answer under the field.
+ */
+@Composable
+private fun DeleteAccountDialog(
+    serverUrl: String,
+    deletion: AccountDeletion,
+    onEmail: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        // A dialog with a text field: Compose's width, or it never settles under Robolectric (CLAUDE.md, "Flow tests").
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.padding(horizontal = 24.dp),
+        containerColor = Tung.colors.raised,
+        tonalElevation = 0.dp,
+        shape = TungCorner,
+        title = { Text(stringResource(R.string.sync_delete_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.sync_delete_body, serverUrl), color = Tung.colors.muted)
+                OutlinedTextField(
+                    value = deletion.email,
+                    onValueChange = onEmail,
+                    label = { Text(stringResource(R.string.sync_delete_email)) },
+                    singleLine = true,
+                    enabled = !deletion.busy,
+                    isError = deletion.error != null,
+                    supportingText = deletion.error?.let { error -> { Text(stringResource(error)) } },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false),
+                    shape = TungCorner,
+                    colors = tungFieldColors(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !deletion.busy) {
+                Text(stringResource(R.string.sync_delete_confirm), color = Tung.colors.accentText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !deletion.busy) {
+                Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
+            }
+        },
+    )
 }
 
 @Composable
 private fun SignInForm(
     form: SignInForm,
+    deleted: Boolean,
     lastError: String?,
     onUseAnotherServer: () -> Unit,
     onServerUrl: (String) -> Unit,
@@ -111,6 +186,9 @@ private fun SignInForm(
     onGoogle: () -> Unit,
 ) {
     Text(stringResource(R.string.sync_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+    if (deleted) {
+        Text(stringResource(R.string.sync_delete_done), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
+    }
     // After the server ended the session, say so above the form.
     if (SyncFailure.fromKey(lastError) == SyncFailure.SIGNED_OUT) {
         Text(stringResource(R.string.sync_error_signed_out), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)

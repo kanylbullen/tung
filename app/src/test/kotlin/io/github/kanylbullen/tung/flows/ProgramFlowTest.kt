@@ -28,10 +28,10 @@ class ProgramFlowTest : FlowTest() {
     private val benchPress get() = str(R.string.ex_bench_press)
     private val barbellRow get() = str(R.string.ex_barbell_row)
 
-    private fun dayOf(number: Int, count: Int) = str(R.string.program_day_of, number, count)
+    private fun dayOf(number: Int, count: Int) = str(Res.string.program_day_of, number, count)
     private fun rotatingLine(number: Int, count: Int, routine: String) =
-        str(R.string.today_rotating, dayOf(number, count), routine)
-    private fun startToday(routine: String) = hasContentDescription(str(R.string.today_start_description, routine))
+        str(Res.string.today_rotating, dayOf(number, count), routine)
+    private fun startToday(routine: String) = hasContentDescription(str(Res.string.today_start_description, routine))
 
     /**
      * Someone with a "Push day" and a "Pull day" routine opens Routines, then
@@ -45,30 +45,30 @@ class ProgramFlowTest : FlowTest() {
         val pull = seedRoutine("Pull day", row())
 
         waitForText("Push day")
-        clickText(str(R.string.routines_all))
-        waitGone(hasText(str(R.string.home_recent)))
+        clickText(str(Res.string.routines_all))
+        waitGone(hasText(str(Res.string.home_recent)))
         clickText(str(Res.string.programs_title))
-        clickText(str(R.string.program_new))
+        clickText(str(Res.string.program_new))
         val field = hasSetTextAction() and hasAnyAncestor(isDialog())
         waitFor(field)
         compose.onNode(field).performTextReplacement("Push pull")
         screenshot("1-new-program")
-        clickInDialog(str(R.string.program_create))
+        clickInDialog(str(Res.string.program_create))
         waitGone(isDialog())
 
-        waitForText(str(R.string.program_days_empty))
-        clickText(str(R.string.program_add_day))
-        waitForText(str(R.string.program_pick_routine))
+        waitForText(str(Res.string.program_days_empty))
+        clickText(str(Res.string.program_add_day))
+        waitForText(str(Res.string.program_pick_routine))
         screenshot("2-pick-routine")
         clickText("Push day")
-        waitGone(hasText(str(R.string.program_pick_routine)))
-        clickText(str(R.string.program_add_day))
-        waitForText(str(R.string.program_pick_routine))
+        waitGone(hasText(str(Res.string.program_pick_routine)))
+        clickText(str(Res.string.program_add_day))
+        waitForText(str(Res.string.program_pick_routine))
         clickText("Pull day")
-        waitGone(hasText(str(R.string.program_pick_routine)))
+        waitGone(hasText(str(Res.string.program_pick_routine)))
         waitForText(dayOf(2, 2))
-        clickDescription(str(R.string.program_activate_description, "Push pull"))
-        waitForText(str(R.string.program_active))
+        clickDescription(str(Res.string.program_activate_description, "Push pull"))
+        waitForText(str(Res.string.program_active))
         screenshot("3-program")
 
         assertEquals(1, count("SELECT COUNT(*) FROM program WHERE name = 'Push pull' AND mode = 'rotating' AND isActive = 1"))
@@ -76,7 +76,7 @@ class ProgramFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM program_day WHERE routineId = '$pull' AND position = 1"))
 
         clickDescription(str(Res.string.action_back))
-        waitForText(str(R.string.program_new))
+        waitForText(str(Res.string.program_new))
         clickDescription(str(Res.string.action_back))
         waitForText(str(Res.string.programs_entry_active, "Push pull"))
         // Routines is a tab now, with no back arrow: Home is the tab next to it.
@@ -132,31 +132,31 @@ class ProgramFlowTest : FlowTest() {
             programs.activate(program)
         }
 
-        waitForText(str(R.string.today_rest))
+        waitForText(str(Res.string.today_rest))
         assertShown(hasText("Weekly"))
         compose.onNode(startToday("Push day")).assertDoesNotExist()
         screenshot("1-home-rest-day")
 
-        clickText(str(R.string.routines_all))
-        waitGone(hasText(str(R.string.home_recent)))
+        clickText(str(Res.string.routines_all))
+        waitGone(hasText(str(Res.string.home_recent)))
         clickText(str(Res.string.programs_title))
         clickText("Weekly")
-        waitForText(str(R.string.program_active))
-        val toggle = str(R.string.program_weekday_description, "Push day", weekdayFull(weekday))
+        waitForText(str(Res.string.program_active))
+        val toggle = str(Res.string.program_weekday_description, "Push day", weekdayFull(weekday))
         clickDescription(toggle)
         waitUntil(5_000) { count("SELECT weekdays FROM program_day") == 1 shl (weekday - 1) }
         assertShown(hasContentDescription(toggle) and isOn())
         screenshot("2-program-wednesday")
 
         clickDescription(str(Res.string.action_back))
-        waitForText(str(R.string.program_new))
+        waitForText(str(Res.string.program_new))
         clickDescription(str(Res.string.action_back))
         waitForText(str(Res.string.programs_entry_active, "Weekly"))
         // Routines is a tab now, with no back arrow: Home is the tab next to it.
         clickText(str(R.string.nav_home))
-        waitForText(str(R.string.today_fixed, "Push day"))
+        waitForText(str(Res.string.today_fixed, "Push day"))
         assertShown(startToday("Push day") and isEnabled())
-        compose.onNode(hasText(str(R.string.today_rest))).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.today_rest))).assertDoesNotExist()
         screenshot("3-home-today")
     }
 
@@ -179,8 +179,8 @@ class ProgramFlowTest : FlowTest() {
         }
 
         waitForText(rotatingLine(1, 2, "Push day"))
-        clickText(str(R.string.today_choose_another))
-        waitForText(str(R.string.today_choose_title))
+        clickText(str(Res.string.today_choose_another))
+        waitForText(str(Res.string.today_choose_title))
         screenshot("1-choose-sheet")
         // "Pull day" is on Home too, in Routines; the sheet's row is the one with its place in the program.
         clickText(dayOf(2, 2))
@@ -224,7 +224,7 @@ class ProgramFlowTest : FlowTest() {
         db.openHelper.writableDatabase.execSQL("DELETE FROM program_day WHERE id = ?", arrayOf(pushDay))
         compose.onNode(startToday("Push day")).performClick()
 
-        waitForText(str(R.string.today_day_gone))
+        waitForText(str(Res.string.today_day_gone))
         screenshot("1-day-gone")
         // The refusing command's own transaction brought the removal to the card.
         waitForText(rotatingLine(1, 1, "Pull day"))
@@ -248,16 +248,16 @@ class ProgramFlowTest : FlowTest() {
         }
 
         waitForText("Push day")
-        clickText(str(R.string.routines_all))
-        waitGone(hasText(str(R.string.home_recent)))
+        clickText(str(Res.string.routines_all))
+        waitGone(hasText(str(Res.string.home_recent)))
         clickText(str(Res.string.programs_title))
         clickText("Split")
-        waitForText(str(R.string.program_mode_title))
+        waitForText(str(Res.string.program_mode_title))
         waitForText(dayOf(1, 1))
         screenshot("1-rotating")
 
-        clickText(str(R.string.program_mode_fixed))
-        val monday = hasContentDescription(str(R.string.program_weekday_description, "Push day", weekdayFull(1)))
+        clickText(str(Res.string.program_mode_fixed))
+        val monday = hasContentDescription(str(Res.string.program_weekday_description, "Push day", weekdayFull(1)))
         waitFor(monday)
         waitGone(hasText(dayOf(1, 1)))
         assertEquals(1, count("SELECT COUNT(*) FROM program WHERE id = '$programId' AND mode = 'fixed' AND dirty = 1"))
@@ -265,7 +265,7 @@ class ProgramFlowTest : FlowTest() {
         waitUntil { count("SELECT COUNT(*) FROM program_day WHERE weekdays = 1") == 1 }
         screenshot("2-fixed")
 
-        clickText(str(R.string.program_mode_rotating))
+        clickText(str(Res.string.program_mode_rotating))
         waitForText(dayOf(1, 1))
         waitGone(monday)
         waitUntil { count("SELECT COUNT(*) FROM program WHERE id = '$programId' AND mode = 'rotating'") == 1 }

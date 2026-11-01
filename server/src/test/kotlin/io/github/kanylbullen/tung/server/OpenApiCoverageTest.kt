@@ -67,7 +67,7 @@ class OpenApiCoverageTest {
             .mapNotNull(::describe)
             .filterNot { it.substringAfter(' ').startsWith("/docs") }
             // The landing and privacy pages and their assets, and the web app: pages, not API (SiteRoutes.kt).
-            .filterNot { it.substringAfter(' ').let { path -> path == "/" || path == "/privacy" || path.startsWith("/site") || path.startsWith("/app") } }
+            .filterNot { it.substringAfter(' ').let { path -> path == "/" || path == "/privacy" || path == "/delete-account" || path.startsWith("/site") || path.startsWith("/app") } }
             .toSet()
         val operations = specOperations()
 

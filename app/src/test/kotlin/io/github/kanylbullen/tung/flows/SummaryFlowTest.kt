@@ -69,7 +69,7 @@ class SummaryFlowTest : FlowTest() {
         assertShown(hasText(str(R.string.set_value, "90", 6)))
         // Done and Save as routine stay at the bottom, whatever is scrolled.
         assertShown(hasText(str(R.string.summary_done)))
-        assertShown(hasText(str(R.string.routine_save_as)))
+        assertShown(hasText(str(Res.string.routine_save_as)))
         screenshot("1-exercises")
 
         val list = compose.onNode(hasTestTag(SUMMARY_LIST_TAG))
@@ -112,7 +112,7 @@ class SummaryFlowTest : FlowTest() {
         waitFor(hasTestTag(SUMMARY_LIST_TAG))
 
         clickText(str(R.string.summary_done))
-        waitForText(str(R.string.home_start_workout))
+        waitForText(str(Res.string.home_start_workout))
     }
 
     /** The same summary in the dark theme, for the screenshots. */

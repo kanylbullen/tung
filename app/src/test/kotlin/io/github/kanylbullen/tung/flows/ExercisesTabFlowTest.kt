@@ -113,8 +113,8 @@ class ExercisesTabFlowTest : FlowTest() {
         page.performScrollToNode(hasText(str(R.string.exercise_set_value, "100", 5)))
         assertShown(hasText(str(R.string.exercise_best_set)))
         assertShown(hasText(plural(R.plurals.exercise_sessions, 1)))
-        page.performScrollToNode(hasText(str(R.string.detail_set_line, "100", 5)))
-        assertShown(hasText(str(R.string.detail_set_line, "100", 5)))
+        page.performScrollToNode(hasText(str(Res.string.detail_set_line, "100", 5)))
+        assertShown(hasText(str(Res.string.detail_set_line, "100", 5)))
         screenshot("2-history")
 
         page.performScrollToNode(heading(str(R.string.exercise_instructions)))
@@ -154,8 +154,8 @@ class ExercisesTabFlowTest : FlowTest() {
 
         clickDescription(str(Res.string.action_back))
         clickText(str(R.string.nav_home))
-        clickText(str(R.string.routines_all))
-        waitGone(hasText(str(R.string.home_recent)))
+        clickText(str(Res.string.routines_all))
+        waitGone(hasText(str(Res.string.home_recent)))
         clickText("Push day")
         waitForText(benchPress)
         waitForText("Zercher Squats")

@@ -32,8 +32,9 @@ import org.jetbrains.compose.web.dom.Text
  * Email and password against a tung-server, the phone's Settings → Account
  * when signed out: the default server is shown read-only under the fields,
  * "Use another server" turns it into a field, and a stored server other
- * than the default is a field from the start. The first sync starts as
- * soon as the sign-in succeeds.
+ * than the default is a field from the start. "Create account" registers
+ * with the same fields, as the phone's does. The first sync starts as soon
+ * as the sign-in succeeds.
  */
 @Composable
 fun SignInScreen(container: WebContainer) {
@@ -44,10 +45,13 @@ fun SignInScreen(container: WebContainer) {
     var server by remember { mutableStateOf(storedServer ?: defaultServerUrl()) }
     var editingServer by remember { mutableStateOf(storedServer != null && storedServer != defaultServerUrl()) }
     var busy by remember { mutableStateOf(false) }
+    var creating by remember { mutableStateOf(false) }
     var error by remember {
         mutableStateOf(if (container.signedOutByServer) strings.syncFailure(SyncFailure.SIGNED_OUT) else null)
     }
     val scope = rememberCoroutineScope()
+    // Said once, right after "Delete account" here.
+    val deleted = remember { container.accountDeleted.also { container.accountDeleted = false } }
 
     // Sign in with Google, when the page is served by the server it signs in
     // to: Google only runs its button on origins the server's client id has
@@ -70,7 +74,7 @@ fun SignInScreen(container: WebContainer) {
         }
     }
 
-    fun submit() {
+    fun submit(create: Boolean = false) {
         if (busy) return
         if (email.isBlank() || password.isEmpty()) {
             error = strings.errorFields
@@ -88,9 +92,12 @@ fun SignInScreen(container: WebContainer) {
             }
         }
         busy = true
+        creating = create
         error = null
         scope.launch {
-            val result = container.signIn(url, email.trim(), password)
+            val result =
+                if (create) container.register(url, email.trim(), password)
+                else container.signIn(url, email.trim(), password)
             busy = false
             if (result is AuthResult.Failed) error = strings.authFailure(result.failure)
         }
@@ -99,6 +106,7 @@ fun SignInScreen(container: WebContainer) {
     Div({ classes("screen") }) {
         Div({ classes("wordmark") }) { Text(strings.appName) }
         P({ classes("intro") }) { Text(strings.signInIntro) }
+        if (deleted) P({ classes("notice"); attr("role", "status") }) { Text(strings.accountDeleted) }
         val clientId = googleClientId
         val googleUrl = sameOrigin
         if (clientId != null && googleUrl != null) {
@@ -173,7 +181,13 @@ fun SignInScreen(container: WebContainer) {
             Button({
                 classes("primary")
                 if (busy) disabled()
-            }) { Text(if (busy) strings.signingIn else strings.signIn) }
+            }) { Text(if (busy && !creating) strings.signingIn else strings.signIn) }
+            Button({
+                classes("secondary", "wide")
+                attr("type", "button")
+                if (busy) disabled()
+                onClick { submit(create = true) }
+            }) { Text(if (busy && creating) strings.creatingAccount else strings.createAccount) }
         }
     }
 }

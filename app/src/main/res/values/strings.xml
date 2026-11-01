@@ -9,42 +9,14 @@
     <string name="action_close">Close</string>
 
     <!-- Home -->
-    <string name="home_start_workout">Start workout</string>
-    <string name="home_resume_workout">Resume workout</string>
-    <string name="home_workout_menu">Options for the workout in progress</string>
-    <string name="home_in_progress_since">In progress for %1$s</string>
-    <string name="home_recent">Recent workouts</string>
-    <string name="home_empty">No workouts yet. Start your first and it will show up here.</string>
-    <string name="home_show_all">Show all</string>
     <!-- Home's "This week" block: the hero number is the week's volume in kg, under it the counts, then the days. -->
-    <string name="home_this_week">This week</string>
-    <plurals name="home_week_workouts">
-        <item quantity="one">%d workout</item>
-        <item quantity="other">%d workouts</item>
-    </plurals>
-    <plurals name="home_week_sets">
-        <item quantity="one">%d set</item>
-        <item quantity="other">%d sets</item>
-    </plurals>
-    <string name="home_week_none">No workout yet this week</string>
-    <string name="home_week_last">Last week %1$s kg</string>
-    <string name="home_week_best">Best of the last 12 weeks</string>
     <!-- The seven bars, for a screen reader: "Volume per day this week: Monday 3 020 kg, Wednesday 4 420 kg" or "…: nothing yet" -->
-    <string name="home_week_days_description">Volume per day this week: %1$s</string>
-    <string name="home_week_day_volume">%1$s %2$s kg</string>
-    <string name="home_week_days_none">nothing yet</string>
     <!-- The small body on Home: "Muscles worked this week: chest 50 %, …" -->
-    <string name="home_muscles_description">Muscles worked this week: %1$s</string>
     <!-- A finished workout's row without a routine and without exercises -->
-    <string name="workout_row_untitled">Workout</string>
 
     <!-- Workout list rows and stats -->
-    <string name="duration_hours_minutes">%1$d h %2$d min</string>
-    <string name="duration_minutes">%1$d min</string>
     <string name="volume_kg">%1$s kg</string>
-    <string name="stat_duration">Duration</string>
     <string name="stat_sets">Sets</string>
-    <string name="stat_volume">Volume, kg</string>
 
     <!-- Active workout -->
     <string name="workout_finish">Finish workout</string>
@@ -55,7 +27,6 @@
     <string name="workout_remove_exercise">Remove exercise</string>
     <string name="workout_exercise_menu">Options for %1$s</string>
     <string name="workout_previous">Last: %1$s × %2$d</string>
-    <string name="workout_unit_kg">kg</string>
     <string name="workout_reps_empty">–</string>
     <string name="workout_set_number_description">Set %1$d</string>
     <string name="workout_edit_weight">Change weight, %1$s kilos</string>
@@ -67,10 +38,6 @@
     <!-- The Delete button a swipe reveals behind a set row (issue #81) -->
     <string name="workout_delete_set_number">Delete set %1$d</string>
     <!-- Discard the workout in progress (issue #81): the workout's menu, and the menu on Home's Resume card -->
-    <string name="workout_discard">Discard workout…</string>
-    <string name="workout_discard_title">Discard this workout?</string>
-    <string name="workout_discard_body">The sets you logged are deleted.</string>
-    <string name="workout_discard_confirm">Discard</string>
     <string name="workout_elapsed_description">Time since start %1$s</string>
     <string name="workout_finish_title">Finish workout?</string>
     <!-- The finish dialog says what goes: the sets that are not ticked (or ticked with no reps), and exercises with no set. -->
@@ -217,17 +184,7 @@
     <string name="my_equipment_some">%1$d of %2$d</string>
 
     <!-- History -->
-    <string name="history_title">History</string>
-    <string name="history_empty">Finished workouts show up here.</string>
-    <string name="detail_delete">Delete workout</string>
-    <string name="detail_delete_title">Delete workout?</string>
-    <string name="detail_delete_body">The workout and all its sets will be deleted. This cannot be undone.</string>
-    <string name="detail_delete_confirm">Delete</string>
-    <string name="detail_set_line">%1$s kg × %2$d</string>
     <!-- Health Connect's values on a finished workout, one muted line: "Heart rate 128 avg · 171 max · 342 kcal" -->
-    <string name="detail_heart_rate">Heart rate %1$d avg · %2$d max</string>
-    <string name="detail_heart_rate_one">Heart rate %1$d</string>
-    <string name="detail_calories">%1$d kcal</string>
 
     <!-- Summary -->
     <string name="summary_title">Workout done</string>
@@ -250,57 +207,13 @@
     <string name="set_value">%1$s × %2$d</string>
 
     <!-- Routines -->
-    <string name="routines_all">All</string>
-    <string name="routine_save_as">Save as routine</string>
-    <string name="routine_save">Save</string>
     <string name="routine_saved">Saved as routine: %1$s</string>
-    <string name="routine_default_name">%1$s: %2$s</string>
     <string name="nav_routines">Routines</string>
 
-    <!-- Programs -->
-    <string name="programs_empty">No programs. A program puts your routines on fixed weekdays or in a rotation, and Home shows the one for today.</string>
-    <string name="program_new">New program</string>
-    <string name="program_create">Create</string>
-    <string name="program_name">Name</string>
-    <string name="program_error_name">Enter a name for the program.</string>
-    <string name="program_mode_fixed">Fixed days</string>
-    <string name="program_mode_fixed_hint">Each routine on the weekdays you pick</string>
-    <string name="program_mode_rotating">Rotating</string>
-    <string name="program_mode_rotating_hint">Day 1, 2, 3 in order, whatever the date</string>
-    <string name="program_mode_title">Mode</string>
-    <string name="program_active">Active</string>
-    <string name="program_activate">Activate</string>
-    <string name="program_activate_description">Activate %1$s</string>
-    <string name="program_deactivate">Deactivate</string>
-    <plurals name="program_day_count">
-        <item quantity="one">%d day</item>
-        <item quantity="other">%d days</item>
-    </plurals>
-    <string name="program_day_of">Day %1$d of %2$d</string>
-    <string name="program_no_weekdays">No weekdays</string>
-    <string name="program_weekday_description">%1$s on %2$s</string>
-    <string name="program_days_empty">No days yet. Add your routines in the order you train them.</string>
-    <string name="program_add_day">Add day</string>
-    <string name="program_pick_routine">Choose a routine</string>
-    <string name="program_no_routines">No routines yet. Create one in the Routines tab with “+ New routine”, or save a finished workout as one.</string>
-    <string name="program_day_menu">Options for %1$s</string>
-    <string name="program_remove_day">Remove day</string>
-    <string name="program_rename_title">Rename program</string>
-    <string name="program_delete">Delete program</string>
-    <string name="program_delete_title">Delete program?</string>
-    <string name="program_delete_body">The program will be deleted. Its routines, and the workouts you did from it, are kept.</string>
-    <string name="program_not_found">This program no longer exists.</string>
-    <string name="today_fixed">Today: %1$s</string>
-    <string name="today_rotating">%1$s: %2$s</string>
-    <string name="today_rest">Rest day</string>
-    <string name="today_start_description">Start today’s routine, %1$s</string>
-    <string name="today_choose_another">Choose another</string>
-    <string name="today_choose_title">Choose a day</string>
-    <string name="today_day_gone">That day is no longer in the program.</string>
+    <!-- Home: Today, from the active program (the program screens are in ui) -->
 
     <!-- Exercise catalogue: ex_<nameKey>, one per entry in catalog/core.json. -->
     <!-- Settings and sync -->
-    <string name="settings_title">Settings</string>
     <!-- Settings' groups (issue #67) -->
     <string name="settings_group_account">Account</string>
     <string name="settings_group_devices">Devices</string>
@@ -366,6 +279,15 @@
     <string name="sync_signed_in_as">Signed in as %1$s</string>
     <string name="sync_sign_out">Sign out</string>
     <string name="sync_sign_out_hint">Signing out keeps your training on this phone.</string>
+    <string name="sync_delete_account">Delete account…</string>
+    <string name="sync_delete_title">Delete your account?</string>
+    <string name="sync_delete_body">This deletes your account on %1$s and everything stored there: workouts, routines, programs and feedback. The workouts on this phone are kept. It cannot be undone.</string>
+    <string name="sync_delete_email">Type your email to confirm</string>
+    <string name="sync_delete_confirm">Delete account</string>
+    <string name="sync_delete_done">Your account is deleted. The workouts on this phone are kept.</string>
+    <string name="sync_delete_error_email">That is not this account\'s email.</string>
+    <string name="sync_delete_error_not_allowed">This sign-in cannot delete the account. Sign out, sign in again and try once more.</string>
+    <string name="sync_delete_error_old_server">This server cannot delete accounts yet. Ask whoever runs it.</string>
     <!-- Push: how the server wakes the phone when another device or an assistant changes something -->
     <string name="push_status_fcm">Push: FCM</string>
     <!-- The UnifiedPush distributor app's name, e.g. "Push: ntfy" -->
@@ -445,8 +367,6 @@
     <!-- Assistant: in-app AI with your own key (BYOK) -->
     <!-- The language this resource set is in, as a BCP 47 tag: what the assistant is told to write in (issue #75). Each translation sets its own tag. -->
     <string name="ai_language_tag">en</string>
-    <string name="ai_title">Assistant</string>
-    <string name="ai_entry_hint">A program, today\'s workout or where you are stuck, from a model with your own key</string>
     <string name="ai_intro">Each button sends your training history, routines and programs to the provider set up in Settings, with your own key, and only when you tap it. Never your email, name or device.</string>
     <string name="ai_ask_program">Suggest a program</string>
     <string name="ai_ask_next">Next workout</string>

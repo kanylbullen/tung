@@ -98,7 +98,9 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
 
     // Sign in with Google (issue #51), only with a client id.
     val google = config.googleClientIds.takeIf { it.isNotEmpty() }?.let { GoogleIdTokens(it, config.googleJwksUrl, config.clock) }
-    val accounts = Accounts(db, google)
+    // Welcome emails (a new account, a test sign-up), only with TUNG_RESEND_API_KEY; sent on the application's scope.
+    val welcome = WelcomeMail(config.mailer, config.publicUrl, this, testInvite = config.testerSignups)
+    val accounts = Accounts(db, google, welcome)
     val exercises = ExerciseStore(db)
     val workouts = WorkoutStore(db, exercises)
 
@@ -177,7 +179,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     }
     installErrorPages()
 
-    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push, commands) }
+    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push, commands, welcome) }
     routing { siteRoutes(config) }
     routing {
         commandRoutes(commands)

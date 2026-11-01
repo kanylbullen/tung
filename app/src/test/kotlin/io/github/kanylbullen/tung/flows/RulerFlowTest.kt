@@ -184,7 +184,7 @@ class RulerFlowTest : FlowTest() {
     @Test
     fun applyToAllSetsSkipsTickedSets() {
         seedFinishedWorkout(startedAt = System.currentTimeMillis() - 2 * DAY, exerciseId = bench(), weightKg = 80.0, reps = 8)
-        waitForText(str(R.string.home_recent))
+        waitForText(str(Res.string.home_recent))
         startWorkoutFromHome()
         val benchPress = str(R.string.ex_bench_press)
         addExercise("bench", benchPress)

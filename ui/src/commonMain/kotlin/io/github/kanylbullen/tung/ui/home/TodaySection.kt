@@ -23,11 +23,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.ProgramMode
 import io.github.kanylbullen.tung.ui.routines.ProgramDayChoiceRow
 import io.github.kanylbullen.tung.ui.routines.programDayPlace
@@ -58,14 +56,14 @@ fun TodaySection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                if (day == null) stringResource(R.string.today_rest) else todayLine(today.mode, day),
+                if (day == null) stringResource(Res.string.today_rest) else todayLine(today.mode, day),
                 style = MaterialTheme.typography.titleLarge,
                 color = Tung.colors.text,
                 modifier = Modifier.weight(1f),
             )
             if (day != null) {
                 Spacer(Modifier.width(12.dp))
-                val description = stringResource(R.string.today_start_description, day.routineName)
+                val description = stringResource(Res.string.today_start_description, day.routineName)
                 Button(
                     onClick = { onStart(day) },
                     enabled = startEnabled,
@@ -89,7 +87,7 @@ fun TodaySection(
             modifier = Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp),
         ) {
             Text(
-                stringResource(R.string.today_choose_another),
+                stringResource(Res.string.today_choose_another),
                 color = if (startEnabled) Tung.colors.text else Tung.colors.muted,
             )
         }
@@ -99,9 +97,9 @@ fun TodaySection(
 /** "Today: Push day" for a fixed program, "Day 2 of 3: Pull day" for a rotating one. */
 @Composable
 private fun todayLine(mode: ProgramMode, day: ProgramDayUi): String = when (mode) {
-    ProgramMode.FIXED -> stringResource(R.string.today_fixed, day.routineName)
+    ProgramMode.FIXED -> stringResource(Res.string.today_fixed, day.routineName)
     ProgramMode.ROTATING ->
-        stringResource(R.string.today_rotating, stringResource(R.string.program_day_of, day.number, day.count), day.routineName)
+        stringResource(Res.string.today_rotating, stringResource(Res.string.program_day_of, day.number, day.count), day.routineName)
 }
 
 /** Every day of the active program; tapping one starts it instead of the suggestion. */
@@ -124,7 +122,7 @@ fun ChooseDaySheet(today: TodayUi, onDismiss: () -> Unit, onChoose: (ProgramDayU
                 .verticalScroll(rememberScrollState()),
         ) {
             Text(
-                stringResource(R.string.today_choose_title),
+                stringResource(Res.string.today_choose_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = Tung.colors.muted,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),

@@ -69,7 +69,7 @@ class AssistantFlowTest : FlowTest() {
     }
 
     private fun openAssistantFromHome() {
-        val row = hasText(str(R.string.ai_title))
+        val row = hasText(str(Res.string.ai_title))
         waitFor(row)
         compose.onNode(hasScrollAction()).performScrollToNode(row)
         compose.onNode(row).performClick()

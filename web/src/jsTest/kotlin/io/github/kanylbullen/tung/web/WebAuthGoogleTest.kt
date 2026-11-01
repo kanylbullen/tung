@@ -56,4 +56,11 @@ class WebAuthGoogleTest {
         assertEquals(AuthResult.Failed(AuthFailure.SERVER), answer { HttpReply(200, """{"token":"tung_g"}""") }, "a session with no user names no account")
         assertEquals(AuthResult.Failed(AuthFailure.NETWORK), answer { throw HttpUnreachable(null) })
     }
+
+    @Test
+    fun theLanguageGoesWithTheTokenForTheWelcomeEmail() = runTest {
+        var sent = ""
+        WebAuth(post = { _, body, _ -> sent = body; HttpReply(429, "") }).signInWithGoogle("https://s", "eyJ.token", "sv")
+        assertTrue(sent.contains("\"language\":\"sv\""), sent)
+    }
 }

@@ -206,7 +206,12 @@ class TungContainer(
     private val syncStore: SyncStore by lazy { SyncStore(database) }
     private val syncScheduler: SyncScheduler by lazy { WorkManagerSyncScheduler(this.context) }
     val syncClient: SyncClient by lazy {
-        SyncClient(syncStore, syncSettings, tokenStore, syncHttpClient(), onSignedOut = { syncAccount.signedOutByServer() })
+        SyncClient(
+            syncStore, syncSettings, tokenStore, syncHttpClient(),
+            onSignedOut = { syncAccount.signedOutByServer() },
+            // The apps ship English and Swedish, and show Swedish exactly when the locale's language is.
+            language = { if (context.resources.configuration.locales[0].language == "sv") "sv" else "en" },
+        )
     }
     val syncAccount: SyncAccount by lazy {
         SyncAccount(

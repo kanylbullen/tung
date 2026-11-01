@@ -24,21 +24,21 @@ class HomeWeekFlowTest : FlowTest() {
 
     @Test
     fun thisWeekAppearsWithTheFirstFinishedWorkout() {
-        waitForText(str(R.string.home_empty))
-        assertTrue(compose.onAllNodes(hasText(str(R.string.home_this_week))).fetchSemanticsNodes().isEmpty())
+        waitForText(str(Res.string.home_empty))
+        assertTrue(compose.onAllNodes(hasText(str(Res.string.home_this_week))).fetchSemanticsNodes().isEmpty())
 
         val startedAt = System.currentTimeMillis() - 30 * 60_000L
         seedFinishedWorkout(startedAt, bench(), 80.0, 8)
 
-        waitForText(str(R.string.home_this_week))
+        waitForText(str(Res.string.home_this_week))
         screenshot("1-home-this-week")
         assertShown(hasText("640"))
         val sep = str(Res.string.row_separator)
-        assertShown(hasText(plural(R.plurals.home_week_workouts, 1, 1) + sep + plural(R.plurals.home_week_sets, 1, 1)))
+        assertShown(hasText(plural(Res.plurals.home_week_workouts, 1, 1) + sep + plural(Res.plurals.home_week_sets, 1, 1)))
 
         val weekday = LocalDate.now(app.container.clock).dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())
-        assertShown(hasContentDescription(str(R.string.home_week_days_description, str(R.string.home_week_day_volume, weekday, "640"))))
-        assertShown(hasContentDescription(str(R.string.home_muscles_description, ""), substring = true))
+        assertShown(hasContentDescription(str(Res.string.home_week_days_description, str(Res.string.home_week_day_volume, weekday, "640"))))
+        assertShown(hasContentDescription(str(Res.string.home_muscles_description, ""), substring = true))
 
         // The row of a workout without a routine is titled with its exercise; its date is still its own text.
         assertShown(hasText(benchPress))

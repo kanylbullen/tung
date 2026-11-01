@@ -300,6 +300,29 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [auth]
+      summary: Delete the account
+      description: >-
+        Deletes the user and everything that is theirs on this server: training data, tokens, link codes, push
+        endpoints, OAuth grants and feedback. Only a session token (from `/auth/login`, `/auth/register` or
+        `/auth/google`) may; any other token is 403 `session_required`. The body repeats the account's email,
+        compared without case; another is 400 `email_mismatch`. Data on the user's devices is not touched.
+      operationId: deleteAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/v1/testers:
     post:
@@ -531,7 +554,9 @@ paths:
     post:
       tags: [tokens]
       summary: Create an API token
-      description: The plaintext token is in this response only; the server keeps its SHA-256.
+      description: >-
+        The plaintext token is in this response only; the server keeps its SHA-256. The names the server gives its
+        own tokens (`session`, `watch`, `mcp:…`, any case) are refused as 400 `reserved_name`.
       operationId: createToken
       requestBody:
         required: true
@@ -1606,6 +1631,11 @@ components:
       properties:
         email: { type: string, format: email }
         password: { type: string, minLength: 8, maxLength: 1024 }
+        language:
+          type: string
+          description: >-
+            Registration only: the app's language (`en`, `sv`) for the welcome email the server sends when it has
+            email set up (`TUNG_RESEND_API_KEY`). English when absent or another.
 
     User:
       type: object
@@ -1690,6 +1720,9 @@ components:
       required: [id_token]
       properties:
         id_token: { type: string, description: "A Google ID token (JWT) issued to the instance's client id." }
+        language:
+          type: string
+          description: The app's language (`en`, `sv`) for the welcome email, should this sign-in create an account.
 
     AuthMethods:
       type: object

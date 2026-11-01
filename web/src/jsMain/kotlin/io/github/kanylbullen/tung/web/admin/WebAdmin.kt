@@ -44,6 +44,18 @@ data class AdminUsers(
     @SerialName("tester_signups") val testerSignups: Boolean = false,
 )
 
+/**
+ * Every address to invite to the Play test, as the Play Console's list
+ * takes them: the test sign-ups first, then every account (the welcome email
+ * tells them), each address once whatever its case.
+ */
+fun playAddresses(testers: List<TesterSignup>, users: List<AdminUser>): String =
+    (testers.map { it.email } + users.map { it.email })
+        .map { it.trim().lowercase() }
+        .filter { it.isNotEmpty() }
+        .distinct()
+        .joinToString(", ")
+
 /** One address left on the landing page to be invited to the Play test. */
 @Serializable
 data class TesterSignup(

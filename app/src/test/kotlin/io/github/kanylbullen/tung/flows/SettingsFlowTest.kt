@@ -43,7 +43,7 @@ class SettingsFlowTest : FlowTest() {
 
     @Test
     fun theGroupsSayWhatTheyAreSetToAndEachOpensItsScreen() {
-        clickDescription(str(R.string.settings_title))
+        clickDescription(str(Res.string.settings_title))
         waitForText(str(R.string.settings_summary_signed_out))
         waitForText(str(R.string.settings_summary_devices_signed_out))
         waitForText(str(R.string.settings_summary_training, "1:30"))

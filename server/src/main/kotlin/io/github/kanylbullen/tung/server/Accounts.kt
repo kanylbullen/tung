@@ -36,7 +36,7 @@ private const val LAST_USED_RESOLUTION_MS = 60_000L
  * holds both kinds of token. [google] is null when the instance has no
  * Google client id (`TUNG_GOOGLE_CLIENT_ID`).
  */
-class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
+class Accounts(private val db: Db, val google: GoogleIdTokens? = null, private val welcome: WelcomeMail? = null) {
 
     suspend fun register(credentials: Credentials): SessionDto {
         val email = normalizeEmail(credentials.email)
@@ -60,7 +60,7 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
                     insertToken(userId, Tokens.SESSION_NAME, Tokens.SCOPE_WRITE, now).token,
                     UserDto(userId, email, now, hasPassword = true, googleLinked = false),
                 )
-            }
+            }.also { welcome?.account(email, credentials.language) }
         } catch (e: ExposedSQLException) {
             if (e.sqlState == "23505") throw emailTaken() else throw e
         }
@@ -75,7 +75,8 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
      * `POST /auth/google`: verifies the ID token, finds or links or creates
      * the user ([googleUser]) and answers what [login] answers.
      */
-    suspend fun signInWithGoogle(idToken: String): SessionDto = session(googleUser(verifyGoogle(idToken)))
+    suspend fun signInWithGoogle(idToken: String, language: String? = null): SessionDto =
+        session(googleUser(verifyGoogle(idToken), language))
 
     /** A new session token for [user]: the one way login, Google sign-in and registration end. */
     private suspend fun session(user: UserDto): SessionDto {
@@ -109,10 +110,13 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
      * that matches no linked account is refused: it proves nothing about who
      * owns the address. The consent page and `POST /auth/google` both use it.
      */
-    suspend fun googleUser(identity: GoogleIdentity): UserDto {
+    suspend fun googleUser(identity: GoogleIdentity, language: String? = null): UserDto {
         repeat(2) { attempt ->
             try {
-                return db.tx { resolveGoogleUser(identity) }
+                val (user, created) = db.tx { resolveGoogleUser(identity) }
+                // A new account, after its commit: the welcome email, as after registering.
+                if (created) welcome?.account(user.email, language)
+                return user
             } catch (e: ExposedSQLException) {
                 // Two first sign-ins at once: the loser hits the unique index and finds the winner's row next time.
                 if (e.sqlState != "23505" || attempt == 1) throw e
@@ -121,8 +125,9 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
         error("unreachable")
     }
 
-    private fun Transaction.resolveGoogleUser(identity: GoogleIdentity): UserDto {
-        Users.selectAll().where { Users.googleSub eq identity.sub }.singleOrNull()?.let { return it.toUserDto() }
+    /** The user, and whether this call created it. */
+    private fun Transaction.resolveGoogleUser(identity: GoogleIdentity): Pair<UserDto, Boolean> {
+        Users.selectAll().where { Users.googleSub eq identity.sub }.singleOrNull()?.let { return it.toUserDto() to false }
         val email = identity.email
         if (email == null || !identity.emailVerified) {
             throw unauthorized(
@@ -141,7 +146,7 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
                 it[passwordHash] = null
             }
             evictUnverifiedHolders(userId, System.currentTimeMillis())
-            return user(userId)
+            return user(userId) to false
         }
         if (email.length > 254 || !EMAIL_PATTERN.matches(email)) throw unauthorized("invalid_google_token", "The Google account has no usable email address.")
         val userId = newId()
@@ -153,7 +158,7 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
             it[googleSub] = identity.sub
             it[createdAt] = now
         }
-        return UserDto(userId, email, now, hasPassword = false, googleLinked = true)
+        return UserDto(userId, email, now, hasPassword = false, googleLinked = true) to true
     }
 
     /**
@@ -243,6 +248,11 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
 
     suspend fun createToken(userId: String, request: NewToken): CreatedToken {
         val name = validName(request.name)
+        // The names the server gives its own tokens: a made token never passes for a sign-in (account deletion
+        // trusts "session"), a watch or an OAuth grant.
+        if (name.equals(Tokens.SESSION_NAME, ignoreCase = true) || name.equals("watch", ignoreCase = true) || name.startsWith("mcp:", ignoreCase = true)) {
+            throw badRequest("'$name' is a name the server keeps for its own tokens. Choose another.", "reserved_name")
+        }
         val scope = request.scope.trim().lowercase()
         if (scope != Tokens.SCOPE_READ && scope != Tokens.SCOPE_WRITE) {
             throw badRequest("scope must be 'read' or 'write', got '${request.scope}'.", "invalid_scope")
@@ -258,6 +268,29 @@ class Accounts(private val db: Db, val google: GoogleIdTokens? = null) {
             }) { it[revokedAt] = System.currentTimeMillis() }
         }
         if (changed == 0) throw notFound("Token")
+    }
+
+    /**
+     * Deletes the account of [principal] and everything that is the user's:
+     * training data, tokens, link codes, push endpoints, OAuth grants and
+     * feedback, all through `ON DELETE CASCADE` from `users`. Only a
+     * session token (a sign-in from an app or the web) may, never an API,
+     * watch or OAuth token, and [confirmEmail] must be the account's email.
+     * Under [lockUser], so no sync of the user's is half-way when the rows go.
+     */
+    suspend fun deleteAccount(principal: TokenPrincipal, confirmEmail: String) {
+        db.tx {
+            lockUser(principal.userId)
+            val tokenName = ApiTokens.selectAll().where { ApiTokens.id eq principal.tokenId }.single()[ApiTokens.name]
+            if (tokenName != Tokens.SESSION_NAME) {
+                throw forbidden("session_required", "Delete the account from the app or the web, signed in with your password or Google.")
+            }
+            val email = Users.selectAll().where { Users.id eq principal.userId }.single()[Users.email]
+            if (!email.equals(confirmEmail.trim(), ignoreCase = true)) {
+                throw badRequest("Type the account's email to confirm.", code = "email_mismatch")
+            }
+            Users.deleteWhere { Users.id eq principal.userId }
+        }
     }
 
     suspend fun exportTokens(userId: String): List<ExportTokenDto> = db.tx {

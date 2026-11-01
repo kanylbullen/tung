@@ -51,14 +51,14 @@ class RoutineFlowTest : FlowTest() {
         assertShown(hasText("2") and hasText(str(R.string.stat_sets)))
         screenshot("1-summary")
 
-        clickText(str(R.string.routine_save_as))
+        clickText(str(Res.string.routine_save_as))
         val field = hasSetTextAction() and hasAnyAncestor(isDialog())
         val startedAt = longQuery("SELECT startedAt FROM workout")
-        val defaultName = str(R.string.routine_default_name, localWeekday(startedAt), benchPress)
+        val defaultName = str(Res.string.routine_default_name, localWeekday(startedAt), benchPress)
         assertShown(field and hasText(defaultName))
         screenshot("2-name-dialog")
         compose.onNode(field).performTextReplacement("Push day")
-        clickInDialog(str(R.string.routine_save))
+        clickInDialog(str(Res.string.routine_save))
         waitGone(isDialog())
         // The toast follows the write, which Room does on its own thread, and is shown
         // from the main looper, which only runs when the test idles it.
@@ -70,9 +70,9 @@ class RoutineFlowTest : FlowTest() {
         clickText(str(R.string.summary_done))
         waitForText("Push day")
         // Home's Routines section: its title is also the tab's label, so look for its "All".
-        assertShown(hasText(str(R.string.routines_all)))
+        assertShown(hasText(str(Res.string.routines_all)))
         assertShown(hasText(routineDetails(1, str(Res.string.routine_never))))
-        assertShown(hasText(str(R.string.home_recent)))
+        assertShown(hasText(str(Res.string.home_recent)))
         screenshot("3-home-with-routine")
 
         assertEquals(1, count("SELECT COUNT(*) FROM routine WHERE name = 'Push day' AND lastUsedAt IS NULL"))
@@ -125,7 +125,7 @@ class RoutineFlowTest : FlowTest() {
         assertEquals(1, count("SELECT COUNT(*) FROM routine WHERE lastUsedAt IS NOT NULL"))
 
         clickDescription(str(Res.string.action_back))
-        waitForText(str(R.string.home_resume_workout))
+        waitForText(str(Res.string.home_resume_workout))
         assertShown(hasText(routineDetails(1, str(Res.string.routine_last, str(Res.string.routine_today)))))
         assertShown(hasContentDescription(str(Res.string.routine_start_description, "Push day")) and isNotEnabled())
         screenshot("3-home-in-progress")
@@ -143,8 +143,8 @@ class RoutineFlowTest : FlowTest() {
         val fromRoutine = finishRoutineWorkout(routineId, System.currentTimeMillis() - DAY)
 
         waitForText("Push day")
-        clickText(str(R.string.routines_all))
-        waitGone(hasText(str(R.string.home_recent))) // left Home, which lists the same routine
+        clickText(str(Res.string.routines_all))
+        waitGone(hasText(str(Res.string.home_recent))) // left Home, which lists the same routine
         waitForText("Push day")
         screenshot("1-routines")
 

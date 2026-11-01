@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web
 
+import io.github.kanylbullen.tung.web.i18n.Swedish
 import io.github.kanylbullen.tung.core.CoreCatalog
 import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.StartedBy
@@ -22,6 +23,7 @@ import io.github.kanylbullen.tung.web.store.WebCommandStore
 import io.github.kanylbullen.tung.web.store.WebExerciseResolver
 import io.github.kanylbullen.tung.web.store.Write
 import io.github.kanylbullen.tung.web.sync.AuthResult
+import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
 import io.github.kanylbullen.tung.web.sync.PeriodicSync
 import io.github.kanylbullen.tung.web.sync.WebAuth
 import io.github.kanylbullen.tung.web.sync.WebSettings
@@ -208,9 +210,16 @@ class WebContainer(
     suspend fun signIn(serverUrl: String, email: String, password: String): AuthResult =
         signedIn(serverUrl, auth.signIn(serverUrl, email, password))
 
+    /** Creates an account and, on success, signs in as [signIn] does; the welcome email is in the app's language. */
+    suspend fun register(serverUrl: String, email: String, password: String): AuthResult =
+        signedIn(serverUrl, auth.register(serverUrl, email, password, languageTag()))
+
     /** Signs in with Google's ID token for [serverUrl]'s client and, on success, pulls the account's log. */
     suspend fun signInWithGoogle(serverUrl: String, idToken: String): AuthResult =
-        signedIn(serverUrl, auth.signInWithGoogle(serverUrl, idToken))
+        signedIn(serverUrl, auth.signInWithGoogle(serverUrl, idToken, languageTag()))
+
+    /** The app's language for the server's welcome email: `sv` or `en`. */
+    private fun languageTag(): String = if (strings === Swedish) "sv" else "en"
 
     private suspend fun signedIn(serverUrl: String, result: AuthResult): AuthResult {
         if (result is AuthResult.Success) {
@@ -230,6 +239,29 @@ class WebContainer(
         settings.signedOut(failure = null)
         if (account != null && token != null) auth.signOut(account.serverUrl, token)
     }
+
+    /**
+     * Deletes the account on the server (`DELETE /api/v1/me`, [email] typed
+     * again), then forgets the token as [signOut] does, without the server
+     * call: the token went with the account. The log stays in this browser.
+     */
+    suspend fun deleteAccount(email: String): DeleteAccountResult {
+        val account = settings.account.value ?: return DeleteAccountResult.SIGNED_OUT
+        val token = settings.token ?: return DeleteAccountResult.SIGNED_OUT
+        val result = auth.deleteAccount(account.serverUrl, token, email)
+        when (result) {
+            DeleteAccountResult.DELETED -> {
+                accountDeleted = true
+                settings.signedOut(failure = null)
+            }
+            DeleteAccountResult.SIGNED_OUT -> settings.signedOut(SyncFailure.SIGNED_OUT)
+            else -> Unit
+        }
+        return result
+    }
+
+    /** The account was just deleted here: the sign-in screen says so once. */
+    var accountDeleted: Boolean = false
 
     /** A sync that nobody waits for; its outcome shows on the status line. */
     fun syncInBackground() {

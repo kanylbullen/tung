@@ -13,6 +13,7 @@ import io.github.kanylbullen.tung.web.admin.AdminResult
 import io.github.kanylbullen.tung.web.admin.AdminUser
 import io.github.kanylbullen.tung.web.admin.AdminUsers
 import io.github.kanylbullen.tung.web.admin.TesterSignup
+import io.github.kanylbullen.tung.web.admin.playAddresses
 import io.github.kanylbullen.tung.web.sync.Account
 import kotlinx.browser.window
 import kotlinx.coroutines.await
@@ -53,6 +54,7 @@ fun AdminScreen(container: WebContainer, account: Account) {
     var reload by remember { mutableStateOf(0) }
     var removing by remember { mutableStateOf<String?>(null) }
     var copied by remember { mutableStateOf(false) }
+    var copiedAll by remember { mutableStateOf(false) }
     var removeFailed by remember { mutableStateOf(false) }
     val now = Date.now().toLong()
 
@@ -96,6 +98,24 @@ fun AdminScreen(container: WebContainer, account: Account) {
                 if (current.users.testerSignups) {
                     H2({ classes("section") }) { Text(strings.testerSignups) }
                     P({ classes("hint") }) { Text(strings.testerSignupsHint) }
+                    // Everyone who signed up for anything: the sign-ups and the accounts, for one paste into Play.
+                    if (testers != null) {
+                        P({ classes("hint") }) { Text(strings.playAddressesHint) }
+                        if (current.users.users.size < current.users.userCount) {
+                            P({ classes("hint") }) { Text(strings.accountsShown(current.users.users.size, current.users.userCount)) }
+                        }
+                        Div({ classes("setting-buttons", "pad") }) {
+                            Button({
+                                classes("secondary")
+                                onClick {
+                                    scope.launch {
+                                        runCatching { window.navigator.clipboard.writeText(playAddresses(testers, current.users.users)).await() }
+                                            .onSuccess { copiedAll = true }
+                                    }
+                                }
+                            }) { Text(if (copiedAll) strings.copied else strings.copyPlayAddresses) }
+                        }
+                    }
                     when {
                         testers == null -> P({ classes("error") }) { Text(strings.adminFailed) }
                         testers.isEmpty() -> P({ classes("hint") }) { Text(strings.testersEmpty) }

@@ -57,7 +57,7 @@ Eight Gradle modules:
 | `core/` | Kotlin Multiplatform (JVM, JS, iOS klibs) | — | Domain rules, commands, sync and watch protocols |
 | `data/` | Kotlin Multiplatform (Android, iOS klibs) | `core` | Room, repositories, the CommandHandler, sync client, settings, rest timer, `TungContainer` |
 | `data-fixtures/` | Android library (tests only) | `core`, `data` | The test doubles of data's seams: `FakeSyncServer`, `MemoryTokenStore`, `FakePushEnvironment`, `FakeHealthConnect` |
-| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); the buttons, `RoutineName`, the labels and `exerciseDisplayName` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
+| `ui/` | Kotlin Multiplatform, Compose Multiplatform (Android, iOS klibs) | `core`, `data` | The screens every client shares, moved from `app/` a piece at a time, each in its old package: the theme (`ui/theme/`) and the Archivo font; the Routines tab and the routine page with their ViewModels, the routine row, the name and delete dialogs, and the programs list and one program with theirs (`ui/routines/`); the input sheet with its ruler and `repsSpec` (`ui/workout/`); the muscle map (`ui/exercises/`); Home (`ui/home/`) and the discard dialog (`ui/workout/`); History and a finished workout's page with their ViewModels (`ui/history/`) and `defaultRoutineName` (`ui/routines/`); the buttons, `RoutineName`, `WorkoutRow`, `Stat`/`StatRow`, `WorkoutReport`, the labels (`durationText`, `localDate`, `shortLocalDate`, `localWeekday`, `localWeight`) and the platform seams `exerciseDisplayName`, `weekdayName`, `localVolume`, `dateText` and `decimalSeparator` (`ui/common/`). Strings are Compose Resources (below, "Strings only in resources") |
 | `app/` | Android app (phone) | `core`, `data` | The phone's screens, the phone side of the Data Layer |
 | `wear/` | Android app (Wear OS) | `core`, `data` | The watch's screens, standalone and companion modes |
 | `server/` | Ktor server | `core` | tung-server |
@@ -202,7 +202,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home`, `workout` (active workout, the rest sheet; the input sheet is in `ui/`), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (list + detail), `summary` (see "Workout summary"), `routines` (`RoutinesRoute` and `RoutineDetailRoute` around the `ui/` screens, `defaultRoutineName`; programs list + one program), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
+| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (active workout, the rest sheet; the input sheet is in `ui/`), `exercises` (tab and picker in one, the exercise page `ExerciseDetail*` with its routine sheet; `MuscleMap` and `MuscleHeatMap` are in `ui/`), `history` (`HistoryRoute` and `WorkoutDetailRoute` around the `ui/` screens; the detail's "Saved as routine" toast is the route's), `summary` (see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (the Progress tab, an exercise's progress, the sheet inside a workout; see "Progress"), `settings` (from Home's gear: the list of groups and one screen per group, see "Settings"), `importing` (the import's preview, review and summary). |
 | `ui/ai/` | The Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `SpeechInput` and `AndroidSpeechInput` (the phone's `SpeechRecognizer`), made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in `ui/workout/Voice*.kt`. See "Voice". |
@@ -217,7 +217,7 @@ both "Last: 80 × 8" and the pre-fill of new sets.
 
 ### Home
 
-`ui/home/`: the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
+`ui/home/` in the `ui/` module (app's `HomeRoute` builds `HomeViewModel` with today, the zone and the rest timer's clearing from the container, so the ViewModel has no `java.time` or `RestTimerController` of its own): the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
 and heaviest, `archivoWideFamily()` in `ui/theme/Type.kt` (the `ui/` module), which only the wordmark
 and the hero number use), then, once there is a finished workout, **"This
 week"** (`ThisWeekSection`): the week's volume as the hero number
@@ -270,7 +270,7 @@ column). All in `app/.../ui/settings/`:
 
 | Group | Route | Summary | What is there |
 |---|---|---|---|
-| Account | `settings/account` | "Signed in as …" / "Not signed in" | `AccountScreen` + `AccountViewModel`: the server (default, see "Sync", "Account"), sign-in, sync status, Sync now, Sign out |
+| Account | `settings/account` | "Signed in as …" / "Not signed in" | `AccountScreen` + `AccountViewModel`: the server (default, see "Sync", "Account"), sign-in, sync status, Sync now, Sign out, and "Delete account…" (see "Server", "Account deletion") |
 | Devices | `settings/devices` | the push transport, or "Link a watch once signed in" | `DevicesScreen` + `DevicesViewModel`: "Link a watch" and push (needs an account; signed out, a hint and "Go to Account") |
 | Training | `settings/training` | "Default rest 1:30 · kg" | `TrainingScreen`: the default rest (−/+ 30 s, 0–300 s), the unit (kg), and "My equipment" (`EquipmentSection`, issue #65) |
 | Assistant | `settings/assistant` | the model, or "Not set up" | `AiSection` |
@@ -409,7 +409,7 @@ Start and is unchanged. `programDayId` is indexed and, like `routineId`, **not**
 key: removing a day or deleting a program never touches history. "Today" is
 `LocalDate.now(container.clock)`: the system clock in the app, a settable
 one (`FlowTestApp.today`) in the flow tests. Programs are reached from a row
-at the top of the Routines tab (`ui/routines/Program*`).
+at the top of the Routines tab (`ui/routines/Program*` in the `ui/` module, built by app's `ProgramsRoute` and `ProgramDetailRoute`; weekday names come from `weekdayName`, `java.time` on Android and `NSDateFormatter` on iOS).
 
 ### Log set and rest timer
 
@@ -1303,6 +1303,18 @@ watch cannot add exercises: start a routine, or add them on the phone and
 sync. The watch asks for the notification permission once, the first time a
 workout is on screen (Wear OS 4+), for its Ongoing Activity and "Rest over".
 
+**Round screens** (issue #84). Every list is a `RoundList`
+(`ui/RoundList.kt`: `TimeText`, vignette, position indicator, and the
+responsive padding of `rememberListPadding`, 5.2 % of the width at the sides
+and at the top and bottom what a full-width chip needs to keep its ends on
+the circle, `RoundGeometry.chipTopInset`); body text in a list is `ListText`,
+inset further. The screens that are not lists (the set's numbers, the adjust
+screen, the rest countdown, the link pad) size themselves by the screen's
+diameter (`screenDiameter()`), not the font scale. `RoundScreensTest` draws
+every screen at 192 dp and 227 dp round under Robolectric and asserts that
+each control lies on the circle (`RoundGeometry.fitsInCircle`, a chip's
+ends counted as round); its PNGs land in `wear/build/reports/round-screenshots/`.
+
 **File boundaries.** Watch code only in `wear/`; the protocol only in
 `core/.../core/wear/`; what both devices share in `data/`; the phone's
 companion code only in `app/.../wear/` plus the service in the manifest and
@@ -2031,6 +2043,46 @@ fallback, and only on a tap.
   Server admin lists it, fetching a row's screenshots as object URLs only
   on "Show screenshots" (`ui/AdminFeedback.kt`). The privacy page says so. `FeedbackTest`,
   `WebFeedbackTest`, `FeedbackFlowTest`.
+- **Account deletion** (`Accounts.deleteAccount`, `DELETE /api/v1/me {email}`;
+  Google Play requires it in the app and on the web): one transaction under
+  `lockUser` deletes the `users` row, and `ON DELETE CASCADE` takes every
+  table of the user's (training data, tokens, link codes, push endpoints,
+  OAuth codes and refresh tokens, feedback and its images); a table added
+  later must cascade too. Only a token named `session` (a sign-in from an app
+  or the web) may, any other is 403 `session_required`, so an API, watch or
+  MCP token can never delete an account (`POST /tokens` refuses the names
+  the server keeps, `session`, `watch` and `mcp:…`, as 400 `reserved_name`,
+  so no token can mint itself a session), and the body repeats the account's
+  email (no case, trimmed; another is 400 `email_mismatch`). Clients: the
+  phone's Settings → Account → "Delete account…" (`SyncAccount.deleteAccount`:
+  then signed out like Sign out but with no logout, the push registration
+  forgotten here, local data kept),
+  the web's Settings (`WebContainer.deleteAccount`, the log kept in the
+  browser), and `/delete-account` on the site (`site/delete-account.html`,
+  the link Play's Data safety asks for: the steps, the email way, what goes
+  and what stays). `DeleteAccountTest`, `DeleteAccountFlowTest`,
+  `WebAuthDeleteTest`.
+- **Welcome emails** (`Mail.kt`, only with `TUNG_RESEND_API_KEY`, which
+  needs `TUNG_MAIL_FROM` and `TUNG_PUBLIC_URL`): `WelcomeMail` sends one
+  plain-text email per new account (`Accounts.register`, and `googleUser`
+  when it creates the user, on `/auth/google` and the consent page alike)
+  and one per new test sign-up (`Testers.signUp`, only when the insert added
+  the address; the answer stays the same), in `en` or `sv` from the
+  request's optional `language` (the phone's `SyncClient` sends the
+  locale's, the web its strings').
+  `ResendMailer` is the one `Mailer` (`POST /emails`, ten seconds, no
+  redirects); it runs on the application's scope after the commit, and a
+  failure is logged without the address (Resend's status and error name
+  only) and never fails the request. At most `MAX_WELCOME_MAILS_PER_DAY`
+  (200) a UTC day, in memory: registration is open and takes any address, so
+  the ceiling keeps the sender's reputation. The consent page passes the
+  browser's `Accept-Language`.
+  On a server that runs the Play test (`TUNG_TESTER_SIGNUPS`) the account
+  welcome also says the address is invited to the test, and the web's
+  Server admin has "Copy every address for Play" (`playAddresses`: the
+  sign-ups, then every account, each once).
+  `ServerConfig.mailer` is the seam tests replace (`WelcomeMailTest`). The
+  privacy page names Resend as the processor.
 - **Link codes** (`routes/LinkRoutes.kt`, `link_codes` in V4): `POST
   /api/v1/link/start` (write token) gives a six-digit code valid ten minutes,
   unique among unexpired codes; `POST /api/v1/link/claim {code}` (no auth)
@@ -2163,7 +2215,9 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   request may take `REQUEST_TIMEOUT_MILLIS` (120 s, the phone's), then it
   is aborted and counts as unreachable (`Http.kt`).
 - **Account** (`sync/WebAuth.kt`, `sync/WebSettings.kt`): email and
-  password against `/api/v1/auth/login`, the default server
+  password against `/api/v1/auth/login`, or **Create account** against
+  `/register` with the app's language for the welcome email (409 and
+  `weak_password` named as on the phone), the default server
   `DEFAULT_SERVER_URL` in `WebContainer.kt` (the phone's
   `BuildConfig.DEFAULT_SERVER_URL`), `checkServerUrl` as the gate. The
   server, email, token, cursor, last result and device id (`X-Tung-Device`)
@@ -2238,10 +2292,11 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   `:web:jsBrowserDistribution` and sets `TUNG_WEB_DIR=/app/web`;
   `routes/SiteRoutes.kt` serves that directory at `/app/` (every path under
   it that is not a file is the shell, `sw.js` and `index.html` revalidated)
-  and the landing page at `/` and the privacy page at `/privacy` (also the
-  policy link Play asks for; `server/src/main/resources/site/`, one
+  and the landing page at `/`, the privacy page at `/privacy` (also the
+  policy link Play asks for) and `/delete-account` (Play's account-deletion
+  link; see "Account deletion"); `server/src/main/resources/site/`, one
   `site.css` and `site.js` (the language: `?lang=`, remembered, else the
-  browser's) for both, the share image `og.png` and the app's screens drawn
+  browser's) for all three, the share image `og.png` and the app's screens drawn
   from `SiteScreensFlowTest` in the light and the dark theme, shown by the
   page's theme, which follows the system until `theme.js`'s toggle picks one; `index.html`,
   English with Swedish swapped in by the browser's language, its font and
@@ -2252,7 +2307,7 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   (`defaultServerUrl()`); elsewhere `DEFAULT_SERVER_URL`. GitHub Pages
   (`.github/workflows/web-pages.yml`, `https://kanylbullen.github.io/tung/`)
   publishes the same site from `main` as well. `OpenApiCoverageTest` leaves
-  `/`, `/privacy`, `/site` and `/app` out: pages, not API. The site has no server of its
+  `/`, `/privacy`, `/delete-account`, `/site` and `/app` out: pages, not API. The site has no server of its
   own: everything relative, so it works under any path.
 
 ## Building
@@ -2481,9 +2536,9 @@ letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
   screen: its strings go with it, and `app/` reads any it still uses from
   `Res`. Compose Resources pick the language from the process's
   default locale, not from the configuration: on a phone Android sets both
-  from the app's language, but a flow test on another language than English
-  sets `Locale.setDefault` itself (`SwedishFlowTest`), since `FlowTest`
-  forces English.
+  from the app's language, and `FlowTest` does the same from the
+  qualifiers' language (`defaultLocaleFromQualifiers`), so a `sv` flow test
+  sees Swedish in `ui/` too (`SwedishFlowTest`, `AssistantFlowTest`).
 - **The font is a Compose Resource** (`ui/src/commonMain/composeResources/font/archivo_variable.ttf`,
   read with `Res.font.archivo_variable` inside `ui/`; the APK carries it under
   `assets/composeResources/`). The OFL licence stays in app's `assets/licenses/`.

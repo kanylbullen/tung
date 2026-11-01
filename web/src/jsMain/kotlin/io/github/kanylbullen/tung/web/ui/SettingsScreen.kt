@@ -26,6 +26,11 @@ import org.jetbrains.compose.web.dom.CheckboxInput
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.H2
+import org.jetbrains.compose.web.dom.Input
+import org.jetbrains.compose.web.attributes.AutoComplete
+import org.jetbrains.compose.web.attributes.InputType
+import org.jetbrains.compose.web.attributes.autoComplete
+import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
 import org.jetbrains.compose.web.dom.Label
 import org.jetbrains.compose.web.dom.Li
 import org.jetbrains.compose.web.dom.P
@@ -119,6 +124,7 @@ fun SettingsScreen(container: WebContainer, account: Account) {
                 }) { Text(if (running) strings.syncing else strings.syncNow) }
                 Button({ classes("secondary"); onClick { scope.launch { container.signOut() } } }) { Text(strings.signOut) }
             }
+            DeleteAccount(container, account)
         }
 
         // Only for the server's admins (TUNG_ADMIN_EMAILS); asked once each time Settings opens.
@@ -217,6 +223,62 @@ private fun DataSection(container: WebContainer) {
                 confirming = null
                 scope.launch { container.run(Command.DeleteRoutines(routines)) }
             }
+        }
+    }
+}
+
+/**
+ * "Delete account…" under the account, and its dialog: what goes
+ * (everything on the server) and what stays (the log in this browser), the
+ * account's email typed to confirm, and the server's answer.
+ */
+@Composable
+private fun DeleteAccount(container: WebContainer, account: Account) {
+    val strings = container.strings
+    val scope = rememberCoroutineScope()
+    var open by remember { mutableStateOf(false) }
+    var email by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    Button({ classes("text-button", "danger-text"); onClick { open = true } }) { Text(strings.deleteAccount) }
+    if (!open) return
+    fun close() {
+        if (busy) return
+        open = false
+        email = ""
+        error = null
+    }
+    Div({ classes("sheet-backdrop"); onClick { close() } })
+    Div({ classes("dialog"); attr("role", "dialog"); attr("aria-modal", "true"); attr("aria-label", strings.deleteAccountTitle) }) {
+        H2 { Text(strings.deleteAccountTitle) }
+        P { Text(strings.deleteAccountBody(account.serverUrl)) }
+        Label(attrs = { classes("field", "dialog-field") }) {
+            Span { Text(strings.deleteAccountEmail) }
+            Input(InputType.Email) {
+                value(email)
+                autoComplete(AutoComplete.off)
+                onInput { email = it.value; error = null }
+                if (busy) disabled()
+            }
+        }
+        error?.let { message -> P({ classes("error"); attr("role", "alert") }) { Text(message) } }
+        Div({ classes("dialog-actions") }) {
+            Button({ classes("secondary"); if (busy) disabled(); onClick { close() } }) { Text(strings.cancel) }
+            Button({
+                classes("accent-button")
+                if (busy || email.isBlank()) disabled()
+                onClick {
+                    busy = true
+                    scope.launch {
+                        val result = container.deleteAccount(email)
+                        busy = false
+                        // Deleted or signed out: the page turns to the sign-in screen by itself.
+                        if (result != DeleteAccountResult.DELETED && result != DeleteAccountResult.SIGNED_OUT) {
+                            error = strings.deleteAccountFailure(result)
+                        }
+                    }
+                }
+            }) { Text(strings.deleteAccountConfirm) }
         }
     }
 }

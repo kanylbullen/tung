@@ -66,6 +66,9 @@ class FakeSyncServer : Dispatcher() {
     /** What `/me` says about Google: linked after a Google sign-in, or when a test sets it. */
     @Volatile var googleLinked = false
 
+    /** Whether `DELETE /api/v1/me` deleted the account (with "lifter@example.org" typed, any case). */
+    @Volatile var accountDeleted = false
+
     /** Every sync request as received, before any auth check. */
     val syncRequests = CopyOnWriteArrayList<SyncRequest>()
 
@@ -179,6 +182,14 @@ class FakeSyncServer : Dispatcher() {
         "/api/v1/me" -> {
             if (request.getHeader("Authorization") != "Bearer $token") {
                 json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
+            } else if (request.method == "DELETE") {
+                val typed = Regex("\"email\"\\s*:\\s*\"([^\"]*)\"").find(request.body.readUtf8())?.groupValues?.get(1)
+                if (typed.equals("lifter@example.org", ignoreCase = true)) {
+                    accountDeleted = true
+                    MockResponse().setResponseCode(204)
+                } else {
+                    json(400, """{"error":{"code":"email_mismatch","message":"Type the account's email to confirm."}}""")
+                }
             } else {
                 json(200, """{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked}""")
             }

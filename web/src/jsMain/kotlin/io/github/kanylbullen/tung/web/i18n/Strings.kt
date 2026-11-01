@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web.i18n
 
+import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
 import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.importing.SkipReason
@@ -32,6 +33,8 @@ interface Strings {
     val useAnotherServer: String
     val signIn: String
     val signingIn: String
+    val createAccount: String
+    val creatingAccount: String
 
     /** Under the Google button, above the email form. */
     val googleHint: String
@@ -376,6 +379,8 @@ interface Strings {
     val testerSignupsHint: String
     val testersEmpty: String
     val copyAddresses: String
+    val copyPlayAddresses: String
+    val playAddressesHint: String
     val copied: String
     fun removeTester(email: String): String
     val removeTesterBody: String
@@ -424,6 +429,13 @@ interface Strings {
     // Account and sync
     fun signedInAs(email: String): String
     val signOut: String
+    val deleteAccount: String
+    val deleteAccountTitle: String
+    fun deleteAccountBody(server: String): String
+    val deleteAccountEmail: String
+    val deleteAccountConfirm: String
+    val accountDeleted: String
+    fun deleteAccountFailure(result: DeleteAccountResult): String
     val syncNow: String
     val syncing: String
     val lastSyncNever: String
@@ -448,6 +460,8 @@ object English : Strings {
     override val useAnotherServer = "Use another server"
     override val signIn = "Sign in"
     override val signingIn = "Signing in…"
+    override val createAccount = "Create account"
+    override val creatingAccount = "Creating account…"
     override val googleHint = "Choose your Google account in the window that opens."
     override val orWithEmail = "Or with email and password"
     override val errorFields = "Enter your email and password."
@@ -455,6 +469,8 @@ object English : Strings {
     override val errorUrlHttps = "Use https://. Plain http only works for localhost and addresses on your own network."
     override fun authFailure(failure: AuthFailure): String = when (failure) {
         AuthFailure.INVALID_CREDENTIALS -> "Wrong email or password."
+        AuthFailure.ACCOUNT_EXISTS -> "There is already an account with that email. Sign in instead."
+        AuthFailure.WEAK_PASSWORD -> "The password needs at least 8 characters."
         AuthFailure.INVALID_REQUEST -> "The server did not accept that email address. Check it and try again."
         AuthFailure.RATE_LIMITED -> "Too many attempts. Wait a minute and try again."
         AuthFailure.NOT_A_SERVER -> "No Tung server answers at that address. Check it and try again."
@@ -894,6 +910,8 @@ object English : Strings {
     override val testerSignupsHint = "Addresses left on the front page for the Android test on Google Play. Add them to the testers' list in the Play Console, then remove them here."
     override val testersEmpty = "No one is waiting for an invitation."
     override val copyAddresses = "Copy addresses"
+    override val copyPlayAddresses = "Copy every address for Play"
+    override val playAddressesHint = "The sign-ups and every account, each once, for the Play Console's tester list. An account made with a password may not be a Google address."
     override val copied = "Copied"
     override fun removeTester(email: String): String = "Remove $email"
     override val removeTesterBody = "Do it once the address is invited in the Play Console."
@@ -944,6 +962,21 @@ object English : Strings {
 
     override fun signedInAs(email: String): String = "Signed in as $email"
     override val signOut = "Sign out"
+    override val deleteAccount = "Delete account…"
+    override val deleteAccountTitle = "Delete your account?"
+    override fun deleteAccountBody(server: String): String =
+        "This deletes your account on $server and everything stored there: workouts, routines, programs and feedback. " +
+            "The workouts in this browser are kept. It cannot be undone."
+    override val deleteAccountEmail = "Type your email to confirm"
+    override val deleteAccountConfirm = "Delete account"
+    override val accountDeleted = "Your account is deleted. The workouts in this browser are kept."
+    override fun deleteAccountFailure(result: DeleteAccountResult): String = when (result) {
+        DeleteAccountResult.EMAIL_MISMATCH -> "That is not this account's email."
+        DeleteAccountResult.NOT_ALLOWED -> "This sign-in cannot delete the account. Sign out, sign in again and try once more."
+        DeleteAccountResult.NOT_A_SERVER -> "This server cannot delete accounts yet. Ask whoever runs it."
+        DeleteAccountResult.NETWORK -> "Could not reach the server. Check your connection."
+        DeleteAccountResult.DELETED, DeleteAccountResult.SIGNED_OUT, DeleteAccountResult.SERVER -> "The server had a problem. Try again in a while."
+    }
     override val syncNow = "Sync now"
     override val syncing = "Syncing…"
     override val lastSyncNever = "Last sync: never"
@@ -973,6 +1006,8 @@ object Swedish : Strings {
     override val useAnotherServer = "Använd en annan server"
     override val signIn = "Logga in"
     override val signingIn = "Loggar in…"
+    override val createAccount = "Skapa konto"
+    override val creatingAccount = "Skapar konto…"
     override val googleHint = "Välj ditt Google-konto i fönstret som öppnas."
     override val orWithEmail = "Eller med e-post och lösenord"
     override val errorFields = "Ange e-post och lösenord."
@@ -980,6 +1015,8 @@ object Swedish : Strings {
     override val errorUrlHttps = "Använd https://. Okrypterad http fungerar bara mot localhost och adresser i ditt eget nätverk."
     override fun authFailure(failure: AuthFailure): String = when (failure) {
         AuthFailure.INVALID_CREDENTIALS -> "Fel e-post eller lösenord."
+        AuthFailure.ACCOUNT_EXISTS -> "Det finns redan ett konto med den e-posten. Logga in i stället."
+        AuthFailure.WEAK_PASSWORD -> "Lösenordet behöver minst 8 tecken."
         AuthFailure.INVALID_REQUEST -> "Servern godtog inte den e-postadressen. Kontrollera den och försök igen."
         AuthFailure.RATE_LIMITED -> "För många försök. Vänta en minut och försök igen."
         AuthFailure.NOT_A_SERVER -> "Ingen Tung-server svarar på den adressen. Kontrollera den och försök igen."
@@ -1419,6 +1456,8 @@ object Swedish : Strings {
     override val testerSignupsHint = "Adresser från startsidan till Android-testet på Google Play. Lägg in dem i testarlistan i Play Console och ta sedan bort dem här."
     override val testersEmpty = "Ingen väntar på en inbjudan."
     override val copyAddresses = "Kopiera adresser"
+    override val copyPlayAddresses = "Kopiera alla adresser för Play"
+    override val playAddressesHint = "Anmälningarna och alla konton, en gång var, för testarlistan i Play Console. Ett konto skapat med lösenord har inte alltid en Google-adress."
     override val copied = "Kopierat"
     override fun removeTester(email: String): String = "Ta bort $email"
     override val removeTesterBody = "Gör det när adressen är inbjuden i Play Console."
@@ -1469,6 +1508,21 @@ object Swedish : Strings {
 
     override fun signedInAs(email: String): String = "Inloggad som $email"
     override val signOut = "Logga ut"
+    override val deleteAccount = "Radera kontot…"
+    override val deleteAccountTitle = "Radera ditt konto?"
+    override fun deleteAccountBody(server: String): String =
+        "Det här raderar ditt konto på $server och allt som sparats där: pass, rutiner, program och feedback. " +
+            "Passen i den här webbläsaren finns kvar. Det går inte att ångra."
+    override val deleteAccountEmail = "Skriv din e-post för att bekräfta"
+    override val deleteAccountConfirm = "Radera kontot"
+    override val accountDeleted = "Ditt konto är raderat. Passen i den här webbläsaren finns kvar."
+    override fun deleteAccountFailure(result: DeleteAccountResult): String = when (result) {
+        DeleteAccountResult.EMAIL_MISMATCH -> "Det är inte kontots e-post."
+        DeleteAccountResult.NOT_ALLOWED -> "Den här inloggningen kan inte radera kontot. Logga ut, logga in igen och försök en gång till."
+        DeleteAccountResult.NOT_A_SERVER -> "Den här servern kan inte radera konton än. Fråga den som driver den."
+        DeleteAccountResult.NETWORK -> "Kunde inte nå servern. Kontrollera din uppkoppling."
+        DeleteAccountResult.DELETED, DeleteAccountResult.SIGNED_OUT, DeleteAccountResult.SERVER -> "Servern fick ett fel. Försök igen om en stund."
+    }
     override val syncNow = "Synka nu"
     override val syncing = "Synkar…"
     override val lastSyncNever = "Senaste synk: aldrig"

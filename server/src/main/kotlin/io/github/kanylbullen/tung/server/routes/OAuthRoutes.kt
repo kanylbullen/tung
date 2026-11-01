@@ -180,7 +180,8 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
             }
             val csrf = call.csrfToken()
             val user = try {
-                accounts.googleUser(accounts.verifyGoogle(form["credential"].orEmpty()))
+                // The browser's language for the welcome email, should this make a new account.
+                accounts.googleUser(accounts.verifyGoogle(form["credential"].orEmpty()), call.request.headers["Accept-Language"])
             } catch (e: ApiException) {
                 if (e.status.value >= 500) throw e
                 // 200 like a wrong password: StatusPages would replace a 401's page with the API's JSON.

@@ -8,10 +8,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.daysAgo
+import io.github.kanylbullen.tung.core.formatWeight
+import io.github.kanylbullen.tung.core.progress.dateOf
 import io.github.kanylbullen.tung.data.systemMillis
 import io.github.kanylbullen.tung.ui.resources.*
 import kotlinx.coroutines.delay
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.isoDayNumber
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -77,3 +80,38 @@ fun percentText(percent: Int): String =
 
 /** [fraction] as a whole percentage the way the locale writes it: "50%", "50 %" in Swedish. */
 expect fun localPercent(fraction: Double): String
+
+/**
+ * "Monday 19 October" ("Måndag 19 oktober" in Swedish) — first letter
+ * capitalised, the rest as the locale writes it — with the year added when it
+ * is not this year ("Monday 6 March 2023"), which imported history often is.
+ */
+fun localDate(epochMillis: Long): String = dateText(epochMillis, "EEEE d MMMM", "EEEE d MMMM yyyy")
+
+/**
+ * "Thu 22 Oct" ("tors 22 okt" in Swedish), the year added when it is not this
+ * year: [localDate] for a list row, where the long weekday left no room for
+ * the rest of the line.
+ */
+fun shortLocalDate(epochMillis: Long): String = dateText(epochMillis, "EEE d MMM", "EEE d MMM yyyy")
+
+/** "1 h 12 min" or "42 min". */
+@Composable
+fun durationText(millis: Long): String {
+    val totalMinutes = (millis.coerceAtLeast(0L) / 60_000L).toInt()
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) {
+        stringResource(Res.string.duration_hours_minutes, hours, minutes)
+    } else {
+        stringResource(Res.string.duration_minutes, minutes)
+    }
+}
+
+/** [kg] as the locale writes a weight: "82,5" in Swedish. */
+fun localWeight(kg: Double): String = formatWeight(kg, decimalSeparator())
+
+/** "Monday" for the day [epochMillis] falls on in the device's zone, capitalised. */
+fun localWeekday(epochMillis: Long): String =
+    weekdayName(dateOf(epochMillis, TimeZone.currentSystemDefault()).dayOfWeek.isoDayNumber, WeekdayStyle.FULL)
+

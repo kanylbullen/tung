@@ -83,6 +83,7 @@ fun Route.apiRoutes(
     pushStore: PushStore,
     push: ChangeNotifier,
     commands: CommandService,
+    welcome: WelcomeMail? = null,
 ) {
     /** After a REST write to training data: wake the user's other devices. */
     fun ApplicationCall.changed() = push.changed(user().userId, sourceDevice())
@@ -97,7 +98,7 @@ fun Route.apiRoutes(
     swaggerUI(path = "docs", swaggerFile = "openapi/openapi.yaml")
 
     val admins = Admins(db, config.adminEmails, requireGoogleLink = accounts.google != null)
-    val testers = Testers(db, admins, config.testerSignups, config.clock)
+    val testers = Testers(db, admins, config.testerSignups, config.clock, welcome)
     val adminStore = AdminStore(db, admins, config.testerSignups, config.clock)
     val feedback = FeedbackStore(db, admins, config.clock)
     route("/api/v1") {
@@ -106,7 +107,10 @@ fun Route.apiRoutes(
             testerSignupRoute(testers)
             post("/auth/register") { call.respond(HttpStatusCode.Created, accounts.register(call.receive())) }
             post("/auth/login") { call.respond(accounts.login(call.receive())) }
-            post("/auth/google") { call.respond(accounts.signInWithGoogle(call.receive<GoogleSignIn>().idToken)) }
+            post("/auth/google") {
+                val body = call.receive<GoogleSignIn>()
+                call.respond(accounts.signInWithGoogle(body.idToken, body.language))
+            }
         }
         get("/auth/methods") {
             call.respond(AuthMethods(password = true, google = accounts.google?.let { GoogleMethod(it.clientIds.first()) }))
@@ -124,6 +128,11 @@ fun Route.apiRoutes(
             get("/me") {
                 val userId = call.user().userId
                 call.respond(accounts.me(userId).copy(isAdmin = admins.isAdmin(userId)))
+            }
+
+            delete("/me") {
+                accounts.deleteAccount(call.user(), call.receive<DeleteAccountInput>().email)
+                call.respond(HttpStatusCode.NoContent)
             }
 
             testerAdminRoutes(testers)

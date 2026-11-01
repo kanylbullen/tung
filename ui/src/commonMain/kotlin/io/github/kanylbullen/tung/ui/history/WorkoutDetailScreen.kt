@@ -2,7 +2,6 @@ package io.github.kanylbullen.tung.ui.history
 
 import org.jetbrains.compose.resources.stringResource
 import io.github.kanylbullen.tung.ui.resources.*
-import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,18 +32,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.Stat
 import io.github.kanylbullen.tung.ui.common.StatRow
-import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.durationText
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localDate
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.localWeight
@@ -55,15 +48,8 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
-    val container = appContainer()
-    val vm: WorkoutDetailViewModel = viewModel(
-        factory = factoryOf {
-            WorkoutDetailViewModel(workoutId, container.workoutRepository, container.commands)
-        }
-    )
+fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutineSaved: (name: String) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     var savingRoutine by rememberSaveable { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -95,11 +81,11 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
                             shape = TungCorner,
                         ) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.routine_save_as)) },
+                                text = { Text(stringResource(Res.string.routine_save_as)) },
                                 onClick = { menuOpen = false; savingRoutine = true },
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.detail_delete)) },
+                                text = { Text(stringResource(Res.string.detail_delete)) },
                                 onClick = { menuOpen = false; confirmDelete = true },
                             )
                         }
@@ -114,8 +100,8 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
             if (report != null && !deleting) {
                 item(key = "stats") {
                     StatRow {
-                        Stat(durationText(report.durationMillis), stringResource(R.string.stat_duration), Modifier.weight(1f))
-                        Stat(localVolume(report.totalVolumeKg), stringResource(R.string.stat_volume), Modifier.weight(1f))
+                        Stat(durationText(report.durationMillis), stringResource(Res.string.stat_duration), Modifier.weight(1f))
+                        Stat(localVolume(report.totalVolumeKg), stringResource(Res.string.stat_volume), Modifier.weight(1f))
                     }
                 }
                 health?.let { line ->
@@ -146,7 +132,7 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
                                 modifier = Modifier.width(32.dp),
                             )
                             Text(
-                                stringResource(R.string.detail_set_line, localWeight(set.weightKg), set.reps),
+                                stringResource(Res.string.detail_set_line, localWeight(set.weightKg), set.reps),
                                 style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
                                 color = Tung.colors.text,
                             )
@@ -160,14 +146,14 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
     val report = state.report
     if (savingRoutine && report != null) {
         RoutineNameDialog(
-            title = stringResource(R.string.routine_save_as),
+            title = stringResource(Res.string.routine_save_as),
             initialName = defaultRoutineName(report),
-            confirmLabel = stringResource(R.string.routine_save),
+            confirmLabel = stringResource(Res.string.routine_save),
             onDismiss = { savingRoutine = false },
             onConfirm = { name ->
                 savingRoutine = false
                 vm.saveAsRoutine(name) { saved ->
-                    if (saved) Toast.makeText(context, context.getString(R.string.routine_saved, name), Toast.LENGTH_SHORT).show()
+                    if (saved) onRoutineSaved(name)
                 }
             },
         )
@@ -178,15 +164,15 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
             onDismissRequest = { confirmDelete = false },
             containerColor = Tung.colors.raised,
             tonalElevation = 0.dp,
-            title = { Text(stringResource(R.string.detail_delete_title)) },
-            text = { Text(stringResource(R.string.detail_delete_body), color = Tung.colors.muted) },
+            title = { Text(stringResource(Res.string.detail_delete_title)) },
+            text = { Text(stringResource(Res.string.detail_delete_body), color = Tung.colors.muted) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
                     deleting = true
                     vm.delete(onBack)
                 }) {
-                    Text(stringResource(R.string.detail_delete_confirm), color = Tung.colors.accentText)
+                    Text(stringResource(Res.string.detail_delete_confirm), color = Tung.colors.accentText)
                 }
             },
             dismissButton = {
@@ -202,9 +188,9 @@ fun WorkoutDetailScreen(workoutId: String, onBack: () -> Unit) {
 @Composable
 private fun healthLine(avgHeartRate: Int?, maxHeartRate: Int?, activeCalories: Int?): String? {
     val heartRate = when {
-        avgHeartRate != null && maxHeartRate != null -> stringResource(R.string.detail_heart_rate, avgHeartRate, maxHeartRate)
-        else -> (avgHeartRate ?: maxHeartRate)?.let { stringResource(R.string.detail_heart_rate_one, it) }
+        avgHeartRate != null && maxHeartRate != null -> stringResource(Res.string.detail_heart_rate, avgHeartRate, maxHeartRate)
+        else -> (avgHeartRate ?: maxHeartRate)?.let { stringResource(Res.string.detail_heart_rate_one, it) }
     }
-    val calories = activeCalories?.let { stringResource(R.string.detail_calories, it) }
+    val calories = activeCalories?.let { stringResource(Res.string.detail_calories, it) }
     return listOfNotNull(heartRate, calories).takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }

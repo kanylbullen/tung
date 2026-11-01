@@ -149,7 +149,7 @@ class ImportFlowTest : FlowTest() {
         scrollToInSettings(str(R.string.import_undo_last))
         leaveSettings()
         clickText(str(R.string.nav_history))
-        waitGone(hasText(str(R.string.home_recent)))
+        waitGone(hasText(str(Res.string.home_recent)))
         dates.forEach { waitForText(it) }
         screenshot("4-history")
 
