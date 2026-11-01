@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.history.DetailExercise
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.history.workoutDetail
+import kotlin.js.Date
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.InputType
 import org.jetbrains.compose.web.attributes.disabled
@@ -37,7 +38,7 @@ fun workoutDetailHash(id: String): String = "#/history/$id"
  * A finished workout, the phone's workout detail: the date, duration, sets
  * and volume, Health Connect's heart rate and calories when synced, each
  * exercise's logged sets with its best set and estimated 1RM, Save as
- * routine and Delete. Every change is a command.
+ * routine, Change date and time, and Delete. Every change is a command.
  */
 @Composable
 fun WorkoutDetailScreen(container: WebContainer, id: String) {
@@ -49,6 +50,7 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
     var deleting by remember { mutableStateOf(false) }
     var naming by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf<String?>(null) }
+    var changingTime by remember { mutableStateOf(false) }
 
     Div({ classes("screen") }) {
         Div({ classes("topbar", "topbar-start") }) {
@@ -79,6 +81,7 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
 
         saved?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(strings.savedAsRoutine(it)) } }
         Button({ classes("secondary", "wide"); onClick { naming = true } }) { Text(strings.saveAsRoutine) }
+        Button({ classes("secondary", "wide"); onClick { changingTime = true } }) { Text(strings.changeDateTime) }
         Button({ classes("text-button", "danger-text"); onClick { deleting = true } }) { Text(strings.deleteWorkout) }
     }
 
@@ -88,6 +91,22 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
             scope.launch {
                 container.commands.execute(Command.DeleteWorkout(detail.id))
                 go(Route.HISTORY)
+            }
+        }
+    }
+    if (detail != null && changingTime) {
+        WorkoutTimeDialog(
+            container,
+            title = strings.changeDateTime,
+            confirm = strings.save,
+            initialStart = detail.startedAt,
+            initialDurationMillis = detail.durationMillis,
+            now = Date.now().toLong(),
+            onCancel = { changingTime = false },
+        ) { startedAt, duration ->
+            changingTime = false
+            scope.launch {
+                container.commands.execute(Command.SetWorkoutTime(detail.id, startedAt, startedAt + (duration ?: detail.durationMillis)))
             }
         }
     }

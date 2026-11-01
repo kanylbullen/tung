@@ -37,6 +37,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.Stat
 import io.github.kanylbullen.tung.ui.common.StatRow
+import io.github.kanylbullen.tung.ui.common.WorkoutTimeDialog
+import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.common.durationText
 import io.github.kanylbullen.tung.ui.common.localDate
 import io.github.kanylbullen.tung.ui.common.localVolume
@@ -54,6 +56,7 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    var changingTime by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -83,6 +86,10 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.routine_save_as)) },
                                 onClick = { menuOpen = false; savingRoutine = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.detail_change_time)) },
+                                onClick = { menuOpen = false; changingTime = true },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.detail_delete)) },
@@ -155,6 +162,22 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
                 vm.saveAsRoutine(name) { saved ->
                     if (saved) onRoutineSaved(name)
                 }
+            },
+        )
+    }
+
+    if (changingTime && report != null) {
+        val workout = report.workout
+        WorkoutTimeDialog(
+            title = stringResource(Res.string.detail_change_time),
+            confirmLabel = stringResource(Res.string.detail_change_time_confirm),
+            initialStart = workout.startedAt,
+            initialDurationMillis = report.durationMillis,
+            now = rememberNow(),
+            onDismiss = { changingTime = false },
+            onConfirm = { startedAt, duration ->
+                changingTime = false
+                vm.setTime(startedAt, duration ?: report.durationMillis)
             },
         )
     }

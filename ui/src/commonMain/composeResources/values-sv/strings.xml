@@ -390,4 +390,22 @@
     <string name="progress_workouts_per_week">Pass per vecka</string>
     <string name="progress_workouts_summary">Pass per vecka, senaste 12 veckorna: %1$d totalt, %2$d den här veckan</string>
     <string name="progress_workouts_total">Pass</string>
+    <string name="detail_change_time">Ändra datum och tid</string>
+    <string name="detail_change_time_confirm">Spara</string>
+    <string name="past_busy">Avsluta passet som pågår först.</string>
+    <string name="past_log">Lägg in ett tidigare pass</string>
+    <string name="past_log_confirm">Lägg in pass</string>
+    <string name="past_open_active">Öppna passet</string>
+    <string name="time_choose">Välj</string>
+    <string name="time_date">Datum</string>
+    <string name="time_day_earlier">En dag tidigare</string>
+    <string name="time_day_later">En dag senare</string>
+    <string name="time_duration_longer">15 minuter längre</string>
+    <string name="time_duration_shorter">15 minuter kortare</string>
+    <string name="time_pick_date">Välj datum, %1$s</string>
+    <string name="time_pick_start">Välj starttid, %1$s</string>
+    <string name="time_start">Start</string>
+    <string name="time_start_earlier">Börja 15 minuter tidigare</string>
+    <string name="time_start_later">Börja 15 minuter senare</string>
+    <string name="workout_started_description">Startade %1$s</string>
 </resources>

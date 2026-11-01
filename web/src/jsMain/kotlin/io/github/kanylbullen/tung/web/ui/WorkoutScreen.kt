@@ -19,7 +19,9 @@ import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandIds
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.ExerciseRef
+import io.github.kanylbullen.tung.core.WORKOUT_CLOCK_SKEW_MILLIS
 import io.github.kanylbullen.tung.core.currentSet
+import io.github.kanylbullen.tung.core.isPastWorkout
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepReps
@@ -116,6 +118,12 @@ fun WorkoutScreen(container: WebContainer) {
         RestStore.save(rest)
     }
 
+    /** The rest after a logged set, except in a workout logged after the fact: nobody rests between sets typed in later. */
+    fun restAfterLogging(exercise: ExerciseView) {
+        val started = workout?.startedAt
+        if (started == null || !isPastWorkout(started, Date.now().toLong())) startRest(exercise)
+    }
+
     if (workout == null) {
         Div({ classes("screen") }) {
             Div({ classes("topbar") }) { H1 { Text(strings.workoutUntitled) } }
@@ -131,7 +139,13 @@ fun WorkoutScreen(container: WebContainer) {
     Div({ classes("screen", "workout") }) {
         Div({ classes("topbar") }) {
             A(href = Route.HOME.hash, attrs = { classes("text-button"); attr("aria-label", strings.home) }) { Text("←") }
-            Div({ classes("clock", "numbers") }) { Text(clockText(now - workout.startedAt)) }
+            if (isPastWorkout(workout.startedAt, now)) {
+                // Logged after the fact: when it started, not a timer running since then.
+                val started = workoutStartText(workout.startedAt, container, now)
+                Div({ classes("clock", "past-start"); attr("aria-label", strings.startedAt(started)) }) { Text(started) }
+            } else {
+                Div({ classes("clock", "numbers") }) { Text(clockText(now - workout.startedAt)) }
+            }
             rest?.let { timer ->
                 Button({
                     classes("rest", "numbers")
@@ -180,7 +194,7 @@ fun WorkoutScreen(container: WebContainer) {
                             !set.completed && set.reps == 0 -> editing = EditTarget(set.id, Field.REPS)
                             else -> scope.launch {
                                 container.run(Command.TickSet(set.id, !set.completed))
-                                if (!set.completed) startRest(exercise)
+                                if (!set.completed) restAfterLogging(exercise)
                             }
                         }
                     },
@@ -228,7 +242,7 @@ fun WorkoutScreen(container: WebContainer) {
                     when {
                         action.log -> {
                             selectedSetId = null
-                            if (container.run(Command.LogSet(workout.id, action.set.id)) is CommandResult.Done) startRest(action.exercise)
+                            if (container.run(Command.LogSet(workout.id, action.set.id)) is CommandResult.Done) restAfterLogging(action.exercise)
                         }
                         action.askForReps -> editing = EditTarget(action.set.id, Field.REPS)
                     }
@@ -318,7 +332,7 @@ fun WorkoutScreen(container: WebContainer) {
                         editing = EditTarget(set.id, Field.REPS)
                     } else {
                         scope.launch {
-                            if (container.run(Command.LogSet(workout.id, set.id)) is CommandResult.Done) startRest(exercise)
+                            if (container.run(Command.LogSet(workout.id, set.id)) is CommandResult.Done) restAfterLogging(exercise)
                         }
                     }
                 }
@@ -375,18 +389,12 @@ fun WorkoutScreen(container: WebContainer) {
     }
 
     when (confirming) {
-        Confirm.FINISH -> Dialog(
-            title = strings.finishTitle,
-            body = finishBody(workout, container),
-            confirm = strings.finish,
-            cancel = strings.keepTraining,
-            onCancel = { confirming = null },
-        ) {
+        Confirm.FINISH -> FinishDialog(container, workout, now, onCancel = { confirming = null }) { endedAt ->
             confirming = null
             // A workout with nothing logged is deleted by Finish: back to Home.
             val anyLogged = workout.loggedSets > 0
             scope.launch {
-                container.run(Command.FinishWorkout(workout.id))
+                container.run(Command.FinishWorkout(workout.id, endedAt))
                 if (anyLogged) window.location.hash = summaryHash(workout.id) else go(Route.HOME)
             }
         }
@@ -408,6 +416,34 @@ fun WorkoutScreen(container: WebContainer) {
 }
 
 private enum class Confirm { FINISH, DISCARD }
+
+/**
+ * Finish: what it drops, and for a workout logged after the fact how long it
+ * lasted (an hour at first, quarter-hour steps), so it ends when it really
+ * did. [onFinish] gets that end, or null for now.
+ */
+@Composable
+private fun FinishDialog(container: WebContainer, workout: WorkoutView, now: Long, onCancel: () -> Unit, onFinish: (Long?) -> Unit) {
+    val strings = container.strings
+    val past = isPastWorkout(workout.startedAt, now) && workout.loggedSets > 0
+    val longest = minOf(MAX_PAST_DURATION_MILLIS, now + WORKOUT_CLOCK_SKEW_MILLIS - workout.startedAt)
+    var duration by remember { mutableStateOf(DEFAULT_PAST_DURATION_MILLIS) }
+    val lasted = duration.coerceAtMost(longest)
+    Div({ classes("sheet-backdrop"); onClick { onCancel() } })
+    Div({ classes("dialog"); attr("role", "alertdialog"); attr("aria-modal", "true"); attr("aria-label", strings.finishTitle) }) {
+        H2 { Text(strings.finishTitle) }
+        P { Text(finishBody(workout, container)) }
+        if (past) DurationControl(container, lasted, min = 15L * 60 * 1000, max = longest) { duration = it }
+        Div({ classes("dialog-actions") }) {
+            Button({ classes("secondary"); onClick { onCancel() } }) { Text(strings.keepTraining) }
+            Button({ classes("accent-button"); onClick { onFinish(if (past) workout.startedAt + lasted else null) } }) { Text(strings.finish) }
+        }
+    }
+}
+
+/** How long a workout logged after the fact lasted, as Finish first offers it, and the longest it goes. */
+private const val DEFAULT_PAST_DURATION_MILLIS: Long = 60L * 60 * 1000
+private const val MAX_PAST_DURATION_MILLIS: Long = 6L * 60 * 60 * 1000
 
 private fun finishBody(workout: WorkoutView, container: WebContainer): String = when {
     workout.loggedSets == 0 -> container.strings.finishNothingLogged

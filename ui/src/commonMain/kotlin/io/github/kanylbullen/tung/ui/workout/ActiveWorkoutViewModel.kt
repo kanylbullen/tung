@@ -11,6 +11,7 @@ import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds
 import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.id
+import io.github.kanylbullen.tung.core.isPastWorkout
 import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
@@ -257,7 +258,7 @@ class ActiveWorkoutViewModel(
             touch(exercise.workoutExerciseId)
         }
         launch { commands.execute(Command.TickSet(setId, completed)) }
-        if (completed) startRest(exercise)
+        if (completed) restAfterLogging(exercise)
     }
 
     /**
@@ -310,7 +311,7 @@ class ActiveWorkoutViewModel(
     private suspend fun log(before: ActiveWorkoutUiState, exercise: ActiveExerciseUi, set: ActiveSetUi): Boolean {
         if (commands.execute(Command.LogSet(workoutId, set.id)) !is CommandResult.Done) return false
         advanceAfterLogging(before, set.id, scrollAlways = true)
-        startRest(exercise)
+        restAfterLogging(exercise)
         return true
     }
 
@@ -334,13 +335,14 @@ class ActiveWorkoutViewModel(
 
     fun removeExercise(workoutExerciseId: String) = launch { commands.execute(Command.RemoveExercise(workoutExerciseId)) }
 
-    fun finish() = launch {
+    /** Finishes the workout, at [endedAt] for one logged after the fact, else now. */
+    fun finish(endedAt: Long? = null) = launch {
         finishing.value = true
         setRest(null)
         // Directly as well: the screen leaves right after, and the collector goes with it.
         restTimer.set(workoutId, null)
         // FinishWorkout returns the workout's id only when it was kept.
-        val saved = commands.execute(Command.FinishWorkout(workoutId)).id(CommandIds.WORKOUT_ID) != null
+        val saved = commands.execute(Command.FinishWorkout(workoutId, endedAt)).id(CommandIds.WORKOUT_ID) != null
         eventChannel.send(ActiveWorkoutEvent.Finished(workoutId, saved))
     }
 
@@ -355,6 +357,12 @@ class ActiveWorkoutViewModel(
         restTimer.set(workoutId, null)
         commands.execute(Command.DeleteWorkout(workoutId))
         eventChannel.send(ActiveWorkoutEvent.Discarded(workoutId))
+    }
+
+    /** The rest after a logged set, except in a workout logged after the fact: nobody rests between sets typed in later. */
+    private fun restAfterLogging(exercise: ActiveExerciseUi) {
+        val current = state.value
+        if (current.loading || !isPastWorkout(current.startedAt, clock())) startRest(exercise)
     }
 
     private fun startRest(exercise: ActiveExerciseUi) {

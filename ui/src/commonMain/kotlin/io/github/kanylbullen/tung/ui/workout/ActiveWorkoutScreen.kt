@@ -68,6 +68,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -91,6 +92,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -100,7 +102,9 @@ import io.github.kanylbullen.tung.core.LoggedSet
 import androidx.compose.runtime.saveable.rememberSaveable
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.WEIGHT_RULER
+import io.github.kanylbullen.tung.core.WORKOUT_CLOCK_SKEW_MILLIS
 import io.github.kanylbullen.tung.core.isLogged
+import io.github.kanylbullen.tung.core.isPastWorkout
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepWeight
@@ -108,7 +112,10 @@ import io.github.kanylbullen.tung.core.voice.VoiceLanguage
 import io.github.kanylbullen.tung.core.voice.parseUtterance
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
+import io.github.kanylbullen.tung.ui.common.DurationStepper
+import io.github.kanylbullen.tung.ui.common.WORKOUT_TIME_STEP_MILLIS
 import io.github.kanylbullen.tung.ui.common.clockText
+import io.github.kanylbullen.tung.ui.common.workoutStartText
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
 import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.common.rememberNow
@@ -312,13 +319,26 @@ fun ActiveWorkoutScreen(
                 title = {
                     if (!state.loading && !state.missing) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            val clock = clockText(now - state.startedAt)
-                            val description = stringResource(Res.string.workout_elapsed_description, clock)
-                            Text(
-                                clock,
-                                style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.8f),
-                                modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-                            )
+                            if (isPastWorkout(state.startedAt, now)) {
+                                // Logged after the fact: when it started, not a timer running since then.
+                                val started = workoutStartText(state.startedAt)
+                                val description = stringResource(Res.string.workout_started_description, started)
+                                Text(
+                                    started,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false).clearAndSetSemantics { contentDescription = description },
+                                )
+                            } else {
+                                val clock = clockText(now - state.startedAt)
+                                val description = stringResource(Res.string.workout_elapsed_description, clock)
+                                Text(
+                                    clock,
+                                    style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.8f),
+                                    modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+                                )
+                            }
                             if (rest != null) {
                                 Spacer(Modifier.width(12.dp))
                                 RestCountdown(rest, now, onClick = { restControlsOpen = !restControlsOpen })
@@ -525,6 +545,11 @@ fun ActiveWorkoutScreen(
         // What Finish removes: the sets that are not logged, and exercises with no set at all.
         val unlogged = state.exercises.sumOf { e -> e.sets.count { !isLogged(it.completed, it.reps) } }
         val emptyExercises = state.exercises.count { it.sets.isEmpty() }
+        // A workout logged after the fact ends when it really did: its start plus how long it lasted.
+        val past = isPastWorkout(state.startedAt, now)
+        val longest = minOf(MAX_PAST_DURATION_MILLIS, now + WORKOUT_CLOCK_SKEW_MILLIS - state.startedAt)
+        var duration by rememberSaveable { mutableLongStateOf(DEFAULT_PAST_DURATION_MILLIS) }
+        val lasted = duration.coerceAtMost(longest)
         AlertDialog(
             onDismissRequest = { confirmFinish = false },
             containerColor = Tung.colors.raised,
@@ -539,10 +564,22 @@ fun ActiveWorkoutScreen(
                         emptyExercises.takeIf { it > 0 }?.let { pluralStringResource(Res.plurals.workout_finish_empty_exercises, it, it) },
                     ).joinToString(" ")
                 }
-                Text(body, color = Tung.colors.muted)
+                Column {
+                    Text(body, color = Tung.colors.muted)
+                    if (past && !empty) {
+                        Spacer(Modifier.height(16.dp))
+                        DurationStepper(
+                            durationMillis = lasted,
+                            canLess = lasted - WORKOUT_TIME_STEP_MILLIS >= MIN_PAST_DURATION_MILLIS,
+                            canMore = lasted + WORKOUT_TIME_STEP_MILLIS <= longest,
+                            onLess = { duration = lasted - WORKOUT_TIME_STEP_MILLIS },
+                            onMore = { duration = lasted + WORKOUT_TIME_STEP_MILLIS },
+                        )
+                    }
+                }
             },
             confirmButton = {
-                TextButton(onClick = { confirmFinish = false; vm.finish() }) {
+                TextButton(onClick = { confirmFinish = false; vm.finish(if (past) state.startedAt + lasted else null) }) {
                     Text(stringResource(Res.string.workout_finish_confirm), color = Tung.colors.accentText)
                 }
             },
@@ -1193,3 +1230,9 @@ private fun weightSpec(initial: String): NumberInputSpec {
     )
 }
 
+/** How long a workout logged after the fact lasted, as the finish dialog first offers it. */
+private const val DEFAULT_PAST_DURATION_MILLIS: Long = 60L * 60 * 1000
+
+/** The shortest and longest the finish dialog's duration goes, in its quarter-hour steps. */
+private const val MIN_PAST_DURATION_MILLIS: Long = WORKOUT_TIME_STEP_MILLIS
+private const val MAX_PAST_DURATION_MILLIS: Long = 6L * 60 * 60 * 1000

@@ -390,4 +390,22 @@
     <string name="progress_workouts_per_week">Workouts per week</string>
     <string name="progress_workouts_summary">Workouts per week, last 12 weeks: %1$d in total, %2$d this week</string>
     <string name="progress_workouts_total">Workouts</string>
+    <string name="detail_change_time">Change date and time</string>
+    <string name="detail_change_time_confirm">Save</string>
+    <string name="past_busy">Finish the workout in progress first.</string>
+    <string name="past_log">Log past workout</string>
+    <string name="past_log_confirm">Log workout</string>
+    <string name="past_open_active">Open workout</string>
+    <string name="time_choose">Choose</string>
+    <string name="time_date">Date</string>
+    <string name="time_day_earlier">One day earlier</string>
+    <string name="time_day_later">One day later</string>
+    <string name="time_duration_longer">15 minutes longer</string>
+    <string name="time_duration_shorter">15 minutes shorter</string>
+    <string name="time_pick_date">Choose the date, %1$s</string>
+    <string name="time_pick_start">Choose the start time, %1$s</string>
+    <string name="time_start">Start</string>
+    <string name="time_start_earlier">Start 15 minutes earlier</string>
+    <string name="time_start_later">Start 15 minutes later</string>
+    <string name="workout_started_description">Started %1$s</string>
 </resources>

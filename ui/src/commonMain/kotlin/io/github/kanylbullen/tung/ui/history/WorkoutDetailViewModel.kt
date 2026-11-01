@@ -44,6 +44,11 @@ class WorkoutDetailViewModel(
         viewModelScope.launch { onSaved(commands.execute(Command.SaveRoutine(workoutId, name)).id(CommandIds.ROUTINE_ID) != null) }
     }
 
+    /** Moves the workout to [startedAt], lasting [durationMillis] (`set_workout_time`). */
+    fun setTime(startedAt: Long, durationMillis: Long) {
+        viewModelScope.launch { commands.execute(Command.SetWorkoutTime(workoutId, startedAt, startedAt + durationMillis)) }
+    }
+
     fun delete(onDeleted: () -> Unit) {
         viewModelScope.launch {
             commands.execute(Command.DeleteWorkout(workoutId))
