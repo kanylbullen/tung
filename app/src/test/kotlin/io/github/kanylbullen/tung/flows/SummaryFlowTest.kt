@@ -112,7 +112,7 @@ class SummaryFlowTest : FlowTest() {
         waitFor(hasTestTag(SUMMARY_LIST_TAG))
 
         clickText(str(R.string.summary_done))
-        waitForText(str(R.string.home_start_workout))
+        waitForText(str(Res.string.home_start_workout))
     }
 
     /** The same summary in the dark theme, for the screenshots. */

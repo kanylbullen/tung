@@ -22,7 +22,7 @@ class SessionFlowTest : FlowTest() {
      */
     @Test
     fun firstWorkoutFromEmptyHomeToSummary() {
-        waitForText(str(R.string.home_empty))
+        waitForText(str(Res.string.home_empty))
         screenshot("1-home-empty")
 
         startWorkoutFromHome()
@@ -74,7 +74,7 @@ class SessionFlowTest : FlowTest() {
         seedFinishedWorkout(startedAt = System.currentTimeMillis() - 2 * DAY, exerciseId = bench(), weightKg = 80.0, reps = 8)
 
         // The seeded workout shows on the home screen instead of the empty state.
-        waitForText(str(R.string.home_recent))
+        waitForText(str(Res.string.home_recent))
 
         startWorkoutFromHome()
         addExercise("bench", benchPress)
@@ -112,8 +112,8 @@ class SessionFlowTest : FlowTest() {
         screenshot("1-finish-empty-dialog")
         clickInDialog(str(R.string.workout_finish_confirm))
 
-        waitForText(str(R.string.home_empty))
-        assertShown(hasText(str(R.string.home_start_workout)))
+        waitForText(str(Res.string.home_empty))
+        assertShown(hasText(str(Res.string.home_start_workout)))
         screenshot("2-home-empty-again")
 
         assertEquals(str(R.string.workout_discarded), ShadowToast.getTextOfLatestToast())
@@ -134,14 +134,14 @@ class SessionFlowTest : FlowTest() {
         val workoutId = activeWorkoutId()
 
         clickDescription(str(Res.string.action_back))
-        waitForText(str(R.string.home_resume_workout))
-        compose.onNode(hasText(str(R.string.home_start_workout))).assertDoesNotExist()
+        waitForText(str(Res.string.home_resume_workout))
+        compose.onNode(hasText(str(Res.string.home_start_workout))).assertDoesNotExist()
         screenshot("1-home-resume")
 
         compose.activityRule.scenario.recreate()
-        waitForText(str(R.string.home_resume_workout))
+        waitForText(str(Res.string.home_resume_workout))
 
-        clickText(str(R.string.home_resume_workout))
+        clickText(str(Res.string.home_resume_workout))
         waitForText(benchPress)
         waitForDescription(str(R.string.workout_mark_done, 1))
         screenshot("2-resumed")
@@ -157,13 +157,13 @@ class SessionFlowTest : FlowTest() {
      */
     @Test
     fun homeWithTheFirstWorkoutInProgressIsNotEmpty() {
-        waitForText(str(R.string.home_empty))
+        waitForText(str(Res.string.home_empty))
         startWorkoutFromHome()
 
         clickDescription(str(Res.string.action_back))
-        waitForText(str(R.string.home_resume_workout))
-        compose.onNode(hasText(str(R.string.home_empty))).assertDoesNotExist()
-        compose.onNode(hasText(str(R.string.home_recent))).assertDoesNotExist()
+        waitForText(str(Res.string.home_resume_workout))
+        compose.onNode(hasText(str(Res.string.home_empty))).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.home_recent))).assertDoesNotExist()
         screenshot("1-home-first-in-progress")
     }
 

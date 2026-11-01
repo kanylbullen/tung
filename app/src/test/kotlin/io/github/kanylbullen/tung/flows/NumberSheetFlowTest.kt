@@ -96,7 +96,7 @@ class NumberSheetFlowTest : FlowTest() {
     @Test
     fun typingReplacesThePrefilledValue() {
         seedFinishedWorkout(startedAt = System.currentTimeMillis() - 2 * DAY, exerciseId = bench(), weightKg = 80.0, reps = 8)
-        waitForText(str(R.string.home_recent))
+        waitForText(str(Res.string.home_recent))
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
 

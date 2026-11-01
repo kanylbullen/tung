@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.ui.home
 
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.foundation.background
@@ -34,25 +35,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.WorkoutRow
-import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.durationText
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.muscleLabel
 import io.github.kanylbullen.tung.ui.common.percentText
@@ -62,11 +57,11 @@ import io.github.kanylbullen.tung.ui.routines.RoutineRow
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 import io.github.kanylbullen.tung.ui.workout.DiscardWorkoutDialog
-import java.time.LocalDate
-import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.LocalDate
 
 @Composable
 fun HomeScreen(
+    vm: HomeViewModel,
     onOpenWorkout: (String) -> Unit,
     onOpenDetail: (String) -> Unit,
     onShowHistory: () -> Unit,
@@ -75,33 +70,18 @@ fun HomeScreen(
     onShowSettings: () -> Unit,
     onShowAssistant: () -> Unit,
 ) {
-    val container = appContainer()
-    val vm: HomeViewModel = viewModel(
-        factory = factoryOf {
-            HomeViewModel(
-                container.workoutRepository,
-                container.routineRepository,
-                container.programRepository,
-                container.commands,
-                container.clock,
-                container.restTimer,
-                container.catalogueMuscles,
-            )
-        }
-    )
     val state by vm.state.collectAsStateWithLifecycle()
     var choosingDay by rememberSaveable { mutableStateOf(false) }
     // "Last: 3 days ago" changes at most at midnight; a minute is plenty.
     val today = rememberNow(intervalMillis = 60_000L)
-    val date = remember(today) { LocalDate.now(container.clock) }
+    val date = remember(today) { vm.date() }
     // A tap that could do nothing says why: Today's day went while the card showed it.
     val snackbar = remember { SnackbarHostState() }
-    val context = LocalContext.current
     LaunchedEffect(vm) {
         vm.messages.collect { message ->
             snackbar.showSnackbar(
                 when (message) {
-                    HomeMessage.DAY_GONE -> context.getString(R.string.today_day_gone)
+                    HomeMessage.DAY_GONE -> getString(Res.string.today_day_gone)
                 },
             )
         }
@@ -119,7 +99,7 @@ fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         // The wordmark: small, wide and heavy. The screen's content is the week below it.
                         Text(
-                            stringResource(R.string.app_name),
+                            stringResource(Res.string.home_wordmark),
                             style = Tung.numbers.wordmark,
                             color = Tung.colors.text,
                             modifier = Modifier.weight(1f),
@@ -128,7 +108,7 @@ fun HomeScreen(
                         IconButton(onClick = onShowSettings) {
                             Icon(
                                 Icons.Filled.Settings,
-                                contentDescription = stringResource(R.string.settings_title),
+                                contentDescription = stringResource(Res.string.settings_title),
                                 tint = Tung.colors.muted,
                             )
                         }
@@ -145,7 +125,7 @@ fun HomeScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 PrimaryButton(
-                                    text = stringResource(R.string.home_resume_workout),
+                                    text = stringResource(Res.string.home_resume_workout),
                                     onClick = { onOpenWorkout(active.id) },
                                     modifier = Modifier.weight(1f).heightIn(min = 72.dp),
                                 )
@@ -155,7 +135,7 @@ fun HomeScreen(
                                     IconButton(onClick = { menuOpen = true }) {
                                         Icon(
                                             Icons.Filled.MoreVert,
-                                            contentDescription = stringResource(R.string.home_workout_menu),
+                                            contentDescription = stringResource(Res.string.home_workout_menu),
                                             tint = Tung.colors.muted,
                                         )
                                     }
@@ -166,7 +146,7 @@ fun HomeScreen(
                                         shape = TungCorner,
                                     ) {
                                         DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.workout_discard)) },
+                                            text = { Text(stringResource(Res.string.workout_discard)) },
                                             onClick = { menuOpen = false; confirmDiscard = true },
                                         )
                                     }
@@ -174,7 +154,7 @@ fun HomeScreen(
                             }
                             val now = rememberNow(intervalMillis = 15_000L)
                             Text(
-                                stringResource(R.string.home_in_progress_since, durationText(now - active.startedAt)),
+                                stringResource(Res.string.home_in_progress_since, durationText(now - active.startedAt)),
                                 style = Tung.numbers.inline,
                                 color = Tung.colors.muted,
                             )
@@ -187,7 +167,7 @@ fun HomeScreen(
                         }
                     } else {
                         PrimaryButton(
-                            text = stringResource(R.string.home_start_workout),
+                            text = stringResource(Res.string.home_start_workout),
                             onClick = { vm.startOrResume(onOpenWorkout) },
                             enabled = !state.loading,
                             modifier = Modifier.heightIn(min = 72.dp),
@@ -228,7 +208,7 @@ fun HomeScreen(
                                 modifier = Modifier.weight(1f),
                             )
                             TextButton(onClick = onShowRoutines, modifier = Modifier.heightIn(min = 48.dp)) {
-                                Text(stringResource(R.string.routines_all), color = Tung.colors.accentText)
+                                Text(stringResource(Res.string.routines_all), color = Tung.colors.accentText)
                             }
                         }
                         state.routines.forEach { row ->
@@ -252,7 +232,7 @@ fun HomeScreen(
             if (!state.loading && state.recent.isEmpty() && state.activeWorkout == null) {
                 item(key = "empty") {
                     Text(
-                        stringResource(R.string.home_empty),
+                        stringResource(Res.string.home_empty),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
@@ -261,7 +241,7 @@ fun HomeScreen(
             } else if (state.recent.isNotEmpty()) {
                 item(key = "recent-title") {
                     Text(
-                        stringResource(R.string.home_recent),
+                        stringResource(Res.string.home_recent),
                         style = MaterialTheme.typography.titleMedium,
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 4.dp),
@@ -276,7 +256,7 @@ fun HomeScreen(
                             onClick = onShowHistory,
                             modifier = Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp),
                         ) {
-                            Text(stringResource(R.string.home_show_all), color = Tung.colors.text)
+                            Text(stringResource(Res.string.home_show_all), color = Tung.colors.text)
                         }
                     }
                 }
@@ -315,8 +295,8 @@ fun HomeScreen(
 private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
     val totals = week.week
     val counts = listOf(
-        pluralStringResource(R.plurals.home_week_workouts, totals.workouts, totals.workouts),
-        pluralStringResource(R.plurals.home_week_sets, totals.sets, totals.sets),
+        pluralStringResource(Res.plurals.home_week_workouts, totals.workouts, totals.workouts),
+        pluralStringResource(Res.plurals.home_week_sets, totals.sets, totals.sets),
     ).joinToString(stringResource(Res.string.row_separator))
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.Top) {
@@ -324,7 +304,7 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                 modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {},
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(stringResource(R.string.home_this_week), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+                Text(stringResource(Res.string.home_this_week), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
                 // A week is four digits most of the time; a big one must still fit beside the body
                 // at the owner's font scale, so the hero shrinks with its length rather than ellipsise.
                 val volumeText = localVolume(totals.volumeKg)
@@ -346,7 +326,7 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        stringResource(R.string.workout_unit_kg),
+                        stringResource(Res.string.workout_unit_kg),
                         style = MaterialTheme.typography.titleLarge,
                         color = Tung.colors.muted,
                         maxLines = 1,
@@ -355,7 +335,7 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                     )
                 }
                 Text(
-                    if (totals.workouts == 0) stringResource(R.string.home_week_none) else counts,
+                    if (totals.workouts == 0) stringResource(Res.string.home_week_none) else counts,
                     style = MaterialTheme.typography.bodyLarge,
                     color = Tung.colors.muted,
                 )
@@ -364,13 +344,13 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                 val lastWeek = totals.lastWeek.takeIf { totals.workouts == 0 && it.workouts > 0 }
                 if (lastWeek != null) {
                     Text(
-                        stringResource(R.string.home_week_last, localVolume(lastWeek.volumeKg)),
+                        stringResource(Res.string.home_week_last, localVolume(lastWeek.volumeKg)),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Tung.colors.muted,
                     )
                 }
                 if (totals.bestOfRecentWeeks) {
-                    Text(stringResource(R.string.home_week_best), style = MaterialTheme.typography.labelLarge, color = Tung.colors.accentText)
+                    Text(stringResource(Res.string.home_week_best), style = MaterialTheme.typography.labelLarge, color = Tung.colors.accentText)
                 }
             }
             if (!week.muscles.isEmpty) {
@@ -378,7 +358,7 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                 MuscleHeatMap(
                     intensity = week.muscles::intensity,
                     description = stringResource(
-                        R.string.home_muscles_description,
+                        Res.string.home_muscles_description,
                         week.muscles.muscles.map { stringResource(Res.string.summary_muscle_item, muscleLabel(it.muscle), percentText(it.percent)) }
                             .joinToString(stringResource(Res.string.list_separator)),
                     ),
@@ -386,7 +366,7 @@ private fun ThisWeekSection(week: WeekUi, today: LocalDate) {
                 )
             }
         }
-        WeekStrip(totals.days, today.toKotlinLocalDate())
+        WeekStrip(totals.days, today)
     }
 }
 
@@ -401,7 +381,7 @@ private fun AssistantEntry(onClick: () -> Unit) {
             .padding(top = 12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
-        Text(stringResource(R.string.ai_entry_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+        Text(stringResource(Res.string.ai_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.text)
+        Text(stringResource(Res.string.ai_entry_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     }
 }

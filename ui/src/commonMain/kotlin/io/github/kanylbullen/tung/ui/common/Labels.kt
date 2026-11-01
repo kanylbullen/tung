@@ -77,3 +77,30 @@ fun percentText(percent: Int): String =
 
 /** [fraction] as a whole percentage the way the locale writes it: "50%", "50 %" in Swedish. */
 expect fun localPercent(fraction: Double): String
+
+/**
+ * "Monday 19 October" ("Måndag 19 oktober" in Swedish) — first letter
+ * capitalised, the rest as the locale writes it — with the year added when it
+ * is not this year ("Monday 6 March 2023"), which imported history often is.
+ */
+fun localDate(epochMillis: Long): String = dateText(epochMillis, "EEEE d MMMM", "EEEE d MMMM yyyy")
+
+/**
+ * "Thu 22 Oct" ("tors 22 okt" in Swedish), the year added when it is not this
+ * year: [localDate] for a list row, where the long weekday left no room for
+ * the rest of the line.
+ */
+fun shortLocalDate(epochMillis: Long): String = dateText(epochMillis, "EEE d MMM", "EEE d MMM yyyy")
+
+/** "1 h 12 min" or "42 min". */
+@Composable
+fun durationText(millis: Long): String {
+    val totalMinutes = (millis.coerceAtLeast(0L) / 60_000L).toInt()
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) {
+        stringResource(Res.string.duration_hours_minutes, hours, minutes)
+    } else {
+        stringResource(Res.string.duration_minutes, minutes)
+    }
+}

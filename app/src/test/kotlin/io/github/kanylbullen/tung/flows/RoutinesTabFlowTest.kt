@@ -64,9 +64,9 @@ class RoutinesTabFlowTest : FlowTest() {
         assertShown(tab(R.string.nav_home) and isSelected())
         screenshot("1-home")
 
-        clickText(str(R.string.routines_all))
+        clickText(str(Res.string.routines_all))
         waitForRoutinesTab()
-        waitGone(hasText(str(R.string.home_recent)))
+        waitGone(hasText(str(Res.string.home_recent)))
         assertShown(hasText("Push day"))
         assertShown(hasText(str(Res.string.programs_title)))
         assertShown(hasContentDescription(str(Res.string.routine_start_description, "Push day")) and isEnabled())
@@ -91,7 +91,7 @@ class RoutinesTabFlowTest : FlowTest() {
      */
     @Test
     fun aNewRoutineIsFilledAndStartedFromTheTab() {
-        waitForText(str(R.string.home_empty))
+        waitForText(str(Res.string.home_empty))
         compose.onNode(tab(R.string.nav_routines)).performClick()
         waitForRoutinesTab()
         waitForText(str(Res.string.routines_empty))
@@ -176,7 +176,7 @@ class RoutinesTabFlowTest : FlowTest() {
             programs.addDay(program, pushA)
             programs.addDay(program, kept)
         }
-        waitForText(str(R.string.home_recent))
+        waitForText(str(Res.string.home_recent))
         compose.onNode(tab(R.string.nav_routines)).performClick()
         waitForRoutinesTab()
 
@@ -230,7 +230,7 @@ class RoutinesTabFlowTest : FlowTest() {
     @Test
     fun closeBackAndSelectAll() {
         listOf("Push A", "Pull B", "Legs C").forEach(::seedRoutine)
-        waitForText(str(R.string.home_recent))
+        waitForText(str(Res.string.home_recent))
         compose.onNode(tab(R.string.nav_routines)).performClick()
         waitForRoutinesTab()
 

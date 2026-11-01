@@ -24,14 +24,15 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.kanylbullen.tung.core.ISO_WEEKDAYS
 import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.ui.common.WeekdayStyle
 import io.github.kanylbullen.tung.ui.common.weekdayName
 import io.github.kanylbullen.tung.ui.theme.Tung
 
 /** "Mon" for ISO weekday 1, in the phone's language. */
-fun weekdayShort(isoWeekday: Int): String = weekdayName(isoWeekday, short = true)
+fun weekdayShort(isoWeekday: Int): String = weekdayName(isoWeekday, WeekdayStyle.SHORT)
 
 /** "Monday" for ISO weekday 1, in the phone's language. */
-fun weekdayFull(isoWeekday: Int): String = weekdayName(isoWeekday, short = false)
+fun weekdayFull(isoWeekday: Int): String = weekdayName(isoWeekday, WeekdayStyle.FULL)
 
 /** "Fixed days" or "Rotating". */
 @Composable

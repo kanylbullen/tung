@@ -41,7 +41,7 @@ class HomeRoutinesFlowTest : FlowTest() {
         screenshot("2-detail")
         clickDescription(str(Res.string.action_back))
 
-        clickText(str(R.string.routines_all))
+        clickText(str(Res.string.routines_all))
         names.forEach { waitForText(it) }
         screenshot("3-tab")
     }

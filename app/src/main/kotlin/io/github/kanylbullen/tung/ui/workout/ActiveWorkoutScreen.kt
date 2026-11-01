@@ -392,7 +392,7 @@ fun ActiveWorkoutScreen(
                                 shape = TungCorner,
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.workout_discard)) },
+                                    text = { Text(stringResource(Res.string.workout_discard)) },
                                     onClick = { menuOpen = false; confirmDiscard = true },
                                 )
                             }
@@ -1108,7 +1108,7 @@ private fun SetRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 NumberCell(
                     value = weight,
-                    unit = stringResource(R.string.workout_unit_kg),
+                    unit = stringResource(Res.string.workout_unit_kg),
                     description = stringResource(R.string.workout_edit_weight, weight),
                     actions = deleteAction,
                     onClick = onEditWeight,
@@ -1212,7 +1212,7 @@ private fun stepDescription(@PluralsRes id: Int, stepKg: Double): String {
 private fun weightSpec(initial: String): NumberInputSpec {
     return NumberInputSpec(
         title = stringResource(R.string.input_weight_title),
-        unit = stringResource(R.string.workout_unit_kg),
+        unit = stringResource(Res.string.workout_unit_kg),
         initialText = initial,
         keyboardType = KeyboardType.Decimal,
         fieldDescription = stringResource(R.string.input_field_weight),

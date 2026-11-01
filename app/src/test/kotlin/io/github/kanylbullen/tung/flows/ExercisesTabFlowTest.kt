@@ -154,8 +154,8 @@ class ExercisesTabFlowTest : FlowTest() {
 
         clickDescription(str(Res.string.action_back))
         clickText(str(R.string.nav_home))
-        clickText(str(R.string.routines_all))
-        waitGone(hasText(str(R.string.home_recent)))
+        clickText(str(Res.string.routines_all))
+        waitGone(hasText(str(Res.string.home_recent)))
         clickText("Push day")
         waitForText(benchPress)
         waitForText("Zercher Squats")

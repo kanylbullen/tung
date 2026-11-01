@@ -100,7 +100,7 @@ fun AssistantScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
-                title = { Text(stringResource(R.string.ai_title)) },
+                title = { Text(stringResource(Res.string.ai_title)) },
                 actions = {
                     Box {
                         IconButton(onClick = { menuOpen = true }) {

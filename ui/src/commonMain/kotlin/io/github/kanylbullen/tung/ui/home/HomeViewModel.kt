@@ -26,7 +26,6 @@ import io.github.kanylbullen.tung.data.RoutineSummaryRow
 import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.data.WorkoutSummaryRow
-import io.github.kanylbullen.tung.timer.RestTimerController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -43,13 +42,11 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.Clock
-import java.time.LocalDate
 import io.github.kanylbullen.tung.data.routineMuscles
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
-import kotlinx.datetime.toKotlinLocalDate
-import kotlinx.datetime.toKotlinTimeZone
 
 /** One day of the active program, ready to show and to start. */
 data class ProgramDayUi(
@@ -112,8 +109,11 @@ class HomeViewModel(
     routines: RoutineRepository,
     programs: ProgramRepository,
     private val commands: CommandHandler,
-    private val clock: Clock,
-    private val restTimer: RestTimerController,
+    /** Today in the device's zone; the phone reads its container's clock, which the flow tests set. */
+    private val currentDate: () -> LocalDate,
+    private val currentZone: () -> TimeZone,
+    /** Clears the rest timer and its alarm for a workout: the phone's `RestTimerController`. */
+    private val clearRestTimer: suspend (workoutId: String) -> Unit,
     catalogueMuscles: CatalogueMuscles,
 ) : ViewModel() {
 
@@ -128,10 +128,13 @@ class HomeViewModel(
         }
     }
 
+    /** Today, for the screen's week strip, read when it asks. */
+    fun date(): LocalDate = currentDate()
+
     /** Today's date, re-read every minute so a fixed program moves on at midnight with the app open. */
     private val today: Flow<LocalDate> = flow {
         while (true) {
-            emit(LocalDate.now(clock))
+            emit(currentDate())
             delay(60_000L)
         }
     }.distinctUntilChanged()
@@ -142,8 +145,8 @@ class HomeViewModel(
         flow { emit(catalogueMuscles.index()) },
         today,
     ) { sets, index, date ->
-        val zone = clock.zone.toKotlinTimeZone()
-        val week = thisWeek(sets, date.toKotlinLocalDate(), zone)
+        val zone = currentZone()
+        val week = thisWeek(sets, date, zone)
         val end = week.start.plus(6, DateTimeUnit.DAY)
         val inWeek = sets.filter { set ->
             set.isLogged && dateOf(set.startedAt, zone).let { it >= week.start && it <= end }
@@ -176,7 +179,7 @@ class HomeViewModel(
                 activeWorkout = active,
                 // The clock is read here rather than taken from the ticker, so any change
                 // in the data also picks up a new day.
-                today = program?.let { todayUi(it, LocalDate.now(clock)) },
+                today = program?.let { todayUi(it, currentDate()) },
                 // The few used most recently; the Routines tab, behind "All", has every one.
                 routines = routineRows.take(HOME_ROUTINES),
                 recent = finished.take(RECENT_COUNT),
@@ -222,7 +225,7 @@ class HomeViewModel(
      */
     fun discard(workoutId: String) {
         viewModelScope.launch {
-            restTimer.set(workoutId, null)
+            clearRestTimer(workoutId)
             commands.execute(Command.DeleteWorkout(workoutId))
         }
     }
@@ -251,7 +254,7 @@ class HomeViewModel(
                 )
             }
             val plan = days.mapIndexed { index, day -> PlanDay(day.id, index, day.weekdays) }
-            val suggested = suggestedDay(mode, plan, date.toKotlinLocalDate(), active.lastCompletedDayId)
+            val suggested = suggestedDay(mode, plan, date, active.lastCompletedDayId)
             return TodayUi(
                 programName = active.program.name,
                 mode = mode,

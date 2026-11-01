@@ -144,7 +144,7 @@ class LogSetFlowTest : FlowTest() {
             val routines = RoutineRepository(db)
             checkNotNull(routines.start(checkNotNull(routines.saveFromWorkout(source, "Push day"))))
         }
-        clickText(str(R.string.home_resume_workout))
+        clickText(str(Res.string.home_resume_workout))
         waitForDescription(str(R.string.workout_mark_done, 3))
         screenshot("1-routine-workout")
 
