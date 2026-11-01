@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.progress
 
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -147,7 +149,7 @@ fun recordValue(record: PersonalRecord): String {
         }
         RecordKind.BEST_SESSION_VOLUME -> stringResource(R.string.progress_kg, localVolume(record.value))
         RecordKind.HEAVIEST_WEIGHT, RecordKind.MOST_REPS -> if (set != null) {
-            stringResource(R.string.detail_set_line, localWeight(set.weightKg), set.reps)
+            stringResource(Res.string.detail_set_line, localWeight(set.weightKg), set.reps)
         } else {
             stringResource(R.string.progress_kg, localWeight(record.value))
         }

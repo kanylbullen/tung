@@ -38,3 +38,7 @@ expect fun localVolume(kg: Double): String
  * `NSDateFormatter` read alike.
  */
 internal expect fun dateText(epochMillis: Long, pattern: String, patternWithYear: String): String
+
+/** The locale's decimal separator: ',' in Swedish, '.' in English. */
+expect fun decimalSeparator(): Char
+

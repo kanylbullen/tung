@@ -199,4 +199,20 @@
     <string name="workout_row_untitled">Workout</string>
     <string name="workout_unit_kg">kg</string>
     <string name="home_wordmark">Tung</string>
+    <!-- History -->
+    <string name="detail_calories">%1$d kcal</string>
+    <string name="detail_delete">Delete workout</string>
+    <string name="detail_delete_body">The workout and all its sets will be deleted. This cannot be undone.</string>
+    <string name="detail_delete_confirm">Delete</string>
+    <string name="detail_delete_title">Delete workout?</string>
+    <string name="detail_heart_rate">Heart rate %1$d avg · %2$d max</string>
+    <string name="detail_heart_rate_one">Heart rate %1$d</string>
+    <string name="detail_set_line">%1$s kg × %2$d</string>
+    <string name="history_empty">Finished workouts show up here.</string>
+    <string name="history_title">History</string>
+    <string name="routine_default_name">%1$s: %2$s</string>
+    <string name="routine_save">Save</string>
+    <string name="routine_save_as">Save as routine</string>
+    <string name="stat_duration">Duration</string>
+    <string name="stat_volume">Volume, kg</string>
 </resources>

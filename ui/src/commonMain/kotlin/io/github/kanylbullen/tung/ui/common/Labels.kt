@@ -8,10 +8,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.daysAgo
+import io.github.kanylbullen.tung.core.formatWeight
+import io.github.kanylbullen.tung.core.progress.dateOf
 import io.github.kanylbullen.tung.data.systemMillis
 import io.github.kanylbullen.tung.ui.resources.*
 import kotlinx.coroutines.delay
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.isoDayNumber
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -104,3 +107,11 @@ fun durationText(millis: Long): String {
         stringResource(Res.string.duration_minutes, minutes)
     }
 }
+
+/** [kg] as the locale writes a weight: "82,5" in Swedish. */
+fun localWeight(kg: Double): String = formatWeight(kg, decimalSeparator())
+
+/** "Monday" for the day [epochMillis] falls on in the device's zone, capitalised. */
+fun localWeekday(epochMillis: Long): String =
+    weekdayName(dateOf(epochMillis, TimeZone.currentSystemDefault()).dayOfWeek.isoDayNumber, WeekdayStyle.FULL)
+

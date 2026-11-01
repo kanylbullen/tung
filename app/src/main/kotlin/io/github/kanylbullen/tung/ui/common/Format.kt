@@ -5,15 +5,10 @@ import androidx.compose.ui.res.stringResource
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.MuscleGroup
-import io.github.kanylbullen.tung.core.formatWeight
-import java.text.DecimalFormatSymbols
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-fun localWeight(kg: Double): String =
-    formatWeight(kg, DecimalFormatSymbols.getInstance().decimalSeparator)
 
 /** "6 March 2023": a date with its year, for ranges such as an import's. */
 fun localDateWithYear(epochMillis: Long): String =
@@ -60,10 +55,3 @@ fun equipmentLabel(equipment: Equipment): String = stringResource(
     }
 )
 
-/** "Monday" ("Måndag" in Swedish), first letter capitalised. */
-fun localWeekday(epochMillis: Long): String {
-    val locale = Locale.getDefault()
-    val text = DateTimeFormatter.ofPattern("EEEE", locale)
-        .format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
-    return text.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
-}

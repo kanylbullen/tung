@@ -51,14 +51,14 @@ class RoutineFlowTest : FlowTest() {
         assertShown(hasText("2") and hasText(str(R.string.stat_sets)))
         screenshot("1-summary")
 
-        clickText(str(R.string.routine_save_as))
+        clickText(str(Res.string.routine_save_as))
         val field = hasSetTextAction() and hasAnyAncestor(isDialog())
         val startedAt = longQuery("SELECT startedAt FROM workout")
-        val defaultName = str(R.string.routine_default_name, localWeekday(startedAt), benchPress)
+        val defaultName = str(Res.string.routine_default_name, localWeekday(startedAt), benchPress)
         assertShown(field and hasText(defaultName))
         screenshot("2-name-dialog")
         compose.onNode(field).performTextReplacement("Push day")
-        clickInDialog(str(R.string.routine_save))
+        clickInDialog(str(Res.string.routine_save))
         waitGone(isDialog())
         // The toast follows the write, which Room does on its own thread, and is shown
         // from the main looper, which only runs when the test idles it.

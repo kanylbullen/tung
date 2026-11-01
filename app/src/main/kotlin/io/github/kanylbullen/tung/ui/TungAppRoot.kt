@@ -50,8 +50,8 @@ import io.github.kanylbullen.tung.ui.ai.AssistantScreen
 import io.github.kanylbullen.tung.ui.exercises.ExerciseDetailScreen
 import io.github.kanylbullen.tung.ui.exercises.ExercisesScreen
 import io.github.kanylbullen.tung.ui.exercises.PickerTarget
-import io.github.kanylbullen.tung.ui.history.HistoryScreen
-import io.github.kanylbullen.tung.ui.history.WorkoutDetailScreen
+import io.github.kanylbullen.tung.ui.history.HistoryRoute
+import io.github.kanylbullen.tung.ui.history.WorkoutDetailRoute
 import io.github.kanylbullen.tung.ui.home.HomeRoute
 import io.github.kanylbullen.tung.ui.progress.ExerciseProgressScreen
 import io.github.kanylbullen.tung.ui.progress.ProgressScreen
@@ -295,7 +295,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 )
             }
             composable(Routes.HISTORY) {
-                HistoryScreen(onOpenDetail = { id -> nav.navigate(Routes.detail(id)) })
+                HistoryRoute(onOpenDetail = { id -> nav.navigate(Routes.detail(id)) })
             }
             composable(Routes.EXERCISES) {
                 ExercisesScreen(
@@ -356,7 +356,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
             }
             composable(Routes.DETAIL, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
-                WorkoutDetailScreen(workoutId = id, onBack = { nav.popBackStack() })
+                WorkoutDetailRoute(workoutId = id, onBack = { nav.popBackStack() })
             }
             composable(Routes.SUMMARY, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
