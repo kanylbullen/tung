@@ -420,4 +420,34 @@ class CommandTest {
         val foreign = client.command(other, "finish_workout", """{"workout_id": "$workoutId"}""")
         assertEquals(HttpStatusCode.UnprocessableEntity, foreign.status, "another user's workout does not exist for them")
     }
+
+    @Test
+    fun aWorkoutLoggedAfterTheFactKeepsTheTimesItWasGiven() = tungTest {
+        val token = client.register()
+        val hour = 60L * 60 * 1000
+        val start = System.currentTimeMillis() - 24 * hour
+        val workoutId = client.done(token, "start_workout", """{"started_at": $start}""")["workoutId"]!!.str
+        assertEquals(start, client.authedGet("/api/v1/workouts/$workoutId", token).workout().startedAt)
+        client.done(token, "add_exercise", """{"workout_id": "$workoutId", "exercise": {"key": "bench_press"}}""")
+        val set = client.authedGet("/api/v1/workouts/$workoutId", token).workout().exercises.single().sets.single()
+        client.done(token, "set_reps", """{"set_id": "${set.id}", "reps": 8}""")
+        client.done(token, "log_set", """{"workout_id": "$workoutId"}""")
+
+        val ahead = client.command(token, "finish_workout", """{"workout_id": "$workoutId", "ended_at": ${System.currentTimeMillis() + 2 * hour}}""")
+        assertEquals(HttpStatusCode.UnprocessableEntity, ahead.status)
+        assertEquals(listOf("ended_at is in the future"), ahead.json()["reasons"]!!.jsonArray.map { it.str })
+
+        client.done(token, "finish_workout", """{"workout_id": "$workoutId", "ended_at": ${start + 90 * 60_000L}}""")
+        val finished = client.authedGet("/api/v1/workouts/$workoutId", token).workout()
+        assertEquals(start to start + 90 * 60_000L, finished.startedAt to finished.endedAt)
+
+        client.done(token, "set_workout_time", """{"workout_id": "$workoutId", "started_at": ${start - 24 * hour}, "ended_at": ${start - 23 * hour}}""")
+        val moved = client.authedGet("/api/v1/workouts/$workoutId", token).workout()
+        assertEquals(start - 24 * hour to start - 23 * hour, moved.startedAt to moved.endedAt)
+
+        val open = client.command(token, "set_workout_time", """{"workout_id": "$workoutId", "started_at": ${start - 24 * hour}}""")
+        assertEquals(HttpStatusCode.UnprocessableEntity, open.status, "a finished workout needs ended_at")
+        val future = client.command(token, "start_workout", """{"started_at": ${System.currentTimeMillis() + 2 * hour}}""")
+        assertEquals(HttpStatusCode.UnprocessableEntity, future.status)
+    }
 }

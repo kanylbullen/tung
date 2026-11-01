@@ -182,9 +182,12 @@ class WorkoutStore(private val db: Db, private val exercises: ExerciseStore) {
             when (val result = executor.finishWorkout(tx, id, input.endedAt)) {
                 is CommandResult.Done ->
                     if (result.ids.containsKey(WORKOUT_ID)) FinishResult(liveWorkout(userId, id), discarded = false) else FinishResult(null, discarded = true)
-                // The executor refuses only a missing workout and an end before the start.
-                is CommandResult.Rejected ->
-                    if (liveRow(userId, id) == null) throw notFound("Workout") else throw badRequest("ended_at is before started_at.")
+                // The executor refuses only a missing workout, an end before the start and an end in the future.
+                is CommandResult.Rejected -> when {
+                    liveRow(userId, id) == null -> throw notFound("Workout")
+                    "ended_at is in the future" in result.reasons -> throw badRequest("ended_at is in the future.")
+                    else -> throw badRequest("ended_at is before started_at.")
+                }
                 is CommandResult.NeedsAnswers -> error("finish_workout resolves no names")
             }
         }

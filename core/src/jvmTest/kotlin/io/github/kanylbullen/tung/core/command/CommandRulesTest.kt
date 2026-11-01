@@ -205,6 +205,23 @@ class CommandRulesTest {
     }
 
     @Test
+    fun aWorkoutLoggedAfterTheFactStartsWhenItWasNeverAhead() {
+        tx.now = 100_000_000L
+        val past = done { executor.startWorkout(tx, "phone", startedAt = 40_000_000L) }.ids.getValue(WORKOUT_ID)
+        assertEquals(40_000_000L, runBlocking { tx.workout(past) }?.startedAt)
+        done { executor.deleteWorkout(tx, past) }
+        tx.writes.clear()
+        assertEquals(
+            listOf("started_at is in the future"),
+            rejected { executor.startWorkout(tx, "phone", startedAt = 100_000_000L + 61_000L) }.reasons,
+        )
+        assertEquals(emptyList<String>(), tx.writes)
+        val skewed = done { executor.startWorkout(tx, "phone", startedAt = 100_000_000L + 30_000L) }.ids.getValue(WORKOUT_ID)
+        assertEquals("a clock a little ahead is fine", 100_030_000L, runBlocking { tx.workout(skewed) }?.startedAt)
+        assertEquals("the one in progress, never a second", skewed, done { executor.startWorkout(tx, "phone", startedAt = 50_000_000L) }.ids[WORKOUT_ID])
+    }
+
+    @Test
     fun startRoutineFillsTheTargetSetsFromLastSessionAndMarksTheRoutineUsed() {
         tx.history["bench"] = listOf(LoggedSet(80.0, 8), LoggedSet(85.0, 6), LoggedSet(85.0, 5))
         val routineId = tx.addRoutine()
@@ -258,6 +275,60 @@ class CommandRulesTest {
         assertNull(runBlocking { tx.workout(workoutId) })
         assertEquals(emptyList<WorkoutExerciseRow>(), tx.exercises)
         assertEquals(emptyList<SetRow>(), tx.allSets)
+    }
+
+    @Test
+    fun finishRefusesAnEndInTheFuture() {
+        tx.now = 100_000_000L
+        val workoutId = tx.addWorkout(startedAt = 10_000_000L)
+        val weId = tx.addExercise(workoutId, "bench")
+        tx.addSet(weId, 80.0, 8, completed = true)
+        tx.writes.clear()
+        assertEquals(listOf("ended_at is in the future"), rejected { executor.finishWorkout(tx, workoutId, endedAt = 100_061_000L) }.reasons)
+        assertEquals(emptyList<String>(), tx.writes)
+        done { executor.finishWorkout(tx, workoutId, endedAt = 15_400_000L) }
+        assertEquals("ends when it really did", 15_400_000L, runBlocking { tx.workout(workoutId) }?.endedAt)
+    }
+
+    // --- set_workout_time ---
+
+    @Test
+    fun setWorkoutTimeMovesAFinishedWorkout() {
+        tx.now = 200_000_000L
+        val workoutId = tx.addWorkout(startedAt = 100_000_000L, endedAt = 103_600_000L)
+        assertEquals(workoutId, done { executor.setWorkoutTime(tx, workoutId, 50_000_000L, 55_400_000L) }.ids[WORKOUT_ID])
+        val row = runBlocking { tx.workout(workoutId) }
+        assertEquals(50_000_000L to 55_400_000L, row?.startedAt to row?.endedAt)
+        tx.writes.clear()
+        done { executor.setWorkoutTime(tx, workoutId, 50_000_000L, 55_400_000L) }
+        assertEquals("the same times again write nothing", emptyList<String>(), tx.writes)
+    }
+
+    @Test
+    fun setWorkoutTimeRefusesWhatCannotBe() {
+        tx.now = 200_000_000L
+        val finished = tx.addWorkout(startedAt = 100_000_000L, endedAt = 103_600_000L)
+        val day = 24L * 60 * 60 * 1000
+        assertEquals(listOf("a finished workout needs ended_at"), rejected { executor.setWorkoutTime(tx, finished, 90_000_000L, null) }.reasons)
+        assertEquals(listOf("ended_at is before started_at"), rejected { executor.setWorkoutTime(tx, finished, 90_000_000L, 80_000_000L) }.reasons)
+        assertEquals(listOf("ended_at is in the future"), rejected { executor.setWorkoutTime(tx, finished, 190_000_000L, 200_061_000L) }.reasons)
+        assertEquals(listOf("a workout lasts at most 24 hours"), rejected { executor.setWorkoutTime(tx, finished, 10_000_000L, 10_000_001L + day) }.reasons)
+        assertEquals(
+            listOf("started_at is in the future", "ended_at is before started_at"),
+            rejected { executor.setWorkoutTime(tx, finished, 300_000_000L, 190_000_000L) }.reasons,
+        )
+        assertEquals(listOf("no workout nope"), rejected { executor.setWorkoutTime(tx, "nope", 1L, 2L) }.reasons)
+
+        val active = tx.addWorkout(startedAt = 150_000_000L)
+        assertEquals(
+            listOf("a workout in progress has no ended_at; finish it with finish_workout"),
+            rejected { executor.setWorkoutTime(tx, active, 140_000_000L, 141_000_000L) }.reasons,
+        )
+        assertEquals(listOf("started_at is in the future"), rejected { executor.setWorkoutTime(tx, active, 200_061_000L, null) }.reasons)
+        assertEquals(emptyList<String>(), tx.writes)
+        done { executor.setWorkoutTime(tx, active, 140_000_000L, null) }
+        val row = runBlocking { tx.workout(active) }
+        assertEquals(140_000_000L to null, row?.startedAt to row?.endedAt)
     }
 
     @Test

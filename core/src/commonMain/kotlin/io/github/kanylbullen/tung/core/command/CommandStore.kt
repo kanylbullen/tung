@@ -76,6 +76,9 @@ interface CommandTx {
     /** Ends the workout at [endedAt]. */
     suspend fun endWorkout(id: String, endedAt: Long)
 
+    /** Writes a workout's start and end ([endedAt] null for one in progress), for `set_workout_time`. */
+    suspend fun setWorkoutTimes(id: String, startedAt: Long, endedAt: Long?)
+
     suspend fun tickSet(id: String, done: Boolean)
 
     suspend fun setWeight(id: String, weightKg: Double)

@@ -115,6 +115,31 @@ class WebCommandsTest {
     }
 
     @Test
+    fun aWorkoutLoggedAfterTheFactKeepsItsTimesAndCanBeMoved() = runTest {
+        val rig = Rig()
+        val hour = 60L * 60 * 1000
+        rig.now = 1_761_840_000_000L
+        val start = rig.now - 24 * hour
+        val workoutId = assertNotNull(rig.run(Command.StartWorkout(startedAt = start)).ids[CommandIds.WORKOUT_ID])
+        assertEquals(start, rig.store.workouts.get(workoutId)?.startedAt)
+        rig.run(Command.AddExercise(workoutId, ExerciseRef.ByKey("bench_press"), sets = 1))
+        val set = rig.store.sets.rows.values.single().row
+        rig.run(Command.SetReps(set.id, 8))
+        rig.run(Command.LogSet(workoutId, set.id))
+        rig.run(Command.FinishWorkout(workoutId, endedAt = start + 90 * 60_000L))
+        assertEquals(start + 90 * 60_000L, rig.store.workouts.get(workoutId)?.endedAt)
+
+        rig.run(Command.SetWorkoutTime(workoutId, start - 24 * hour, start - 23 * hour))
+        val moved = assertNotNull(rig.store.workouts.get(workoutId))
+        assertEquals(start - 24 * hour, moved.startedAt)
+        assertEquals(start - 23 * hour, moved.endedAt)
+        assertTrue(rig.store.workouts.rows.getValue(workoutId).dirty)
+        val journals = rig.persisted.size
+        assertIs<CommandResult.Rejected>(rig.executor.execute(Command.SetWorkoutTime(workoutId, start, null)))
+        assertEquals(journals, rig.persisted.size, "a refusal writes nothing")
+    }
+
+    @Test
     fun theNextSessionIsPrefilledFromTheLastOne() = runTest {
         val rig = Rig()
         val first = assertNotNull(rig.run(Command.StartWorkout()).ids[CommandIds.WORKOUT_ID])

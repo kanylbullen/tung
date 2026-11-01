@@ -204,6 +204,9 @@ internal class RoomCommandTx(private val db: TungDatabase, private val clock: ()
 
     override suspend fun endWorkout(id: String, endedAt: Long) = dao.setEndedAt(id, endedAt = endedAt, updatedAt = clock())
 
+    override suspend fun setWorkoutTimes(id: String, startedAt: Long, endedAt: Long?) =
+        dao.setTimes(id, startedAt = startedAt, endedAt = endedAt, updatedAt = clock())
+
     override suspend fun tickSet(id: String, done: Boolean) = dao.setCompleted(id, done, clock())
 
     override suspend fun setWeight(id: String, weightKg: Double) = dao.updateWeight(id, weightKg, clock())

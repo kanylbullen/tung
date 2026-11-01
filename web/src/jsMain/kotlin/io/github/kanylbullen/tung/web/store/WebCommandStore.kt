@@ -185,6 +185,9 @@ internal class WebCommandTx(private val store: TungStore, private val clock: () 
     override suspend fun endWorkout(id: String, endedAt: Long) =
         update(store.workouts, id) { it.copy(endedAt = endedAt, updatedAt = clock()) }
 
+    override suspend fun setWorkoutTimes(id: String, startedAt: Long, endedAt: Long?) =
+        update(store.workouts, id) { it.copy(startedAt = startedAt, endedAt = endedAt, updatedAt = clock()) }
+
     override suspend fun tickSet(id: String, done: Boolean) = update(store.sets, id) { it.copy(completed = done, updatedAt = clock()) }
 
     override suspend fun setWeight(id: String, weightKg: Double) = update(store.sets, id) { it.copy(weightKg = weightKg, updatedAt = clock()) }
