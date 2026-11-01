@@ -2206,7 +2206,9 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   request may take `REQUEST_TIMEOUT_MILLIS` (120 s, the phone's), then it
   is aborted and counts as unreachable (`Http.kt`).
 - **Account** (`sync/WebAuth.kt`, `sync/WebSettings.kt`): email and
-  password against `/api/v1/auth/login`, the default server
+  password against `/api/v1/auth/login`, or **Create account** against
+  `/register` with the app's language for the welcome email (409 and
+  `weak_password` named as on the phone), the default server
   `DEFAULT_SERVER_URL` in `WebContainer.kt` (the phone's
   `BuildConfig.DEFAULT_SERVER_URL`), `checkServerUrl` as the gate. The
   server, email, token, cursor, last result and device id (`X-Tung-Device`)

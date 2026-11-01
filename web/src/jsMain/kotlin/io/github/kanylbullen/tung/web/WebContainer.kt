@@ -210,9 +210,16 @@ class WebContainer(
     suspend fun signIn(serverUrl: String, email: String, password: String): AuthResult =
         signedIn(serverUrl, auth.signIn(serverUrl, email, password))
 
+    /** Creates an account and, on success, signs in as [signIn] does; the welcome email is in the app's language. */
+    suspend fun register(serverUrl: String, email: String, password: String): AuthResult =
+        signedIn(serverUrl, auth.register(serverUrl, email, password, languageTag()))
+
     /** Signs in with Google's ID token for [serverUrl]'s client and, on success, pulls the account's log. */
     suspend fun signInWithGoogle(serverUrl: String, idToken: String): AuthResult =
-        signedIn(serverUrl, auth.signInWithGoogle(serverUrl, idToken, if (strings === Swedish) "sv" else "en"))
+        signedIn(serverUrl, auth.signInWithGoogle(serverUrl, idToken, languageTag()))
+
+    /** The app's language for the server's welcome email: `sv` or `en`. */
+    private fun languageTag(): String = if (strings === Swedish) "sv" else "en"
 
     private suspend fun signedIn(serverUrl: String, result: AuthResult): AuthResult {
         if (result is AuthResult.Success) {
