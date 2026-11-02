@@ -44,6 +44,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.LocalDate as JavaLocalDate
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toKotlinTimeZone
 
@@ -81,11 +84,11 @@ class TungContainer(
     private val context: Context = context.applicationContext ?: context
 
     /** For work that outlives a screen (sync triggers); never cancelled, like the process. */
-    override fun nowMillis(): Long = clock.millis()
-    override fun today(): kotlinx.datetime.LocalDate = java.time.LocalDate.now(clock).toKotlinLocalDate()
-    override fun zone(): kotlinx.datetime.TimeZone = clock.zone.toKotlinTimeZone()
-
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    override fun nowMillis(): Long = clock.millis()
+    override fun today(): LocalDate = JavaLocalDate.now(clock).toKotlinLocalDate()
+    override fun zone(): TimeZone = clock.zone.toKotlinTimeZone()
 
     private val database: TungDatabase by lazy { createDatabase(this.context) }
     override val workoutRepository: WorkoutRepository by lazy { WorkoutRepository(database) }

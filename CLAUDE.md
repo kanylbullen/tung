@@ -219,8 +219,7 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/` | `TungAppRoot` (the shared `TungNavRoot` over the container) and `AndroidPlatform` (ui's `AppPlatform` for the phone: BuildConfig, `displayName`, toasts, `BackHandler`, the workout's `WorkoutPlatform`, Credential Manager, `ACTION_OPEN_DOCUMENT` and the photo picker, Health Connect). Every route is in the `ui/` module now; what follows says where each screen came from. |
-| `ui/<screen>/` | (Historical: the routes below moved into `ui/`'s `TungNavRoot`.) `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (`ActiveWorkoutRoute` around the `ui/` screen: the ViewModel, the phone's `WorkoutPlatform` and the progress sheet), `exercises` (`ExercisesRoute`, the tab and picker in one, and `ExerciseDetailRoute`, the exercise page, around the `ui/` screens, which give each ViewModel the phone's `displayName`), `history` (`HistoryRoute` and `WorkoutDetailRoute` around the `ui/` screens; the detail's "Saved as routine" toast is the route's), `summary` (`SummaryRoute` around the `ui/` screen, with the "Saved as routine" toast; see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (`ProgressRoutes.kt` around the `ui/` screens and the sheet in a workout; see "Progress"), `settings` (`settingsGraph` in `SettingsNavigation.kt` around the `ui/` screens: the ViewModels, the build's version, Health Connect's section and summary, the file and photo pickers and Credential Manager; see "Settings"), `importing` (the import's route in `TungAppRoot` around the `ui/` screen, with `readImportFile` over the content resolver). |
+| `ui/` | `TungAppRoot` (the shared `TungNavRoot` over the container) and `AndroidPlatform` (ui's `AppPlatform` for the phone: BuildConfig, `displayName`, toasts, `BackHandler`, the workout's `WorkoutPlatform`, Credential Manager, `ACTION_OPEN_DOCUMENT` and the photo picker, Health Connect). Every screen, its ViewModel and its route are in the `ui/` module. |
 | `ui/ai/` | The `ui/` module's Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt` in `ui/`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `AndroidSpeechInput` (the phone's `SpeechRecognizer`) behind ui's `SpeechInput`, made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in the `ui/` module's `ui/workout/Voice*.kt`. See "Voice". |
@@ -285,8 +284,10 @@ each a title and a one-line live summary (`SettingsScreen` and its read-only
 (`SettingsGroup`, `settingsGraph` in ui's `TungNavRoot`; the health group
 only where `AppPlatform.healthSettings` exists); each group page is a `SettingsPage` (top bar, back, scrolling
 column). The screens and their ViewModels are in `ui/.../ui/settings/`, except
-Health Connect's section and ViewModel; the routes, the pickers and
-`Screenshots.kt` are in `app/.../ui/settings/`:
+Health Connect's section and ViewModel, which are in `app/.../ui/settings/`
+with `Screenshots.kt` (the feedback picker's reading and scaling); the routes
+are `TungNavRoot`'s, and the pickers, Credential Manager and the build are
+app's `AndroidPlatform`:
 
 | Group | Route | Summary | What is there |
 |---|---|---|---|

@@ -86,6 +86,7 @@ import io.github.kanylbullen.tung.ui.settings.EquipmentSectionViewModel
 import io.github.kanylbullen.tung.ui.settings.FeedbackScreen
 import io.github.kanylbullen.tung.ui.settings.FeedbackViewModel
 import io.github.kanylbullen.tung.ui.settings.ImportSectionViewModel
+import io.github.kanylbullen.tung.ui.settings.MAX_FEEDBACK_SCREENSHOTS
 import io.github.kanylbullen.tung.ui.settings.SettingsGroup
 import io.github.kanylbullen.tung.ui.settings.SettingsScreen
 import io.github.kanylbullen.tung.ui.settings.SettingsViewModel
@@ -541,7 +542,7 @@ fun TungNavRoot(
 /**
  * Settings' destinations: the list at [Routes.SETTINGS] and one screen per
  * [SettingsGroup]. Back from a group returns to the list. The health group
- * exists only where [AppPlatform.healthSettings] does.
+ * and its row exist only where [AppPlatform.healthSettings] does.
  */
 private fun NavGraphBuilder.settingsGraph(
     nav: NavController,
@@ -560,10 +561,9 @@ private fun NavGraphBuilder.settingsGraph(
             version = platform.versionName,
             buildType = platform.buildType,
             healthSummary = platform.healthSummary(),
+            showHealth = platform.healthSettings != null,
             onBack = back,
-            onOpenGroup = { group ->
-                if (group != SettingsGroup.HEALTH_CONNECT || platform.healthSettings != null) nav.navigate(group.route)
-            },
+            onOpenGroup = { group -> nav.navigate(group.route) },
         )
     }
     composable(SettingsGroup.ACCOUNT.route) {
@@ -598,8 +598,11 @@ private fun NavGraphBuilder.settingsGraph(
     }
     composable(SettingsGroup.FEEDBACK.route) {
         val vm = viewModel { FeedbackViewModel(services.syncAccount, platform.feedbackPlatform, platform.feedbackVersion) }
-        val pick = platform.rememberScreenshotPicker { vm.addScreenshots(it) }
-        FeedbackScreen(vm, onBack = back, onOpenAccount = openAccount, onPickScreenshots = pick)
+        val state by vm.state.collectAsStateWithLifecycle()
+        val pick = platform.rememberScreenshotPicker(room = MAX_FEEDBACK_SCREENSHOTS - state.form.screenshots.size) {
+            vm.addScreenshots(it)
+        }
+        FeedbackScreen(vm, onBack = back, onOpenAccount = openAccount, onPickScreenshots = { pick() })
     }
     composable(SettingsGroup.ABOUT.route) {
         AboutScreen(platform.versionName, platform.buildType, onBack = back)

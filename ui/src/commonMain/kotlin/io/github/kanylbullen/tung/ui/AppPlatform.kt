@@ -66,17 +66,17 @@ interface AppPlatform {
     suspend fun readImportFile(source: String): String?
 
     /**
-     * The photo picker for feedback screenshots, at most `room` at a time (the
-     * returned function's argument); each picked image is read and scaled, a
-     * null where one could not be.
+     * The photo picker for feedback screenshots, offering at most [room]
+     * (what the form has room for, so none is silently dropped); each picked
+     * image is read and scaled, a null where one could not be.
      */
     @Composable
-    fun rememberScreenshotPicker(onPicked: suspend (List<Screenshot?>) -> Unit): (room: Int) -> Unit
+    fun rememberScreenshotPicker(room: Int, onPicked: suspend (List<Screenshot?>) -> Unit): () -> Unit
 
     /** The health row's line on the settings list (Health Connect on Android); null without a health store. */
     @Composable
     fun healthSummary(): String?
 
-    /** The health settings screen; null where the platform has no health store, and the row does nothing. */
+    /** The health settings screen; null where the platform has no health store, and Settings leaves its row out. */
     val healthSettings: (@Composable (onBack: () -> Unit) -> Unit)?
 }

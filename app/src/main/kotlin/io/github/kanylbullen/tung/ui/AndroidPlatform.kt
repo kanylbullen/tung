@@ -23,7 +23,6 @@ import io.github.kanylbullen.tung.auth.GoogleSignInResult
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.ui.common.displayName
 import io.github.kanylbullen.tung.ui.settings.HealthConnectSettingsScreen
-import io.github.kanylbullen.tung.ui.settings.MAX_FEEDBACK_SCREENSHOTS
 import io.github.kanylbullen.tung.ui.settings.Screenshot
 import io.github.kanylbullen.tung.ui.settings.healthConnectSummary
 import io.github.kanylbullen.tung.ui.settings.readScreenshot
@@ -127,21 +126,21 @@ class AndroidPlatform(private val app: TungApp) : AppPlatform {
     override suspend fun readImportFile(source: String): String? = readImportDocument(app, Uri.parse(source))
 
     /**
-     * The photo picker: the multiple picker needs room for at least two, so
-     * one left is the single picker. Each image is read and scaled by
-     * [readScreenshot]; the ViewModel keeps no more than there is room for.
+     * The photo picker, as many as there is [room] for: the multiple picker
+     * needs at least two, so one left is the single picker. Each image is
+     * read and scaled by [readScreenshot].
      */
     @Composable
-    override fun rememberScreenshotPicker(onPicked: suspend (List<Screenshot?>) -> Unit): (room: Int) -> Unit {
+    override fun rememberScreenshotPicker(room: Int, onPicked: suspend (List<Screenshot?>) -> Unit): () -> Unit {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
-        val pickMany = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_FEEDBACK_SCREENSHOTS)) { uris ->
+        val pickMany = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(room.coerceAtLeast(2))) { uris ->
             if (uris.isNotEmpty()) scope.launch { onPicked(uris.map { readScreenshot(context, it) }) }
         }
         val pickOne = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri != null) scope.launch { onPicked(listOf(readScreenshot(context, uri))) }
         }
-        return { room ->
+        return {
             val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
             if (room >= 2) pickMany.launch(request) else pickOne.launch(request)
         }

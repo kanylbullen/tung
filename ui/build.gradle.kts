@@ -51,6 +51,9 @@ kotlin {
             // The icons were frozen at 1.7.3 upstream; the same core set app/ uses.
             implementation("org.jetbrains.compose.material:material-icons-core:1.7.3")
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 }
 
