@@ -37,6 +37,11 @@ targets:
         # Gradle writes the framework for this configuration and SDK here.
         FRAMEWORK_SEARCH_PATHS: "$(inherited) $(SRCROOT)/../ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
         OTHER_LDFLAGS: "$(inherited) -framework TungUI"
+        # ui has iosSimulatorArm64 and no iosX64, so the simulator build is
+        # arm64 only. A generic simulator destination would otherwise ask for
+        # "arm64 x86_64", and Compose's syncComposeResourcesForIos fails on the
+        # x86_64 half ("Cannot query the value of this provider").
+        "ARCHS[sdk=iphonesimulator*]": arm64
         # The pre-build script runs Gradle, which reads and writes outside the sandbox.
         ENABLE_USER_SCRIPT_SANDBOXING: NO
     preBuildScripts:
