@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package io.github.kanylbullen.tung.web.ui
 
 import androidx.compose.runtime.Composable
@@ -32,7 +34,7 @@ import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.sync.Account
 import kotlinx.browser.window
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.web.attributes.InputType

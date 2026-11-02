@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package io.github.kanylbullen.tung.core.progress
 
 import io.github.kanylbullen.tung.core.LoggedSet

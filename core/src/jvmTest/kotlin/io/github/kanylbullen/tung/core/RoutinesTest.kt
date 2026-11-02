@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package io.github.kanylbullen.tung.core
 
 import org.junit.Assert.assertEquals

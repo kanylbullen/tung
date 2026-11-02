@@ -1,6 +1,8 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package io.github.kanylbullen.tung.core
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.toLocalDateTime

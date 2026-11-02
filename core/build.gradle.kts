@@ -42,7 +42,10 @@ kotlin {
             // and dates are kotlinx-datetime's LocalDate and TimeZone.
             api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
             api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
-            api("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+            // 0.7, as Compose Multiplatform's material3 pulls it into the iOS framework: built
+            // against 0.6, core's Instant and Clock calls were left unlinked there. Instant
+            // and Clock are kotlin.time's since 0.7.
+            api("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
         }
         jvmTest.dependencies {
             implementation("junit:junit:4.13.2")
