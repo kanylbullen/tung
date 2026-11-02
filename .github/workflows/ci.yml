@@ -115,10 +115,14 @@ jobs:
     #
     # The owner's Mac mini (self-hosted runner "tung-mac", account ci) runs
     # it for pushes and for pull requests from this repository's own
-    # branches: warm Kotlin/Native and Gradle caches, 12 cores. A pull request
-    # from a fork never reaches it (the repository is public, and a runner
-    # executes whatever the job says) and gets GitHub's macos-15 instead.
-    runs-on: ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted", "tung-mac"]') || 'macos-15' }}
+    # branches, started by a collaborator: warm Kotlin/Native and Gradle
+    # caches, 12 cores. Everything else (a fork's pull request, Dependabot)
+    # gets GitHub's macos-15. The repository is public and a runner executes
+    # whatever the job says, so this is not the guard: a pull request runs
+    # the workflow from its own branch. The guard is on the Mac, a job-started
+    # hook that refuses any job but these (and fork workflows need approval).
+    # Keep the list here and the Mac's hooks/allowed-actors the same.
+    runs-on: ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && contains(fromJSON('["kanylbullen", "unpocomejor"]'), github.actor) && fromJSON('["self-hosted", "tung-mac"]') || 'macos-15' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
