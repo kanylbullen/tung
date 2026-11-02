@@ -24,8 +24,9 @@ rewritten for tung.
 - `scripts/` — what the workflow actually runs: resolving the PR plus the
   freshness and CI gates, fetching the diff, running the fleet, building the
   comment. `test-resolve-pr.sh` runs the selection against a fake `gh` and
-  pins its decisions; the `Fleet PR selection` job in `ci.yml` runs it on
-  every PR.
+  pins its decisions, `test-build-comment.sh` does the same for when a run
+  may replace the PR's comment; the `Fleet PR selection` job in `ci.yml`
+  runs both on every PR.
 
 ## How it is triggered
 
@@ -95,6 +96,29 @@ The comment is posted with `gh pr comment --edit-last --create-if-none`
 in place on new pushes and reruns — never a new copy per event, and the
 freshness marker therefore cannot be pushed out of the comment window.
 
+**A run may replace that comment only with something at least as
+complete.** A failed run ("The fleet could not run") or a partial run (some
+lenses missing) first reads the comment `--edit-last` would edit — the last
+comment by `github-actions[bot]`, so a human comment is never looked at.
+If it carries a freshness marker for *any* head (a complete review or the
+diff-too-large decision) and no partial banner, it is left untouched: the
+failure is reported in the job (`::error` for a failed run, which stays red;
+`::warning` for a partial one) and what the run would have posted goes into
+the job summary. The PR keeps that review's 👍 or 😕; only the run's 👀 is
+removed. With no such comment — none at all, or a failure or partial notice
+— the run posts or edits as before. If the comments cannot be read, the run
+keeps rather than overwrites. A complete run, which stamps the marker,
+replaces the comment as always.
+
+Why: on 2026-11-02 a run with every lens failing (OpenRouter credit limit)
+replaced PR #188's finished review of 13 findings with "The fleet could not
+run", and a scheduled run 16 minutes later did it again; the review
+survived only in GitHub's edit history. Nothing in the rule weakens the
+freshness gate: the failed run still stamps nothing, so it can be retried
+without `force`, and the gate keys on the head sha, so a kept review of an
+old head is never fresh for a new one. `test-build-comment.sh` pins the
+decisions with a fake `gh`.
+
 ### The verdicts
 
 GitHub has no ✅ or ⚠️ reaction, so the start marker is 👀 and the final
@@ -104,7 +128,8 @@ verdict is 👍 or 😕; ✅/⚠️ are in the comment.
   the aggregator's heading) is zero.
 - 😕 — findings were found.
 - No reaction — a partial run (some lenses did not answer), a failed run or
-  a skip. Those are not verdicts on the PR.
+  a skip. Those are not verdicts on the PR. When such a run leaves a
+  finished review in place (see above), that review's reaction stays.
 - A partial run is said at the top of the comment: who did not answer, and
   that the verdict rests only on those who did. A 👍 needs every lens to
   answer — four of five is not enough.
@@ -234,4 +259,5 @@ yamllint -d '{extends: default, rules: {line-length: {max: 120},
 actionlint
 bash -n .github/review-team/scripts/*.sh
 bash .github/review-team/scripts/test-resolve-pr.sh
+bash .github/review-team/scripts/test-build-comment.sh
 ```
