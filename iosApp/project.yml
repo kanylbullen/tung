@@ -6,8 +6,10 @@
 name: Tung
 options:
   bundleIdPrefix: io.github.kanylbullen
+  # Compose Multiplatform's ICU data is built for iOS 17.2; a lower target
+  # links with a warning that the object is newer than the app.
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "17.2"
 settings:
   base:
     MARKETING_VERSION: "0.1.0"
@@ -29,6 +31,12 @@ targets:
         # Compose Multiplatform draws at the display's rate; without this key
         # a ProMotion iPhone is capped at 60 Hz and Compose logs an error.
         CADisableMinimumFrameDurationOnPhone: true
+    # Sign in with Apple (enabled for the App ID io.github.kanylbullen.tung);
+    # appleIdToken() in ui's iosMain asks for it. Generated like Info.plist.
+    entitlements:
+      path: Tung/Tung.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.kanylbullen.tung
