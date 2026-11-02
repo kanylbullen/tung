@@ -245,6 +245,7 @@
     <string name="voice_ask_assistant">Fråga assistenten</string>
     <string name="voice_echo_failed">Taligenkänningen misslyckades. Försök igen.</string>
     <string name="voice_echo_heard_nothing">Hörde ingenting</string>
+    <string name="voice_echo_language">Taligenkänningen på telefonen saknar svenska. Lägg till det i telefonens språkinställningar.</string>
     <string name="voice_echo_logged">%1$s × %2$s loggat</string>
     <string name="voice_echo_network">Taligenkänningen behöver nätverk på den här telefonen</string>
     <string name="voice_echo_next">Nästa: %1$s, set %2$d</string>
@@ -263,6 +264,8 @@
     <string name="voice_hands_free_description">Handsfree-läget är på: lyssnar mellan seten</string>
     <string name="voice_hands_free_start">Slå på handsfree-läget</string>
     <string name="voice_hands_free_stop">Stäng av handsfree-läget</string>
+    <!-- The language the app shows, for the speech recogniser and the grammar; never the phone's full locale. -->
+    <string name="voice_language_tag">sv</string>
     <string name="voice_listening">Lyssnar…</string>
     <string name="voice_mic">Röstinmatning</string>
     <string name="voice_mic_idle">Lyssnar inte</string>

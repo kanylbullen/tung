@@ -1887,10 +1887,23 @@ fallback, and only on a tap.
 - **Speech:** `SpeechInput.listenOnce(languageTag)` (the `ui/` module's `voice/`) is a Flow of
   `Listening`, `Partial`, then one `Result` or `Error(kind)`.
   `AndroidSpeechInput` (app's `voice/`) wraps `SpeechRecognizer` (`ACTION_RECOGNIZE_SPEECH`,
-  `EXTRA_LANGUAGE` from the app locale, `EXTRA_PREFER_OFFLINE`,
-  `EXTRA_PARTIAL_RESULTS`) and answers `UNAVAILABLE` when
-  `isRecognitionAvailable` is false, which on Android 11+ needs the
+  `EXTRA_PREFER_OFFLINE`, `EXTRA_PARTIAL_RESULTS`) and answers `UNAVAILABLE`
+  when `isRecognitionAvailable` is false, which on Android 11+ needs the
   `<queries>` entry for `android.speech.RecognitionService` in the manifest.
+  **The language is the app's, never the phone's locale:** the screen passes
+  the resource `voice_language_tag` (`en`, `sv`), which also picks the
+  grammar, and `recognizerAttempts` (`RecognizerLanguage.kt`,
+  `RecognizerLanguageTest`) turns it into the variants to try: on Android 13+
+  what `checkRecognitionSupport` says is installed (offline), then online;
+  without an answer the phone's region when its language is the app's
+  (`sv-SE`), offline, then online, then the bare language. A language error
+  (12 or 13, no pack for that variant) moves on to the next attempt, and
+  after the last one the echo says the phone lacks the language
+  (`LANGUAGE`, fatal for hands-free). Before this, a Pixel in English with a
+  Swedish region asked for `en-SE-u-fw-mon-…`, Google's offline recogniser had
+  only `en-US`, failed with error 12, and the echo said the phone had no
+  speech recognition at all (2026-11-02). `AndroidSpeechInputTest` runs the
+  real class over Robolectric's recogniser.
   The factory is `TungApp.createSpeechInput()`, an open function the flow
   tests' `FlowTestApp` overrides with `FakeSpeechInput` (`say`, `fail`); it is
   deliberately not a `TungContainer` seam, since nothing in `data/` hears.
