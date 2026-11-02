@@ -4,10 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.text.intl.Locale
 import io.github.kanylbullen.tung.auth.AppleSignInResult
 import io.github.kanylbullen.tung.auth.GoogleSignInResult
 import io.github.kanylbullen.tung.auth.appleIdToken
+import io.github.kanylbullen.tung.core.sync.DEFAULT_SERVER_URL
 import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.ui.settings.Screenshot
 import io.github.kanylbullen.tung.ui.workout.WorkoutPlatform
@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import platform.Foundation.NSBundle
 import platform.Foundation.NSData
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSFileSize
+import platform.Foundation.NSNumber
 import platform.Foundation.NSString
 import platform.Foundation.NSURL
 import platform.Foundation.NSUTF8StringEncoding
@@ -46,13 +49,13 @@ import platform.darwin.NSObject
 
 /**
  * The iPhone's [AppPlatform]: the bundle's version, catalogue names from
- * [container]'s `core.json` in the app's language, a short message over the
- * screen instead of a toast, haptics, the notification permission, Sign in
+ * [catalogueName] (the container's `core.json` names in the app's language),
+ * a short message over the screen instead of a toast, haptics, the notification permission, Sign in
  * with Apple, and the document picker for an import. Not there yet, each
  * saying so where it shows: speech (the mic answers "unavailable"), Google
  * sign-in, feedback screenshots and a health store (Settings leaves its row out).
  */
-class IosPlatform(private val container: IosContainer) : AppPlatform {
+class IosPlatform(private val catalogueName: (key: String) -> String?) : AppPlatform {
     private val bundle get() = NSBundle.mainBundle
 
     override val versionName: String get() = bundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "?"
@@ -64,21 +67,16 @@ class IosPlatform(private val container: IosContainer) : AppPlatform {
     override val feedbackVersion: String
         get() = "$versionName (${bundle.objectForInfoDictionaryKey("CFBundleVersion") as? String ?: "?"})"
 
-    /** The phone's `BuildConfig.DEFAULT_SERVER_URL` and the web's `DEFAULT_SERVER_URL`. */
-    override val defaultServerUrl: String get() = "https://tung.xuper.fun"
+    override val defaultServerUrl: String get() = DEFAULT_SERVER_URL
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
 
     /** What [showMessage] said, for the overlay `MainViewController` draws over the app. */
     val messages: SharedFlow<String> = _messages
 
-    /** A catalogue exercise by its key in the app's language (Swedish or English), else the name it was given. */
-    override fun exerciseName(exercise: Exercise): String {
-        val key = exercise.nameKey ?: return exercise.name
-        val names = container.coreCatalog.firstOrNull { it.key == key }?.name ?: return exercise.name
-        val language = if (Locale.current.language == "sv") "sv" else "en"
-        return names[language] ?: names["en"] ?: exercise.name
-    }
+    /** A catalogue exercise by its key in the app's language, else the name it was given. */
+    override fun exerciseName(exercise: Exercise): String =
+        exercise.nameKey?.let(catalogueName) ?: exercise.name
 
     override fun showMessage(text: String) {
         _messages.tryEmit(text)
@@ -133,11 +131,19 @@ class IosPlatform(private val container: IosContainer) : AppPlatform {
         }
     }
 
-    @OptIn(BetaInteropApi::class)
+    /**
+     * The picked copy's text, UTF-8; null when it cannot be read or is larger
+     * than [MAX_IMPORT_BYTES]. The size is asked of the file system first, so
+     * an oversized file is refused before any of it is read.
+     */
+    @OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
     override suspend fun readImportFile(source: String): String? = withContext(Dispatchers.Default) {
         val url = NSURL.URLWithString(source) ?: return@withContext null
+        val path = url.path ?: return@withContext null
+        val attributes = NSFileManager.defaultManager.attributesOfItemAtPath(path, error = null) ?: return@withContext null
+        val size = (attributes[NSFileSize] as? NSNumber)?.longLongValue ?: return@withContext null
+        if (size > MAX_IMPORT_BYTES) return@withContext null
         val data = NSData.dataWithContentsOfURL(url) ?: return@withContext null
-        if (data.length.toLong() > MAX_IMPORT_BYTES) return@withContext null
         NSString.create(data = data, encoding = NSUTF8StringEncoding)?.toString()
     }
 

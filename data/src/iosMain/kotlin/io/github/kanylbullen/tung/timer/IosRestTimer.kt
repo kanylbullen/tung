@@ -48,7 +48,6 @@ class IosRestTimer(
                     setTitle(title)
                     setBody(body)
                     setSound(UNNotificationSound.defaultSound)
-                    setUserInfo(mapOf(WORKOUT_ID to workoutId))
                 }
                 val trigger = UNTimeIntervalNotificationTrigger.triggerWithTimeInterval(seconds, repeats = false)
                 center.addNotificationRequest(UNNotificationRequest.requestWithIdentifier(REQUEST_ID, content, trigger), null)
@@ -66,6 +65,5 @@ class IosRestTimer(
 
     private companion object {
         const val REQUEST_ID = "rest_over"
-        const val WORKOUT_ID = "workout_id"
     }
 }

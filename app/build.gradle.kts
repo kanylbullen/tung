@@ -40,6 +40,7 @@ android {
         resourceConfigurations += listOf("en", "sv")
         // The server Settings starts with (issue #67): the public tung-server. A self-hoster's
         // fork changes this one line; anyone can still pick another server in Settings.
+        // Core's DEFAULT_SERVER_URL is the same server for the web and the iPhone: keep them equal.
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://tung.xuper.fun\"")
     }
 

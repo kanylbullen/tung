@@ -1,6 +1,6 @@
 @file:OptIn(kotlin.time.ExperimentalTime::class)
 
-package io.github.kanylbullen.tung.ui
+package io.github.kanylbullen.tung.data
 
 import io.github.kanylbullen.tung.ai.AiClient
 import io.github.kanylbullen.tung.ai.AiService
@@ -13,22 +13,6 @@ import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.ai.aiCatalogue
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.importing.ImportAliases
-import io.github.kanylbullen.tung.data.AppCommandHandler
-import io.github.kanylbullen.tung.data.AppExerciseResolver
-import io.github.kanylbullen.tung.data.CatalogueDetails
-import io.github.kanylbullen.tung.data.CatalogueMuscles
-import io.github.kanylbullen.tung.data.EquipmentSettings
-import io.github.kanylbullen.tung.data.ExerciseRepository
-import io.github.kanylbullen.tung.data.PastWorkoutSettings
-import io.github.kanylbullen.tung.data.ProgramRepository
-import io.github.kanylbullen.tung.data.ProgressSettings
-import io.github.kanylbullen.tung.data.RoutineRepository
-import io.github.kanylbullen.tung.data.TungDatabase
-import io.github.kanylbullen.tung.data.TungServices
-import io.github.kanylbullen.tung.data.WorkoutRepository
-import io.github.kanylbullen.tung.data.build
-import io.github.kanylbullen.tung.data.iosAppDirectory
-import io.github.kanylbullen.tung.data.iosSettingsDataStore
 import io.github.kanylbullen.tung.importing.ImportHistory
 import io.github.kanylbullen.tung.importing.ImportService
 import io.github.kanylbullen.tung.importing.Importer
@@ -43,33 +27,36 @@ import io.github.kanylbullen.tung.sync.SyncStore
 import io.github.kanylbullen.tung.sync.syncHttpClient
 import io.github.kanylbullen.tung.timer.IosRestTimer
 import io.github.kanylbullen.tung.timer.RestTimerStore
-import io.github.kanylbullen.tung.ui.resources.Res
-import io.github.kanylbullen.tung.ui.resources.rest_notification_text
-import io.github.kanylbullen.tung.ui.resources.rest_notification_title
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
-import org.jetbrains.compose.resources.ExperimentalResourceApi
-import org.jetbrains.compose.resources.getString
-import platform.Foundation.NSLocale
-import platform.Foundation.preferredLanguages
 import kotlin.time.Clock
 
 /**
- * The iPhone's container, the counterpart of the phone's `TungContainer`:
- * the database and the settings in the app's Application Support directory,
- * the session token and the assistant's key in the Keychain, the rest timer
- * over local notifications, sync while the app runs, and the catalogue from
- * the app's resources (`files/catalog/…`, copied from the repository's
- * `catalog/` at build time). Workouts it starts are `phone`'s: an iPhone is a
- * phone, and a server that does not know a new `started_by` value refuses
- * the sync. No push and no health store yet.
+ * The iPhone's container, the counterpart of the phone's `TungContainer` and
+ * in the same layer: the database and the settings in the app's Application
+ * Support directory, the session token and the assistant's key in the
+ * Keychain, the rest timer over local notifications, sync while the app runs.
+ * Workouts it starts are `phone`'s: an iPhone is a phone, and a server that
+ * does not know a new `started_by` value refuses the sync. No push and no
+ * health store yet.
+ *
+ * What lives in the app bundle comes in as functions, so this module never
+ * reaches into `ui`: [readCatalogue] reads a catalogue file by its path under
+ * `catalog/` (`core.json`, `extended.json`, `aliases/<source>.json`; ui ships
+ * them as iOS-only Compose Resources), and [restOverTitle] and [restOverText]
+ * are the "Rest over" notification's text in the app's language.
  */
-class IosContainer : TungServices {
+class IosContainer(
+    private val readCatalogue: suspend (path: String) -> String,
+    private val restOverTitle: suspend () -> String,
+    private val restOverText: suspend () -> String,
+) : TungServices {
 
     /** For work that outlives a screen (sync); never cancelled, like the process. */
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -86,13 +73,30 @@ class IosContainer : TungServices {
     override val routineRepository: RoutineRepository by lazy { RoutineRepository(database) }
     override val programRepository: ProgramRepository by lazy { ProgramRepository(database) }
     override val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database) }
-    override val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog({ readCatalogue("extended.json") }) }
+    override val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog({ readBlocking("extended.json") }) }
 
-    /** `core.json`, read the first time a name is resolved or the muscles are needed. */
-    val coreCatalog: List<CoreExercise> by lazy { CoreCatalog.parse(readCatalogue("core.json")) }
+    /**
+     * `core.json`, read the first time a name is resolved or the muscles are
+     * needed. Warmed on a background thread when the container is made (see
+     * `init`), so the first exercise name on screen does not wait for the file.
+     */
+    private val coreCatalog: List<CoreExercise> by lazy { CoreCatalog.parse(readBlocking("core.json")) }
 
     private val catalogueNames: Map<String, List<String>> by lazy {
         coreCatalog.associate { it.key to it.name.values.toList() }
+    }
+
+    /** Each catalogue key's name by language (`core.json`'s `name`). */
+    private val namesByKey: Map<String, Map<String, String>> by lazy { coreCatalog.associate { it.key to it.name } }
+
+    init {
+        appScope.launch { coreCatalog }
+    }
+
+    /** The catalogue exercise [key] in the app's language ([iosAppLanguage]), else English; null for a key not in `core.json`. */
+    fun catalogueName(key: String): String? {
+        val names = namesByKey[key] ?: return null
+        return names[iosAppLanguage()] ?: names["en"]
     }
 
     private val exerciseResolver: AppExerciseResolver by lazy {
@@ -104,7 +108,7 @@ class IosContainer : TungServices {
             importer = Importer(database, workoutRepository, exerciseRepository, routineRepository, extendedCatalog),
             resolver = exerciseResolver,
             aliases = { source ->
-                runCatching { ImportAliases.parse(readResource("aliases/$source.json")) }.getOrDefault(ImportAliases.EMPTY)
+                runCatching { ImportAliases.parse(readCatalogue("aliases/$source.json")) }.getOrDefault(ImportAliases.EMPTY)
             },
             zone = ::zone,
             history = ImportHistory(settings),
@@ -126,8 +130,8 @@ class IosContainer : TungServices {
     override val restTimer: RestTimerStore by lazy {
         IosRestTimer(
             settings,
-            title = { getString(Res.string.rest_notification_title) },
-            body = { getString(Res.string.rest_notification_text) },
+            title = restOverTitle,
+            body = restOverText,
         )
     }
     override val equipmentSettings: EquipmentSettings by lazy { EquipmentSettings(settings) }
@@ -142,7 +146,7 @@ class IosContainer : TungServices {
         SyncClient(
             syncStore, syncSettings, tokenStore, syncHttpClient(),
             onSignedOut = { syncAccount.signedOutByServer() },
-            language = { if (NSLocale.preferredLanguages.firstOrNull()?.toString()?.startsWith("sv") == true) "sv" else "en" },
+            language = ::iosAppLanguage,
         )
     }
     override val syncAccount: SyncAccount by lazy {
@@ -184,15 +188,11 @@ class IosContainer : TungServices {
         /** The Keychain service of the app's secrets: its bundle id. */
         const val KEYCHAIN_SERVICE = "io.github.kanylbullen.tung"
     }
+
+    /**
+     * A catalogue file for the lazy loaders that are not suspending (core's
+     * `ExtendedCatalog` reads on its own dispatcher, [coreCatalog] on the
+     * warm-up above); reading a bundled file is quick.
+     */
+    private fun readBlocking(path: String): String = runBlocking { readCatalogue(path) }
 }
-
-/** `files/catalog/<name>` from the app's resources, as UTF-8 text. */
-@OptIn(ExperimentalResourceApi::class)
-private suspend fun readResource(name: String): String = Res.readBytes("files/catalog/$name").decodeToString()
-
-/**
- * A catalogue file for the lazy loaders that are not suspending (core's
- * `ExtendedCatalog` reads on its own dispatcher, `coreCatalog` the first time
- * it is needed); reading a bundled file is quick.
- */
-private fun readCatalogue(name: String): String = runBlocking { readResource(name) }

@@ -25,6 +25,7 @@ import platform.Foundation.dataUsingEncoding
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
+import platform.Security.errSecItemNotFound
 import platform.Security.errSecSuccess
 import platform.Security.kSecAttrAccessible
 import platform.Security.kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
@@ -43,6 +44,10 @@ import platform.Security.kSecValueData
  * assistant's API key, as EncryptedSharedPreferences is the phone's. Readable
  * after the first unlock, and on this device only, so it is never in a backup
  * or on another iPhone (the phone keeps its token out of backups too).
+ *
+ * A write the Keychain refuses is logged with its `OSStatus`, so a lost token
+ * (a 401 at the next sync) can be traced to it. It does not throw: nothing on
+ * the sign-in path catches, and a crash is worse than a sign-in to repeat.
  */
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 class KeychainTokenStore(private val service: String, private val account: String) : TokenStore {
@@ -59,15 +64,18 @@ class KeychainTokenStore(private val service: String, private val account: Strin
 
     override fun write(token: String?) {
         val match = query()
-        SecItemDelete(match)
+        val deleted = SecItemDelete(match)
         CFRelease(match)
+        // Nothing to delete is fine; anything else means the old secret may still be there.
+        if (deleted != errSecSuccess && deleted != errSecItemNotFound) println("Tung Keychain: delete $account failed, OSStatus $deleted")
         if (token == null) return
         val data = (token as NSString).dataUsingEncoding(NSUTF8StringEncoding) ?: return
         val value = CFBridgingRetain(data)
         val item = query(kSecValueData to value, kSecAttrAccessible to kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
-        SecItemAdd(item, null)
+        val added = SecItemAdd(item, null)
         CFRelease(item)
         CFRelease(value)
+        if (added != errSecSuccess) println("Tung Keychain: add $account failed, OSStatus $added")
     }
 
     /** This item's class, service and account, plus [extra]; the caller releases it. */

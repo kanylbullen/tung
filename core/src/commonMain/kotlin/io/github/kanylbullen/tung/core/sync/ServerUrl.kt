@@ -1,5 +1,12 @@
 package io.github.kanylbullen.tung.core.sync
 
+/**
+ * The tung-server a client offers before the user names another: the web's and
+ * the iPhone's default. The phone's is its `BuildConfig.DEFAULT_SERVER_URL`
+ * (`app/build.gradle.kts`), one line a self-hoster's fork changes; keep the two equal.
+ */
+const val DEFAULT_SERVER_URL = "https://tung.xuper.fun"
+
 /** The result of checking a server address the user typed. */
 sealed interface ServerUrlCheck {
     /** Usable; [url] is normalised: scheme and host lower case, no trailing slash. */

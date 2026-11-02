@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.ui.common
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSCalendar
@@ -29,11 +30,17 @@ import platform.UIKit.UIApplication
 import platform.UIKit.UISelectionFeedbackGenerator
 
 /**
- * The stored English name for now: the iOS app has no `ex_*` names yet. They
- * come with the iOS shell, which needs them in Compose Resources.
+ * The catalogue's names on the iPhone: `MainViewController` provides the
+ * container's lookup (`core.json`'s name for a key in the app's language),
+ * the same one `IosPlatform.exerciseName` uses, so every screen names an
+ * exercise alike. Without a provider (previews) there is none.
  */
+val LocalCatalogueName = staticCompositionLocalOf<(key: String) -> String?> { { null } }
+
+/** A catalogue exercise in the app's language (from `core.json`, the iPhone has no `ex_*` resources), else the name it was given. */
 @Composable
-actual fun exerciseDisplayName(nameKey: String?, name: String): String = name
+actual fun exerciseDisplayName(nameKey: String?, name: String): String =
+    nameKey?.let(LocalCatalogueName.current) ?: name
 
 @Composable
 actual fun rememberTickHaptic(): () -> Unit {

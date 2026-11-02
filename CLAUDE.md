@@ -168,10 +168,14 @@ after first unlock, this device only), `IosRestTimer` (over common
 `StoredRestTimer`, which the phone's `RestTimerController` shares, with a local
 notification for "Rest over"), `IosSyncScheduler` (sync while the app runs),
 `NoPush` and `iosAppDirectory`/`iosSettingsDataStore` (Application Support).
-The iPhone's container is `IosContainer` in ui's `iosMain` (it reads the
-catalogue from ui's resources: `catalog/` copied as iOS-only Compose
-Resources by ui's `iosCatalogResources` task), with `IosPlatform`, and
-`MainViewController` shows `TungNavRoot` over them. Workouts it starts are
+The iPhone's container is `IosContainer` here in `iosMain`, beside
+`TungContainer`'s layer; what lives in the app bundle comes in as functions
+(the catalogue files, which ui ships as iOS-only Compose Resources copied
+from `catalog/` by its `iosCatalogResources` task, and the "Rest over" text),
+and `iosAppLanguage()` is the one answer to which language the app speaks.
+ui's `MainViewController` builds it and shows `TungNavRoot` over it and
+`IosPlatform`, with the catalogue's names for every screen
+(`LocalCatalogueName`, read by iOS's `exerciseDisplayName`). Workouts it starts are
 `phone`'s, so no server change is needed. A Keychain call from a Kotlin test
 process on the simulator answers `errSecNotAvailable` (no app, no keychain),
 so the Keychain is checked in the app, not in `iosTest`. The
@@ -194,11 +198,11 @@ the files had in `app/`:
 | Package (`data/src/commonMain/kotlin/io/github/kanylbullen/tung/…`, Android-only parts in `androidMain`) | Contents |
 |---|---|
 | `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `ProgressSettings` (the compact trends' metric and span), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
-| `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
-| `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
+| `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync".  iOS: `KeychainTokenStore`, `IosSyncScheduler` (sync while the app runs).|
+| `timer/` | `RestTimerStore` and common `StoredRestTimer` (the timer kept in the `settings` DataStore); Android: `RestTimerController` (stored timer + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification); iOS: `IosRestTimer` (stored timer + a local notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
 | `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories, and `chipText`, the Live Update chip's text), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set and Add set). See "Ongoing workout and push". |
-| `push/` | Push: `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`. See "Ongoing workout and push". |
+| `push/` | Push: `PushControl` and `PushStatus` (common), `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`; iOS: `NoPush` until APNs. See "Ongoing workout and push". |
 | `importing/` | Import from other apps: `Importer` (the one bulk write), `ImportService` (`container.imports`), `ImportHistory`. See "Import". |
 | `ui/common/` | `ExerciseNames` and `Exercise.displayName(context)`; the composable `exerciseDisplayName` stays in `app/`. |
 
