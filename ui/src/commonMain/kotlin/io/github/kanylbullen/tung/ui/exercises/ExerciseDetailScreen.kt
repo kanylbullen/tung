@@ -43,27 +43,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.intl.Locale
+import org.jetbrains.compose.resources.getString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.catalog.ExercisePageRef
 import io.github.kanylbullen.tung.data.RoutineSummaryRow
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.Stat
 import io.github.kanylbullen.tung.ui.common.StatRow
-import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.common.displayName
 import io.github.kanylbullen.tung.ui.common.equipmentLabel
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.lastUsedText
 import io.github.kanylbullen.tung.ui.common.localDate
 import io.github.kanylbullen.tung.ui.common.localWeight
@@ -78,36 +72,24 @@ import kotlinx.coroutines.launch
  * the route's `{ref}` (`core.catalog.ExercisePageRef.route`). After "Add to
  * workout" the page calls [onOpenWorkout] with the workout in progress;
  * "Progress" under the history calls [onOpenProgress] with the exercise's id.
+ * [now] is the clock the routine sheet's "Last: 3 days ago" counts from.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExerciseDetailScreen(
+    vm: ExerciseDetailViewModel,
     ref: ExercisePageRef,
+    now: () -> Long,
     onBack: () -> Unit,
     onOpenWorkout: (String) -> Unit,
     onOpenProgress: (String) -> Unit = {},
 ) {
-    val container = appContainer()
-    val appContext = LocalContext.current.applicationContext
-    val vm: ExerciseDetailViewModel = viewModel(
-        factory = factoryOf {
-            ExerciseDetailViewModel(
-                ref,
-                container.exerciseRepository,
-                container.workoutRepository,
-                container.routineRepository,
-                container.catalogueDetails,
-                container.commands,
-            ) { it.displayName(appContext) }
-        }
-    )
-    val locale = LocalConfiguration.current.locales[0]
+    val locale = Locale.current.toLanguageTag()
     LaunchedEffect(locale) { vm.setLocale(locale) }
     val state by vm.state.collectAsStateWithLifecycle()
     var choosingRoutine by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -133,7 +115,7 @@ fun ExerciseDetailScreen(
     ) { padding ->
         LazyColumn(contentPadding = padding, modifier = Modifier.fillMaxSize().testTag(EXERCISE_PAGE_TAG)) {
             if (!state.loading && !state.found) {
-                item(key = "not-found") { Muted(stringResource(R.string.exercise_not_found)) }
+                item(key = "not-found") { Muted(stringResource(Res.string.exercise_not_found)) }
                 return@LazyColumn
             }
             if (state.loading) return@LazyColumn
@@ -141,7 +123,7 @@ fun ExerciseDetailScreen(
                 val kind = listOfNotNull(
                     state.equipment?.let { equipmentLabel(it) },
                     state.muscleGroup?.let { muscleGroupLabel(it) },
-                    if (state.isCustom) stringResource(R.string.exercises_custom) else null,
+                    if (state.isCustom) stringResource(Res.string.exercises_custom) else null,
                 ).joinToString(stringResource(Res.string.row_separator))
                 Muted(kind)
             }
@@ -161,42 +143,42 @@ fun ExerciseDetailScreen(
                 ) {
                     if (state.workoutInProgress != null) {
                         PrimaryButton(
-                            text = stringResource(R.string.exercise_add_to_workout),
+                            text = stringResource(Res.string.exercise_add_to_workout),
                             onClick = { vm.addToWorkout(onOpenWorkout) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
                     SecondaryButton(
-                        text = stringResource(R.string.exercise_add_to_routine),
+                        text = stringResource(Res.string.exercise_add_to_routine),
                         onClick = { choosingRoutine = true },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
             if (state.inLibrary) {
-                item(key = "history") { Heading(stringResource(R.string.exercise_history)) }
+                item(key = "history") { Heading(stringResource(Res.string.exercise_history)) }
                 val history = state.history
                 if (history.isEmpty) {
-                    item(key = "not-logged") { Muted(stringResource(R.string.exercise_not_logged)) }
+                    item(key = "not-logged") { Muted(stringResource(Res.string.exercise_not_logged)) }
                 } else {
                     item(key = "stats") {
                         StatRow {
                             history.best?.let { best ->
                                 Stat(
                                     stringResource(Res.string.exercise_set_value, localWeight(best.weightKg), best.reps),
-                                    stringResource(R.string.exercise_best_set),
+                                    stringResource(Res.string.exercise_best_set),
                                     Modifier.weight(1f),
                                 )
                             }
                             Stat(
                                 history.sessions.toString(),
-                                pluralStringResource(R.plurals.exercise_sessions, history.sessions),
+                                pluralStringResource(Res.plurals.exercise_sessions, history.sessions),
                                 Modifier.weight(1f),
                             )
                         }
                     }
                     history.lastSessionAt?.let { at ->
-                        item(key = "last-time") { Muted(stringResource(R.string.exercise_last_time, localDate(at))) }
+                        item(key = "last-time") { Muted(stringResource(Res.string.exercise_last_time, localDate(at))) }
                     }
                     itemsIndexed(history.lastSession, key = { i, _ -> "last-$i" }) { i, set ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
@@ -219,7 +201,7 @@ fun ExerciseDetailScreen(
                             is ExercisePageRef.Extended -> ref.exerciseId
                         }
                         SecondaryButton(
-                            text = stringResource(R.string.exercise_progress),
+                            text = stringResource(Res.string.exercise_progress),
                             onClick = { onOpenProgress(exerciseId) },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
                         )
@@ -227,7 +209,7 @@ fun ExerciseDetailScreen(
                 }
             }
             if (state.instructions.isNotEmpty()) {
-                item(key = "instructions") { Heading(stringResource(R.string.exercise_instructions)) }
+                item(key = "instructions") { Heading(stringResource(Res.string.exercise_instructions)) }
                 itemsIndexed(state.instructions, key = { i, _ -> "step-$i" }) { i, step ->
                     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
                         Text(
@@ -247,14 +229,14 @@ fun ExerciseDetailScreen(
     if (choosingRoutine) {
         RoutineChoiceSheet(
             routines = state.routines,
-            now = container.clock.millis(),
+            now = now(),
             onDismiss = { choosingRoutine = false },
             onPick = { routine ->
                 choosingRoutine = false
                 vm.addToRoutine(routine.id) { added ->
                     if (added) {
                         scope.launch {
-                            snackbar.showSnackbar(context.getString(R.string.exercise_added_to_routine, routine.name))
+                            snackbar.showSnackbar(getString(Res.string.exercise_added_to_routine, routine.name))
                         }
                     }
                 }
@@ -307,14 +289,14 @@ private fun RoutineChoiceSheet(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp).verticalScroll(rememberScrollState()),
         ) {
             Text(
-                stringResource(R.string.exercise_choose_routine),
+                stringResource(Res.string.exercise_choose_routine),
                 style = MaterialTheme.typography.titleMedium,
                 color = Tung.colors.muted,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             if (routines.isEmpty()) {
                 Text(
-                    stringResource(R.string.exercise_no_routines),
+                    stringResource(Res.string.exercise_no_routines),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Tung.colors.muted,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),

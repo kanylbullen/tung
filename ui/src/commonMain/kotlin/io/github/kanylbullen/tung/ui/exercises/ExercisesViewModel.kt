@@ -14,7 +14,6 @@ import io.github.kanylbullen.tung.core.catalog.LibraryExercise
 import io.github.kanylbullen.tung.core.catalog.browse
 import io.github.kanylbullen.tung.core.catalog.browseGroups
 import io.github.kanylbullen.tung.core.catalog.browseItems
-import io.github.kanylbullen.tung.core.catalog.browseNameOrder
 import io.github.kanylbullen.tung.core.catalog.filterByEquipment
 import io.github.kanylbullen.tung.core.catalog.passes
 import io.github.kanylbullen.tung.core.command.Command
@@ -34,6 +33,8 @@ import io.github.kanylbullen.tung.data.Exercise
 import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.WorkoutRepository
+import io.github.kanylbullen.tung.ui.common.nameOrder
+import androidx.compose.ui.text.intl.Locale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -50,8 +51,6 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
-import java.text.Collator
-import java.util.Locale
 
 /**
  * What the picker adds to: the workout in progress ([Workout], `add_exercise`)
@@ -150,10 +149,13 @@ class ExercisesViewModel(
     /** Tab only: the group chip that is on; null is "All". */
     private val group = MutableStateFlow<MuscleGroup?>(null)
 
-    /** The view model outlives a language change; the screen reports the current locale so names are redone. */
-    private val locale = MutableStateFlow(Locale.getDefault())
+    /** The view model outlives a language change; the screen reports the current language tag so names are redone. */
+    private val locale = MutableStateFlow(Locale.current.toLanguageTag())
 
     val isPicker: Boolean get() = target != null
+
+    /** Choosing for the import's review ([PickerTarget.Choose]): a tap hands the exercise back. */
+    val isChoosing: Boolean get() = target == PickerTarget.Choose
 
     /** "My equipment"; everything for [PickerTarget.Choose], which is not narrowed. */
     private val available: Flow<Set<Equipment>> =
@@ -233,7 +235,7 @@ class ExercisesViewModel(
 
     private val lists: Flow<ExercisesUiState> =
         combine(exercises.observeExercises(), _query, locale, extended, equipmentAndTarget) { all, q, loc, ext, (have, ids) ->
-            val collator = Collator.getInstance(loc).apply { strength = Collator.SECONDARY }
+            val order = nameOrder(loc)
             val shown = filterByEquipment(all, have, ids, { it.id }, { Equipment.fromKey(it.equipment) })
             val byGroup = filterByDisplayName(shown.map { it to displayName(it) }, q)
                 .map { (exercise, name) -> NamedExercise(exercise, name) }
@@ -242,11 +244,11 @@ class ExercisesViewModel(
             ExercisesUiState(
                 loading = false,
                 groups = MuscleGroup.entries.mapNotNull { group ->
-                    byGroup[group]?.let { list -> ExerciseGroup(group, list.sortedWith(compareBy(collator) { it.displayName })) }
+                    byGroup[group]?.let { list -> ExerciseGroup(group, list.sortedWith(compareBy(order) { it.displayName })) }
                 },
                 more = ExtendedCatalog.search(ext, existingIds, q)
                     .filter { passes(it.equipment, have) }
-                    .sortedWith(compareBy(collator) { it.displayName }),
+                    .sortedWith(compareBy(order) { it.displayName }),
                 equipment = have,
             )
         }
@@ -270,7 +272,7 @@ class ExercisesViewModel(
         combine(browseRows, _query, group, locale, available) { items, q, g, loc, have ->
             ExercisesUiState(
                 loading = false,
-                browse = browse(items, g, q, browseNameOrder(loc), have),
+                browse = browse(items, g, q, nameOrder(loc), have),
                 chips = browseGroups(items, have),
                 selectedGroup = g,
                 equipment = have,
@@ -302,7 +304,7 @@ class ExercisesViewModel(
         _query.value = value
     }
 
-    fun setLocale(value: Locale) {
+    fun setLocale(value: String) {
         locale.value = value
     }
 

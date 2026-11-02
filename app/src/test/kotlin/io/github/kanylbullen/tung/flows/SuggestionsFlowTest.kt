@@ -32,7 +32,7 @@ class SuggestionsFlowTest : FlowTest() {
 
     /** Waits for the section to have [count] rows and returns them. */
     private fun waitForSuggestions(count: Int = 6): List<Row> {
-        waitFor(hasText(str(R.string.picker_suggested)), timeoutMillis = 10_000)
+        waitFor(hasText(str(Res.string.picker_suggested)), timeoutMillis = 10_000)
         waitUntil(10_000) { suggestionRows().size >= count }
         return suggestionRows()
     }
@@ -77,7 +77,7 @@ class SuggestionsFlowTest : FlowTest() {
         assertEquals(6, rows.size)
         assertEquals(rows.toString(), Muscle.TRICEPS, mainMuscleOf(rows.first().name))
         assertTrue(rows.toString(), rows.take(3).none { mainMuscleOf(it.name) == Muscle.BICEPS })
-        assertEquals(str(R.string.picker_reason_pairs_with, str(Res.string.muscle_name_biceps)), rows.first().reason)
+        assertEquals(str(Res.string.picker_reason_pairs_with, str(Res.string.muscle_name_biceps)), rows.first().reason)
 
         val first = rows.first().name
         compose.onAllNodes(hasTestTag(SUGGESTION_TAG))[0].performClick()
@@ -106,7 +106,7 @@ class SuggestionsFlowTest : FlowTest() {
         val rows = waitForSuggestions()
         screenshot("1-learned")
         assertEquals(rows.toString(), str(R.string.ex_hammer_curl), rows.first().name)
-        assertEquals(str(R.string.picker_reason_often_after, str(R.string.ex_barbell_curl)), rows.first().reason)
+        assertEquals(str(Res.string.picker_reason_often_after, str(R.string.ex_barbell_curl)), rows.first().reason)
     }
 
     /** Typing hides the section, and search still finds everything. */
@@ -118,14 +118,14 @@ class SuggestionsFlowTest : FlowTest() {
         waitForSuggestions()
 
         searchPicker("bench")
-        waitGone(hasText(str(R.string.picker_suggested)))
+        waitGone(hasText(str(Res.string.picker_suggested)))
         assertTrue(suggestionRows().isEmpty())
         waitForText(str(R.string.ex_bench_press))
         screenshot("1-search")
 
         // Clearing the search brings the section back.
         searchPicker("")
-        waitFor(hasText(str(R.string.picker_suggested)))
+        waitFor(hasText(str(Res.string.picker_suggested)))
     }
 
     /** A workout without exercises gets no section. */
@@ -134,6 +134,6 @@ class SuggestionsFlowTest : FlowTest() {
         startWorkoutFromHome()
         clickText(str(Res.string.workout_add_exercise))
         waitForText(str(R.string.ex_bench_press))
-        assertTrue(compose.onAllNodes(hasText(str(R.string.picker_suggested))).fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodes(hasText(str(Res.string.picker_suggested))).fetchSemanticsNodes().isEmpty())
     }
 }

@@ -70,7 +70,7 @@ fun EquipmentSection() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            stringResource(R.string.my_equipment_title),
+            stringResource(Res.string.my_equipment_title),
             style = MaterialTheme.typography.titleMedium,
             color = Tung.colors.text,
             modifier = Modifier.weight(1f).padding(end = 16.dp),
@@ -85,7 +85,7 @@ fun EquipmentSection() {
 /** "Everything"; the names when three or fewer are ticked ("Bodyweight"); otherwise "5 of 11". */
 @Composable
 private fun equipmentSummary(available: Set<Equipment>): String = when {
-    !EquipmentFilter.isNarrowed(available) -> stringResource(R.string.my_equipment_everything)
+    !EquipmentFilter.isNarrowed(available) -> stringResource(Res.string.my_equipment_everything)
     available.size <= 3 -> Equipment.entries.filter { it in available }.map { equipmentLabel(it) }
         .joinToString(stringResource(Res.string.row_separator))
     else -> stringResource(R.string.my_equipment_some, available.size, Equipment.entries.size)

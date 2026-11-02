@@ -222,10 +222,10 @@ class ProgressFlowTest : FlowTest() {
         compose.onNode(hasSetTextAction()).performTextReplacement("bench")
         clickText(benchPress)
         waitFor(hasTestTag(EXERCISE_PAGE_TAG))
-        waitForText(str(R.string.exercise_add_to_routine))
+        waitForText(str(Res.string.exercise_add_to_routine))
         val page = compose.onNode(hasTestTag(EXERCISE_PAGE_TAG))
-        page.performScrollToNode(hasText(str(R.string.exercise_progress)))
-        clickText(str(R.string.exercise_progress))
+        page.performScrollToNode(hasText(str(Res.string.exercise_progress)))
+        clickText(str(Res.string.exercise_progress))
         waitFor(hasTestTag(EXERCISE_PROGRESS_TAG))
 
         assertShown(hasContentDescription(summary(Res.string.progress_metric_e1rm_long, Res.string.progress_range_3m_long, "98", "112")))

@@ -3,7 +3,14 @@ package io.github.kanylbullen.tung.ui.common
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSCalendar
+import platform.Foundation.NSCaseInsensitiveSearch
+import platform.Foundation.NSMakeRange
+import platform.Foundation.NSString
+import platform.Foundation.compare
+import platform.Foundation.create
 import platform.Foundation.NSCalendarUnitYear
 import platform.Foundation.NSDate
 import platform.Foundation.NSDateComponents
@@ -117,3 +124,10 @@ actual fun skeletonDate(date: LocalDate, skeleton: String): String {
 
 private val skeletonFormats = mutableMapOf<String, NSDateFormatter>()
 
+@OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
+actual fun nameOrder(languageTag: String): Comparator<String> {
+    val locale = NSLocale(localeIdentifier = languageTag)
+    return Comparator { a, b ->
+        NSString.create(string = a).compare(b, options = NSCaseInsensitiveSearch, range = NSMakeRange(0u, a.length.toULong()), locale = locale).toInt()
+    }
+}

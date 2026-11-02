@@ -48,18 +48,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.command.ExerciseRef
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedExercise
@@ -67,10 +63,7 @@ import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.catalog.BrowseItem
 import io.github.kanylbullen.tung.core.picker.SuggestionReason
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
-import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.common.displayName
 import io.github.kanylbullen.tung.ui.common.equipmentLabel
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.muscleGroupLabel
 import io.github.kanylbullen.tung.ui.common.muscleLabel
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
@@ -78,7 +71,7 @@ import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 /**
- * The exercise catalogue. With a [target] it is the picker: tapping an
+ * The exercise catalogue. With a picker target ([ExercisesViewModel]'s) it is the picker: tapping an
  * exercise adds it to that workout or routine and calls [onPicked]. Without
  * one it is the Exercises tab: the whole catalogue by muscle group, with a
  * chip per group, and a row opens the exercise page ([onOpenExercise], with
@@ -88,34 +81,15 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisesScreen(
-    target: PickerTarget?,
+    vm: ExercisesViewModel,
     onBack: (() -> Unit)?,
     onPicked: () -> Unit,
     onOpenExercise: (String) -> Unit = {},
     /** With [PickerTarget.Choose]: the exercise tapped, which this screen does not add anywhere. */
     onChosen: (ExerciseRef) -> Unit = {},
 ) {
-    val choosing = target == PickerTarget.Choose
-    val container = appContainer()
-    val appContext = LocalContext.current.applicationContext
-    val vm: ExercisesViewModel = viewModel(
-        factory = factoryOf {
-            ExercisesViewModel(
-                container.exerciseRepository,
-                container.commands,
-                container.extendedCatalog,
-                target,
-                container.workoutRepository,
-                container.catalogueMuscles,
-                now = { container.clock.millis() },
-                equipmentSettings = container.equipmentSettings,
-                routines = container.routineRepository,
-            ) {
-                it.displayName(appContext)
-            }
-        }
-    )
-    val locale = LocalConfiguration.current.locales[0]
+    val choosing = vm.isChoosing
+    val locale = Locale.current.toLanguageTag()
     LaunchedEffect(locale) { vm.setLocale(locale) }
     val state by vm.state.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
@@ -135,9 +109,9 @@ fun ExercisesScreen(
                     Text(
                         stringResource(
                             when {
-                                choosing -> R.string.import_pick_title
-                                vm.isPicker -> R.string.picker_title
-                                else -> R.string.exercises_title
+                                choosing -> Res.string.import_pick_title
+                                vm.isPicker -> Res.string.picker_title
+                                else -> Res.string.exercises_title
                             },
                         ),
                     )
@@ -174,7 +148,7 @@ fun ExercisesScreen(
             }
             if (state.suggested.isNotEmpty()) {
                 item(key = "suggested") {
-                    SectionHeader(stringResource(R.string.picker_suggested))
+                    SectionHeader(stringResource(Res.string.picker_suggested))
                 }
                 // Keys of their own: the same exercise is also in its group below.
                 items(state.suggested, key = { "suggested-${it.exercise.exercise.id}" }) { suggestion ->
@@ -184,7 +158,7 @@ fun ExercisesScreen(
             if (!state.loading && state.isEmpty) {
                 item(key = "no-match") {
                     Text(
-                        stringResource(R.string.exercises_no_match),
+                        stringResource(Res.string.exercises_no_match),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Tung.colors.muted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -216,7 +190,7 @@ fun ExercisesScreen(
             }
             if (state.more.isNotEmpty()) {
                 item(key = "more") {
-                    SectionHeader(stringResource(R.string.picker_more))
+                    SectionHeader(stringResource(Res.string.picker_more))
                 }
                 items(state.more, key = { "ext-${it.id}" }) { entry ->
                     ExtendedRow(
@@ -229,7 +203,7 @@ fun ExercisesScreen(
             if (!choosing) {
                 item(key = "create") {
                     Box(Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-                        SecondaryButton(text = stringResource(R.string.exercises_create), onClick = { creating = true })
+                        SecondaryButton(text = stringResource(Res.string.exercises_create), onClick = { creating = true })
                     }
                 }
             }
@@ -260,12 +234,12 @@ private fun SearchField(query: String, onChange: (String) -> Unit) {
         value = query,
         onValueChange = onChange,
         singleLine = true,
-        placeholder = { Text(stringResource(R.string.exercises_search)) },
+        placeholder = { Text(stringResource(Res.string.exercises_search)) },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onChange("") }) {
-                    Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.exercises_clear_search))
+                    Icon(Icons.Filled.Clear, contentDescription = stringResource(Res.string.exercises_clear_search))
                 }
             }
         },
@@ -290,7 +264,7 @@ private fun SectionHeader(text: String) {
 private fun ExerciseRow(exercise: NamedExercise, onClick: (() -> Unit)?) {
     val detail = buildList {
         add(equipmentLabel(Equipment.fromKey(exercise.exercise.equipment)))
-        if (exercise.exercise.isCustom) add(stringResource(R.string.exercises_custom))
+        if (exercise.exercise.isCustom) add(stringResource(Res.string.exercises_custom))
     }.joinToString(stringResource(Res.string.row_separator))
     NameRow(exercise.displayName, detail, onClick)
 }
@@ -304,7 +278,7 @@ private fun GroupChips(groups: List<MuscleGroup>, selected: MuscleGroup?, onSele
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
     ) {
         item(key = "all") {
-            Choice(stringResource(R.string.exercises_all), selected = selected == null, Modifier.testTag(groupChipTag(null))) {
+            Choice(stringResource(Res.string.exercises_all), selected = selected == null, Modifier.testTag(groupChipTag(null))) {
                 onSelect(null)
             }
         }
@@ -327,7 +301,7 @@ fun groupChipTag(group: MuscleGroup?): String = "exercises-chip-${group?.key ?: 
 private fun BrowseRow(item: BrowseItem, onClick: () -> Unit) {
     val detail = buildList {
         add(equipmentLabel(item.equipment))
-        if (item.isCustom) add(stringResource(R.string.exercises_custom))
+        if (item.isCustom) add(stringResource(Res.string.exercises_custom))
     }.joinToString(stringResource(Res.string.row_separator))
     NameRow(item.name, detail, onClick)
 }
@@ -336,11 +310,11 @@ private fun BrowseRow(item: BrowseItem, onClick: () -> Unit) {
 @Composable
 private fun SuggestionRow(suggestion: SuggestedExercise, onClick: () -> Unit) {
     val reason = when (val r = suggestion.reason) {
-        is SuggestionReason.OftenAfter -> suggestion.afterName?.let { stringResource(R.string.picker_reason_often_after, it) }
-            ?: stringResource(R.string.picker_reason_often_together)
-        SuggestionReason.OftenTogether -> stringResource(R.string.picker_reason_often_together)
-        is SuggestionReason.PairsWith -> stringResource(R.string.picker_reason_pairs_with, muscleLabel(r.muscle))
-        SuggestionReason.NotYetToday -> stringResource(R.string.picker_reason_not_yet_today)
+        is SuggestionReason.OftenAfter -> suggestion.afterName?.let { stringResource(Res.string.picker_reason_often_after, it) }
+            ?: stringResource(Res.string.picker_reason_often_together)
+        SuggestionReason.OftenTogether -> stringResource(Res.string.picker_reason_often_together)
+        is SuggestionReason.PairsWith -> stringResource(Res.string.picker_reason_pairs_with, muscleLabel(r.muscle))
+        SuggestionReason.NotYetToday -> stringResource(Res.string.picker_reason_not_yet_today)
     }
     Column(
         modifier = Modifier
@@ -404,17 +378,17 @@ private fun CreateExerciseDialog(
         onDismissRequest = onDismiss,
         containerColor = Tung.colors.raised,
         tonalElevation = 0.dp,
-        title = { Text(stringResource(R.string.create_title)) },
+        title = { Text(stringResource(Res.string.create_title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it; showError = false },
-                    label = { Text(stringResource(R.string.create_name)) },
+                    label = { Text(stringResource(Res.string.create_name)) },
                     singleLine = true,
                     isError = showError,
                     supportingText = if (showError) {
-                        { Text(stringResource(R.string.create_error_name)) }
+                        { Text(stringResource(Res.string.create_error_name)) }
                     } else {
                         null
                     },
@@ -424,14 +398,14 @@ private fun CreateExerciseDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(16.dp))
-                Text(stringResource(R.string.create_muscle), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(Res.string.create_muscle), style = MaterialTheme.typography.titleSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MuscleGroup.entries.forEach { group ->
                         Choice(muscleGroupLabel(group), selected = group == muscle) { muscle = group }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Text(stringResource(R.string.create_equipment), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(Res.string.create_equipment), style = MaterialTheme.typography.titleSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Equipment.entries.forEach { item ->
                         Choice(equipmentLabel(item), selected = item == equipment) { equipment = item }
@@ -443,7 +417,7 @@ private fun CreateExerciseDialog(
             TextButton(onClick = {
                 if (name.isBlank()) showError = true else onSave(name, muscle, equipment)
             }) {
-                Text(stringResource(R.string.create_save), color = Tung.colors.accentText)
+                Text(stringResource(Res.string.create_save), color = Tung.colors.accentText)
             }
         },
         dismissButton = {
@@ -454,8 +428,9 @@ private fun CreateExerciseDialog(
     )
 }
 
+/** A Tung filter chip: chalk when on. The tab's group chips, the create dialog and the import's bulk choices use it. */
 @Composable
-internal fun Choice(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun Choice(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     FilterChip(
         selected = selected,
         onClick = onClick,

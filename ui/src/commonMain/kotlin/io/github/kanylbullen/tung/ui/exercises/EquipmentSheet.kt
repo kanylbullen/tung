@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.exercises
 
+import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -29,10 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.catalog.EquipmentFilter
 import io.github.kanylbullen.tung.ui.common.equipmentLabel
@@ -43,9 +43,9 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 @Composable
 fun equipmentChipLabel(available: Set<Equipment>): String =
     if (EquipmentFilter.isNarrowed(available)) {
-        stringResource(R.string.my_equipment_chip_count, available.size)
+        stringResource(Res.string.my_equipment_chip_count, available.size)
     } else {
-        stringResource(R.string.my_equipment_chip_all)
+        stringResource(Res.string.my_equipment_chip_all)
     }
 
 /**
@@ -108,13 +108,13 @@ fun EquipmentSheet(available: Set<Equipment>, onChange: (Set<Equipment>) -> Unit
                 .testTag(EQUIPMENT_SHEET_TAG),
         ) {
             Text(
-                stringResource(R.string.my_equipment_title),
+                stringResource(Res.string.my_equipment_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = Tung.colors.text,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )
             Text(
-                stringResource(R.string.my_equipment_intro),
+                stringResource(Res.string.my_equipment_intro),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Tung.colors.muted,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
@@ -124,12 +124,12 @@ fun EquipmentSheet(available: Set<Equipment>, onChange: (Set<Equipment>) -> Unit
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             ) {
                 Choice(
-                    stringResource(R.string.my_equipment_everything),
+                    stringResource(Res.string.my_equipment_everything),
                     selected = !EquipmentFilter.isNarrowed(available),
                     Modifier.testTag(EQUIPMENT_EVERYTHING_TAG),
                 ) { onChange(EquipmentFilter.ALL) }
                 Choice(
-                    stringResource(R.string.my_equipment_bodyweight_only),
+                    stringResource(Res.string.my_equipment_bodyweight_only),
                     selected = available == EquipmentFilter.BODYWEIGHT_ONLY,
                     Modifier.testTag(EQUIPMENT_BODYWEIGHT_ONLY_TAG),
                 ) { onChange(EquipmentFilter.BODYWEIGHT_ONLY) }
@@ -166,7 +166,7 @@ fun EquipmentSheet(available: Set<Equipment>, onChange: (Set<Equipment>) -> Unit
                 }
             }
             TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End).padding(horizontal = 12.dp)) {
-                Text(stringResource(R.string.my_equipment_done), color = Tung.colors.accentText)
+                Text(stringResource(Res.string.my_equipment_done), color = Tung.colors.accentText)
             }
         }
     }

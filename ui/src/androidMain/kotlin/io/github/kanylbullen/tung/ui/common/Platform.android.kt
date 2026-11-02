@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import android.text.format.DateFormat
 import android.view.HapticFeedbackConstants
 import androidx.compose.ui.platform.LocalView
+import java.text.Collator
 import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
 import java.time.DayOfWeek
@@ -75,3 +76,7 @@ actual fun skeletonDate(date: LocalDate, skeleton: String): String {
     return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale).format(date.toJavaLocalDate())
 }
 
+actual fun nameOrder(languageTag: String): Comparator<String> {
+    val collator = Collator.getInstance(Locale.forLanguageTag(languageTag)).apply { strength = Collator.SECONDARY }
+    return Comparator { a, b -> collator.compare(a, b) }
+}

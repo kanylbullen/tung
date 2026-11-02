@@ -19,75 +19,13 @@
     <!-- Number input sheet -->
 
     <!-- Exercises -->
-    <string name="exercises_title">Övningar</string>
-    <string name="picker_title">Välj övning</string>
-    <string name="exercises_search">Sök övning</string>
-    <string name="exercises_clear_search">Rensa sökning</string>
-    <string name="exercises_no_match">Ingen övning heter så. Skapa den längst ned.</string>
-    <string name="exercises_create">Skapa övning</string>
-    <string name="exercises_custom">Egen</string>
-    <string name="picker_more">Fler övningar</string>
-    <string name="picker_suggested">Förslag</string>
-    <string name="picker_reason_often_after">Ofta efter %1$s</string>
-    <string name="picker_reason_pairs_with">Passar med %1$s</string>
-    <string name="picker_reason_not_yet_today">Inte tränat än i dag</string>
-    <string name="picker_reason_often_together">Ofta tillsammans</string>
     <!-- The Exercises tab's group chips and the exercise page (ui/exercises/ExerciseDetailScreen.kt) -->
-    <string name="exercises_all">Alla</string>
-    <string name="exercise_add_to_routine">Lägg till i rutin</string>
-    <string name="exercise_add_to_workout">Lägg till i passet</string>
-    <string name="exercise_choose_routine">Till vilken rutin?</string>
-    <string name="exercise_no_routines">Inga rutiner än. Skapa en i fliken Rutiner med ”+ Ny rutin”, eller spara ett avslutat pass som en.</string>
     <!-- Confirmation after "Add to routine"; %1$s is the routine's name. -->
-    <string name="exercise_added_to_routine">Tillagd i %1$s</string>
-    <string name="exercise_history">Historik</string>
-    <string name="exercise_not_logged">Inte loggad än.</string>
     <!-- Above last session's sets; %1$s is the date. -->
-    <string name="exercise_last_time">Senast, %1$s</string>
     <!-- The best set as a big number: "85 × 6", with the label "Best set, kg". -->
-    <string name="exercise_best_set">Bästa set, kg</string>
-    <plurals name="exercise_sessions">
-        <item quantity="one">Pass</item>
-        <item quantity="other">Pass</item>
-    </plurals>
-    <string name="exercise_instructions">Så gör du</string>
-    <string name="exercise_not_found">Övningen finns inte längre.</string>
-    <string name="create_title">Skapa övning</string>
-    <string name="create_name">Namn</string>
-    <string name="create_muscle">Muskelgrupp</string>
-    <string name="create_equipment">Utrustning</string>
-    <string name="create_save">Spara</string>
-    <string name="create_error_name">Skriv ett namn på övningen.</string>
 
-    <string name="muscle_chest">Bröst</string>
-    <string name="muscle_back">Rygg</string>
-    <string name="muscle_shoulders">Axlar</string>
-    <string name="muscle_biceps">Biceps</string>
-    <string name="muscle_triceps">Triceps</string>
-    <string name="muscle_legs">Ben</string>
-    <string name="muscle_glutes">Säte</string>
-    <string name="muscle_core">Bål</string>
-    <string name="muscle_fullbody">Helkropp</string>
 
-    <string name="equipment_barbell">Skivstång</string>
-    <string name="equipment_dumbbell">Hantlar</string>
-    <string name="equipment_machine">Maskin</string>
-    <string name="equipment_cable">Kabel</string>
-    <string name="equipment_bodyweight">Kroppsvikt</string>
-    <string name="equipment_other">Övrigt</string>
-    <string name="equipment_ez_bar">EZ-stång</string>
-    <string name="equipment_kettlebell">Kettlebell</string>
-    <string name="equipment_band">Gummiband</string>
-    <string name="equipment_medicine_ball">Medicinboll</string>
-    <string name="equipment_exercise_ball">Pilatesboll</string>
     <!-- "Min utrustning": chippet under Övningar-flikens gruppchips och i väljaren, dess ark och raden i Inställningar -->
-    <string name="my_equipment_chip_all">Utrustning: Allt</string>
-    <string name="my_equipment_chip_count">Utrustning: %1$d</string>
-    <string name="my_equipment_title">Min utrustning</string>
-    <string name="my_equipment_intro">Övningar som kräver utrustning du inte har döljs i listorna och förslagen. Övningar som redan finns i ett pass eller en rutin visas alltid.</string>
-    <string name="my_equipment_everything">Allt</string>
-    <string name="my_equipment_bodyweight_only">Bara kroppsvikt</string>
-    <string name="my_equipment_done">Klar</string>
     <string name="my_equipment_some">%1$d av %2$d</string>
 
     <!-- History -->
@@ -462,7 +400,6 @@
         <item quantity="other">Importen ångrad: %d pass borttagna</item>
     </plurals>
     <string name="import_done">Klar</string>
-    <string name="import_pick_title">Välj övning</string>
     <plurals name="import_last">
         <item quantity="one">Senaste importen: %1$d pass, %2$s</item>
         <item quantity="other">Senaste importen: %1$d pass, %2$s</item>
@@ -479,7 +416,6 @@
 
     <!-- Progress (ui/progress, CLAUDE.md "Progress") -->
     <string name="nav_progress">Framsteg</string>
-    <string name="exercise_progress">Framsteg</string>
 
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->

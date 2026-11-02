@@ -54,3 +54,9 @@ expect fun KeepScreenOn()
  */
 expect fun skeletonDate(date: LocalDate, skeleton: String): String
 
+/**
+ * Names in the order of the language [languageTag], ignoring case but not
+ * accents, as the picker and the Exercises tab sort: Android's `Collator` at
+ * secondary strength, Foundation's case-insensitive localized compare on iOS.
+ */
+expect fun nameOrder(languageTag: String): Comparator<String>

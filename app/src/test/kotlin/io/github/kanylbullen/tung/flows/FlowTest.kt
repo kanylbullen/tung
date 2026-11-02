@@ -226,7 +226,7 @@ abstract class FlowTest {
     }
 
     protected fun searchPicker(query: String) {
-        waitForText(str(R.string.picker_title))
+        waitForText(str(Res.string.picker_title))
         compose.onNode(hasSetTextAction()).performTextReplacement(query)
     }
 

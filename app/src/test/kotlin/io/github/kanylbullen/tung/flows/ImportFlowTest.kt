@@ -181,7 +181,7 @@ class ImportFlowTest : FlowTest() {
 
         waitForText(str(R.string.import_review_title))
         clickText(str(R.string.import_choice_pick))
-        waitForText(str(R.string.import_pick_title))
+        waitForText(str(Res.string.import_pick_title))
         compose.onNode(hasSetTextAction()).performTextReplacement("plank")
         clickText(str(R.string.ex_plank))
         // Intended change (issue #77): the picked exercise is the collapsed row's decision line.
