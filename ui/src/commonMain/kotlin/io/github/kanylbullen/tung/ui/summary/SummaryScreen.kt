@@ -1,8 +1,9 @@
 package io.github.kanylbullen.tung.ui.summary
 
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import io.github.kanylbullen.tung.ui.resources.*
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,15 +37,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.muscles.MuscleBreakdown
 import io.github.kanylbullen.tung.core.muscles.MuscleWork
 import io.github.kanylbullen.tung.core.progress.ProgressMetric
@@ -55,10 +51,8 @@ import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.Stat
 import io.github.kanylbullen.tung.ui.common.StatRow
-import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.durationText
 import io.github.kanylbullen.tung.ui.common.exerciseDisplayName
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.common.muscleLabel
@@ -75,7 +69,6 @@ import io.github.kanylbullen.tung.ui.progress.trendRangeLongLabel
 import io.github.kanylbullen.tung.ui.routines.RoutineNameDialog
 import io.github.kanylbullen.tung.ui.routines.defaultRoutineName
 import io.github.kanylbullen.tung.ui.theme.Tung
-import java.util.Locale
 
 /** The semantics tag of the summary's list, which the flow tests scroll. */
 const val SUMMARY_LIST_TAG = "summary-list"
@@ -86,26 +79,13 @@ const val SUMMARY_LIST_TAG = "summary-list"
  * worked, on the body and as percentages of its sets; and each exercise's
  * progress chart, this workout the last point, with the Progress tab's
  * metric and span. Done and Save as routine stay at the bottom. A chart's
- * exercise opens its progress ([onOpenProgress]).
+ * exercise opens its progress ([onOpenProgress]); a saved routine is
+ * reported to [onRoutineSaved] (the phone shows a toast).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String) -> Unit) {
-    val container = appContainer()
-    val vm: SummaryViewModel = viewModel(
-        factory = factoryOf {
-            SummaryViewModel(
-                workoutId,
-                container.workoutRepository,
-                container.commands,
-                container.catalogueMuscles,
-                container.progressSettings,
-                container.clock,
-            )
-        },
-    )
+fun SummaryScreen(vm: SummaryViewModel, onDone: () -> Unit, onOpenProgress: (String) -> Unit, onRoutineSaved: (name: String) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     var savingRoutine by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
@@ -118,10 +98,10 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
                 ),
                 navigationIcon = {
                     IconButton(onClick = onDone) {
-                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close))
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_close))
                     }
                 },
-                title = { Text(stringResource(R.string.summary_title)) },
+                title = { Text(stringResource(Res.string.summary_title)) },
             )
         },
         bottomBar = {
@@ -135,7 +115,7 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SecondaryButton(stringResource(Res.string.routine_save_as), onClick = { savingRoutine = true }, modifier = Modifier.weight(1f))
-                    PrimaryButton(stringResource(R.string.summary_done), onClick = onDone, modifier = Modifier.weight(1f))
+                    PrimaryButton(stringResource(Res.string.summary_done), onClick = onDone, modifier = Modifier.weight(1f))
                 }
             }
         },
@@ -146,23 +126,23 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
             item(key = "stats") {
                 StatRow {
                     Stat(durationText(report.durationMillis), stringResource(Res.string.stat_duration), Modifier.weight(1.3f))
-                    Stat(report.setCount.toString(), stringResource(R.string.stat_sets), Modifier.weight(0.7f))
+                    Stat(report.setCount.toString(), stringResource(Res.string.stat_sets), Modifier.weight(0.7f))
                     Stat(localVolume(report.totalVolumeKg), stringResource(Res.string.stat_volume), Modifier.weight(1.2f))
                 }
             }
-            item(key = "exercises") { ProgressHeading(stringResource(R.string.summary_exercises)) }
+            item(key = "exercises") { ProgressHeading(stringResource(Res.string.summary_exercises)) }
             items(report.exercises, key = { it.workoutExerciseId }) { exercise -> ExerciseRow(exercise) }
 
             val muscles = state.muscles
             if (!muscles.isEmpty || muscles.uncountedSets > 0) {
-                item(key = "muscles") { ProgressHeading(stringResource(R.string.summary_muscles)) }
+                item(key = "muscles") { ProgressHeading(stringResource(Res.string.summary_muscles)) }
             }
             if (!muscles.isEmpty) {
                 item(key = "muscle-map") {
                     MuscleHeatMap(
                         intensity = muscles::intensity,
                         description = stringResource(
-                            R.string.summary_muscles_description,
+                            Res.string.summary_muscles_description,
                             muscles.muscles.map { muscleItem(it) }.joinToString(", "),
                         ),
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -174,7 +154,7 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
             if (muscles.uncountedSets > 0) {
                 item(key = "uncounted") {
                     ProgressMuted(
-                        pluralStringResource(R.plurals.summary_muscles_uncounted, muscles.uncountedSets, muscles.uncountedSets),
+                        pluralStringResource(Res.plurals.summary_muscles_uncounted, muscles.uncountedSets, muscles.uncountedSets),
                         Modifier.padding(vertical = 4.dp),
                     )
                 }
@@ -218,9 +198,7 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
             onDismiss = { savingRoutine = false },
             onConfirm = { name ->
                 savingRoutine = false
-                vm.saveAsRoutine(name) { saved ->
-                    if (saved) Toast.makeText(context, context.getString(R.string.routine_saved, name), Toast.LENGTH_SHORT).show()
-                }
+                vm.saveAsRoutine(name) { saved -> if (saved) onRoutineSaved(name) }
             },
         )
     }
@@ -230,8 +208,8 @@ fun SummaryScreen(workoutId: String, onDone: () -> Unit, onOpenProgress: (String
 @Composable
 private fun ExerciseRow(exercise: ExerciseReport) {
     val details = listOfNotNull(
-        pluralStringResource(R.plurals.summary_sets, exercise.sets.size, exercise.sets.size),
-        stringResource(R.string.volume_kg, localVolume(exercise.volumeKg)),
+        pluralStringResource(Res.plurals.summary_sets, exercise.sets.size, exercise.sets.size),
+        stringResource(Res.string.volume_kg, localVolume(exercise.volumeKg)),
         exercise.e1rmKg?.let { stringResource(Res.string.progress_e1rm_value, metricText(ProgressMetric.E1RM, it)) },
     ).joinToString(stringResource(Res.string.row_separator))
     Row(
@@ -243,7 +221,7 @@ private fun ExerciseRow(exercise: ExerciseReport) {
             Text(details, style = Tung.numbers.inline, color = Tung.colors.muted)
             if (exercise.isRecord) {
                 Text(
-                    stringResource(R.string.summary_record),
+                    stringResource(Res.string.summary_record),
                     style = MaterialTheme.typography.labelLarge,
                     color = Tung.colors.accentText,
                 )
@@ -251,7 +229,7 @@ private fun ExerciseRow(exercise: ExerciseReport) {
         }
         exercise.best?.let { best ->
             Text(
-                stringResource(R.string.set_value, localWeight(best.weightKg), best.reps),
+                stringResource(Res.string.set_value, localWeight(best.weightKg), best.reps),
                 style = Tung.numbers.set,
                 color = if (exercise.isRecord) Tung.colors.accentText else Tung.colors.text,
             )
@@ -275,7 +253,7 @@ private fun MuscleRow(work: MuscleWork, breakdown: MuscleBreakdown) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                muscleLabel(work.muscle).replaceFirstChar { it.titlecase(Locale.getDefault()) },
+                muscleLabel(work.muscle).replaceFirstChar { it.titlecase() },
                 style = MaterialTheme.typography.bodyLarge,
                 color = Tung.colors.text,
                 modifier = Modifier.weight(1f),

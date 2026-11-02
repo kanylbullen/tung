@@ -53,7 +53,7 @@ class SummaryFlowTest : FlowTest() {
         waitForDescription(str(Res.string.workout_mark_undone, 1))
         finishWorkout()
         // The top bar shows at once; the list and Done come with the report.
-        waitForText(str(R.string.summary_done))
+        waitForText(str(Res.string.summary_done))
     }
 
     @Test
@@ -61,20 +61,20 @@ class SummaryFlowTest : FlowTest() {
         finishBenchWorkout()
         val sep = str(Res.string.row_separator)
         val details = listOf(
-            plural(R.plurals.summary_sets, 1, 1),
-            str(R.string.volume_kg, "540"),
+            plural(Res.plurals.summary_sets, 1, 1),
+            str(Res.string.volume_kg, "540"),
             str(Res.string.progress_e1rm_value, "108"),
         ).joinToString(sep)
         assertShown(hasText(details))
-        assertShown(hasText(str(R.string.set_value, "90", 6)))
+        assertShown(hasText(str(Res.string.set_value, "90", 6)))
         // Done and Save as routine stay at the bottom, whatever is scrolled.
-        assertShown(hasText(str(R.string.summary_done)))
+        assertShown(hasText(str(Res.string.summary_done)))
         assertShown(hasText(str(Res.string.routine_save_as)))
         screenshot("1-exercises")
 
         val list = compose.onNode(hasTestTag(SUMMARY_LIST_TAG))
         val map = str(
-            R.string.summary_muscles_description,
+            Res.string.summary_muscles_description,
             listOf(
                 str(Res.string.summary_muscle_item, str(Res.string.muscle_name_chest), "50%"),
                 str(Res.string.summary_muscle_item, str(Res.string.muscle_name_front_delts), "25%"),
@@ -111,7 +111,7 @@ class SummaryFlowTest : FlowTest() {
         clickDescription(str(Res.string.action_back))
         waitFor(hasTestTag(SUMMARY_LIST_TAG))
 
-        clickText(str(R.string.summary_done))
+        clickText(str(Res.string.summary_done))
         waitForText(str(Res.string.home_start_workout))
     }
 

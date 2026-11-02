@@ -64,7 +64,7 @@ import io.github.kanylbullen.tung.ui.routines.RoutinesRoute
 import io.github.kanylbullen.tung.ui.settings.SETTINGS_ROUTE
 import io.github.kanylbullen.tung.ui.settings.SettingsGroup
 import io.github.kanylbullen.tung.ui.settings.settingsGraph
-import io.github.kanylbullen.tung.ui.summary.SummaryScreen
+import io.github.kanylbullen.tung.ui.summary.SummaryRoute
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.workout.ActiveWorkoutRoute
 
@@ -365,7 +365,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
             }
             composable(Routes.SUMMARY, arguments = idArgument) { entry ->
                 val id = entry.arguments?.getString(Routes.ARG_ID) ?: return@composable
-                SummaryScreen(
+                SummaryRoute(
                     workoutId = id,
                     onDone = { nav.popBackStack(Routes.HOME, inclusive = false) },
                     onOpenProgress = { exerciseId -> nav.navigate(Routes.exerciseProgress(exerciseId)) },

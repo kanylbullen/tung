@@ -93,8 +93,8 @@ class ProgramFlowTest : FlowTest() {
         clickDescription(str(Res.string.workout_mark_done, 1))
         waitForDescription(str(Res.string.workout_mark_undone, 1))
         finishWorkout()
-        waitForText(str(R.string.summary_title))
-        clickText(str(R.string.summary_done))
+        waitForText(str(Res.string.summary_title))
+        clickText(str(Res.string.summary_done))
 
         waitForText(rotatingLine(2, 2, "Pull day"))
         assertShown(startToday("Pull day"))

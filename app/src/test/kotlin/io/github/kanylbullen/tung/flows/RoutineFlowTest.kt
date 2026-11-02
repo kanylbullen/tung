@@ -47,8 +47,8 @@ class RoutineFlowTest : FlowTest() {
         waitForDescription(str(Res.string.workout_mark_undone, 2))
         finishWorkout()
 
-        waitForText(str(R.string.summary_title))
-        assertShown(hasText("2") and hasText(str(R.string.stat_sets)))
+        waitForText(str(Res.string.summary_title))
+        assertShown(hasText("2") and hasText(str(Res.string.stat_sets)))
         screenshot("1-summary")
 
         clickText(str(Res.string.routine_save_as))
@@ -67,7 +67,7 @@ class RoutineFlowTest : FlowTest() {
             ShadowToast.getTextOfLatestToast() == str(R.string.routine_saved, "Push day")
         }
 
-        clickText(str(R.string.summary_done))
+        clickText(str(Res.string.summary_done))
         waitForText("Push day")
         // Home's Routines section: its title is also the tab's label, so look for its "All".
         assertShown(hasText(str(Res.string.routines_all)))

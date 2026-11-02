@@ -70,11 +70,11 @@ class PastWorkoutFlowTest : FlowTest() {
         screenshot("3-finish-with-duration")
         clickInDialog(str(Res.string.workout_finish_confirm))
 
-        waitForText(str(R.string.summary_done))
+        waitForText(str(Res.string.summary_done))
         val end = start + 90 * 60_000L
         waitUntil { count("SELECT COUNT(*) FROM workout WHERE startedAt = $start AND endedAt = $end") == 1 }
         waitUntilStored(emptySet<String>()) { app.container.pastWorkouts.ids.first() }
-        clickText(str(R.string.summary_done))
+        clickText(str(Res.string.summary_done))
         clickText(str(R.string.nav_history))
         waitForText(shortLocalDate(start))
         assertShown(hasText(str(Res.string.duration_hours_minutes, 1, 30), substring = true))
@@ -107,7 +107,7 @@ class PastWorkoutFlowTest : FlowTest() {
         waitFor(hasText(str(Res.string.duration_hours_minutes, 1, 0)) and hasAnyAncestor(isDialog()))
         screenshot("2-finish-asks-duration")
         clickInDialog(str(Res.string.workout_finish_confirm))
-        waitForText(str(R.string.summary_done))
+        waitForText(str(Res.string.summary_done))
         waitUntil { count("SELECT COUNT(*) FROM workout WHERE startedAt = $start AND endedAt = ${start + 60 * 60_000L}") == 1 }
     }
 

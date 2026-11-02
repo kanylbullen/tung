@@ -111,7 +111,7 @@ fun ExerciseProgressScreen(vm: ExerciseProgressViewModel, onBack: () -> Unit) {
  * range as [span] says it.
  */
 @Composable
-fun ProgressChart(
+internal fun ProgressChart(
     sessions: List<SessionPoint>,
     metric: ProgressMetric,
     range: ProgressRange,

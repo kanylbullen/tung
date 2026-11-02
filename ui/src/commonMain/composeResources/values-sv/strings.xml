@@ -390,6 +390,25 @@
     <string name="progress_workouts_per_week">Pass per vecka</string>
     <string name="progress_workouts_summary">Pass per vecka, senaste 12 veckorna: %1$d totalt, %2$d den här veckan</string>
     <string name="progress_workouts_total">Pass</string>
+    <!-- Summary -->
+    <string name="action_close">Stäng</string>
+    <string name="volume_kg">%1$s kg</string>
+    <string name="stat_sets">Set</string>
+    <string name="summary_title">Pass klart</string>
+    <string name="summary_exercises">Övningar</string>
+    <plurals name="summary_sets">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d set</item>
+    </plurals>
+    <string name="summary_muscles">Tränade muskler</string>
+    <string name="summary_muscles_description">Tränade muskler: %1$s</string>
+    <plurals name="summary_muscles_uncounted">
+        <item quantity="one">%1$d set av en egen övning räknas inte: egna övningar har inga muskler</item>
+        <item quantity="other">%1$d set av egna övningar räknas inte: egna övningar har inga muskler</item>
+    </plurals>
+    <string name="summary_record">Nytt rekord</string>
+    <string name="summary_done">Klar</string>
+    <string name="set_value">%1$s × %2$d</string>
     <string name="detail_change_time">Ändra datum och tid</string>
     <string name="detail_change_time_confirm">Spara</string>
     <string name="past_busy">Avsluta passet som pågår först.</string>
