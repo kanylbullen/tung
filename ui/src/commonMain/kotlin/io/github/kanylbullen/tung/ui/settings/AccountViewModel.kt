@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.ui.resources.*
 import org.jetbrains.compose.resources.StringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kanylbullen.tung.auth.AppleSignInResult
 import io.github.kanylbullen.tung.auth.GoogleSignInResult
 import io.github.kanylbullen.tung.core.sync.ServerUrlCheck
 import io.github.kanylbullen.tung.core.sync.checkServerUrl
@@ -45,6 +46,13 @@ data class SignInForm(
      */
     val googleClientId: String? = null,
     val googleServer: String? = null,
+    /**
+     * The server at [appleServer] offers Sign in with Apple (`/auth/methods`
+     * names it); false hides the button, which also needs a platform that can
+     * ask Apple (an iPhone).
+     */
+    val appleOffered: Boolean = false,
+    val appleServer: String? = null,
     /** The address is a field ("Use another server", or a stored server other than the default); else read-only text. */
     val editingServer: Boolean = false,
 )
@@ -126,13 +134,13 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
     fun useAnotherServer() = form.update { it.copy(editingServer = true) }
 
     fun onServerUrl(value: String) {
-        form.update { it.copy(serverUrl = value, error = null, googleClientId = null, googleServer = null) }
+        form.update { it.copy(serverUrl = value, error = null, googleClientId = null, googleServer = null, appleOffered = false, appleServer = null) }
         lookUpMethods(value)
     }
 
     /**
      * Asks the server at [raw] (once it is an address `checkServerUrl`
-     * accepts, and the typing has paused) whether it offers Google sign-in.
+     * accepts, and the typing has paused) whether it offers Google and Apple sign-in.
      * On Dispatchers.Default, so the pause is real time and not the main
      * looper's. A stale answer, for an address no longer in the field, is dropped.
      */
@@ -141,9 +149,16 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
         val url = (checkServerUrl(raw) as? ServerUrlCheck.Valid)?.url ?: return
         methodsJob = viewModelScope.launch(Dispatchers.Default) {
             delay(waitMillis)
-            val clientId = (account.authMethods(url) as? AuthMethodsResult.Success)?.methods?.googleClientId ?: return@launch
+            val methods = (account.authMethods(url) as? AuthMethodsResult.Success)?.methods ?: return@launch
+            if (methods.googleClientId == null && methods.appleClientId == null) return@launch
             form.update {
-                if ((checkServerUrl(it.serverUrl) as? ServerUrlCheck.Valid)?.url == url) it.copy(googleClientId = clientId, googleServer = url) else it
+                if ((checkServerUrl(it.serverUrl) as? ServerUrlCheck.Valid)?.url != url) return@update it
+                it.copy(
+                    googleClientId = methods.googleClientId,
+                    googleServer = url.takeIf { methods.googleClientId != null },
+                    appleOffered = methods.appleClientId != null,
+                    appleServer = url.takeIf { methods.appleClientId != null },
+                )
             }
         }
     }
@@ -171,6 +186,30 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
                 GoogleSignInResult.NoAccount -> Res.string.sync_error_google_no_account
                 GoogleSignInResult.Unavailable -> Res.string.sync_error_google_unavailable
                 is GoogleSignInResult.Failed -> Res.string.sync_error_google_failed
+            }
+            form.update { it.copy(busy = false, error = error, password = if (error == null) "" else it.password) }
+        }
+    }
+
+    /**
+     * "Continue with Apple": [obtain] asks Apple (AuthenticationServices on an
+     * iPhone) for an ID token for this app, which goes to the server like
+     * Google's. Closing Apple's sheet is not an error.
+     */
+    fun signInWithApple(obtain: suspend () -> AppleSignInResult) {
+        val current = form.value
+        if (current.busy || !current.appleOffered) return
+        val url = current.appleServer ?: return
+        form.update { it.copy(busy = true, error = null) }
+        deleted.value = false
+        viewModelScope.launch {
+            val error = when (val got = obtain()) {
+                is AppleSignInResult.Token -> when (val result = account.signInWithApple(url, got.idToken)) {
+                    is AuthResult.Success -> null
+                    is AuthResult.Failed -> message(result.failure)
+                }
+                AppleSignInResult.Cancelled -> null
+                is AppleSignInResult.Failed -> Res.string.sync_error_apple_failed
             }
             form.update { it.copy(busy = false, error = error, password = if (error == null) "" else it.password) }
         }
@@ -301,5 +340,9 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
         AuthFailure.GOOGLE_EMAIL_UNVERIFIED -> Res.string.sync_error_google_unverified
         AuthFailure.GOOGLE_ACCOUNT_MISMATCH -> Res.string.sync_error_google_mismatch
         AuthFailure.GOOGLE_NOT_OFFERED -> Res.string.sync_error_google_not_offered
+        AuthFailure.APPLE_REJECTED -> Res.string.sync_error_apple_rejected
+        AuthFailure.APPLE_EMAIL_UNVERIFIED -> Res.string.sync_error_apple_unverified
+        AuthFailure.APPLE_ACCOUNT_MISMATCH -> Res.string.sync_error_apple_mismatch
+        AuthFailure.APPLE_NOT_OFFERED -> Res.string.sync_error_apple_not_offered
     }
 }

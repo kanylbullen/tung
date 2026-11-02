@@ -21,6 +21,8 @@ data class AccountState(
     val syncing: Boolean,
     /** A Google account is linked to this account (shown as "Google linked"). */
     val googleLinked: Boolean = false,
+    /** An Apple ID is linked to this account (shown as "Apple linked"). */
+    val appleLinked: Boolean = false,
 )
 
 /**
@@ -42,11 +44,15 @@ class SyncAccount(
     private val signedIn = MutableStateFlow<Boolean?>(null)
 
     val state: Flow<AccountState> = combine(
-        combine(settings.serverUrl, settings.email, settings.googleLinked, ::Triple),
+        combine(settings.serverUrl, settings.email, settings.googleLinked, settings.appleLinked) { url, email, google, apple ->
+            Identity(url, email, google, apple)
+        },
         settings.state,
         signedIn.onStart { isSignedIn() },
         client.running,
-    ) { (url, email, google), sync, signedIn, running -> AccountState(url, email, signedIn, sync, running, google) }
+    ) { id, sync, signedIn, running -> AccountState(id.url, id.email, signedIn, sync, running, id.googleLinked, id.appleLinked) }
+
+    private data class Identity(val url: String?, val email: String?, val googleLinked: Boolean, val appleLinked: Boolean)
 
     suspend fun isSignedIn(): Boolean =
         signedIn.value ?: withContext(ioDispatcher) { tokens.read() != null }.also { signedIn.value = it }
@@ -60,14 +66,14 @@ class SyncAccount(
      */
     suspend fun signIn(serverUrl: String, email: String, password: String, create: Boolean): AuthResult {
         val result = client.authenticate(serverUrl, email.trim(), password, create)
-        if (result is AuthResult.Success) storeSession(serverUrl, result.token, result.email, result.googleLinked)
+        if (result is AuthResult.Success) storeSession(serverUrl, result)
         return result
     }
 
     /** "Forgot password?": a reset link mailed to [email] at [serverUrl]. */
     suspend fun forgotPassword(serverUrl: String, email: String): ForgotOutcome = client.forgotPassword(serverUrl, email.trim())
 
-    /** What [serverUrl] offers for signing in (the Google button shows only when it names a client id). */
+    /** What [serverUrl] offers for signing in (the Google and Apple buttons show only when it names a client id). */
     suspend fun authMethods(serverUrl: String): AuthMethodsResult = client.authMethods(serverUrl)
 
     /**
@@ -78,23 +84,33 @@ class SyncAccount(
      */
     suspend fun signInWithGoogle(serverUrl: String, idToken: String): AuthResult {
         val result = client.loginWithGoogle(serverUrl, idToken)
-        if (result is AuthResult.Success) storeSession(serverUrl, result.token, result.email, result.googleLinked)
+        if (result is AuthResult.Success) storeSession(serverUrl, result)
+        return result
+    }
+
+    /**
+     * Signs in with Sign in with Apple's ID token (from AuthenticationServices
+     * on an iPhone) at [serverUrl], as [signInWithGoogle] does with Google's.
+     */
+    suspend fun signInWithApple(serverUrl: String, idToken: String): AuthResult {
+        val result = client.loginWithApple(serverUrl, idToken)
+        if (result is AuthResult.Success) storeSession(serverUrl, result)
         return result
     }
 
     /** A new link to confirm the account's email (see [SyncFailure.EMAIL_NOT_VERIFIED]). */
     suspend fun resendConfirmation(): ResendOutcome = client.resendConfirmation()
 
-    /** Asks the server (`/me`) whether a Google account is linked, so Settings shows it after a link made elsewhere. */
+    /** Asks the server (`/me`) whether a Google account or an Apple ID is linked, so Settings shows it after a link made elsewhere. */
     suspend fun refreshAccount() {
         if (!isSignedIn()) return
-        client.me()?.let { settings.setGoogleLinked(it.googleLinked) }
+        client.me()?.let { settings.setLinked(google = it.googleLinked, apple = it.appleLinked) }
     }
 
-    private suspend fun storeSession(serverUrl: String, token: String, email: String, googleLinked: Boolean = false) {
+    private suspend fun storeSession(serverUrl: String, session: AuthResult.Success) {
         withContext(ioDispatcher) {
-            tokens.write(token)
-            settings.signedIn(serverUrl, email, googleLinked)
+            tokens.write(session.token)
+            settings.signedIn(serverUrl, session.email, session.googleLinked, session.appleLinked)
             store.markEverythingDirty()
         }
         signedIn.value = true
@@ -110,7 +126,7 @@ class SyncAccount(
      */
     suspend fun signInWithCode(serverUrl: String, code: String): LinkClaimResult {
         val result = client.claimLink(serverUrl, code)
-        if (result is LinkClaimResult.Success) storeSession(serverUrl, result.token, result.email)
+        if (result is LinkClaimResult.Success) storeSession(serverUrl, AuthResult.Success(result.token, result.email))
         return result
     }
 

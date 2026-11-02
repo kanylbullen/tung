@@ -50,11 +50,14 @@ class GoogleSignInFlowTest : FlowTest() {
     @Test
     fun signInWithGoogleWhenTheServerOffersIt() {
         fake.googleClientId = "1234-web.apps.googleusercontent.com"
+        // Offered too, but Android has no Sign in with Apple: no button for it.
+        fake.appleClientId = "io.github.kanylbullen.tung.web"
         openSettingsGroup(Res.string.settings_group_account)
         waitForText(str(Res.string.sync_intro))
         useServer(fake.baseUrl)
 
         waitForText(str(Res.string.sync_google_sign_in))
+        compose.onNode(hasText(str(Res.string.sync_apple_sign_in))).assertDoesNotExist()
         screenshot("1-google-offered")
         clickText(str(Res.string.sync_google_sign_in))
 

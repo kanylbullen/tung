@@ -25,6 +25,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.kanylbullen.tung.auth.AppleSignInResult
 import io.github.kanylbullen.tung.auth.GoogleSignInResult
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncState
@@ -42,10 +43,17 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
  * (when the server offers it), then email and password, and the server at the
  * bottom, read-only until "Use another server"; signed in, who, Google linked,
  * the last sync, "Sync now" and "Sign out". [googleIdToken] asks the
- * platform's Google sign-in for an ID token for the server's client id.
+ * platform's Google sign-in for an ID token for the server's client id, and
+ * [appleIdToken] Apple for one for this app: null where the platform has no
+ * Sign in with Apple (Android), which hides its button.
  */
 @Composable
-fun AccountScreen(vm: AccountViewModel, onBack: () -> Unit, googleIdToken: suspend (clientId: String) -> GoogleSignInResult) {
+fun AccountScreen(
+    vm: AccountViewModel,
+    onBack: () -> Unit,
+    googleIdToken: suspend (clientId: String) -> GoogleSignInResult,
+    appleIdToken: (suspend () -> AppleSignInResult)? = null,
+) {
     val state by vm.state.collectAsStateWithLifecycle()
 
     SettingsPage(title = stringResource(Res.string.settings_group_account), onBack = onBack) {
@@ -72,6 +80,7 @@ fun AccountScreen(vm: AccountViewModel, onBack: () -> Unit, googleIdToken: suspe
                 onCreate = { vm.signIn(create = true) },
                 onForgot = vm::forgotPassword,
                 onGoogle = { vm.signInWithGoogle(googleIdToken) },
+                onApple = appleIdToken?.let { obtain -> { vm.signInWithApple(obtain) } },
             )
         }
     }
@@ -105,6 +114,9 @@ private fun SignedIn(
         Text(account.serverUrl.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
         if (account.googleLinked) {
             Text(stringResource(Res.string.sync_google_linked), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+        }
+        if (account.appleLinked) {
+            Text(stringResource(Res.string.sync_apple_linked), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
         }
     }
     // A new account on a server that confirms addresses: nothing syncs until the emailed link is opened.
@@ -199,6 +211,7 @@ private fun SignInForm(
     onCreate: () -> Unit,
     onForgot: () -> Unit,
     onGoogle: () -> Unit,
+    onApple: (() -> Unit)?,
 ) {
     Text(stringResource(Res.string.sync_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     if (deleted) {
@@ -209,8 +222,16 @@ private fun SignInForm(
         Text(stringResource(Res.string.sync_error_signed_out), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
     }
     // Only when this server offers it (`/auth/methods`, asked as the screen opens); the client id comes from there.
-    if (form.googleClientId != null) {
-        GoogleButton(onClick = onGoogle, enabled = !form.busy)
+    val google = form.googleClientId != null
+    // Apple also needs a platform that can ask it: an iPhone, not Android.
+    val apple = form.appleOffered && onApple != null
+    if (google) {
+        ProviderButton(stringResource(Res.string.sync_google_sign_in), onClick = onGoogle, enabled = !form.busy)
+    }
+    if (apple && onApple != null) {
+        ProviderButton(stringResource(Res.string.sync_apple_sign_in), onClick = onApple, enabled = !form.busy)
+    }
+    if (google || apple) {
         Text(stringResource(Res.string.sync_google_or_email), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     }
     OutlinedTextField(
@@ -270,12 +291,12 @@ private fun SignInForm(
 }
 
 /**
- * "Sign in with Google": an outlined button with the text, in the app's own
- * colours (Google's branding allows a neutral button; one accent stays the
- * primary "Sign in").
+ * "Sign in with Google" and "Continue with Apple": an outlined button with the
+ * text, in the app's own colours (both brands allow a neutral button; one
+ * accent stays the primary "Sign in"), as the web draws them.
  */
 @Composable
-private fun GoogleButton(onClick: () -> Unit, enabled: Boolean) {
+private fun ProviderButton(text: String, onClick: () -> Unit, enabled: Boolean) {
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
@@ -284,7 +305,7 @@ private fun GoogleButton(onClick: () -> Unit, enabled: Boolean) {
         border = BorderStroke(1.dp, Tung.colors.border),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = Tung.colors.text, disabledContentColor = Tung.colors.muted),
     ) {
-        Text(stringResource(Res.string.sync_google_sign_in), style = MaterialTheme.typography.labelLarge)
+        Text(text, style = MaterialTheme.typography.labelLarge)
     }
 }
 

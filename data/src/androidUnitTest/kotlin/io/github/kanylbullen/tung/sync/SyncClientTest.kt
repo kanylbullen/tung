@@ -406,4 +406,38 @@ class SyncClientTest {
         phone.tokens.write("tung_dead")
         assertNull(runBlocking { phone.client.me() })
     }
+
+    @Test
+    fun authMethodsSayWhetherTheServerOffersApple() {
+        val phone = Device()
+        fake.appleClientId = "io.github.kanylbullen.tung.web"
+        assertEquals(
+            AuthMethodsResult.Success(AuthMethods(password = true, googleClientId = null, appleClientId = "io.github.kanylbullen.tung.web")),
+            runBlocking { phone.client.authMethods(fake.baseUrl) },
+        )
+    }
+
+    @Test
+    fun loginWithAppleTradesTheIdTokenForASession() {
+        val phone = Device()
+        fake.appleClientId = "io.github.kanylbullen.tung.web"
+        val ok = runBlocking { phone.client.loginWithApple(fake.baseUrl, fake.appleIdToken) }
+        assertEquals(AuthResult.Success(fake.token, "lifter@privaterelay.appleid.com", appleLinked = true), ok)
+        assertEquals(listOf(fake.appleIdToken), fake.appleTokens)
+
+        val rejected = runBlocking { phone.client.loginWithApple(fake.baseUrl, "forged") }
+        assertEquals(AuthResult.Failed(AuthFailure.APPLE_REJECTED, 401), rejected)
+
+        fake.appleClientId = null
+        val notOffered = runBlocking { phone.client.loginWithApple(fake.baseUrl, fake.appleIdToken) }
+        assertEquals(AuthResult.Failed(AuthFailure.APPLE_NOT_OFFERED, 404), notOffered)
+    }
+
+    @Test
+    fun meSaysWhetherAppleIsLinked() {
+        val phone = Device()
+        assertEquals(false, runBlocking { phone.client.me() }?.appleLinked)
+        fake.appleLinked = true
+        assertEquals(true, runBlocking { phone.client.me() }?.appleLinked)
+    }
 }

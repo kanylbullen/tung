@@ -843,4 +843,12 @@
     <string name="import_title">Importera från Jefit</string>
     <string name="import_undo">Ångra importen</string>
     <string name="import_unreadable">Filen gick inte att läsa. Välj den igen.</string>
+    <!-- Sign in with Apple -->
+    <string name="sync_apple_sign_in">Fortsätt med Apple</string>
+    <string name="sync_apple_linked">Apple kopplat</string>
+    <string name="sync_error_apple_failed">Apple-inloggningen fungerade inte. Försök igen, eller använd e-post och lösenord.</string>
+    <string name="sync_error_apple_rejected">Servern godtog inte Apple-inloggningen. Försök igen.</string>
+    <string name="sync_error_apple_unverified">Apple gav ingen e-postadress som Tung kan använda. Använd e-post och lösenord.</string>
+    <string name="sync_error_apple_mismatch">E-postadressen hör till ett konto som är kopplat till ett annat Apple-ID. Logga in med det eller med ditt lösenord.</string>
+    <string name="sync_error_apple_not_offered">Den här servern erbjuder inte inloggning med Apple. Använd e-post och lösenord.</string>
 </resources>

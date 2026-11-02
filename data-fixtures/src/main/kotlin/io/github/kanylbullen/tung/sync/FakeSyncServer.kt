@@ -66,6 +66,18 @@ class FakeSyncServer : Dispatcher() {
     /** What `/me` says about Google: linked after a Google sign-in, or when a test sets it. */
     @Volatile var googleLinked = false
 
+    /** The Apple client id `/auth/methods` names (the web's Services ID); null: no Apple (and `/auth/apple` is 404). */
+    @Volatile var appleClientId: String? = null
+
+    /** The one Apple ID token `/auth/apple` accepts; anything else is 401 `invalid_apple_token`. */
+    @Volatile var appleIdToken = "apple-id-token"
+
+    /** Every id token `/auth/apple` was sent. */
+    val appleTokens = CopyOnWriteArrayList<String>()
+
+    /** What `/me` says about Apple: linked after an Apple sign-in, or when a test sets it. */
+    @Volatile var appleLinked = false
+
     /** Whether `DELETE /api/v1/me` deleted the account (with "lifter@example.org" typed, any case). */
     @Volatile var accountDeleted = false
 
@@ -166,13 +178,14 @@ class FakeSyncServer : Dispatcher() {
             authPaths += request.path
             json(
                 if (request.path.orEmpty().endsWith("register")) 201 else 200,
-                """{"token":"$token","user":{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked}}""",
+                """{"token":"$token","user":{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}}""",
             )
         }
         // Not in authPaths: Settings asks for it whenever the form shows a server.
         "/api/v1/auth/methods" -> {
             val google = googleClientId?.let { """{"client_id":"$it"}""" } ?: "null"
-            json(200, """{"password":true,"google":$google}""")
+            val apple = appleClientId?.let { """{"client_id":"$it"}""" } ?: "null"
+            json(200, """{"password":true,"google":$google,"apple":$apple}""")
         }
         "/api/v1/auth/google" -> {
             authPaths += request.path
@@ -188,6 +201,20 @@ class FakeSyncServer : Dispatcher() {
                 }
             }
         }
+        "/api/v1/auth/apple" -> {
+            authPaths += request.path
+            val sent = Regex("\"id_token\"\\s*:\\s*\"([^\"]*)\"").find(request.body.readUtf8())?.groupValues?.get(1)
+            sent?.let { appleTokens += it }
+            when {
+                appleClientId == null -> json(404, """{"error":{"code":"not_configured","message":"Sign in with Apple is not set up on this server."}}""")
+                sent == null -> json(400, """{"error":{"code":"invalid_request","message":"id_token is missing."}}""")
+                sent != appleIdToken -> json(401, """{"error":{"code":"invalid_apple_token","message":"The Apple token's signature is not valid."}}""")
+                else -> {
+                    appleLinked = true
+                    json(200, """{"token":"$token","user":{"id":"a","email":"lifter@privaterelay.appleid.com","created_at":0,"has_password":false,"google_linked":false,"apple_linked":true}}""")
+                }
+            }
+        }
         "/api/v1/me" -> {
             if (request.getHeader("Authorization") != "Bearer $token") {
                 json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
@@ -200,7 +227,7 @@ class FakeSyncServer : Dispatcher() {
                     json(400, """{"error":{"code":"email_mismatch","message":"Type the account's email to confirm."}}""")
                 }
             } else {
-                json(200, """{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked}""")
+                json(200, """{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}""")
             }
         }
         "/api/v1/auth/logout" -> {
