@@ -15,7 +15,7 @@ xcodegen
 open Tung.xcodeproj
 ```
 
-`Tung.xcodeproj` and `Tung/Info.plist` are generated from `project.yml` and
+`Tung.xcodeproj`, `Tung/Info.plist` and `Tung/Tung.entitlements` are generated from `project.yml` and
 are not committed; edit `project.yml` and run `xcodegen` again. The target's
 pre-build script runs `./gradlew :ui:embedAndSignAppleFrameworkForXcode`,
 which builds the framework for the configuration and SDK Xcode is building.
@@ -33,5 +33,9 @@ xcodebuild -project Tung.xcodeproj -scheme Tung -sdk iphonesimulator \
 ## Not yet
 
 The app shows the wordmark only: the navigation root and the iOS container
-(database, settings, Keychain) come next. Running on a phone needs signing
-with an Apple ID.
+(database, settings, Keychain) come next.
+
+The app needs iOS 17.2 or newer (Compose Multiplatform's ICU data is built for
+it) and carries the Sign in with Apple entitlement. Running on a phone needs
+signing: the team is not in `project.yml` yet, so choose it under Signing &
+Capabilities in Xcode, or pass `DEVELOPMENT_TEAM=<Team ID>` to `xcodebuild`.
