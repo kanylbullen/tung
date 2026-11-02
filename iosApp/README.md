@@ -36,6 +36,19 @@ The app shows the wordmark only: the navigation root and the iOS container
 (database, settings, Keychain) come next.
 
 The app needs iOS 17.2 or newer (Compose Multiplatform's ICU data is built for
-it) and carries the Sign in with Apple entitlement. Running on a phone needs
-signing: the team is not in `project.yml` yet, so choose it under Signing &
-Capabilities in Xcode, or pass `DEVELOPMENT_TEAM=<Team ID>` to `xcodebuild`.
+it) and carries the Sign in with Apple entitlement.
+
+## On a phone
+
+Signing is automatic with the team in `project.yml` (`55BB3CFVQ3`). Once, on
+the Mac: add the team's Apple ID under Xcode → Settings → Accounts, and turn
+on Developer Mode on the iPhone (Settings → Privacy & Security). Then pick the
+phone in Xcode and run, or from the command line:
+
+```sh
+xcodebuild -project Tung.xcodeproj -scheme Tung -sdk iphoneos \
+  -destination 'generic/platform=iOS' -allowProvisioningUpdates build
+```
+
+`-allowProvisioningUpdates` lets xcodebuild register the device and make the
+profile, as Xcode does when you run from it.

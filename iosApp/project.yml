@@ -40,6 +40,12 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.kanylbullen.tung
+        # The owner's Apple Developer team (Individual); the App ID
+        # io.github.kanylbullen.tung with Sign in with Apple lives there.
+        # Automatic signing: Xcode makes the certificate and the profile once
+        # the team's Apple ID is added under Xcode → Settings → Accounts.
+        DEVELOPMENT_TEAM: 55BB3CFVQ3
+        CODE_SIGN_STYLE: Automatic
         PRODUCT_NAME: Tung
         TARGETED_DEVICE_FAMILY: "1"
         # Gradle writes the framework for this configuration and SDK here.
