@@ -11,7 +11,8 @@ import kotlinx.coroutines.flow.Flow
  */
 interface SpeechInput {
     /**
-     * Listens once in the language of [languageTag] (a BCP 47 tag, "sv-SE"): [SpeechEvent.Listening] when the recogniser is
+     * Listens once in the language of [languageTag], the language the app shows ("sv", "en"; the
+     * recogniser picks a regional variant it has): [SpeechEvent.Listening] when the recogniser is
      * ready, [SpeechEvent.Partial] while words come in, then exactly one
      * [SpeechEvent.Result] or [SpeechEvent.Error], after which the flow ends.
      * Cancelling the collection stops listening.
@@ -36,6 +37,9 @@ enum class SpeechErrorKind {
     /** No recogniser on this phone (de-Googled phones often have none). */
     UNAVAILABLE,
 
+    /** The recogniser has no variant of the app's language, on the phone or online. */
+    LANGUAGE,
+
     /** No microphone permission. */
     PERMISSION,
 
@@ -46,5 +50,5 @@ enum class SpeechErrorKind {
     OTHER;
 
     /** Listening again cannot help: hands-free mode stops at once. */
-    val fatal: Boolean get() = this == UNAVAILABLE || this == PERMISSION
+    val fatal: Boolean get() = this == UNAVAILABLE || this == LANGUAGE || this == PERMISSION
 }
