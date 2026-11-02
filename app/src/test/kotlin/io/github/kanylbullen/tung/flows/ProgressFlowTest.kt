@@ -67,7 +67,7 @@ class ProgressFlowTest : FlowTest() {
     }
 
     private fun openTab() {
-        clickText(str(R.string.nav_progress))
+        clickText(str(Res.string.nav_progress))
         waitFor(hasTestTag(PROGRESS_LIST_TAG))
     }
 
@@ -148,7 +148,7 @@ class ProgressFlowTest : FlowTest() {
         waitUntilStored(ProgressRange.ONE_YEAR) { trendRange() }
         screenshot("2-rows-12m")
 
-        clickText(str(R.string.nav_home))
+        clickText(str(Res.string.nav_home))
         waitGone(hasTestTag(PROGRESS_LIST_TAG))
         openTab()
         waitFor(hasText(twelveMonths))
@@ -217,7 +217,7 @@ class ProgressFlowTest : FlowTest() {
     @Test
     fun exerciseProgressSwitchesMetricAndRange() {
         seed()
-        clickText(str(R.string.nav_exercises))
+        clickText(str(Res.string.nav_exercises))
         waitFor(hasSetTextAction())
         compose.onNode(hasSetTextAction()).performTextReplacement("bench")
         clickText(benchPress)

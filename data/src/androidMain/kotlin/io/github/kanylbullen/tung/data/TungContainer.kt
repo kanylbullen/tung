@@ -44,6 +44,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.LocalDate as JavaLocalDate
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toKotlinTimeZone
 
 /**
@@ -76,18 +80,22 @@ class TungContainer(
     createHealthConnect: (Context) -> HealthConnectGateway? = { null },
     /** The in-app assistant's API key (`ai_key`); the flow tests keep it in memory, like the sync token. */
     createAiKeyStore: (Context) -> TokenStore = { EncryptedTokenStore(it, AiSettings.KEY_FILE, AiSettings.KEY_NAME) },
-) {
+) : TungServices {
     private val context: Context = context.applicationContext ?: context
 
     /** For work that outlives a screen (sync triggers); never cancelled, like the process. */
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    override fun nowMillis(): Long = clock.millis()
+    override fun today(): LocalDate = JavaLocalDate.now(clock).toKotlinLocalDate()
+    override fun zone(): TimeZone = clock.zone.toKotlinTimeZone()
+
     private val database: TungDatabase by lazy { createDatabase(this.context) }
-    val workoutRepository: WorkoutRepository by lazy { WorkoutRepository(database) }
-    val routineRepository: RoutineRepository by lazy { RoutineRepository(database) }
-    val programRepository: ProgramRepository by lazy { ProgramRepository(database) }
-    val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database) }
-    val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog.fromAssets(this.context) }
+    override val workoutRepository: WorkoutRepository by lazy { WorkoutRepository(database) }
+    override val routineRepository: RoutineRepository by lazy { RoutineRepository(database) }
+    override val programRepository: ProgramRepository by lazy { ProgramRepository(database) }
+    override val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(database) }
+    override val extendedCatalog: ExtendedCatalog by lazy { ExtendedCatalog.fromAssets(this.context) }
 
     /** `core.json` from the assets, read the first time a name is resolved or the muscles are needed. */
     private val coreCatalog: List<CoreExercise> by lazy {
@@ -109,7 +117,7 @@ class TungContainer(
      * alias tables in the assets (`aliases/<source>.json`), this device's
      * exercises for resolution, and the [Importer]'s one bulk write.
      */
-    val imports: ImportService by lazy {
+    override val imports: ImportService by lazy {
         ImportService(
             importer = Importer(database, workoutRepository, exerciseRepository, routineRepository, extendedCatalog),
             resolver = exerciseResolver,
@@ -126,17 +134,17 @@ class TungContainer(
     }
 
     /** What each catalogue exercise trains (`core.MuscleIndex`), for the picker's suggestions. */
-    val catalogueMuscles: CatalogueMuscles by lazy { CatalogueMuscles({ coreCatalog }, extendedCatalog) }
+    override val catalogueMuscles: CatalogueMuscles by lazy { CatalogueMuscles({ coreCatalog }, extendedCatalog) }
 
     /** What each catalogue exercise is (`core.catalog.CatalogueIndex`: muscles, instructions), for the exercise page. */
-    val catalogueDetails: CatalogueDetails by lazy { CatalogueDetails({ coreCatalog }, extendedCatalog) }
+    override val catalogueDetails: CatalogueDetails by lazy { CatalogueDetails({ coreCatalog }, extendedCatalog) }
 
     /**
      * Every change to training data goes through here: the screens' ViewModels
      * (and the watch) call [CommandHandler.execute] and never a repository for
      * a mutation. Reads stay on the repositories' Flows.
      */
-    val commands: CommandHandler by lazy {
+    override val commands: CommandHandler by lazy {
         AppCommandHandler(
             workouts = workoutRepository,
             resolver = exerciseResolver,
@@ -192,15 +200,15 @@ class TungContainer(
     val settings: DataStore<Preferences> by lazy {
         PreferenceDataStoreFactory.create { this.context.preferencesDataStoreFile("settings") }
     }
-    val restTimer: RestTimerController by lazy { RestTimerController(this.context, settings) }
+    override val restTimer: RestTimerController by lazy { RestTimerController(this.context, settings) }
 
     /** "My equipment": what the Exercises tab, the picker and the assistant keep to. Not synced. */
-    val equipmentSettings: EquipmentSettings by lazy { EquipmentSettings(settings) }
+    override val equipmentSettings: EquipmentSettings by lazy { EquipmentSettings(settings) }
 
     /** The compact trends' span and metric, shared by the Progress tab's rows and the sheet in a workout. Not synced. */
-    val progressSettings: ProgressSettings by lazy { ProgressSettings(settings) }
+    override val progressSettings: ProgressSettings by lazy { ProgressSettings(settings) }
     /** The workouts this device started from "Log past workout" (CLAUDE.md, "Log set and rest timer"). */
-    val pastWorkouts: PastWorkoutSettings by lazy { PastWorkoutSettings(settings) }
+    override val pastWorkouts: PastWorkoutSettings by lazy { PastWorkoutSettings(settings) }
 
     // --- sync with tung-server (sync/, CLAUDE.md "Sync") ---
     private val tokenStore: TokenStore by lazy { createTokenStore(this.context) }
@@ -215,7 +223,7 @@ class TungContainer(
             language = { if (context.resources.configuration.locales[0].language == "sv") "sv" else "en" },
         )
     }
-    val syncAccount: SyncAccount by lazy {
+    override val syncAccount: SyncAccount by lazy {
         SyncAccount(
             syncClient, syncSettings, tokenStore, syncStore, syncScheduler, appScope,
             beforeSignOut = { url, token -> push.onSignOut(url, token) },
@@ -224,14 +232,14 @@ class TungContainer(
 
     // --- push (push/, CLAUDE.md "Ongoing workout and push"): started by the phone, never by the watch ---
     private val pushEnvironment: PushEnvironment by lazy { createPushEnvironment(this.context) }
-    val push: PushRegistrar by lazy {
+    override val push: PushRegistrar by lazy {
         PushRegistrar(pushEnvironment, syncClient, settings, syncAccount.state.map { it.signedIn }, appScope)
     }
 
     // --- the in-app assistant with the user's own key (ai/, CLAUDE.md "In-app AI (BYOK)"): only on a tap ---
     private val aiKeyStore: TokenStore by lazy { createAiKeyStore(this.context) }
-    val aiSettings: AiSettings by lazy { AiSettings(settings, aiKeyStore) }
-    val ai: AiService by lazy {
+    override val aiSettings: AiSettings by lazy { AiSettings(settings, aiKeyStore) }
+    override val ai: AiService by lazy {
         AiService(
             settings = aiSettings,
             client = AiClient(aiHttpClient()),

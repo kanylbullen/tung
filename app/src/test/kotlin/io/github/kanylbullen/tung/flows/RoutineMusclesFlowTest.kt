@@ -47,7 +47,7 @@ class RoutineMusclesFlowTest : FlowTest() {
         screenshot("1-home-routine-body")
 
         // The tab, not Home's "Routines" heading of the same text.
-        compose.onNode(hasText(str(R.string.nav_routines)) and isSelectable()).performClick()
+        compose.onNode(hasText(str(Res.string.nav_routines)) and isSelectable()).performClick()
         waitForText(str(Res.string.routine_new))
         assertShown(hasContentDescription(rowDescription))
         screenshot("2-routines-tab-bodies")

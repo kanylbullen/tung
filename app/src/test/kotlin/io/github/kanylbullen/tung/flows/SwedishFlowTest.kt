@@ -46,7 +46,7 @@ class SwedishFlowTest : FlowTest() {
     @Test
     fun theRoutinesTabSpeaksSwedishLikeTheRestOfTheApp() {
         runBlocking { app.container.commands.execute(Command.CreateRoutine("Ben")) }
-        compose.onNode(hasText(str(R.string.nav_routines)) and isSelectable()).performClick()
+        compose.onNode(hasText(str(Res.string.nav_routines)) and isSelectable()).performClick()
 
         waitForText("Ben")
         // The title; the tab of the same text is the selectable one.

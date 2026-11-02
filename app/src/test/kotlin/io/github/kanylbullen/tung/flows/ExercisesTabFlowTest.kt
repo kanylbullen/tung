@@ -35,7 +35,7 @@ class ExercisesTabFlowTest : FlowTest() {
     private fun heading(text: String) = hasText(text) and isHeading()
 
     private fun openTab() {
-        clickText(str(R.string.nav_exercises))
+        clickText(str(Res.string.nav_exercises))
         waitFor(hasTestTag(EXERCISES_LIST_TAG))
     }
 
@@ -153,7 +153,7 @@ class ExercisesTabFlowTest : FlowTest() {
         screenshot("2-added")
 
         clickDescription(str(Res.string.action_back))
-        clickText(str(R.string.nav_home))
+        clickText(str(Res.string.nav_home))
         clickText(str(Res.string.routines_all))
         waitGone(hasText(str(Res.string.home_recent)))
         clickText("Push day")

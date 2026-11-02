@@ -853,4 +853,11 @@
     <string name="sync_error_apple_unverified">Apple did not give an email address Tung can use. Use your email and password.</string>
     <string name="sync_error_apple_mismatch">This email belongs to an account linked to another Apple ID. Sign in with that one or with your password.</string>
     <string name="sync_error_apple_not_offered">This server does not offer Sign in with Apple. Use your email and password.</string>
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_routines">Routines</string>
+    <string name="nav_exercises">Exercises</string>
+    <string name="nav_history">History</string>
+    <string name="nav_progress">Progress</string>
+    <string name="routine_saved">Saved as routine: %1$s</string>
 </resources>

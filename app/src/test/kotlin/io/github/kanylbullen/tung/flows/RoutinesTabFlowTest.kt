@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import org.jetbrains.compose.resources.StringResource
 import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
@@ -36,14 +37,14 @@ class RoutinesTabFlowTest : FlowTest() {
     private val benchPress get() = str(R.string.ex_bench_press)
 
     /** A tab in the bottom bar; its label alone is not unique, as Home's Routines section has the same title. */
-    private fun tab(label: Int): SemanticsMatcher = hasText(str(label)) and isSelectable()
+    private fun tab(label: StringResource): SemanticsMatcher = hasText(str(label)) and isSelectable()
 
     private fun left(matcher: SemanticsMatcher): Float = compose.onNode(matcher).fetchSemanticsNode().boundsInRoot.left
 
     /** The tab's own top bar: only the Routines tab has "+ New routine". */
     private fun waitForRoutinesTab() {
         waitForText(str(Res.string.routine_new))
-        assertShown(tab(R.string.nav_routines) and isSelected())
+        assertShown(tab(Res.string.nav_routines) and isSelected())
     }
 
     /**
@@ -57,11 +58,11 @@ class RoutinesTabFlowTest : FlowTest() {
         seedRoutine("Push day")
 
         waitForText("Push day")
-        val order = listOf(R.string.nav_home, R.string.nav_routines, R.string.nav_exercises, R.string.nav_history).map(::tab)
+        val order = listOf(Res.string.nav_home, Res.string.nav_routines, Res.string.nav_exercises, Res.string.nav_history).map(::tab)
         order.forEach { assertShown(it) }
         val lefts = order.map(::left)
         assertEquals("Home · Routines · Exercises · History", lefts.sorted(), lefts)
-        assertShown(tab(R.string.nav_home) and isSelected())
+        assertShown(tab(Res.string.nav_home) and isSelected())
         screenshot("1-home")
 
         clickText(str(Res.string.routines_all))
@@ -76,9 +77,9 @@ class RoutinesTabFlowTest : FlowTest() {
         waitForRoutinesTab()
         assertShown(hasText("Push day"))
 
-        compose.onNode(tab(R.string.nav_exercises)).performClick()
+        compose.onNode(tab(Res.string.nav_exercises)).performClick()
         waitGone(hasText(str(Res.string.routine_new)))
-        compose.onNode(tab(R.string.nav_routines)).performClick()
+        compose.onNode(tab(Res.string.nav_routines)).performClick()
         waitForRoutinesTab()
         assertShown(hasText("Push day"))
     }
@@ -92,7 +93,7 @@ class RoutinesTabFlowTest : FlowTest() {
     @Test
     fun aNewRoutineIsFilledAndStartedFromTheTab() {
         waitForText(str(Res.string.home_empty))
-        compose.onNode(tab(R.string.nav_routines)).performClick()
+        compose.onNode(tab(Res.string.nav_routines)).performClick()
         waitForRoutinesTab()
         waitForText(str(Res.string.routines_empty))
         screenshot("1-empty-tab")
@@ -177,7 +178,7 @@ class RoutinesTabFlowTest : FlowTest() {
             programs.addDay(program, kept)
         }
         waitForText(str(Res.string.home_recent))
-        compose.onNode(tab(R.string.nav_routines)).performClick()
+        compose.onNode(tab(Res.string.nav_routines)).performClick()
         waitForRoutinesTab()
 
         // Before selecting, the row offers the long press to a screen reader as "Select".
@@ -231,7 +232,7 @@ class RoutinesTabFlowTest : FlowTest() {
     fun closeBackAndSelectAll() {
         listOf("Push A", "Pull B", "Legs C").forEach(::seedRoutine)
         waitForText(str(Res.string.home_recent))
-        compose.onNode(tab(R.string.nav_routines)).performClick()
+        compose.onNode(tab(Res.string.nav_routines)).performClick()
         waitForRoutinesTab()
 
         longPress("Pull B")
@@ -243,7 +244,7 @@ class RoutinesTabFlowTest : FlowTest() {
         waitForText(selectedTitle(1))
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         waitForText(str(Res.string.routine_new))
-        assertShown(tab(R.string.nav_routines) and isSelected())
+        assertShown(tab(Res.string.nav_routines) and isSelected())
 
         longPress("Legs C")
         clickText(str(Res.string.routines_select_all))

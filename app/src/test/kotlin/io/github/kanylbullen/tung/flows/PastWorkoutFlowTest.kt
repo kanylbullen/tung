@@ -44,7 +44,7 @@ class PastWorkoutFlowTest : FlowTest() {
         val start = millis(today.minusDays(1), 18, 0)
         seedFinishedWorkout(SEEDED, bench(), weightKg = 80.0, reps = 8)
 
-        clickText(str(R.string.nav_history))
+        clickText(str(Res.string.nav_history))
         clickDescription(str(Res.string.past_log))
         waitForText(str(Res.string.past_log_confirm))
         assertShown(hasText("18:00") and hasAnyAncestor(isDialog()))
@@ -75,7 +75,7 @@ class PastWorkoutFlowTest : FlowTest() {
         waitUntil { count("SELECT COUNT(*) FROM workout WHERE startedAt = $start AND endedAt = $end") == 1 }
         waitUntilStored(emptySet<String>()) { app.container.pastWorkouts.ids.first() }
         clickText(str(Res.string.summary_done))
-        clickText(str(R.string.nav_history))
+        clickText(str(Res.string.nav_history))
         waitForText(shortLocalDate(start))
         assertShown(hasText(str(Res.string.duration_hours_minutes, 1, 30), substring = true))
         screenshot("4-history")
@@ -90,7 +90,7 @@ class PastWorkoutFlowTest : FlowTest() {
     @Test
     fun aWorkoutLoggedAnHourBackIsPastFromTheStart() {
         seedFinishedWorkout(SEEDED, bench(), weightKg = 80.0, reps = 8)
-        clickText(str(R.string.nav_history))
+        clickText(str(Res.string.nav_history))
         clickDescription(str(Res.string.past_log))
         clickInDialog(str(Res.string.past_log_confirm))
 
@@ -127,7 +127,7 @@ class PastWorkoutFlowTest : FlowTest() {
         val workoutId = seedFinishedWorkout(SEEDED, bench(), weightKg = 80.0, reps = 8)
         val earlier = Instant.ofEpochMilli(SEEDED).atZone(zone).minusDays(1).toInstant().toEpochMilli()
 
-        clickText(str(R.string.nav_history))
+        clickText(str(Res.string.nav_history))
         clickText(shortLocalDate(SEEDED))
         waitForText(benchPress)
         clickDescription(str(Res.string.action_more))

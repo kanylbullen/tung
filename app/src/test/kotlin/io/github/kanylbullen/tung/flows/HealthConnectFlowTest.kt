@@ -83,7 +83,7 @@ class HealthConnectFlowTest : FlowTest() {
         assertEquals(8, session.segments.single().repetitions)
 
         clickText(str(Res.string.summary_done))
-        clickText(str(R.string.nav_history))
+        clickText(str(Res.string.nav_history))
         val startedAt = longQuery("SELECT startedAt FROM workout WHERE healthConnectId IS NOT NULL")
         clickText(shortLocalDate(startedAt))
         waitForText(str(R.string.ex_bench_press))
@@ -118,7 +118,7 @@ class HealthConnectFlowTest : FlowTest() {
         assertEquals(0, count("SELECT COUNT(*) FROM workout WHERE healthConnectId IS NOT NULL OR avgHeartRate IS NOT NULL OR activeCalories IS NOT NULL"))
 
         clickText(str(Res.string.summary_done))
-        clickText(str(R.string.nav_history))
+        clickText(str(Res.string.nav_history))
         val startedAt = longQuery("SELECT MAX(startedAt) FROM workout")
         clickText(shortLocalDate(startedAt))
         waitForText(str(R.string.ex_bench_press))
