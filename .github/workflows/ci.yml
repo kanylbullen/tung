@@ -146,8 +146,10 @@ jobs:
       # Gradle configures the Android modules even when it builds only iOS, so
       # it needs ANDROID_HOME: GitHub's runner sets it, the Mac's ci account
       # sets it in ~/.zshenv, which the runner's launchd job reads.
+      # The release link for the phone is what an archive (TestFlight) runs;
+      # it needs more heap than the debug one (gradle.properties).
       - name: Run the iOS tests on a simulator and link the framework
-        run: ./gradlew :data:iosSimulatorArm64Test :ui:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
+        run: ./gradlew :data:iosSimulatorArm64Test :ui:linkDebugFrameworkIosSimulatorArm64 :ui:linkReleaseFrameworkIosArm64 --no-daemon --stacktrace
 
       - name: Upload iOS test results
         if: always()
