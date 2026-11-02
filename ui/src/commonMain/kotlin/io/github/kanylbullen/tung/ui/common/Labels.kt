@@ -159,3 +159,17 @@ fun equipmentLabel(equipment: Equipment): String = stringResource(
     }
 )
 
+/** "6 March 2023": a date with its year, for ranges such as an import's. */
+fun localDateWithYear(epochMillis: Long): String = dateText(epochMillis, "d MMMM yyyy", "d MMMM yyyy")
+
+/**
+ * The host of [url] ("ntfy.sh" of `https://ntfy.sh/up…`, `[::1]` for an IPv6
+ * literal), or null when it has none: what a screen shows of an address
+ * whose path may be a secret.
+ */
+fun urlHost(url: String): String? {
+    val authority = url.substringAfter("://", "").substringBefore('/').substringBefore('?').substringBefore('#')
+        .substringAfterLast('@')
+    val host = if (authority.startsWith("[")) authority.substringBefore(']') + "]" else authority.substringBefore(':')
+    return host.takeIf { it.isNotEmpty() && it != "]" }
+}

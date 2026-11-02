@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import org.jetbrains.compose.resources.StringResource
 import io.github.kanylbullen.tung.ui.resources.*
 import android.app.Activity
 import android.content.Intent
@@ -58,9 +59,9 @@ class ImportFlowTest : FlowTest() {
     }
 
     private fun counts(workouts: Int, sets: Int, routines: Int) = listOf(
-        plural(R.plurals.import_workouts, workouts, workouts),
-        plural(R.plurals.import_sets, sets, sets),
-        plural(R.plurals.import_routines, routines, routines),
+        plural(Res.plurals.import_workouts, workouts, workouts),
+        plural(Res.plurals.import_sets, sets, sets),
+        plural(Res.plurals.import_routines, routines, routines),
     ).joinToString(str(Res.string.row_separator))
 
     /** Settings' Data group is a scrolling column. */
@@ -81,13 +82,13 @@ class ImportFlowTest : FlowTest() {
     private fun scrollToWhenThere(matcher: SemanticsMatcher) = waitUntil { runCatching { scrollToInList(matcher) }.isSuccess }
 
     /** A collapsed row's decision line, one node for a screen reader (issue #77). */
-    private fun decidedAs(name: String, exercise: Int) = hasContentDescription(str(R.string.import_decided_use_description, name, str(exercise)))
-    private fun decidedSkip(name: String) = hasContentDescription(str(R.string.import_decided_skip_description, name))
-    private fun decidedCreate(name: String) = hasContentDescription(str(R.string.import_decided_create_description, name))
-    private fun counter(decided: Int, of: Int) = str(R.string.import_decided_count, decided, of)
+    private fun decidedAs(name: String, exercise: Int) = hasContentDescription(str(Res.string.import_decided_use_description, name, str(exercise)))
+    private fun decidedSkip(name: String) = hasContentDescription(str(Res.string.import_decided_skip_description, name))
+    private fun decidedCreate(name: String) = hasContentDescription(str(Res.string.import_decided_create_description, name))
+    private fun counter(decided: Int, of: Int) = str(Res.string.import_decided_count, decided, of)
 
     /** The rows still showing Choose/Create/Skip: the undecided and the reopened ones. */
-    private fun openRows(): Int = compose.onAllNodes(hasText(str(R.string.import_choice_pick)) and hasClickAction()).fetchSemanticsNodes().size
+    private fun openRows(): Int = compose.onAllNodes(hasText(str(Res.string.import_choice_pick)) and hasClickAction()).fetchSemanticsNodes().size
 
     /**
      * The synthetic export with two more names nothing matches exactly, both
@@ -120,32 +121,32 @@ class ImportFlowTest : FlowTest() {
         compose.onNode(hasText(str(Res.string.import_jefit))).performClick()
         answerFilePicker()
 
-        waitForText(str(R.string.import_review_title))
+        waitForText(str(Res.string.import_review_title))
         assertShown(hasText("Heel Walking"))
         assertShown(hasText(counts(4, 12, 3)))
-        assertShown(hasText(str(R.string.import_chosen_none)))
+        assertShown(hasText(str(Res.string.import_chosen_none)))
         assertShown(hasText(counter(0, 1)))
-        scrollToInList(str(R.string.import_decide_first))
-        assertShown(hasText(plural(R.plurals.import_note_warm_up, 1, 1)))
-        compose.onNode(hasText(str(R.string.import_action)) and hasClickAction()).assertIsNotEnabled()
+        scrollToInList(str(Res.string.import_decide_first))
+        assertShown(hasText(plural(Res.plurals.import_note_warm_up, 1, 1)))
+        compose.onNode(hasText(str(Res.string.import_action)) and hasClickAction()).assertIsNotEnabled()
         screenshot("2-preview")
 
         scrollToInList("Heel Walking")
-        clickText(str(R.string.import_choice_skip))
+        clickText(str(Res.string.import_choice_skip))
         // Intended change (issue #77): a decided row collapses to its decision; Choose/Create/Skip are gone from it.
         assertShown(decidedSkip("Heel Walking"))
         assertShown(hasText(counter(1, 1)))
-        scrollToInList(str(R.string.import_action))
-        waitGone(hasText(str(R.string.import_decide_first)))
-        compose.onNode(hasText(str(R.string.import_action)) and hasClickAction()).assertIsEnabled().performClick()
+        scrollToInList(str(Res.string.import_action))
+        waitGone(hasText(str(Res.string.import_decide_first)))
+        compose.onNode(hasText(str(Res.string.import_action)) and hasClickAction()).assertIsEnabled().performClick()
 
-        waitForText(str(R.string.import_done_title))
-        assertShown(hasText(str(R.string.import_done_added, counts(4, 11, 3))))
+        waitForText(str(Res.string.import_done_title))
+        assertShown(hasText(str(Res.string.import_done_added, counts(4, 11, 3))))
         screenshot("3-summary")
         assertEquals(4, count("SELECT COUNT(*) FROM workout WHERE importSource = 'jefit' AND endedAt IS NOT NULL"))
         assertEquals(0, count("SELECT COUNT(*) FROM workout_exercise we JOIN exercise e ON we.exerciseId = e.id WHERE e.name = 'Heel Walking'"))
 
-        clickText(str(R.string.import_done))
+        clickText(str(Res.string.import_done))
         scrollToInSettings(str(Res.string.import_undo_last))
         leaveSettings()
         clickText(str(R.string.nav_history))
@@ -179,8 +180,8 @@ class ImportFlowTest : FlowTest() {
         compose.onNode(hasText(str(Res.string.import_jefit))).performClick()
         answerFilePicker()
 
-        waitForText(str(R.string.import_review_title))
-        clickText(str(R.string.import_choice_pick))
+        waitForText(str(Res.string.import_review_title))
+        clickText(str(Res.string.import_choice_pick))
         waitForText(str(Res.string.import_pick_title))
         compose.onNode(hasSetTextAction()).performTextReplacement("plank")
         clickText(str(R.string.ex_plank))
@@ -189,9 +190,9 @@ class ImportFlowTest : FlowTest() {
         screenshot("1-chosen")
         assertEquals(0, count("SELECT COUNT(*) FROM workout"))
 
-        scrollToInList(str(R.string.import_action))
-        compose.onNode(hasText(str(R.string.import_action)) and hasClickAction()).assertIsEnabled().performClick()
-        waitForText(str(R.string.import_done_title))
+        scrollToInList(str(Res.string.import_action))
+        compose.onNode(hasText(str(Res.string.import_action)) and hasClickAction()).assertIsEnabled().performClick()
+        waitForText(str(Res.string.import_done_title))
         assertEquals(1, count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("plank")}'"))
         // Monday's routine has it too.
         assertEquals(1, count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '${catalogExerciseId("plank")}'"))
@@ -210,10 +211,10 @@ class ImportFlowTest : FlowTest() {
         runBlocking { RoutineRepository(db).saveFromWorkout(ownWorkout, "Mine") }
         openImport(fixture.readText())
         scrollToInList("Heel Walking")
-        clickText(str(R.string.import_choice_skip))
+        clickText(str(Res.string.import_choice_skip))
         importNow()
         assertEquals(4, count("SELECT COUNT(*) FROM routine"))
-        clickText(str(R.string.import_done))
+        clickText(str(Res.string.import_done))
 
         scrollToInSettings(str(Res.string.import_delete_routines, 3))
         screenshot("1-shortcut")
@@ -247,14 +248,14 @@ class ImportFlowTest : FlowTest() {
         scrollToInSettings(str(Res.string.import_jefit))
         compose.onNode(hasText(str(Res.string.import_jefit))).performClick()
         answerFilePicker(text)
-        waitForText(str(R.string.import_review_title))
+        waitForText(str(Res.string.import_review_title))
     }
 
     private fun importNow() {
-        scrollToInList(str(R.string.import_action))
-        waitGone(hasText(str(R.string.import_decide_first)))
-        compose.onNode(hasText(str(R.string.import_action)) and hasClickAction()).assertIsEnabled().performClick()
-        waitForText(str(R.string.import_done_title))
+        scrollToInList(str(Res.string.import_action))
+        waitGone(hasText(str(Res.string.import_decide_first)))
+        compose.onNode(hasText(str(Res.string.import_action)) and hasClickAction()).assertIsEnabled().performClick()
+        waitForText(str(Res.string.import_done_title))
     }
 
     /**
@@ -269,11 +270,11 @@ class ImportFlowTest : FlowTest() {
         val usage = JefitImport.parse(threeNames, TimeZone.currentSystemDefault()).nameUsage()
         val hammer = usage.getValue("Dumbbell Hammer Curl to Press").workouts
         scrollToInList("Dumbbell Hammer Curl to Press")
-        waitFor(hasText(plural(R.plurals.import_used_in_workouts, hammer, hammer)))
+        waitFor(hasText(plural(Res.plurals.import_used_in_workouts, hammer, hammer)))
         // No assistant set up: no button for it.
-        assertTrue(compose.onAllNodes(hasText(str(R.string.import_assist_action))).fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodes(hasText(str(Res.string.import_assist_action))).fetchSemanticsNodes().isEmpty())
 
-        val chip = str(R.string.import_suggestion, str(R.string.ex_hammer_curl))
+        val chip = str(Res.string.import_suggestion, str(R.string.ex_hammer_curl))
         scrollToInList(chip)
         clickText(chip)
         // Intended change (issue #77): the chip collapses the row, so its chips are gone and the decision is one line.
@@ -282,8 +283,8 @@ class ImportFlowTest : FlowTest() {
         assertEquals(0, count("SELECT COUNT(*) FROM workout"))
         screenshot("1-chip-chosen")
 
-        scrollToInList(str(R.string.import_skip_remaining))
-        clickText(str(R.string.import_skip_remaining))
+        scrollToInList(str(Res.string.import_skip_remaining))
+        clickText(str(Res.string.import_skip_remaining))
         // Intended change (issue #77): the bulk decision collapses the rest like a tap on each.
         scrollToInList(decidedSkip("Machine Seated Row"))
         scrollToInList(decidedSkip("Heel Walking"))
@@ -325,11 +326,11 @@ class ImportFlowTest : FlowTest() {
             openImport(threeNames)
             scrollToInList(counter(0, 3))
             assertShown(hasText(counter(0, 3)))
-            scrollToInList(str(R.string.import_assist_action))
-            clickText(str(R.string.import_assist_action))
-            val seated = str(R.string.import_assist_suggests, str(R.string.ex_seated_cable_row))
+            scrollToInList(str(Res.string.import_assist_action))
+            clickText(str(Res.string.import_assist_action))
+            val seated = str(Res.string.import_assist_suggests, str(R.string.ex_seated_cable_row))
             waitUntil { runCatching { scrollToInList(seated) }.isSuccess }
-            val accept = hasText(str(R.string.import_assist_accept)) and hasClickAction()
+            val accept = hasText(str(Res.string.import_assist_accept)) and hasClickAction()
             // The one proposal with an exercise is the only Accept.
             scrollToInList(accept)
             compose.onNode(accept).performClick()
@@ -337,12 +338,12 @@ class ImportFlowTest : FlowTest() {
             val decision = decidedAs("Machine Seated Row", R.string.ex_seated_cable_row)
             scrollToInList(decision)
             assertShown(decision)
-            val change = hasContentDescription(str(R.string.import_change_description, "Machine Seated Row"))
+            val change = hasContentDescription(str(Res.string.import_change_description, "Machine Seated Row"))
             assertShown(change)
             // Nothing on the collapsed row asks for a tap: the proposal and its Accept are gone, and the open line with it.
             waitGone(hasText(seated))
             waitGone(accept)
-            assertTrue(compose.onAllNodes(hasText(str(R.string.import_chosen_use, str(R.string.ex_seated_cable_row)))).fetchSemanticsNodes().isEmpty())
+            assertTrue(compose.onAllNodes(hasText(str(Res.string.import_chosen_use, str(R.string.ex_seated_cable_row)))).fetchSemanticsNodes().isEmpty())
             scrollToInList(counter(1, 3))
             assertShown(hasText(counter(1, 3)))
             screenshot("1-accepted-collapsed")
@@ -352,21 +353,21 @@ class ImportFlowTest : FlowTest() {
             scrollToInList(seated)
             assertShown(hasText(seated))
             // Open again exactly as before: the decision stands, so Accept rests and the counter keeps it.
-            assertShown(hasText(str(R.string.import_chosen_use, str(R.string.ex_seated_cable_row))))
+            assertShown(hasText(str(Res.string.import_chosen_use, str(R.string.ex_seated_cable_row))))
             compose.onNode(accept).assertIsNotEnabled()
             waitGone(decision)
             scrollToInList(counter(1, 3))
             assertShown(hasText(counter(1, 3)))
             screenshot("2-changed-open")
 
-            scrollToInList(str(R.string.import_create_remaining))
-            clickText(str(R.string.import_create_remaining))
+            scrollToInList(str(Res.string.import_create_remaining))
+            clickText(str(Res.string.import_create_remaining))
             scrollToInList(counter(3, 3))
             assertShown(hasText(counter(3, 3)))
             scrollToInList(decidedCreate("Dumbbell Hammer Curl to Press"))
             scrollToInList(decidedCreate("Heel Walking"))
             // The reopened row was decided, so the bulk action leaves it as it is.
-            scrollToInList(str(R.string.import_chosen_use, str(R.string.ex_seated_cable_row)))
+            scrollToInList(str(Res.string.import_chosen_use, str(R.string.ex_seated_cable_row)))
             screenshot("3-all-decided")
             importNow()
             assertTrue(count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("seated_cable_row")}'") >= 1)
@@ -401,23 +402,23 @@ class ImportFlowTest : FlowTest() {
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(Json.encodeToString(JsonObject.serializer(), body)))
 
             openImport(threeNames)
-            scrollToInList(str(R.string.import_assist_action))
-            clickText(str(R.string.import_assist_action))
-            waitForText(str(R.string.ai_payload_title))
+            scrollToInList(str(Res.string.import_assist_action))
+            clickText(str(Res.string.import_assist_action))
+            waitForText(str(Res.string.ai_payload_title))
             screenshot("1-what-is-sent")
             assertEquals(0, server.requestCount)
-            clickText(str(R.string.ai_payload_send))
+            clickText(str(Res.string.ai_payload_send))
 
             // The answer comes back on another thread: wait for the button it brings.
-            waitUntil { runCatching { scrollToInList(str(R.string.import_assist_accept_all)) }.isSuccess }
+            waitUntil { runCatching { scrollToInList(str(Res.string.import_assist_accept_all)) }.isSuccess }
             // Intended change (issue #75): the confidence is a tag of its own beside the proposal, not part of its sentence.
-            val seated = str(R.string.import_assist_suggests, str(R.string.ex_seated_cable_row))
+            val seated = str(Res.string.import_assist_suggests, str(R.string.ex_seated_cable_row))
             scrollToInList(seated)
             assertShown(hasText(seated))
-            val plank = str(R.string.import_assist_suggests, str(R.string.ex_plank))
+            val plank = str(Res.string.import_assist_suggests, str(R.string.ex_plank))
             scrollToInList(plank)
             assertShown(hasText(plank))
-            assertShown(hasContentDescription(str(R.string.confidence_tag_description, str(R.string.import_confidence_low))))
+            assertShown(hasContentDescription(str(Res.string.confidence_tag_description, str(Res.string.import_confidence_low))))
             screenshot("2-proposals")
             val sent = server.takeRequest().body.readUtf8()
             // The app shows English, so the note is asked for in English, by name.
@@ -426,23 +427,23 @@ class ImportFlowTest : FlowTest() {
             assertTrue(sent.contains("Machine Seated Row"))
             assertFalse(sent.contains("weight_kg"))
             // A proposal applies nothing by itself: no row says "As …", Import still waits.
-            assertTrue(compose.onAllNodes(hasText(str(R.string.import_chosen_use, str(R.string.ex_seated_cable_row)))).fetchSemanticsNodes().isEmpty())
-            scrollToInList(str(R.string.import_decide_first))
-            compose.onNode(hasText(str(R.string.import_action)) and hasClickAction()).assertIsNotEnabled()
+            assertTrue(compose.onAllNodes(hasText(str(Res.string.import_chosen_use, str(R.string.ex_seated_cable_row)))).fetchSemanticsNodes().isEmpty())
+            scrollToInList(str(Res.string.import_decide_first))
+            compose.onNode(hasText(str(Res.string.import_action)) and hasClickAction()).assertIsNotEnabled()
 
-            scrollToInList(str(R.string.import_assist_accept_all))
-            clickText(str(R.string.import_assist_accept_all))
+            scrollToInList(str(Res.string.import_assist_accept_all))
+            clickText(str(Res.string.import_assist_accept_all))
             // Intended change (issue #77): the accepted rows collapse to their decision.
             scrollToInList(decidedAs("Machine Seated Row", R.string.ex_seated_cable_row))
             scrollToInList(decidedAs("Dumbbell Hammer Curl to Press", R.string.ex_hammer_curl))
             scrollToInList("Heel Walking")
-            assertShown(hasText(str(R.string.import_chosen_none)))
-            scrollToInList(str(R.string.import_decide_first))
-            compose.onNode(hasText(str(R.string.import_action)) and hasClickAction()).assertIsNotEnabled()
+            assertShown(hasText(str(Res.string.import_chosen_none)))
+            scrollToInList(str(Res.string.import_decide_first))
+            compose.onNode(hasText(str(Res.string.import_action)) and hasClickAction()).assertIsNotEnabled()
             screenshot("3-accepted")
 
-            scrollToInList(str(R.string.import_skip_remaining))
-            clickText(str(R.string.import_skip_remaining))
+            scrollToInList(str(Res.string.import_skip_remaining))
+            clickText(str(Res.string.import_skip_remaining))
             importNow()
             assertTrue(count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("seated_cable_row")}'") >= 1)
             assertTrue(count("SELECT COUNT(*) FROM workout_exercise WHERE exerciseId = '${catalogExerciseId("hammer_curl")}'") >= 1)
@@ -486,27 +487,27 @@ class ImportFlowTest : FlowTest() {
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(Json.encodeToString(JsonObject.serializer(), body)))
 
             openImport(threeNames)
-            scrollToInList(str(R.string.import_assist_action))
-            clickText(str(R.string.import_assist_action))
-            waitUntil { runCatching { scrollToInList(str(R.string.import_assist_accept_all)) }.isSuccess }
+            scrollToInList(str(Res.string.import_assist_action))
+            clickText(str(Res.string.import_assist_action))
+            waitUntil { runCatching { scrollToInList(str(Res.string.import_assist_accept_all)) }.isSuccess }
 
-            fun tag(level: Int) = hasContentDescription(str(R.string.confidence_tag_description, str(level)))
-            scrollToInList(str(R.string.import_assist_suggests, str(R.string.ex_seated_cable_row)))
-            assertShown(tag(R.string.import_confidence_high))
+            fun tag(level: StringResource) = hasContentDescription(str(Res.string.confidence_tag_description, str(level)))
+            scrollToInList(str(Res.string.import_assist_suggests, str(R.string.ex_seated_cable_row)))
+            assertShown(tag(Res.string.import_confidence_high))
             screenshot("1-high")
-            scrollToInList(str(R.string.import_assist_suggests, str(R.string.ex_hammer_curl)))
-            assertShown(tag(R.string.import_confidence_medium))
-            scrollToInList(str(R.string.import_assist_no_match))
+            scrollToInList(str(Res.string.import_assist_suggests, str(R.string.ex_hammer_curl)))
+            assertShown(tag(Res.string.import_confidence_medium))
+            scrollToInList(str(Res.string.import_assist_no_match))
             screenshot("2-medium-and-no-match")
             // "No good match" has no tag at all, and nothing here is low.
-            assertTrue(compose.onAllNodes(tag(R.string.import_confidence_low)).fetchSemanticsNodes().isEmpty())
+            assertTrue(compose.onAllNodes(tag(Res.string.import_confidence_low)).fetchSemanticsNodes().isEmpty())
 
             // "Accept all high-confidence" takes the row and collapses it (issue #77), the medium one's Accept is still there to tap.
-            scrollToInList(str(R.string.import_assist_accept_all))
-            clickText(str(R.string.import_assist_accept_all))
+            scrollToInList(str(Res.string.import_assist_accept_all))
+            clickText(str(Res.string.import_assist_accept_all))
             scrollToInList(decidedAs("Machine Seated Row", R.string.ex_seated_cable_row))
-            val enabledAccept = hasText(str(R.string.import_assist_accept)) and hasClickAction() and isEnabled()
-            scrollToInList(str(R.string.import_assist_suggests, str(R.string.ex_hammer_curl)))
+            val enabledAccept = hasText(str(Res.string.import_assist_accept)) and hasClickAction() and isEnabled()
+            scrollToInList(str(Res.string.import_assist_suggests, str(R.string.ex_hammer_curl)))
             waitFor(enabledAccept)
             assertEquals(1, compose.onAllNodes(enabledAccept).fetchSemanticsNodes().size)
             // The collapsed row above is shorter, so the button can sit below the fold: bring it into view first.

@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.core.sync.PushChoice
 import io.github.kanylbullen.tung.push.PushStatus
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
+import io.github.kanylbullen.tung.ui.common.urlHost
 import io.github.kanylbullen.tung.ui.common.clockText
 import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.theme.Tung
@@ -73,7 +74,7 @@ private fun Push(push: PushStatus, onChoose: (String) -> Unit) {
             color = Tung.colors.text,
         )
         if (choice != PushChoice.None) {
-            val host = push.endpoint?.takeIf { choice is PushChoice.UnifiedPush }?.let(::endpointHost)
+            val host = push.endpoint?.takeIf { choice is PushChoice.UnifiedPush }?.let(::urlHost)
             Text(
                 when {
                     !push.registered -> stringResource(Res.string.push_not_registered)
@@ -166,13 +167,3 @@ private fun WatchLink(link: WatchLinkState, onLink: () -> Unit, onClose: () -> U
 }
 
 
-/**
- * The host of a push endpoint URL ("ntfy.sh" of `https://ntfy.sh/up…`), or
- * null when it has none: only the host is shown, never the secret path.
- */
-internal fun endpointHost(url: String): String? {
-    val authority = url.substringAfter("://", "").substringBefore('/').substringBefore('?').substringBefore('#')
-        .substringAfterLast('@')
-    val host = if (authority.startsWith("[")) authority.substringBefore(']') + "]" else authority.substringBefore(':')
-    return host.takeIf { it.isNotEmpty() && it != "]" }
-}

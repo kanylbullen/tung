@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import org.jetbrains.compose.resources.StringResource
 import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -73,12 +74,12 @@ class AssistantFlowTest : FlowTest() {
         waitFor(row)
         compose.onNode(hasScrollAction()).performScrollToNode(row)
         compose.onNode(row).performClick()
-        waitForText(str(R.string.ai_intro))
+        waitForText(str(Res.string.ai_intro))
     }
 
     private fun waitForAlwaysShowPayload(on: Boolean) = waitUntilStored(on) { app.container.aiSettings.alwaysShowPayload.first() }
 
-    private fun ask(label: Int) {
+    private fun ask(label: StringResource) {
         val button = hasText(str(label)) and isEnabled()
         waitFor(button)
         compose.onNode(button).performClick()
@@ -111,16 +112,16 @@ class AssistantFlowTest : FlowTest() {
         leaveSettings()
         openAssistantFromHome()
         screenshot("2-assistant")
-        ask(R.string.ai_ask_program)
+        ask(Res.string.ai_ask_program)
 
         // The first request ever is shown before anything goes out.
-        waitForText(str(R.string.ai_payload_title))
+        waitForText(str(Res.string.ai_payload_title))
         screenshot("3-what-is-sent")
         assertEquals(0, server.requestCount)
-        clickText(str(R.string.ai_payload_send))
+        clickText(str(Res.string.ai_payload_send))
 
         waitForText("Heavy day")
-        waitForText(plural(R.plurals.ai_dropped, 1, 1))
+        waitForText(plural(Res.plurals.ai_dropped, 1, 1))
         screenshot("4-proposal")
         val sent = server.takeRequest()
         assertEquals("/v1/chat/completions", sent.path)
@@ -131,7 +132,7 @@ class AssistantFlowTest : FlowTest() {
         // "Moon walk" is in no catalogue: dropped, not shown.
         assertTrue(compose.onAllNodes(hasText("Moon walk")).fetchSemanticsNodes().isEmpty())
 
-        scrollAndClick(str(R.string.ai_save_program))
+        scrollAndClick(str(Res.string.ai_save_program))
         waitForText(str(Res.string.programs_title))
         waitForText("Heavy day")
         waitForText("Volume day")
@@ -156,25 +157,25 @@ class AssistantFlowTest : FlowTest() {
 
         // "Show what is sent" in the menu: the next request is shown first, and Cancel sends nothing.
         clickDescription(str(Res.string.action_more))
-        clickText(str(R.string.ai_show_payload))
+        clickText(str(Res.string.ai_show_payload))
         waitForAlwaysShowPayload(true)
-        ask(R.string.ai_ask_plateaus)
-        waitForText(str(R.string.ai_payload_title))
+        ask(Res.string.ai_ask_plateaus)
+        waitForText(str(Res.string.ai_payload_title))
         clickText(str(Res.string.action_cancel))
-        waitGone(hasText(str(R.string.ai_payload_title)))
+        waitGone(hasText(str(Res.string.ai_payload_title)))
         assertEquals(0, server.requestCount)
 
         // Off again: with the first review done, a tap sends at once.
         clickDescription(str(Res.string.action_more))
-        clickText(str(R.string.ai_show_payload))
+        clickText(str(Res.string.ai_show_payload))
         waitForAlwaysShowPayload(false)
-        ask(R.string.ai_ask_next)
-        waitForText(str(R.string.ai_start_workout))
+        ask(Res.string.ai_ask_next)
+        waitForText(str(Res.string.ai_start_workout))
         assertEquals(1, server.requestCount)
-        assertTrue(compose.onAllNodes(hasText(str(R.string.ai_payload_title))).fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodes(hasText(str(Res.string.ai_payload_title))).fetchSemanticsNodes().isEmpty())
         screenshot("1-next-workout")
 
-        scrollAndClick(str(R.string.ai_start_workout))
+        scrollAndClick(str(Res.string.ai_start_workout))
         waitForText(str(Res.string.workout_finish))
         waitForText(str(R.string.ex_bench_press))
         assertEquals(2, count("SELECT COUNT(*) FROM set_entry WHERE weightKg = 82.5 AND completed = 0"))
@@ -207,8 +208,8 @@ class AssistantFlowTest : FlowTest() {
         }
         server.enqueue(answer("""{"rationale": "Bench day.", "exercises": [{"key": "bench_press", "sets": [{"weight_kg": 80, "reps": 8}]}]}"""))
         openAssistantFromHome()
-        ask(R.string.ai_ask_next)
-        waitForText(str(R.string.ai_start_workout))
+        ask(Res.string.ai_ask_next)
+        waitForText(str(Res.string.ai_start_workout))
         val body = server.takeRequest().body.readUtf8()
         assertFalse("a locale tag was sent", body.contains("en-SE") || body.contains("sv-SE"))
         return checkNotNull(Regex("""Write the text fields \([^)]*\) in (\w+)\.""").find(body)) { "no language in the request" }.groupValues[1]

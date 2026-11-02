@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.ui.common
 
+import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.padding
@@ -8,11 +10,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.ai.AiConfidence
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -26,7 +26,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 @Composable
 fun ConfidenceTag(confidence: AiConfidence, modifier: Modifier = Modifier) {
     val label = confidenceLabel(confidence)
-    val description = stringResource(R.string.confidence_tag_description, label)
+    val description = stringResource(Res.string.confidence_tag_description, label)
     val colors = Tung.colors
     val (fill, outline, text) = when (confidence) {
         AiConfidence.HIGH -> Triple(colors.accent, colors.accent, colors.onAccent)
@@ -50,8 +50,8 @@ fun ConfidenceTag(confidence: AiConfidence, modifier: Modifier = Modifier) {
 @Composable
 fun confidenceLabel(confidence: AiConfidence): String = stringResource(
     when (confidence) {
-        AiConfidence.HIGH -> R.string.import_confidence_high
-        AiConfidence.MEDIUM -> R.string.import_confidence_medium
-        AiConfidence.LOW -> R.string.import_confidence_low
+        AiConfidence.HIGH -> Res.string.import_confidence_high
+        AiConfidence.MEDIUM -> Res.string.import_confidence_medium
+        AiConfidence.LOW -> Res.string.import_confidence_low
     },
 )
