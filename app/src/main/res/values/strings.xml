@@ -3,9 +3,6 @@
     <string name="app_name">Tung</string>
 
     <!-- Navigation -->
-    <string name="nav_home">Home</string>
-    <string name="nav_history">History</string>
-    <string name="nav_exercises">Exercises</string>
 
     <!-- Home -->
     <!-- Home's "This week" block: the hero number is the week's volume in kg, under it the counts, then the days. -->
@@ -44,8 +41,6 @@
     <!-- Health Connect's values on a finished workout, one muted line: "Heart rate 128 avg · 171 max · 342 kcal" -->
 
     <!-- Routines -->
-    <string name="routine_saved">Saved as routine: %1$s</string>
-    <string name="nav_routines">Routines</string>
 
     <!-- Home: Today, from the active program (the program screens are in ui) -->
 
@@ -88,7 +83,6 @@
     <!-- Undo asks first: it deletes every workout the import added. -->
 
     <!-- Progress (ui/progress, CLAUDE.md "Progress") -->
-    <string name="nav_progress">Progress</string>
     <!-- The bar charts for a screen reader. %1$d workouts in 12 weeks, %2$d this week. -->
     <!-- A change with its sign and unit: "+7.5 kg", "−2.5 kg". -->
     <!-- A row with fewer than two values in its span says how many sessions the span holds, in the span's own words. -->

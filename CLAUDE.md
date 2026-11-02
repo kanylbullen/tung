@@ -32,7 +32,7 @@ Adding an app language:
 ## Stack (decided)
 
 Kotlin 2.2.21 (KSP 2.2.21-2.0.5, KSP2), Jetpack Compose (BOM 2026.05.01: Compose 1.11; lifecycle 2.9.2) and, for the shared screens in `ui/`, Compose Multiplatform 1.10.3 (the last line whose iOS klibs are compiled with Kotlin 2.2; on Android its artifacts are Jetpack Compose's and the BOM's 1.11 wins),
-Material 3, Room 2.8.5 via KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
+Material 3, Room 2.8.5 via KSP, Navigation Compose 2.9 (JetBrains' multiplatform `navigation-compose` 2.9.2 in `ui/`, androidx's on Android), ViewModel + StateFlow, coroutines, Preferences
 DataStore 1.1.7 (small state outside Room). AGP 8.9.1,
 Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the five Android
 modules: AGP's default is not compileSdk's). compileSdk 36; targetSdk 36 on
@@ -45,10 +45,21 @@ for Sign in with Google, Credential Manager (`androidx.credentials` 1.3.0
 with its Play services provider) and `googleid` 1.1.1, in `app/` only.
 
 **No Hilt/Koin.** `TungContainer` (in `data/`, built by `TungApp` and by the
-watch's `TungWearApp`) holds the database and the repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
-(`ui/common/Containers.kt`) and get repositories (for reads), `container.commands`
-(for every change, see "Commands") and nav arguments in the constructor;
-the active workout's factory also passes `createSavedStateHandle()`, for the rest timer, and so does the Routines tab's, for its selection.
+watch's `TungWearApp`) holds the database and the repositories lazily, and
+implements data's common `TungServices`: what the shared screens need (the
+repositories, `commands`, the settings, sync, the assistant, the time). The
+whole phone app is `TungNavRoot` in the `ui/` module (`ui/.../ui/TungNavRoot.kt`):
+the bottom bar, every route, and each ViewModel built with `viewModel { ... }`
+from `TungServices`, getting repositories (for reads), `commands` (for every
+change, see "Commands") and nav arguments in the constructor; the active
+workout's also passes `createSavedStateHandle()`, for the rest timer, and so
+does the Routines tab's, for its selection. What only a platform knows comes
+in through ui's `AppPlatform` (the build, exercise names, toasts, back, the
+workout's speech and permissions, Google and Apple sign-in, the import and
+photo pickers, the health store); the phone's is app's `AndroidPlatform`, and
+app's `TungAppRoot` is one call: `TungNavRoot(container, AndroidPlatform(app))`.
+Health Connect's screen still builds its ViewModel with app's `factoryOf`
+(`ui/common/Containers.kt`).
 
 ## Layers
 
@@ -208,8 +219,9 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (`ActiveWorkoutRoute` around the `ui/` screen: the ViewModel, the phone's `WorkoutPlatform` and the progress sheet), `exercises` (`ExercisesRoute`, the tab and picker in one, and `ExerciseDetailRoute`, the exercise page, around the `ui/` screens, which give each ViewModel the phone's `displayName`), `history` (`HistoryRoute` and `WorkoutDetailRoute` around the `ui/` screens; the detail's "Saved as routine" toast is the route's), `summary` (`SummaryRoute` around the `ui/` screen, with the "Saved as routine" toast; see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (`ProgressRoutes.kt` around the `ui/` screens and the sheet in a workout; see "Progress"), `settings` (`settingsGraph` in `SettingsNavigation.kt` around the `ui/` screens: the ViewModels, the build's version, Health Connect's section and summary, the file and photo pickers and Credential Manager; see "Settings"), `importing` (the import's route in `TungAppRoot` around the `ui/` screen, with `readImportFile` over the content resolver). |
-| `ui/ai/` | `AssistantRoute` around the `ui/` module's Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt` in `ui/`. See "In-app AI (BYOK)". |
+| `ui/` | `TungAppRoot` (the shared `TungNavRoot` over the container) and `AndroidPlatform` (ui's `AppPlatform` for the phone: BuildConfig, `displayName`, toasts, `BackHandler`, the workout's `WorkoutPlatform`, Credential Manager, `ACTION_OPEN_DOCUMENT` and the photo picker, Health Connect). Every route is in the `ui/` module now; what follows says where each screen came from. |
+| `ui/<screen>/` | (Historical: the routes below moved into `ui/`'s `TungNavRoot`.) `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (`ActiveWorkoutRoute` around the `ui/` screen: the ViewModel, the phone's `WorkoutPlatform` and the progress sheet), `exercises` (`ExercisesRoute`, the tab and picker in one, and `ExerciseDetailRoute`, the exercise page, around the `ui/` screens, which give each ViewModel the phone's `displayName`), `history` (`HistoryRoute` and `WorkoutDetailRoute` around the `ui/` screens; the detail's "Saved as routine" toast is the route's), `summary` (`SummaryRoute` around the `ui/` screen, with the "Saved as routine" toast; see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (`ProgressRoutes.kt` around the `ui/` screens and the sheet in a workout; see "Progress"), `settings` (`settingsGraph` in `SettingsNavigation.kt` around the `ui/` screens: the ViewModels, the build's version, Health Connect's section and summary, the file and photo pickers and Credential Manager; see "Settings"), `importing` (the import's route in `TungAppRoot` around the `ui/` screen, with `readImportFile` over the content resolver). |
+| `ui/ai/` | The `ui/` module's Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt` in `ui/`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `AndroidSpeechInput` (the phone's `SpeechRecognizer`) behind ui's `SpeechInput`, made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in the `ui/` module's `ui/workout/Voice*.kt`. See "Voice". |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`; the Canvas charts are in the `ui/` module's `charts/` (see "Progress"). |
@@ -223,7 +235,7 @@ both "Last: 80 × 8" and the pre-fill of new sets.
 
 ### Home
 
-`ui/home/` in the `ui/` module (app's `HomeRoute` builds `HomeViewModel` with today, the zone and the rest timer's clearing from the container, so the ViewModel has no `java.time` or `RestTimerController` of its own): the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
+`ui/home/` in the `ui/` module (`TungNavRoot` builds `HomeViewModel` with today, the zone and the rest timer's clearing from `TungServices`, so the ViewModel has no `java.time` or `RestTimerController` of its own): the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
 and heaviest, `archivoWideFamily()` in `ui/theme/Type.kt` (the `ui/` module), which only the wordmark
 and the hero number use), then, once there is a finished workout, **"This
 week"** (`ThisWeekSection`): the week's volume as the hero number
@@ -270,8 +282,8 @@ Home's gear opens `settings`, a list of groups (issue #67): calm list rows,
 each a title and a one-line live summary (`SettingsScreen` and its read-only
 `SettingsViewModel`; Health Connect's line comes from
 `HealthConnectViewModel`). A row opens `settings/<group>`
-(`SettingsGroup`, `settingsGraph` in `SettingsNavigation.kt`, one call in
-`TungAppRoot`); each group page is a `SettingsPage` (top bar, back, scrolling
+(`SettingsGroup`, `settingsGraph` in ui's `TungNavRoot`; the health group
+only where `AppPlatform.healthSettings` exists); each group page is a `SettingsPage` (top bar, back, scrolling
 column). The screens and their ViewModels are in `ui/.../ui/settings/`, except
 Health Connect's section and ViewModel; the routes, the pickers and
 `Screenshots.kt` are in `app/.../ui/settings/`:
@@ -327,8 +339,8 @@ reader hears "Muscles: quads, glutes, chest" (the row's top three; the page
 names them all with percentages). `RoutineMusclesFlowTest`.
 
 **The Routines tab** (`Routes.ROUTINES`, `RoutinesScreen` in the `ui/` module,
-made by app's `RoutinesRoute` with its ViewModel and back handling; the
-routine page is `RoutineDetailScreen` the same way, via `RoutineDetailRoute`) is
+with its ViewModel and back handling from `TungNavRoot`; the routine page is
+`RoutineDetailScreen` the same way) is
 the second of the bottom bar's tabs, Home · Routines · Exercises · History ·
 Progress,
 switched with `navigateToTab` (`saveState`/`restoreState`, like the others):
@@ -417,7 +429,7 @@ Start and is unchanged. `programDayId` is indexed and, like `routineId`, **not**
 key: removing a day or deleting a program never touches history. "Today" is
 `LocalDate.now(container.clock)`: the system clock in the app, a settable
 one (`FlowTestApp.today`) in the flow tests. Programs are reached from a row
-at the top of the Routines tab (`ui/routines/Program*` in the `ui/` module, built by app's `ProgramsRoute` and `ProgramDetailRoute`; weekday names come from `weekdayName`, `java.time` on Android and `NSDateFormatter` on iOS).
+at the top of the Routines tab (`ui/routines/Program*` in the `ui/` module, built by `TungNavRoot`; weekday names come from `weekdayName`, `java.time` on Android and `NSDateFormatter` on iOS).
 
 ### Log set and rest timer
 
@@ -949,7 +961,7 @@ from 98 to 112 kg", "Weekly volume, 12 months: from 360 to 930 kg";
 
 The screen after Finish (`ui/summary/` in the `ui/` module, route `summary/{id}`,
 `SummaryScreen` + `SummaryViewModel`, which takes today and the zone as
-functions; `SummaryRoute` in app builds it), one `LazyColumn` (`SUMMARY_LIST_TAG`)
+functions; `TungNavRoot` builds it), one `LazyColumn` (`SUMMARY_LIST_TAG`)
 under the top bar, with **Save as routine** and **Done** side by side in a
 bottom bar that stays put whatever is scrolled:
 

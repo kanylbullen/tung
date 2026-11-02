@@ -3,9 +3,6 @@
     <string name="app_name">Tung</string>
 
     <!-- Navigation -->
-    <string name="nav_home">Hem</string>
-    <string name="nav_history">Historik</string>
-    <string name="nav_exercises">Övningar</string>
 
     <!-- Home -->
 
@@ -31,8 +28,6 @@
     <!-- Health Connect's values on a finished workout, one muted line: "Heart rate 128 avg · 171 max · 342 kcal" -->
 
     <!-- Routines -->
-    <string name="routine_saved">Sparat som rutin: %1$s</string>
-    <string name="nav_routines">Rutiner</string>
 
     <!-- Home: Today, from the active program (the program screens are in ui) -->
 
@@ -69,7 +64,6 @@
     <!-- Import från andra appar (ui/importing/, Inställningar) -->
 
     <!-- Progress (ui/progress, CLAUDE.md "Progress") -->
-    <string name="nav_progress">Framsteg</string>
 
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->

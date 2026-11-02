@@ -149,12 +149,12 @@ class ImportFlowTest : FlowTest() {
         clickText(str(Res.string.import_done))
         scrollToInSettings(str(Res.string.import_undo_last))
         leaveSettings()
-        clickText(str(R.string.nav_history))
+        clickText(str(Res.string.nav_history))
         waitGone(hasText(str(Res.string.home_recent)))
         dates.forEach { waitForText(it) }
         screenshot("4-history")
 
-        clickText(str(R.string.nav_home))
+        clickText(str(Res.string.nav_home))
         openSettingsGroup(Res.string.settings_group_data)
         scrollToInSettings(str(Res.string.import_undo_last))
         compose.onNode(hasText(str(Res.string.import_undo_last))).performClick()
@@ -163,7 +163,7 @@ class ImportFlowTest : FlowTest() {
         waitGone(hasText(str(Res.string.import_undo_last)))
         assertEquals(0, count("SELECT COUNT(*) FROM routine"))
         leaveSettings()
-        clickText(str(R.string.nav_history))
+        clickText(str(Res.string.nav_history))
         dates.forEach { waitGone(hasText(it)) }
         screenshot("5-history-after-undo")
     }

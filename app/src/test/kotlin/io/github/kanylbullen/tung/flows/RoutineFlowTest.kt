@@ -64,7 +64,7 @@ class RoutineFlowTest : FlowTest() {
         // from the main looper, which only runs when the test idles it.
         waitUntil(5_000) {
             compose.waitForIdle()
-            ShadowToast.getTextOfLatestToast() == str(R.string.routine_saved, "Push day")
+            ShadowToast.getTextOfLatestToast() == str(Res.string.routine_saved, "Push day")
         }
 
         clickText(str(Res.string.summary_done))

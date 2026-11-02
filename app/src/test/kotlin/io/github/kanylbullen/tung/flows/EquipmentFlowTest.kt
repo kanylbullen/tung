@@ -55,7 +55,7 @@ class EquipmentFlowTest : FlowTest() {
      */
     @Test
     fun bodyweightOnlyNarrowsTheTab() {
-        clickText(str(R.string.nav_exercises))
+        clickText(str(Res.string.nav_exercises))
         waitFor(hasTestTag(EXERCISES_LIST_TAG))
         waitForText(str(R.string.ex_bench_press))
         assertShown(chip(str(Res.string.my_equipment_chip_all)))
@@ -116,11 +116,11 @@ class EquipmentFlowTest : FlowTest() {
     /** Settings shows the choice made in the tab, and "Everything" there brings the tab back to "Equipment: All". */
     @Test
     fun settingsShowsTheSameChoice() {
-        clickText(str(R.string.nav_exercises))
+        clickText(str(Res.string.nav_exercises))
         waitFor(hasTestTag(EXERCISES_LIST_TAG))
         chooseBodyweightOnly()
 
-        clickText(str(R.string.nav_home))
+        clickText(str(Res.string.nav_home))
         // "My equipment" lives in Settings' Training group since #67.
         openSettingsGroup(Res.string.settings_group_training)
         waitFor(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG))
@@ -137,7 +137,7 @@ class EquipmentFlowTest : FlowTest() {
         waitForStored(EquipmentFilter.ALL)
 
         leaveSettings()
-        clickText(str(R.string.nav_exercises))
+        clickText(str(Res.string.nav_exercises))
         waitFor(chip(str(Res.string.my_equipment_chip_all)))
         waitForText(str(R.string.ex_bench_press))
     }

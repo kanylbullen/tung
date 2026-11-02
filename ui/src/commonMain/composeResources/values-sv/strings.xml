@@ -851,4 +851,11 @@
     <string name="sync_error_apple_unverified">Apple gav ingen e-postadress som Tung kan använda. Använd e-post och lösenord.</string>
     <string name="sync_error_apple_mismatch">E-postadressen hör till ett konto som är kopplat till ett annat Apple-ID. Logga in med det eller med ditt lösenord.</string>
     <string name="sync_error_apple_not_offered">Den här servern erbjuder inte inloggning med Apple. Använd e-post och lösenord.</string>
+    <!-- Navigation -->
+    <string name="nav_home">Hem</string>
+    <string name="nav_routines">Rutiner</string>
+    <string name="nav_exercises">Övningar</string>
+    <string name="nav_history">Historik</string>
+    <string name="nav_progress">Framsteg</string>
+    <string name="routine_saved">Sparat som rutin: %1$s</string>
 </resources>
