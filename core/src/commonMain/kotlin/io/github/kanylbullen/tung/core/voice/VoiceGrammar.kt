@@ -34,10 +34,7 @@ import kotlin.math.floor
 /** [text], one utterance in [language], as the intent it asks for. */
 fun parseUtterance(text: String, language: VoiceLanguage): VoiceIntent {
     val unknown = VoiceIntent.Unknown(text.trim())
-    val vocabulary = when (language) {
-        VoiceLanguage.SWEDISH -> SWEDISH
-        VoiceLanguage.ENGLISH -> ENGLISH
-    }
+    val vocabulary = vocabularyOf(language)
     val words = vocabulary.stripCourtesy(normalizeUtterance(text))
     if (words.isEmpty()) return unknown
     vocabulary.commands[words.joinToString(" ")]?.let { return it }
@@ -59,6 +56,27 @@ fun parseUtterance(text: String, language: VoiceLanguage): VoiceIntent {
     val tokens = vocabulary.tokenize(rest)
     val meanings = readings(tokens, vocabulary.joiner).mapNotNull { interpret(it, vocabulary, sign) }.toSet()
     return meanings.singleOrNull() ?: unknown
+}
+
+/**
+ * Whether [text], an utterance [parseUtterance] did not understand, is worth offering to the
+ * assistant ("Ask the assistant", CLAUDE.md "Voice"). The assistant answers only with a workout to
+ * add, so the words must name something to train and give a number for it ("bänkpress tre set
+ * åttio kilo", "rows 3 sets of 10"): at least one number and at least one word of three letters or
+ * more that is not the grammar's own (a unit, a command, a filler such as "set" or "then"), which
+ * is most likely an exercise. A misheard set ("Europe's" for "ten reps") has no number, and
+ * offering it would only send the user's history and spend their tokens for an empty plan.
+ */
+fun worthAskingAssistant(text: String, language: VoiceLanguage): Boolean {
+    val vocabulary = vocabularyOf(language)
+    val tokens = vocabulary.tokenize(vocabulary.stripCourtesy(normalizeUtterance(text)))
+    return tokens.any { it is Tok.Num } &&
+        tokens.any { it is Tok.Word && it.text.length >= 3 && it.text.none(Char::isDigit) && it.text !in vocabulary.grammarWords }
+}
+
+private fun vocabularyOf(language: VoiceLanguage): Vocabulary = when (language) {
+    VoiceLanguage.SWEDISH -> SWEDISH
+    VoiceLanguage.ENGLISH -> ENGLISH
 }
 
 /**
@@ -118,9 +136,28 @@ private class Vocabulary(
     /** "one more rep" (the word before the unit), "en rep till" (the word after it). */
     private val moreBefore: String?,
     private val moreAfter: String?,
+    /** Words that join a spoken plan together and name no exercise: "sets", "sen", "then". */
+    fillers: Set<String>,
 ) {
     val phrases = phrases.sortedByDescending { it.first.size }
     val adjustments = adjustments.sortedByDescending { it.first.size }
+
+    /** Every word the grammar knows, for [worthAskingAssistant]: what is left over may be an exercise's name. */
+    val grammarWords: Set<String> = buildSet {
+        addAll(weightUnits)
+        addAll(repsUnits)
+        addAll(weightWords)
+        add(joiner)
+        addAll(decimalWords)
+        phrases.forEach { addAll(it.first) }
+        adjustments.forEach { addAll(it.first) }
+        commands.keys.forEach { addAll(it.split(' ')) }
+        addAll(courtesyBefore)
+        addAll(courtesyAfter)
+        moreBefore?.let(::add)
+        moreAfter?.let(::add)
+        addAll(fillers)
+    }
 
     fun stripCourtesy(words: List<String>): List<String> =
         words.dropWhile { it in courtesyBefore }.dropLastWhile { it in courtesyAfter }
@@ -217,6 +254,7 @@ private val SWEDISH = Vocabulary(
     courtesyAfter = setOf("tack"),
     moreBefore = null,
     moreAfter = "till",
+    fillers = setOf("sets", "setet", "seten", "sen", "sedan", "med", "för", "per", "styck", "gör", "kör"),
 )
 
 private val ENGLISH = Vocabulary(
@@ -252,6 +290,7 @@ private val ENGLISH = Vocabulary(
     courtesyAfter = setOf("please", "thanks"),
     moreBefore = "more",
     moreAfter = null,
+    fillers = setOf("sets", "then", "with", "for", "each", "the", "and", "of", "do", "doing"),
 )
 
 // --- readings: which number words written apart are one number ---

@@ -112,6 +112,7 @@ import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepWeight
 import io.github.kanylbullen.tung.core.voice.VoiceLanguage
 import io.github.kanylbullen.tung.core.voice.parseUtterance
+import io.github.kanylbullen.tung.core.voice.worthAskingAssistant
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.DurationStepper
@@ -387,7 +388,9 @@ fun ActiveWorkoutScreen(
         bottomBar = {
             if (!state.loading && !state.missing && sticky != null) {
                 val echo = voiceState.echo
-                val askable = echo is VoiceEcho.NotUnderstood && aiConfigured
+                // Only words that could be a workout: the assistant answers with one, and a misheard set
+                // would send the history for nothing (`worthAskingAssistant`).
+                val askable = echo is VoiceEcho.NotUnderstood && aiConfigured && worthAskingAssistant(echo.text, language)
                 val echoShown = echo != null &&
                     now - voiceState.echoAt < if (askable) VOICE_ECHO_WITH_ACTION_MILLIS else VOICE_ECHO_MILLIS
                 val echoText = if (echoShown && echo != null) voiceEchoText(echo) else null

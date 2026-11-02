@@ -13,6 +13,7 @@ import io.github.kanylbullen.tung.core.voice.VoiceIntent.Unknown
 import io.github.kanylbullen.tung.core.voice.VoiceLanguage.ENGLISH
 import io.github.kanylbullen.tung.core.voice.VoiceLanguage.SWEDISH
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -264,5 +265,24 @@ class VoiceGrammarTest {
         assertEquals(listOf("82.5", "kg", "8", "reps"), normalizeUtterance("82,5kg; 8 reps!"))
         assertEquals(listOf("seventyfive", "kilos"), normalizeUtterance("Seventy-five kilos."))
         assertEquals(listOf("åttio", "x", "8"), normalizeUtterance("Åttio×8"))
+    }
+
+    @Test
+    fun theAssistantIsOfferedOnlyWhatLooksLikeAPlan() {
+        // Worth asking: an exercise and a number.
+        for (text in listOf("bänkpress tre set åttio kilo", "rodd 3 set med 10 reps sen dips", "knäböj fem gånger fem")) {
+            assertTrue(text, worthAskingAssistant(text, SWEDISH))
+        }
+        for (text in listOf("bench press three sets of eight", "rows 3 sets of 10 then curls", "deadlift 140 kg 5")) {
+            assertTrue(text, worthAskingAssistant(text, ENGLISH))
+        }
+        // Not: misheard words (the owner's Pixel heard "Europe's" for "ten reps"), the grammar's own
+        // words, or numbers with nothing to train.
+        for (text in listOf("Europe's", "fa", "", "tio reps tack", "lägg till set", "tre set åttio kilo", "plus fem")) {
+            assertFalse(text, worthAskingAssistant(text, SWEDISH))
+        }
+        for (text in listOf("Europe's", "ten reps please", "add a set", "three sets of 80 kilos", "up by five", "the 5")) {
+            assertFalse(text, worthAskingAssistant(text, ENGLISH))
+        }
     }
 }
