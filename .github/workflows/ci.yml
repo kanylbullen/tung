@@ -249,3 +249,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: bash .github/review-team/scripts/test-resolve-pr.sh
+      - run: bash .github/review-team/scripts/test-build-comment.sh

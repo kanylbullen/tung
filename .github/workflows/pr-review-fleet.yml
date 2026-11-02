@@ -60,7 +60,9 @@ name: PR review fleet
 # (<!-- review-fleet:v1 ... -->) is written only when the fleet has taken a
 # position on the head: a real review WHERE EVERY LENS ANSWERED, or the
 # diff-too-large decision — never on a partial run (half a review should be
-# rerunnable without force) and never on "the fleet could not run".
+# rerunnable without force) and never on "the fleet could not run". Nor does
+# such a run replace a comment that carries the marker: it reports in the
+# job summary instead (build-comment.sh, after PR #188 on 2026-11-02).
 #
 # Scheduled runs share a concurrency group and queue behind each other: a
 # poll that hits a review in progress becomes a quick skip once the marker
@@ -328,18 +330,23 @@ jobs:
           # LATEST verdict: 👍 (every lens answered, clean) or 😕 (findings);
           # a partial run, a failed run and a skip leave no reaction behind.
           # Only the fleet's three reactions are deleted — not every
-          # github-actions[bot] reaction on the PR.
-          FL_REACTS='.[] | select(.user.login == "github-actions[bot]" and
-              (.content == "eyes" or .content == "+1" or .content == "confused")) | .id'
+          # github-actions[bot] reaction on the PR. A run that left a
+          # finished review in place (kept, build-comment.sh) removes only
+          # its own 👀: the review's 👍 or 😕 is still the PR's verdict.
+          VERDICT="$(cat "$FLEET_TMP/verdict" 2>/dev/null || echo dirty)"
+          FL_CONTENT='(.content == "eyes" or .content == "+1" or .content == "confused")'
+          if [ "$VERDICT" = kept ]; then
+            FL_CONTENT='.content == "eyes"'
+          fi
+          FL_REACTS=".[] | select(.user.login == \"github-actions[bot]\" and $FL_CONTENT) | .id"
           for ID in $(gh api "repos/$REPO/issues/$PR_NUMBER/reactions" \
               --paginate --jq "$FL_REACTS"); do
             gh api -X DELETE "repos/$REPO/issues/$PR_NUMBER/reactions/$ID" || true
           done
-          VERDICT="$(cat "$FLEET_TMP/verdict" 2>/dev/null || echo dirty)"
           case "$VERDICT" in
             clean)    gh api "repos/$REPO/issues/$PR_NUMBER/reactions" -f content='+1' --jq .id ;;
             findings) gh api "repos/$REPO/issues/$PR_NUMBER/reactions" -f content=confused --jq .id ;;
-            *)        : ;;  # partial/dirty/skip — no verdict, no reaction
+            *)        : ;;  # partial/dirty/skip/kept — no new reaction
           esac
 
       - name: Summary
@@ -350,6 +357,7 @@ jobs:
           BOOTSTRAP: ${{ steps.pr.outputs.bootstrap }}
           PROCEED: ${{ steps.diff.outputs.proceed }}
           POSTED: ${{ steps.comment.outputs.posted }}
+          KEPT: ${{ steps.comment.outputs.kept }}
           AGGREGATED: ${{ steps.fleet.outputs.aggregated }}
           MODE: ${{ steps.comment.outputs.mode }}
           FINDINGS: ${{ steps.comment.outputs.findings }}
@@ -379,6 +387,10 @@ jobs:
               fi
             elif [ "${PROCEED:-}" != 'true' ]; then
               echo 'The diff could not be reviewed (empty or over the size limit).'
+            elif [ "${KEPT:-}" = 'true' ]; then
+              echo 'The run was not complete (failed or partial), and the PR already'
+              echo 'carries a finished review — left in place, not replaced. What'
+              echo 'this run would have posted is in the section above.'
             elif [ "${POSTED:-}" != 'true' ]; then
               echo 'The run failed — no comment was posted. See the job log.'
             elif [ "${MODE:-}" = 'none' ] || [ -z "${AGGREGATED:-}" ]; then

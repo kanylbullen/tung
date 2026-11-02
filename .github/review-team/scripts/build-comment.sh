@@ -5,7 +5,8 @@ set -euo pipefail
 # honest message that the fleet could not run) plus footnote — and posts it
 # with gh pr comment --edit-last: a PR has ONE fleet comment that is updated
 # in place on new pushes and reruns, never a new copy per event (needs
-# gh >= 2.31 for --edit-last/--create-if-none).
+# gh >= 2.31 for --edit-last/--create-if-none). A run that did not stamp the
+# marker (failed or partial) never replaces a comment that carries one.
 #
 # The marker is the freshness gate's key: sha + timestamp for exactly the
 # head that was handled. It is written ONLY when a real review was produced
@@ -27,10 +28,12 @@ set -euo pipefail
 #   partial  =    some lenses did not answer (or the fleet list is missing)
 #                 with no findings — a partial run is no verdict on the PR
 #   dirty    = the fleet could not run — no new reaction, the job is red
+#   kept     = a failed or partial run left the PR's finished review in place
+#              (see below) — that review keeps its reaction, only 👀 goes
 #   skip     = the fleet chose to skip — no new reaction
 #
 # Expects in the environment: REPO, FLEET_TMP, MODEL, PR_NUMBER, SHA, RUN_URL,
-# GH_TOKEN. Outputs: findings, posted, mode (aggregate|raw|none).
+# GH_TOKEN. Outputs: findings, posted, mode (aggregate|raw|none), kept.
 
 PR="${PR_NUMBER:?}"
 NOW="$(date +%s)"
@@ -136,6 +139,65 @@ FINDINGS="${FINDINGS:-0}"
 AGG_SAYS="$(printf '%s' "$SCAN" | sed -n 's/^## ⚠️ Fleet: \([0-9][0-9]*\) finding.*/\1/p' | head -1)"
 if [ -n "${AGG_SAYS:-}" ] && [ "$AGG_SAYS" -gt "$FINDINGS" ]; then
   FINDINGS="$AGG_SAYS"
+fi
+
+# A run that did not stamp the marker never replaces a finished review.
+# --edit-last edits the last comment by the token's user (github-actions[bot])
+# — on 2026-11-02 that turned PR #188's full review (13 findings) into "The
+# fleet could not run" when the next run's lenses all failed on the
+# OpenRouter credit limit, and a scheduled run 16 minutes later did it again;
+# the review survived only in GitHub's edit history. So a failed or partial
+# run first looks at the comment it would edit: if that one carries a marker
+# (for ANY head — a complete review or the diff-too-large decision) and no
+# partial banner, it is left alone and this run's report goes to the job
+# summary instead. The rule is the one resolve-pr.sh's head_is_fresh reads
+# comments by: the bot's comments, "review-fleet:v1" in the body (the
+# sanitiser guarantees only a real marker has it), "Partial run" not. A
+# human comment is never looked at, and nothing is stamped, so the run can
+# still be retried without force — and the gate keys on the head sha, so an
+# old head's kept review is never fresh for a new head.
+#
+# If the comments cannot be read the run keeps rather than overwrites: the
+# failure is in the job either way, a lost review is not.
+LAST_FLEET=complete
+if [ "$HAS_REPORTS" -eq 0 ] || [ -n "$FAILED" ]; then
+  LAST_FLEET="$(gh pr view "$PR" -R "$REPO" --json comments --jq \
+    '[.comments[] | select(.author.login == "github-actions[bot]" or .author.login == "github-actions")] | last
+     | if . == null then "none"
+       elif (.body | contains("review-fleet:v1")) and ((.body | contains("Partial run")) | not) then "finished"
+       else "notice" end' || true)"
+  case "$LAST_FLEET" in none | notice | finished) ;; *) LAST_FLEET=unreadable ;; esac
+fi
+
+if [ "$LAST_FLEET" = finished ] || [ "$LAST_FLEET" = unreadable ]; then
+  if [ "$HAS_REPORTS" -eq 0 ]; then
+    echo "::error::The fleet could not run on $SHA — the PR's finished review was left in place (comments: $LAST_FLEET)."
+  else
+    echo "::warning::Partial run on $SHA (did not report: ${FAILED// /, }) — the PR's finished review was left in place (comments: $LAST_FLEET); the report is in the job summary."
+  fi
+  {
+    echo '### This run did not replace the review on the PR'
+    echo ''
+    if [ "$LAST_FLEET" = unreadable ]; then
+      echo "The PR's comments could not be read, and a failed or partial run does"
+      echo 'not risk overwriting a finished review. What this run would have posted:'
+    else
+      echo 'The PR already carries a finished fleet review, and a failed or partial'
+      echo 'run never replaces one. What this run would have posted:'
+    fi
+    echo ''
+    cat "$FLEET_TMP/comment.md"
+    echo ''
+  } >> "$GITHUB_STEP_SUMMARY"
+  # kept: the PR keeps the review and its reaction — only this run's 👀 goes.
+  echo 'kept' > "$FLEET_TMP/verdict"
+  {
+    echo "findings=$FINDINGS"
+    echo "mode=$MODE"
+    echo 'posted=false'
+    echo 'kept=true'
+  } >> "$GITHUB_OUTPUT"
+  exit 0
 fi
 
 gh pr comment "$PR" -R "$REPO" --body-file "$FLEET_TMP/comment.md" \
