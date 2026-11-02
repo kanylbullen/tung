@@ -59,11 +59,12 @@ profile, as Xcode does when you run from it.
 Connect, where it shows up in TestFlight after processing. It signs in with an
 App Store Connect API key, not an Apple ID: with automatic signing the key
 lets xcodebuild make the distribution certificate and profile in the cloud, so
-it runs over ssh with no keychain prompt and no phone attached. That is also
+it runs over ssh with no keychain prompt and no phone attached. The archive
+is built unsigned; the export signs it. That is also
 the way onto a managed (MDM) iPhone that refuses to pair with a Mac.
 
 Once: the app record for `io.github.kanylbullen.tung` in App Store Connect,
-and a Team key (role App Manager) under Users and Access → Integrations → App
+and a Team key with the Admin role (cloud signing refuses App Manager) under Users and Access → Integrations → App
 Store Connect API. The `.p8` downloads only once; keep it on the Mac in
 `~/.appstoreconnect/private_keys/`, never in the repository. Then, from the
 repository root on the Mac:

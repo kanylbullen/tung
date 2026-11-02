@@ -5,10 +5,17 @@
 #   ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_….p8 \
 #     iosApp/scripts/testflight.sh
 #
-# The App Store Connect API key signs in for xcodebuild: it makes the
-# distribution certificate and profile in the cloud (automatic signing) and
-# uploads, with no Apple ID or keychain prompt, so it works over ssh. The key
-# file stays on the Mac and is never committed or printed.
+# The archive is built unsigned and the export signs it: with automatic
+# signing and an App Store Connect API key, xcodebuild uses a cloud-managed
+# distribution certificate and makes the App Store profile, then uploads, with
+# no Apple ID, keychain or registered device, so it works over ssh. Signing
+# the archive itself would want a development certificate in the keychain
+# and a registered device. An unsigned app carries no entitlements, and the
+# export keeps only those the app has, so the archived app is signed ad hoc
+# with Tung.entitlements first (Sign in with Apple would be lost otherwise).
+# Cloud signing needs a key with the Admin role (App Manager gets "Cloud
+# signing permission error"). The key file stays on
+# the Mac and is never committed or printed.
 #
 # The build number is the number of commits on HEAD, as the Play build's is
 # (scripts/release.sh), so every upload from a newer main is higher; set
@@ -41,8 +48,12 @@ xcodebuild archive \
   -project Tung.xcodeproj -scheme Tung -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath "$out/Tung.xcarchive" \
-  "${auth[@]}" \
+  CODE_SIGNING_ALLOWED=NO \
   CURRENT_PROJECT_VERSION="$build_number"
+
+app="$out/Tung.xcarchive/Products/Applications/Tung.app"
+codesign --force --sign - --timestamp=none --generate-entitlement-der \
+  --entitlements Tung/Tung.entitlements "$app"
 
 cat > "$out/ExportOptions.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
