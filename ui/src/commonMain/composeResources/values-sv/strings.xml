@@ -858,4 +858,7 @@
     <string name="nav_history">Historik</string>
     <string name="nav_progress">Framsteg</string>
     <string name="routine_saved">Sparat som rutin: %1$s</string>
+    <!-- The iPhone's "Rest over" notification (the phone's is data's rest_over) -->
+    <string name="rest_notification_title">Vilan är slut</string>
+    <string name="rest_notification_text">Dags för nästa set.</string>
 </resources>

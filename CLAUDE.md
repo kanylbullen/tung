@@ -162,7 +162,19 @@ and the settings in DataStore (`datastore-preferences-core`). **`src/androidMain
 holds what needs Android: `TungContainer`, the database builders,
 WorkManager's `SyncWorker`, `EncryptedTokenStore`, the rest timer's alarm and
 alerts, the ongoing notification, push, Health Connect, the Wear state and
-`ExerciseNames`. **`src/iosMain`** holds the iOS actuals (below). The
+`ExerciseNames`. **`src/iosMain`** holds the iOS actuals (below) and the
+iPhone's own parts: `KeychainTokenStore` (the session token and the AI key,
+after first unlock, this device only), `IosRestTimer` (over common
+`StoredRestTimer`, which the phone's `RestTimerController` shares, with a local
+notification for "Rest over"), `IosSyncScheduler` (sync while the app runs),
+`NoPush` and `iosAppDirectory`/`iosSettingsDataStore` (Application Support).
+The iPhone's container is `IosContainer` in ui's `iosMain` (it reads the
+catalogue from ui's resources: `catalog/` copied as iOS-only Compose
+Resources by ui's `iosCatalogResources` task), with `IosPlatform`, and
+`MainViewController` shows `TungNavRoot` over them. Workouts it starts are
+`phone`'s, so no server change is needed. A Keychain call from a Kotlin test
+process on the simulator answers `errSecNotAvailable` (no app, no keychain),
+so the Keychain is checked in the app, not in `iosTest`. The
 platform seams, each one file per platform: `TungDatabase.build`, an
 extension on the companion per platform (Room's Android open helper on the
 phone and the watch; `BundledSQLiteDriver` over a file path on iOS), and the

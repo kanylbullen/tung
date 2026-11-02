@@ -860,4 +860,7 @@
     <string name="nav_history">History</string>
     <string name="nav_progress">Progress</string>
     <string name="routine_saved">Saved as routine: %1$s</string>
+    <!-- The iPhone's "Rest over" notification (the phone's is data's rest_over) -->
+    <string name="rest_notification_title">Rest over</string>
+    <string name="rest_notification_text">Time for the next set.</string>
 </resources>
