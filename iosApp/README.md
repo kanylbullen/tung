@@ -30,10 +30,15 @@ xcodebuild -project Tung.xcodeproj -scheme Tung -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-## Not yet
+## What runs
 
-The app shows the wordmark only: the navigation root and the iOS container
-(database, settings, Keychain) come next.
+The whole app: `ui`'s `TungNavRoot` over `IosContainer` (the database and the
+settings in Application Support, the session token and the assistant's key in
+the Keychain, the rest timer over local notifications, sync while the app is
+in front, the catalogue from the app's resources) and `IosPlatform`.
+
+Not yet on the iPhone: speech (the mic says it is unavailable), Google sign-in,
+feedback screenshots, push (APNs), background sync, HealthKit.
 
 The app needs iOS 17.2 or newer (Compose Multiplatform's ICU data is built for
 it) and carries the Sign in with Apple entitlement.

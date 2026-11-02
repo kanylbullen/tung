@@ -860,4 +860,9 @@
     <string name="nav_history">History</string>
     <string name="nav_progress">Progress</string>
     <string name="routine_saved">Saved as routine: %1$s</string>
+    <!-- The iPhone's "Rest over" notification. The phone's is rest_over/rest_over_text in data's Android
+         resources: change the wording in both. In common rather than iosMain because ui's iosMain resource
+         directory is the catalogue copied at build time (iosCatalogResources); two short strings cost nothing. -->
+    <string name="rest_notification_title">Rest over</string>
+    <string name="rest_notification_text">Time for the next set.</string>
 </resources>

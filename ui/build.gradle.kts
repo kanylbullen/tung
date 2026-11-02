@@ -73,8 +73,24 @@ android {
     }
 }
 
+// The exercise catalogue for the iPhone, from the repository's one copy in
+// catalog/: core.json, extended.json and the import's alias tables, as
+// Compose Resources of iosMain only (files/catalog/…, read with Res.readBytes).
+// Android ships the same files as data/'s assets, so the APK has no second copy.
+val iosCatalogResources = tasks.register<Sync>("iosCatalogResources") {
+    from(rootProject.file("catalog")) {
+        include("core.json", "extended.json", "aliases/*.json")
+        into("files/catalog")
+    }
+    into(layout.buildDirectory.dir("generated/iosCatalog"))
+}
+
 compose.resources {
     // Public, so app/'s flow tests can read the moved strings (str(Res.string.…)).
     publicResClass = true
     packageOfResClass = "io.github.kanylbullen.tung.ui.resources"
+    customDirectory(
+        sourceSetName = "iosMain",
+        directoryProvider = layout.dir(iosCatalogResources.map { it.destinationDir }),
+    )
 }
