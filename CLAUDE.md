@@ -2647,6 +2647,38 @@ Copy (English, and the same in each translation): active voice, only the first
 letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
 "Save"). Errors say what happened and what to do, without "oops".
 
+## Review fleet
+
+An automated PR review runs in GitHub Actions: five independent reviewer
+lenses (correctness, security-abuse, architecture,
+code-quality-conventions, simplicity-scope; five specialists more on
+request) read the diff and the merge state, and an aggregator posts **one**
+comment per PR, updated in place, with 👍 or 😕 as its verdict. It lives in
+`.github/review-team/` (roles, task, aggregation rules, scripts; its
+`README.md` explains every design decision) and
+`.github/workflows/pr-review-fleet.yml`, runs cline over OpenRouter with the
+secret `OPENROUTER_API_KEY` and the model in the repository variable
+`FLEET_MODEL` (GLM when unset), and polls every half hour at :12/:42. A
+schedule poll reviews the newest open non-draft PR whose head it has not
+reviewed in 24 h and whose CI has settled (or has sat for 4 h). To have it
+now:
+
+```sh
+gh workflow run pr-review-fleet.yml -R kanylbullen/tung -f pr=<n> -f force=true
+```
+
+- **It reports and never blocks.** Merge is still a human decision; it is
+  no substitute for a review of your own on anything that touches sync, a
+  migration, auth or user data.
+- **It never reviews the PR that changes the fleet itself.** The triggers
+  are `schedule` and `workflow_dispatch`, never `pull_request` (there the
+  job definition would come from the PR, with the secrets in its
+  environment), so fleet changes are tried with a dispatch from their branch.
+- The roles' checklists are drawn from this file: when a rule here changes,
+  the lens that checks it (`.github/review-team/reviewers/`) may need the
+  same change. `test-resolve-pr.sh` pins the PR selection and runs in CI's
+  "Fleet PR selection" job.
+
 ## Traps
 
 - **IPv6/Maven:** Gradle cannot reach Maven over IPv6 here.

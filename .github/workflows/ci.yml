@@ -235,3 +235,17 @@ jobs:
 
       - name: Build the Docker image
         run: docker build -f server/Dockerfile -t tung-server:ci .
+
+  # The review fleet's PR selection decides silently: it runs on a schedule,
+  # and a broken gate in resolve-pr.sh fails nothing — the fleet just stops
+  # reviewing, and the only trace is a notice in a green job log nobody reads.
+  # The test runs the script for real against a fake `gh` and pins its
+  # decisions. A job of its own because it needs nothing the others install;
+  # needs `jq`, which the hosted runner has.
+  fleet-selection:
+    name: Fleet PR selection
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash .github/review-team/scripts/test-resolve-pr.sh
