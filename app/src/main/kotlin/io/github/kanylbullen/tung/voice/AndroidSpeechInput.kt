@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.voice
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
@@ -13,9 +14,11 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
@@ -30,11 +33,14 @@ import kotlin.coroutines.resume
  * answers [SpeechErrorKind.UNAVAILABLE] at once.
  *
  * The language is the app's, in a variant the recogniser has: [recognizerAttempts] picks the
- * tags from what it says it has (Android 13+), and a language error (12 or 13, no pack for that
- * variant) moves on to the next attempt, online when the phone has none, before anything is heard.
- * When every attempt fails that way the flow answers [SpeechErrorKind.LANGUAGE].
+ * tags from what it says it has (Android 13+, asked once per instance), and a language error
+ * (12 or 13, no pack for that variant) moves on to the next attempt, online when the phone has
+ * none (the privacy page says so), before anything is heard. When every attempt fails that way
+ * the flow answers [SpeechErrorKind.LANGUAGE].
  */
 class AndroidSpeechInput(private val context: Context) : SpeechInput {
+    /** The recogniser's answer, kept once it gave one: it does not change while the app runs. */
+    private var support: RecognizerLanguages? = null
 
     override fun listenOnce(languageTag: String): Flow<SpeechEvent> = callbackFlow {
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
@@ -43,30 +49,24 @@ class AndroidSpeechInput(private val context: Context) : SpeechInput {
             awaitClose()
             return@callbackFlow
         }
-        // One recogniser for the whole turn: the platform keeps one connection to the service per
-        // app, so destroying a recogniser that only asked what it supports also cut off a second
-        // one before it listened (seen on a Pixel, 2026-11-02).
-        val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
-        val support = try {
-            recognizer.supportedLanguages()
+        // The platform keeps one connection to the recognition service per app, so a recogniser is
+        // destroyed only when the turn ends: destroying one that had only asked what it supports cut
+        // off the next before it listened (seen on a Pixel, 2026-11-02).
+        val recognizers = mutableListOf<SpeechRecognizer>()
+        fun newRecognizer() = SpeechRecognizer.createSpeechRecognizer(context).also { recognizers += it }
+        var recognizer = newRecognizer()
+        val known = support ?: try {
+            recognizer.supportedLanguages()?.also { support = it }
         } catch (cancelled: CancellationException) {
-            recognizer.destroy()
+            recognizers.forEach { it.destroy() }
             throw cancelled
         }
-        val attempts = recognizerAttempts(languageTag, Locale.getDefault().toLanguageTag(), support).iterator()
-
-        fun listen(attempt: RecognizerAttempt) {
-            recognizer.startListening(
-                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, attempt.tag)
-                    .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, attempt.preferOffline)
-                    .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                    .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1),
-            )
+        // No answer (in time): the check may still be running in that recogniser, so listen in another.
+        if (known == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            recognizer = newRecognizer()
         }
-
-        recognizer.setRecognitionListener(object : RecognitionListener {
+        val attempts = recognizerAttempts(languageTag, systemLocaleTag(), known).iterator()
+        val listener = object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
                 trySend(SpeechEvent.Listening)
             }
@@ -84,7 +84,17 @@ class AndroidSpeechInput(private val context: Context) : SpeechInput {
             override fun onError(error: Int) {
                 when {
                     !isLanguageError(error) -> trySend(SpeechEvent.Error(kindOf(error)))
-                    attempts.hasNext() -> return listen(attempts.next())
+                    attempts.hasNext() -> {
+                        // The service tears its session down after a language error (onDestroy in the
+                        // Pixel's log): the next attempt goes to a new recogniser, after that is done.
+                        val next = attempts.next()
+                        launch {
+                            delay(RETRY_DELAY_MILLIS)
+                            recognizer = newRecognizer()
+                            listen(recognizer, next)
+                        }
+                        return
+                    }
                     else -> trySend(SpeechEvent.Error(SpeechErrorKind.LANGUAGE))
                 }
                 close()
@@ -95,13 +105,34 @@ class AndroidSpeechInput(private val context: Context) : SpeechInput {
             override fun onBufferReceived(buffer: ByteArray?) = Unit
             override fun onEndOfSpeech() = Unit
             override fun onEvent(eventType: Int, params: Bundle?) = Unit
-        })
-        listen(attempts.next())
+
+            fun listen(on: SpeechRecognizer, attempt: RecognizerAttempt) {
+                on.setRecognitionListener(this)
+                on.startListening(
+                    Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                        .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        .putExtra(RecognizerIntent.EXTRA_LANGUAGE, attempt.tag)
+                        .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, attempt.preferOffline)
+                        .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                        .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1),
+                )
+            }
+        }
+        listener.listen(recognizer, attempts.next())
         awaitClose {
-            recognizer.cancel()
-            recognizer.destroy()
+            recognizers.forEach {
+                it.cancel()
+                it.destroy()
+            }
         }
     }.flowOn(Dispatchers.Main)
+
+    /**
+     * The phone's own locale, not the app's: with a per-app language the default locale is the app's
+     * ("sv", no region), while the system's still says where the phone is.
+     */
+    private fun systemLocaleTag(): String =
+        Resources.getSystem().configuration.locales.get(0)?.toLanguageTag() ?: Locale.getDefault().toLanguageTag()
 
     /**
      * The languages the recogniser has on the device and online, or null before Android 13, on an
@@ -142,5 +173,6 @@ class AndroidSpeechInput(private val context: Context) : SpeechInput {
 
     private companion object {
         const val SUPPORT_TIMEOUT_MILLIS = 1500L
+        const val RETRY_DELAY_MILLIS = 150L
     }
 }

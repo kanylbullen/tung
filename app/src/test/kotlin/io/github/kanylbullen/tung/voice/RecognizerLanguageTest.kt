@@ -45,11 +45,21 @@ class RecognizerLanguageTest {
 
     @Test
     fun aRegionOfAnotherLanguageIsNotBorrowed() {
-        // A German phone shows the app in English: de-DE's region says nothing about English.
+        // A German phone shows the app in English: de-DE's region says nothing about English, so
+        // English gets its usual one.
         assertEquals(
-            listOf(RecognizerAttempt("en", preferOffline = true), RecognizerAttempt("en", preferOffline = false)),
+            listOf(
+                RecognizerAttempt("en-US", preferOffline = true),
+                RecognizerAttempt("en-US", preferOffline = false),
+                RecognizerAttempt("en", preferOffline = false),
+            ),
             recognizerAttempts("en", "de-DE", support = null),
         )
+    }
+
+    @Test
+    fun aPerAppSwedishOnAnEnglishPhoneAsksForSwedenSwedish() {
+        assertEquals(RecognizerAttempt("sv-SE", preferOffline = true), recognizerAttempts("sv", "en-US", support = null).first())
     }
 
     @Test

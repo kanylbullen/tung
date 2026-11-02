@@ -1862,8 +1862,9 @@ not shown. Nothing is written until the user confirms, and then only through
 ## Voice
 
 Issue #48, the first half of step 13 of `docs/architecture.md` ("Voice"):
-one set at a time, spoken in the active workout, with no model and no
-network. The grammar is tried first and never guesses; the assistant is the
+one set at a time, spoken in the active workout, with no model of our own
+and no network of ours (the phone's recogniser may use its provider's when it
+lacks the language offline; see "Speech" below). The grammar is tried first and never guesses; the assistant is the
 fallback, and only on a tap.
 
 - **Grammar in core, `core/.../core/voice/`** (pure, tested):
@@ -1894,12 +1895,20 @@ fallback, and only on a tap.
   the resource `voice_language_tag` (`en`, `sv`), which also picks the
   grammar, and `recognizerAttempts` (`RecognizerLanguage.kt`,
   `RecognizerLanguageTest`) turns it into the variants to try: on Android 13+
-  what `checkRecognitionSupport` says is installed (offline), then online;
-  without an answer the phone's region when its language is the app's
-  (`sv-SE`), offline, then online, then the bare language. A language error
-  (12 or 13, no pack for that variant) moves on to the next attempt, and
-  after the last one the echo says the phone lacks the language
-  (`LANGUAGE`, fatal for hands-free). Before this, a Pixel in English with a
+  what `checkRecognitionSupport` says is installed (offline), then online
+  (asked once per `AndroidSpeechInput`, 1.5 s at most, and then listening
+  goes to a second recogniser, since the check may still run in the first);
+  without an answer the system locale's region when its language is the
+  app's (`sv-SE`), else the language's usual one (`en-US`), offline, then
+  online, then the bare language. A language error (12 or 13, no pack for
+  that variant) moves on to the next attempt in a new recogniser 150 ms
+  later (the service tears its session down after the error), and after the
+  last one the echo says the phone lacks the language (`LANGUAGE`, fatal for
+  hands-free). Recognisers are destroyed only when the turn ends: the
+  platform keeps one service connection per app, and destroying one cut off
+  the next before it listened. **The online attempt sends audio to the
+  recogniser's provider** (usually Google); the privacy page says so, and
+  the web's `SpeechRecognition` in Chrome always does. Before this, a Pixel in English with a
   Swedish region asked for `en-SE-u-fw-mon-…`, Google's offline recogniser had
   only `en-US`, failed with error 12, and the echo said the phone had no
   speech recognition at all (2026-11-02). `AndroidSpeechInputTest` runs the

@@ -44,6 +44,7 @@
           <li><strong>The network</strong> is used only for the server you sign in to. Nothing is sent to us or anyone else otherwise.</li>
           <li><strong>Health Connect</strong> (Android, off until you turn it on): after a workout the app writes it as an exercise session, and can read the heart rate and active calories recorded during it. These are stored with the workout and synced only if you use a server. They are not shared with anyone else.</li>
           <li><strong>The assistant</strong> (off until you set it up with your own key): a request goes straight from your phone to the AI provider you chose, with your key. We never see the request, the answer or the key. The app shows what is sent before the first request.</li>
+          <li><strong>Voice</strong> (only when you tap the microphone in a workout): the device's own speech recognition turns what you say into text, and Tung reads only that text, which stays in the app. On Android the recogniser (usually Google's) works on the phone when it has the language; when it does not, it may send the audio to its provider to be transcribed. In the web app the browser's speech recognition is used, and Chrome sends the audio to Google. We never receive the audio.</li>
           <li><strong>Notifications</strong>: with an account, the phone may register a push address (Firebase Cloud Messaging or UnifiedPush) with the server, so another device's change can wake it to sync. The push itself carries no data.</li>
         </ul>
 
@@ -92,6 +93,7 @@
           <li><strong>Nätet</strong> används bara för den server du loggar in på. I övrigt skickas inget till oss eller någon annan.</li>
           <li><strong>Health Connect</strong> (Android, av tills du slår på det): efter ett pass skriver appen det som ett träningspass och kan läsa pulsen och de aktiva kalorierna som registrerades under det. De sparas med passet och synkas bara om du använder en server. De delas inte med någon annan.</li>
           <li><strong>Assistenten</strong> (av tills du ställer in den med en egen nyckel): en förfrågan går direkt från din telefon till den AI-leverantör du valt, med din nyckel. Vi ser aldrig förfrågan, svaret eller nyckeln. Appen visar vad som skickas före den första förfrågan.</li>
+          <li><strong>Röst</strong> (bara när du trycker på mikrofonen i ett pass): enhetens egen taligenkänning gör om det du säger till text, och Tung läser bara den texten, som stannar i appen. På Android arbetar taligenkänningen (oftast Googles) på telefonen när den har språket; när den inte har det kan den skicka ljudet till sin leverantör för att skriva ut det. I webbappen används webbläsarens taligenkänning, och Chrome skickar ljudet till Google. Vi får aldrig ljudet.</li>
           <li><strong>Notiser</strong>: med ett konto kan telefonen registrera en push-adress (Firebase Cloud Messaging eller UnifiedPush) hos servern, så att en ändring på en annan enhet kan väcka den för att synka. Själva pushen innehåller inga uppgifter.</li>
         </ul>
 

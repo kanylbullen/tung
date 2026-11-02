@@ -200,8 +200,8 @@ fun ActiveWorkoutScreen(
     val aiConfigured = assistantConfigured
     // The language the app shows ("en", "sv"), never the phone's locale: a Pixel in English with a
     // Swedish region is en-SE-u-fw-mon-…, which no recogniser has a language pack for.
-    val locale = stringResource(Res.string.voice_language_tag)
-    val language = VoiceLanguage.of(locale)
+    val languageTag = stringResource(Res.string.voice_language_tag)
+    val language = VoiceLanguage.of(languageTag)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(voice, lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) voice.stop() }
@@ -231,9 +231,9 @@ fun ActiveWorkoutScreen(
     }
     fun startVoice(handsFree: Boolean) {
         if (handsFree) {
-            voice.startHandsFree(locale, handleUtterance) { platform.confirmHaptic() }
+            voice.startHandsFree(languageTag, handleUtterance) { platform.confirmHaptic() }
         } else {
-            voice.listenOnce(locale, handleUtterance)
+            voice.listenOnce(languageTag, handleUtterance)
         }
     }
     // The microphone is asked for the first time it is used; denied, the echo says how to allow it.

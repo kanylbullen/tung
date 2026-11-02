@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
@@ -26,7 +27,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowSpeechRecognizer
-import java.util.Locale
+import java.time.Duration
 
 /**
  * The real [AndroidSpeechInput] over Robolectric's recogniser: which language it asks for, that
@@ -39,12 +40,10 @@ class AndroidSpeechInputTest {
     private val context = ApplicationProvider.getApplicationContext<android.app.Application>()
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private val events = mutableListOf<SpeechEvent>()
-    private lateinit var defaultLocale: Locale
+    private val input = AndroidSpeechInput(context)
 
     @Before
     fun setUp() {
-        defaultLocale = Locale.getDefault()
-        Locale.setDefault(Locale.forLanguageTag("en-SE-u-fw-mon-ms-metric-mu-celsius"))
         val service = ComponentName("com.google.android.tts", "com.google.android.tts.Recognition")
         shadowOf(context.packageManager).run {
             addServiceIfNotPresent(service)
@@ -55,17 +54,22 @@ class AndroidSpeechInputTest {
     @After
     fun tearDown() {
         scope.cancel()
-        Locale.setDefault(defaultLocale)
         ShadowSpeechRecognizer.reset()
     }
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
+    private fun idleFor(millis: Long) = shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(millis))
+
+    private fun start() {
+        scope.launch { input.listenOnce("en").collect { events += it } }
+        idle()
+    }
+
     private fun latest() = shadowOf(ShadowSpeechRecognizer.getLatestSpeechRecognizer())
 
     private fun listen(support: RecognitionSupport) {
-        scope.launch { AndroidSpeechInput(context).listenOnce("en").collect { events += it } }
-        idle()
+        start()
         val asked = ShadowSpeechRecognizer.getLatestSpeechRecognizer()
         latest().triggerSupportResult(support)
         idle()
@@ -90,8 +94,12 @@ class AndroidSpeechInputTest {
     @Test
     fun aMissingLanguagePackMovesOnToTheNextVariant() {
         listen(RecognitionSupport.Builder().setInstalledOnDeviceLanguages(listOf("en-US")).setOnlineLanguages(listOf("en-GB")).build())
+        val first = ShadowSpeechRecognizer.getLatestSpeechRecognizer()
         latest().triggerOnError(12)
-        idle()
+        idleFor(200)
+        // A new recogniser, since the service tears the session down after the error; the first is kept.
+        assertNotSame(first, ShadowSpeechRecognizer.getLatestSpeechRecognizer())
+        assertFalse(shadowOf(first).isDestroyed)
         assertEquals("en-GB" to false, latest().lastRecognizerIntent.asked())
         latest().triggerOnResults(heard("klar"))
         idle()
@@ -102,7 +110,7 @@ class AndroidSpeechInputTest {
     fun whenNoVariantHasALanguagePackTheErrorSaysSo() {
         listen(RecognitionSupport.Builder().setInstalledOnDeviceLanguages(listOf("en-US")).build())
         latest().triggerOnError(12)
-        idle()
+        idleFor(200)
         assertEquals(listOf<SpeechEvent>(SpeechEvent.Error(SpeechErrorKind.LANGUAGE)), events)
     }
 
@@ -112,5 +120,33 @@ class AndroidSpeechInputTest {
         latest().triggerOnError(SpeechRecognizer.ERROR_NO_MATCH)
         idle()
         assertEquals(listOf<SpeechEvent>(SpeechEvent.Error(SpeechErrorKind.NO_SPEECH)), events)
+    }
+
+    @Test
+    fun withoutAnAnswerItListensInAnotherRecogniserWithTheUsualVariant() {
+        start()
+        val asked = ShadowSpeechRecognizer.getLatestSpeechRecognizer()
+        idleFor(1600)
+        // The check may still be running in the first: listening goes to a second.
+        assertNotSame(asked, ShadowSpeechRecognizer.getLatestSpeechRecognizer())
+        assertEquals("en-US" to true, latest().lastRecognizerIntent.asked())
+    }
+
+    @Test
+    fun anErrorFromTheCheckFallsBackTheSameWay() {
+        start()
+        latest().triggerSupportError(SpeechRecognizer.ERROR_CLIENT)
+        idle()
+        assertEquals("en-US" to true, latest().lastRecognizerIntent.asked())
+    }
+
+    @Test
+    fun theAnswerIsAskedForOnce() {
+        listen(RecognitionSupport.Builder().setInstalledOnDeviceLanguages(listOf("en-GB")).build())
+        latest().triggerOnResults(heard("ten reps"))
+        idle()
+        start()
+        // No support check this time: the new recogniser listens at once, in the variant learnt before.
+        assertEquals("en-GB" to true, latest().lastRecognizerIntent.asked())
     }
 }
