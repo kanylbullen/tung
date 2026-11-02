@@ -31,6 +31,7 @@ import io.github.kanylbullen.tung.core.stepWeight
 import io.github.kanylbullen.tung.core.stickyAction
 import io.github.kanylbullen.tung.core.voice.VoiceLanguage
 import io.github.kanylbullen.tung.core.voice.parseUtterance
+import io.github.kanylbullen.tung.core.voice.worthAskingAssistant
 import io.github.kanylbullen.tung.web.voice.Heard
 import io.github.kanylbullen.tung.web.voice.VoiceAction
 import io.github.kanylbullen.tung.web.voice.VoiceProblem
@@ -283,7 +284,9 @@ fun WorkoutScreen(container: WebContainer) {
             )
             is VoiceAction.NotUnderstood -> VoiceEcho(
                 strings.voiceNotUnderstood(action.text),
-                askAssistant = action.text.takeIf { container.ai.settings.config.value.configured },
+                askAssistant = action.text.takeIf {
+                    container.ai.settings.config.value.configured && worthAskingAssistant(it, VoiceLanguage.of(strings.tag))
+                },
             )
         }
     }

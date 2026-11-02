@@ -1986,7 +1986,14 @@ fallback, and only on a tap.
   phone mostly hears nothing. No foreground service; the screen is already
   kept on.
 - **The assistant link:** on `Unknown` with the assistant set up
-  (`AiConfig.configured`), the echo offers "Ask the assistant" for 8 s. It
+  (`AiConfig.configured`), and only when the words could be a workout
+  (core's `worthAskingAssistant`: a number and a word of three letters or
+  more that is not the grammar's own, most likely an exercise, as in
+  "bänkpress tre set åttio kilo"), the echo offers "Ask the assistant" for
+  8 s. The assistant can only answer with a workout to add, so a misheard
+  set ("Europe's" for "ten reps") gets no offer: it would send the history
+  and spend the user's tokens for an empty plan. The web follows the same
+  rule. It
   opens the Assistant screen with the transcript (`assistant?ask=…`), which
   asks `AiRequest.FreeText(text)` once: the next-workout schema and parser,
   the transcript as a JSON string in the question. The rules of "In-app AI
