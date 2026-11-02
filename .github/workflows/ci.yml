@@ -105,6 +105,53 @@ jobs:
           path: wear/build/outputs/apk/debug/wear-debug.apk
           retention-days: 14
 
+  ios:
+    name: iOS framework, simulator tests and app build
+    # Apple silicon, Xcode and the iOS simulators; free for a public repository.
+    # What the Linux job cannot do: link the TungUI framework, run the iOS
+    # tests on a simulator, and build the Xcode app around it (iosApp/).
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.gradle.kts') }}
+
+      # The runner ships the Android SDK with ANDROID_HOME set: Gradle
+      # configures the Android modules even when it builds only iOS.
+      - name: Run the iOS tests on a simulator and link the framework
+        run: ./gradlew :data:iosSimulatorArm64Test :ui:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
+
+      - name: Upload iOS test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: "**/build/test-results/iosSimulatorArm64Test/**"
+          if-no-files-found: ignore
+
+      # The project is generated (iosApp/project.yml); its pre-build script
+      # runs Gradle for the framework, unsigned for the simulator here.
+      - name: Build the iPhone app for the simulator
+        working-directory: iosApp
+        run: |
+          brew install xcodegen
+          xcodegen
+          xcodebuild -project Tung.xcodeproj -scheme Tung -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+
   web:
     name: Web app build and browser tests
     runs-on: ubuntu-latest

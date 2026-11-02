@@ -85,6 +85,10 @@ kotlin {
             implementation("androidx.sqlite:sqlite-bundled:2.6.2")
             implementation("io.ktor:ktor-client-darwin:3.0.3")
         }
+        // IosDatabaseTest: Room over the bundled SQLite on a simulator (CI's `ios` job; a Mac).
+        iosTest.dependencies {
+            implementation(kotlin("test"))
+        }
         androidUnitTest.dependencies {
             implementation("junit:junit:4.13.2")
             implementation("org.robolectric:robolectric:4.14.1")
