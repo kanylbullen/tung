@@ -5,7 +5,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // Android target and the iOS app's targets; what is drawn lives in
 // commonMain, with Compose Resources (composeResources/) for what the screens
 // load: the Archivo font today, the strings as the screens move here. The iOS
-// klibs compile on Linux like core's and data's; linking needs a Mac. Moved
+// klibs compile on Linux like core's and data's; linking the framework the
+// Xcode app (iosApp/) embeds needs a Mac, which CI's `ios` job is. Moved
 // one piece at a time (CLAUDE.md, "Layers"): the theme, then the Routines tab
 // and the routine page with what they draw (the input sheet, the muscle map).
 plugins {
@@ -21,8 +22,14 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_17)
         }
     }
-    iosArm64()
-    iosSimulatorArm64()
+    // The framework iosApp/ links: static, so the app carries one binary, and
+    // named for what Swift imports (`import TungUI`).
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+        target.binaries.framework {
+            baseName = "TungUI"
+            isStatic = true
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
