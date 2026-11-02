@@ -1,8 +1,8 @@
 package io.github.kanylbullen.tung.ui.settings
 
-import org.jetbrains.compose.resources.stringResource
 import io.github.kanylbullen.tung.ui.resources.*
-import androidx.annotation.StringRes
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.StringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,54 +27,42 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.BuildConfig
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.sync.PushChoice
-import io.github.kanylbullen.tung.health.HealthAvailability
-import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.common.factoryOf
+import io.github.kanylbullen.tung.ui.common.dateText
 import io.github.kanylbullen.tung.ui.theme.Tung
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /** Settings' groups, in the order the list shows them; each opens its own screen at [route]. */
-enum class SettingsGroup(val route: String, @StringRes val title: Int) {
-    ACCOUNT("settings/account", R.string.settings_group_account),
-    DEVICES("settings/devices", R.string.settings_group_devices),
-    TRAINING("settings/training", R.string.settings_group_training),
-    ASSISTANT("settings/assistant", R.string.settings_group_assistant),
-    HEALTH_CONNECT("settings/health", R.string.settings_group_health),
-    DATA("settings/data", R.string.settings_group_data),
-    FEEDBACK("settings/feedback", R.string.settings_group_feedback),
-    ABOUT("settings/about", R.string.settings_group_about),
+enum class SettingsGroup(val route: String, val title: StringResource) {
+    ACCOUNT("settings/account", Res.string.settings_group_account),
+    DEVICES("settings/devices", Res.string.settings_group_devices),
+    TRAINING("settings/training", Res.string.settings_group_training),
+    ASSISTANT("settings/assistant", Res.string.settings_group_assistant),
+    HEALTH_CONNECT("settings/health", Res.string.settings_group_health),
+    DATA("settings/data", Res.string.settings_group_data),
+    FEEDBACK("settings/feedback", Res.string.settings_group_feedback),
+    ABOUT("settings/about", Res.string.settings_group_about),
 }
 
 /**
  * Settings, reached from Home's gear: the groups as calm list rows, a title
  * and a one-line live summary each ("Signed in as …", "Push: FCM",
- * "Default rest 1:30 · kg"). A tap opens the group's own screen.
+ * "Default rest 1:30 · kg"). A tap opens the group's own screen. What only
+ * the platform knows comes in: [version] and [buildType] for About, and
+ * [healthSummary] for the health row (Health Connect on Android).
  */
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onOpenGroup: (SettingsGroup) -> Unit) {
-    val container = appContainer()
-    val vm: SettingsViewModel = viewModel(
-        factory = factoryOf { SettingsViewModel(container.syncAccount, container.push, container.restTimer, container.aiSettings, container.imports) },
-    )
+fun SettingsScreen(
+    vm: SettingsViewModel,
+    version: String,
+    buildType: String,
+    healthSummary: String?,
+    onBack: () -> Unit,
+    onOpenGroup: (SettingsGroup) -> Unit,
+) {
     val summary by vm.state.collectAsStateWithLifecycle()
-    val health: HealthConnectViewModel = viewModel(factory = factoryOf { HealthConnectViewModel(container.healthConnect, container.healthConnectSettings) })
-    val healthState by health.state.collectAsStateWithLifecycle()
-    LifecycleResumeEffect(health) {
-        health.refresh()
-        onPauseOrDispose { }
-    }
 
     SettingsPage(title = stringResource(Res.string.settings_title), onBack = onBack, padded = false) {
         SettingsGroup.entries.forEach { group ->
@@ -82,24 +70,16 @@ fun SettingsScreen(onBack: () -> Unit, onOpenGroup: (SettingsGroup) -> Unit) {
                 SettingsGroup.ACCOUNT -> accountSummary(summary)
                 SettingsGroup.DEVICES -> devicesSummary(summary)
                 SettingsGroup.TRAINING -> summary.restDefaultSeconds?.let {
-                    stringResource(R.string.settings_summary_training, restText(it))
+                    stringResource(Res.string.settings_summary_training, restText(it))
                 }
                 SettingsGroup.ASSISTANT -> summary.ai?.let { ai ->
-                    if (ai.configured) ai.model.trim() else stringResource(R.string.settings_summary_not_set_up)
+                    if (ai.configured) ai.model.trim() else stringResource(Res.string.settings_summary_not_set_up)
                 }
-                SettingsGroup.HEALTH_CONNECT -> stringResource(
-                    when {
-                        healthState.availability != HealthAvailability.AVAILABLE -> R.string.settings_summary_health_unavailable
-                        healthState.write && healthState.read -> R.string.settings_summary_health_both
-                        healthState.write -> R.string.settings_summary_health_write
-                        healthState.read -> R.string.settings_summary_health_read
-                        else -> R.string.settings_summary_health_off
-                    },
-                )
-                SettingsGroup.DATA -> summary.lastImport?.let { stringResource(R.string.settings_summary_last_import, shortDate(it.at)) }
-                    ?: stringResource(R.string.settings_summary_data)
-                SettingsGroup.FEEDBACK -> stringResource(R.string.settings_summary_feedback)
-                SettingsGroup.ABOUT -> stringResource(R.string.settings_summary_about, BuildConfig.VERSION_NAME, BuildConfig.BUILD_TYPE)
+                SettingsGroup.HEALTH_CONNECT -> healthSummary
+                SettingsGroup.DATA -> summary.lastImport?.let { stringResource(Res.string.settings_summary_last_import, shortDate(it.at)) }
+                    ?: stringResource(Res.string.settings_summary_data)
+                SettingsGroup.FEEDBACK -> stringResource(Res.string.settings_summary_feedback)
+                SettingsGroup.ABOUT -> stringResource(Res.string.settings_summary_about, version, buildType)
             }
             GroupRow(stringResource(group.title), line.orEmpty()) { onOpenGroup(group) }
         }
@@ -111,26 +91,25 @@ private fun accountSummary(summary: SettingsSummary): String? {
     val account = summary.account ?: return null
     return when (account.signedIn) {
         null -> null
-        true -> stringResource(R.string.sync_signed_in_as, account.email.orEmpty())
-        false -> stringResource(R.string.settings_summary_signed_out)
+        true -> stringResource(Res.string.sync_signed_in_as, account.email.orEmpty())
+        false -> stringResource(Res.string.settings_summary_signed_out)
     }
 }
 
 @Composable
 private fun devicesSummary(summary: SettingsSummary): String? {
     val account = summary.account ?: return null
-    if (account.signedIn != true) return stringResource(R.string.settings_summary_devices_signed_out)
+    if (account.signedIn != true) return stringResource(Res.string.settings_summary_devices_signed_out)
     return when (val choice = summary.push.choice) {
-        null -> stringResource(R.string.settings_summary_devices)
-        PushChoice.Fcm -> stringResource(R.string.push_status_fcm)
-        is PushChoice.UnifiedPush -> stringResource(R.string.push_status_unifiedpush, summary.push.distributorLabel ?: choice.distributor)
-        PushChoice.None -> stringResource(R.string.push_status_none)
+        null -> stringResource(Res.string.settings_summary_devices)
+        PushChoice.Fcm -> stringResource(Res.string.push_status_fcm)
+        is PushChoice.UnifiedPush -> stringResource(Res.string.push_status_unifiedpush, summary.push.distributorLabel ?: choice.distributor)
+        PushChoice.None -> stringResource(Res.string.push_status_none)
     }
 }
 
-/** "21 Oct": the date of a recent thing, in the app's language. */
-private fun shortDate(epochMillis: Long): String =
-    DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()).format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
+/** "21 Oct" (with the year when it is not this one): the date of a recent thing, in the app's language. */
+private fun shortDate(epochMillis: Long): String = dateText(epochMillis, "d MMM", "d MMM yyyy")
 
 /** A group of Settings as one list row: its name, and what it is set to below. */
 @Composable

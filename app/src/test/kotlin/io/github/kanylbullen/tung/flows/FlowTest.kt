@@ -197,7 +197,7 @@ abstract class FlowTest {
     // --- steps several flows share, written as a person would do them ---
 
     /** Settings from Home's gear, then the group titled [group] (a `settings_group_*` string) (issue #67). */
-    protected fun openSettingsGroup(@StringRes group: Int) {
+    protected fun openSettingsGroup(group: StringResource) {
         clickDescription(str(Res.string.settings_title))
         clickText(str(group))
     }
@@ -205,14 +205,14 @@ abstract class FlowTest {
     /** From a Settings group back to Home: the group's back, then the list's. */
     protected fun leaveSettings() {
         clickDescription(str(Res.string.action_back))
-        waitForText(str(R.string.settings_group_about))
+        waitForText(str(Res.string.settings_group_about))
         clickDescription(str(Res.string.action_back))
     }
 
     /** On Account, signed out: "Use another server" and [url] in the field it reveals. */
     protected fun useServer(url: String) {
-        clickText(str(R.string.sync_use_another_server))
-        val field = hasSetTextAction() and hasText(str(R.string.sync_server_url))
+        clickText(str(Res.string.sync_use_another_server))
+        val field = hasSetTextAction() and hasText(str(Res.string.sync_server_url))
         waitFor(field)
         compose.onNode(field).performScrollTo().performTextReplacement(url)
     }

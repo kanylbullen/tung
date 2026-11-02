@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performTextReplacement
@@ -44,32 +45,32 @@ class DeleteAccountFlowTest : FlowTest() {
 
     @Test
     fun deletingTheAccountAsksForTheEmailAndSignsOut() {
-        openSettingsGroup(R.string.settings_group_account)
-        waitForText(str(R.string.sync_intro))
+        openSettingsGroup(Res.string.settings_group_account)
+        waitForText(str(Res.string.sync_intro))
         useServer(fake.baseUrl)
-        fill(str(R.string.sync_email), "lifter@example.org")
-        fill(str(R.string.sync_password), "correct horse battery")
-        clickText(str(R.string.sync_sign_in))
-        waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
+        fill(str(Res.string.sync_email), "lifter@example.org")
+        fill(str(Res.string.sync_password), "correct horse battery")
+        clickText(str(Res.string.sync_sign_in))
+        waitForText(str(Res.string.sync_signed_in_as, "lifter@example.org"))
 
-        clickText(str(R.string.sync_delete_account))
-        waitForText(str(R.string.sync_delete_title))
-        waitForText(str(R.string.sync_delete_body, fake.baseUrl))
+        clickText(str(Res.string.sync_delete_account))
+        waitForText(str(Res.string.sync_delete_title))
+        waitForText(str(Res.string.sync_delete_body, fake.baseUrl))
         screenshot("1-dialog")
 
-        fill(str(R.string.sync_delete_email), "someone@example.org")
-        clickText(str(R.string.sync_delete_confirm))
-        waitForText(str(R.string.sync_delete_error_email))
+        fill(str(Res.string.sync_delete_email), "someone@example.org")
+        clickText(str(Res.string.sync_delete_confirm))
+        waitForText(str(Res.string.sync_delete_error_email))
         screenshot("2-wrong-email")
         assertFalse(fake.accountDeleted)
 
-        fill(str(R.string.sync_delete_email), "Lifter@Example.org")
-        clickText(str(R.string.sync_delete_confirm))
-        waitForText(str(R.string.sync_delete_done))
+        fill(str(Res.string.sync_delete_email), "Lifter@Example.org")
+        clickText(str(Res.string.sync_delete_confirm))
+        waitForText(str(Res.string.sync_delete_done))
         screenshot("3-deleted")
         assertTrue(fake.accountDeleted)
         assertNull(app.tokens.token)
-        waitForText(str(R.string.sync_intro))
+        waitForText(str(Res.string.sync_intro))
         // No logout call: the token went with the account.
         assertFalse("/api/v1/auth/logout" in fake.authPaths)
         val periodic = WorkManager.getInstance(app).getWorkInfosForUniqueWork(WorkManagerSyncScheduler.PERIODIC_WORK).get()

@@ -1,8 +1,8 @@
 package io.github.kanylbullen.tung.ui.settings
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
+import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,13 +26,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
@@ -40,59 +37,41 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.BuildConfig
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.sync.FeedbackOutcome
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
-import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
-import kotlinx.coroutines.launch
 
 /**
  * Settings → Feedback: Bug or Idea, the words, up to three screenshots from
- * the photo picker, and Send. Needs an account (the feedback names it, and
+ * the photo picker ([onPickScreenshots] with how many still fit; the
+ * platform reads them into [FeedbackViewModel.addScreenshots]), and Send. Needs an account (the feedback names it, and
  * the server's admins read it); signed out, a hint and the way to Account.
  */
 @Composable
-fun FeedbackScreen(onBack: () -> Unit, onOpenAccount: () -> Unit) {
-    val container = appContainer()
-    val vm: FeedbackViewModel = viewModel(
-        factory = factoryOf { FeedbackViewModel(container.syncAccount, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})") },
-    )
+fun FeedbackScreen(vm: FeedbackViewModel, onBack: () -> Unit, onOpenAccount: () -> Unit, onPickScreenshots: (room: Int) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val form = state.form
-    // As many as there is room for: the multiple picker needs at least two, so one left is the single picker.
     val room = MAX_FEEDBACK_SCREENSHOTS - form.screenshots.size
-    val pickMany = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(room.coerceAtLeast(2))) { uris ->
-        if (uris.isNotEmpty()) scope.launch { vm.addScreenshots(uris.map { readScreenshot(context, it) }) }
-    }
-    val pickOne = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) scope.launch { vm.addScreenshots(listOf(readScreenshot(context, uri))) }
-    }
 
-    SettingsPage(title = stringResource(R.string.settings_group_feedback), onBack = onBack) {
+    SettingsPage(title = stringResource(Res.string.settings_group_feedback), onBack = onBack) {
         when (state.signedIn) {
             null -> Unit
             false -> {
-                Text(stringResource(R.string.feedback_signed_out), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-                SecondaryButton(text = stringResource(R.string.settings_devices_open_account), onClick = onOpenAccount)
+                Text(stringResource(Res.string.feedback_signed_out), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+                SecondaryButton(text = stringResource(Res.string.settings_devices_open_account), onClick = onOpenAccount)
             }
             true -> {
                 Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    KindChip(stringResource(R.string.feedback_bug), form.kind == FeedbackKind.BUG) { vm.setKind(FeedbackKind.BUG) }
-                    KindChip(stringResource(R.string.feedback_idea), form.kind == FeedbackKind.IDEA) { vm.setKind(FeedbackKind.IDEA) }
+                    KindChip(stringResource(Res.string.feedback_bug), form.kind == FeedbackKind.BUG) { vm.setKind(FeedbackKind.BUG) }
+                    KindChip(stringResource(Res.string.feedback_idea), form.kind == FeedbackKind.IDEA) { vm.setKind(FeedbackKind.IDEA) }
                 }
                 OutlinedTextField(
                     value = form.message,
                     onValueChange = vm::setMessage,
-                    label = { Text(stringResource(R.string.feedback_message)) },
+                    label = { Text(stringResource(Res.string.feedback_message)) },
                     minLines = 5,
                     enabled = !form.sending,
                     shape = TungCorner,
@@ -105,7 +84,7 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenAccount: () -> Unit) {
                             Box(Modifier.size(96.dp).clip(TungCorner).border(1.dp, Tung.colors.border, TungCorner)) {
                                 Image(
                                     bitmap = shot.thumbnail,
-                                    contentDescription = stringResource(R.string.feedback_screenshot, index + 1),
+                                    contentDescription = stringResource(Res.string.feedback_screenshot, index + 1),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(96.dp),
                                 )
@@ -114,28 +93,25 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenAccount: () -> Unit) {
                                     enabled = !form.sending,
                                     modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(32.dp).background(Tung.colors.background, CircleShape),
                                 ) {
-                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.feedback_remove_screenshot, index + 1))
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.feedback_remove_screenshot, index + 1))
                                 }
                             }
                         }
                     }
-                    Text(stringResource(R.string.feedback_screenshot_notice), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+                    Text(stringResource(Res.string.feedback_screenshot_notice), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
                 }
                 SecondaryButton(
-                    text = stringResource(R.string.feedback_add_screenshot),
+                    text = stringResource(Res.string.feedback_add_screenshot),
                     enabled = form.canAddScreenshot && !form.sending,
-                    onClick = {
-                        val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        if (room >= 2) pickMany.launch(request) else pickOne.launch(request)
-                    },
+                    onClick = { onPickScreenshots(room) },
                 )
                 PrimaryButton(
-                    text = stringResource(if (form.sending) R.string.feedback_sending else R.string.feedback_send),
+                    text = stringResource(if (form.sending) Res.string.feedback_sending else Res.string.feedback_send),
                     enabled = form.canSend,
                     onClick = vm::send,
                 )
                 val message = when {
-                    form.unreadable -> R.string.feedback_unreadable
+                    form.unreadable -> Res.string.feedback_unreadable
                     else -> form.outcome?.let(::outcomeText)
                 }
                 message?.let {
@@ -151,13 +127,13 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenAccount: () -> Unit) {
     }
 }
 
-private fun outcomeText(outcome: FeedbackOutcome): Int = when (outcome) {
-    FeedbackOutcome.SENT -> R.string.feedback_sent
-    FeedbackOutcome.TOO_LARGE -> R.string.feedback_too_large
-    FeedbackOutcome.TOO_MANY_TODAY -> R.string.feedback_too_many
-    FeedbackOutcome.NOT_SIGNED_IN, FeedbackOutcome.SIGNED_OUT -> R.string.feedback_signed_out
-    FeedbackOutcome.NOT_A_SERVER -> R.string.feedback_not_supported
-    FeedbackOutcome.NETWORK, FeedbackOutcome.SERVER -> R.string.feedback_failed
+private fun outcomeText(outcome: FeedbackOutcome): StringResource = when (outcome) {
+    FeedbackOutcome.SENT -> Res.string.feedback_sent
+    FeedbackOutcome.TOO_LARGE -> Res.string.feedback_too_large
+    FeedbackOutcome.TOO_MANY_TODAY -> Res.string.feedback_too_many
+    FeedbackOutcome.NOT_SIGNED_IN, FeedbackOutcome.SIGNED_OUT -> Res.string.feedback_signed_out
+    FeedbackOutcome.NOT_A_SERVER -> Res.string.feedback_not_supported
+    FeedbackOutcome.NETWORK, FeedbackOutcome.SERVER -> Res.string.feedback_failed
 }
 
 @Composable

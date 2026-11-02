@@ -1,10 +1,10 @@
 package io.github.kanylbullen.tung.ui.settings
 
-import androidx.annotation.StringRes
+import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.StringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kanylbullen.tung.R
-import io.github.kanylbullen.tung.push.PushRegistrar
+import io.github.kanylbullen.tung.push.PushControl
 import io.github.kanylbullen.tung.push.PushStatus
 import io.github.kanylbullen.tung.sync.LinkCode
 import io.github.kanylbullen.tung.sync.LinkFailure
@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 data class WatchLinkState(
     val code: LinkCode? = null,
     val busy: Boolean = false,
-    @StringRes val error: Int? = null,
+    val error: StringResource? = null,
 )
 
 data class DevicesUiState(
@@ -36,7 +36,7 @@ data class DevicesUiState(
 )
 
 /** Settings' Devices: "Link a watch" and the push transport, both for a signed-in account. */
-class DevicesViewModel(private val account: SyncAccount, private val push: PushRegistrar) : ViewModel() {
+class DevicesViewModel(private val account: SyncAccount, private val push: PushControl) : ViewModel() {
 
     private val watchLink = MutableStateFlow(WatchLinkState())
 
@@ -73,12 +73,11 @@ class DevicesViewModel(private val account: SyncAccount, private val push: PushR
         watchLink.value = WatchLinkState()
     }
 
-    @StringRes
-    private fun linkMessage(failure: LinkFailure): Int = when (failure) {
-        LinkFailure.NETWORK -> R.string.sync_error_unreachable
-        LinkFailure.RATE_LIMITED -> R.string.sync_error_rate_limited
-        LinkFailure.NOT_A_SERVER -> R.string.link_watch_error_old_server
-        LinkFailure.SIGNED_OUT, LinkFailure.NOT_SIGNED_IN -> R.string.sync_error_signed_out
-        LinkFailure.INVALID_CODE, LinkFailure.SERVER -> R.string.sync_error_server_auth
+    private fun linkMessage(failure: LinkFailure): StringResource = when (failure) {
+        LinkFailure.NETWORK -> Res.string.sync_error_unreachable
+        LinkFailure.RATE_LIMITED -> Res.string.sync_error_rate_limited
+        LinkFailure.NOT_A_SERVER -> Res.string.link_watch_error_old_server
+        LinkFailure.SIGNED_OUT, LinkFailure.NOT_SIGNED_IN -> Res.string.sync_error_signed_out
+        LinkFailure.INVALID_CODE, LinkFailure.SERVER -> Res.string.sync_error_server_auth
     }
 }

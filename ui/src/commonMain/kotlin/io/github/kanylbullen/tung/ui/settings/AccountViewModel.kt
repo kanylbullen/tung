@@ -1,9 +1,9 @@
 package io.github.kanylbullen.tung.ui.settings
 
-import androidx.annotation.StringRes
+import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.StringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.auth.GoogleSignInResult
 import io.github.kanylbullen.tung.core.sync.ServerUrlCheck
 import io.github.kanylbullen.tung.core.sync.checkServerUrl
@@ -35,9 +35,9 @@ data class SignInForm(
     val email: String = "",
     val password: String = "",
     val busy: Boolean = false,
-    @StringRes val error: Int? = null,
+    val error: StringResource? = null,
     /** What "Forgot password?" gave, muted under the buttons; [email] is in the text. */
-    @StringRes val notice: Int? = null,
+    val notice: StringResource? = null,
     /**
      * The Google client id the server at [googleServer] named in
      * `/auth/methods`; null hides "Sign in with Google" (not offered, not
@@ -53,14 +53,14 @@ data class SignInForm(
 data class AccountDeletion(
     val email: String = "",
     val busy: Boolean = false,
-    @StringRes val error: Int? = null,
+    val error: StringResource? = null,
 )
 
 data class AccountUiState(
     /** Null until the account has been read. */
     val account: AccountState? = null,
     val form: SignInForm = SignInForm(),
-    /** The server to use when none is stored: `BuildConfig.DEFAULT_SERVER_URL`. */
+    /** The server to use when none is stored: the build's default (`BuildConfig.DEFAULT_SERVER_URL` on Android). */
     val defaultServerUrl: String = "",
     /** The deletion dialog, while it is open. */
     val deletion: AccountDeletion? = null,
@@ -73,7 +73,7 @@ data class AccountUiState(
 /** "Send the link again" under "Confirm your email". */
 sealed interface ResendState {
     data object Sending : ResendState
-    data class Done(@StringRes val message: Int) : ResendState
+    data class Done(val message: StringResource) : ResendState
 }
 
 /**
@@ -168,9 +168,9 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
                     is AuthResult.Failed -> message(result.failure)
                 }
                 GoogleSignInResult.Cancelled -> null
-                GoogleSignInResult.NoAccount -> R.string.sync_error_google_no_account
-                GoogleSignInResult.Unavailable -> R.string.sync_error_google_unavailable
-                is GoogleSignInResult.Failed -> R.string.sync_error_google_failed
+                GoogleSignInResult.NoAccount -> Res.string.sync_error_google_no_account
+                GoogleSignInResult.Unavailable -> Res.string.sync_error_google_unavailable
+                is GoogleSignInResult.Failed -> Res.string.sync_error_google_failed
             }
             form.update { it.copy(busy = false, error = error, password = if (error == null) "" else it.password) }
         }
@@ -184,21 +184,21 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
         if (current.busy) return
         val url = when (val check = checkServerUrl(current.serverUrl)) {
             is ServerUrlCheck.Valid -> check.url
-            ServerUrlCheck.Malformed -> return form.update { it.copy(error = R.string.sync_error_url) }
-            ServerUrlCheck.NeedsHttps -> return form.update { it.copy(error = R.string.sync_error_url_https) }
+            ServerUrlCheck.Malformed -> return form.update { it.copy(error = Res.string.sync_error_url) }
+            ServerUrlCheck.NeedsHttps -> return form.update { it.copy(error = Res.string.sync_error_url_https) }
         }
-        if (current.email.isBlank()) return form.update { it.copy(error = R.string.sync_forgot_needs_email, notice = null) }
+        if (current.email.isBlank()) return form.update { it.copy(error = Res.string.sync_forgot_needs_email, notice = null) }
         form.update { it.copy(busy = true, error = null, notice = null) }
         viewModelScope.launch {
             val outcome = account.forgotPassword(url, current.email)
             form.update {
                 when (outcome) {
-                    ForgotOutcome.SENT -> it.copy(busy = false, notice = R.string.sync_forgot_sent)
-                    ForgotOutcome.NOT_OFFERED -> it.copy(busy = false, error = R.string.sync_forgot_not_offered)
-                    ForgotOutcome.RATE_LIMITED -> it.copy(busy = false, error = R.string.sync_error_rate_limited)
-                    ForgotOutcome.INVALID_EMAIL -> it.copy(busy = false, error = R.string.sync_error_invalid)
-                    ForgotOutcome.NETWORK -> it.copy(busy = false, error = R.string.sync_error_network)
-                    ForgotOutcome.FAILED -> it.copy(busy = false, error = R.string.sync_error_server)
+                    ForgotOutcome.SENT -> it.copy(busy = false, notice = Res.string.sync_forgot_sent)
+                    ForgotOutcome.NOT_OFFERED -> it.copy(busy = false, error = Res.string.sync_forgot_not_offered)
+                    ForgotOutcome.RATE_LIMITED -> it.copy(busy = false, error = Res.string.sync_error_rate_limited)
+                    ForgotOutcome.INVALID_EMAIL -> it.copy(busy = false, error = Res.string.sync_error_invalid)
+                    ForgotOutcome.NETWORK -> it.copy(busy = false, error = Res.string.sync_error_network)
+                    ForgotOutcome.FAILED -> it.copy(busy = false, error = Res.string.sync_error_server)
                 }
             }
         }
@@ -212,11 +212,11 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
         if (current.busy) return
         val url = when (val check = checkServerUrl(current.serverUrl)) {
             is ServerUrlCheck.Valid -> check.url
-            ServerUrlCheck.Malformed -> return form.update { it.copy(error = R.string.sync_error_url) }
-            ServerUrlCheck.NeedsHttps -> return form.update { it.copy(error = R.string.sync_error_url_https) }
+            ServerUrlCheck.Malformed -> return form.update { it.copy(error = Res.string.sync_error_url) }
+            ServerUrlCheck.NeedsHttps -> return form.update { it.copy(error = Res.string.sync_error_url_https) }
         }
         if (current.email.isBlank() || current.password.isEmpty()) {
-            return form.update { it.copy(error = R.string.sync_error_fields) }
+            return form.update { it.copy(error = Res.string.sync_error_fields) }
         }
         form.update { it.copy(serverUrl = url, busy = true, error = null) }
         deleted.value = false
@@ -243,9 +243,9 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
         viewModelScope.launch {
             resend.value = ResendState.Done(
                 when (account.resendConfirmation()) {
-                    ResendOutcome.SENT -> R.string.sync_confirm_sent
-                    ResendOutcome.RATE_LIMITED -> R.string.sync_confirm_rate_limited
-                    ResendOutcome.NETWORK, ResendOutcome.FAILED -> R.string.sync_confirm_failed
+                    ResendOutcome.SENT -> Res.string.sync_confirm_sent
+                    ResendOutcome.RATE_LIMITED -> Res.string.sync_confirm_rate_limited
+                    ResendOutcome.NETWORK, ResendOutcome.FAILED -> Res.string.sync_confirm_failed
                 },
             )
         }
@@ -265,17 +265,17 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
     fun confirmDeletion() {
         val current = deletion.value ?: return
         if (current.busy) return
-        if (current.email.isBlank()) return deletion.update { it?.copy(error = R.string.sync_delete_error_email) }
+        if (current.email.isBlank()) return deletion.update { it?.copy(error = Res.string.sync_delete_error_email) }
         deletion.update { it?.copy(busy = true, error = null) }
         viewModelScope.launch {
             val outcome = account.deleteAccount(current.email)
             val error = when (outcome) {
                 DeleteAccountOutcome.DELETED -> null
-                DeleteAccountOutcome.EMAIL_MISMATCH -> R.string.sync_delete_error_email
-                DeleteAccountOutcome.NOT_ALLOWED -> R.string.sync_delete_error_not_allowed
-                DeleteAccountOutcome.NOT_A_SERVER -> R.string.sync_delete_error_old_server
-                DeleteAccountOutcome.NETWORK -> R.string.sync_error_unreachable
-                DeleteAccountOutcome.SERVER -> R.string.sync_error_server_auth
+                DeleteAccountOutcome.EMAIL_MISMATCH -> Res.string.sync_delete_error_email
+                DeleteAccountOutcome.NOT_ALLOWED -> Res.string.sync_delete_error_not_allowed
+                DeleteAccountOutcome.NOT_A_SERVER -> Res.string.sync_delete_error_old_server
+                DeleteAccountOutcome.NETWORK -> Res.string.sync_error_unreachable
+                DeleteAccountOutcome.SERVER -> Res.string.sync_error_server_auth
                 // Signed out already: the form says so.
                 DeleteAccountOutcome.SIGNED_OUT, DeleteAccountOutcome.NOT_SIGNED_IN -> null
             }
@@ -288,19 +288,18 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
         }
     }
 
-    @StringRes
-    private fun message(failure: AuthFailure): Int = when (failure) {
-        AuthFailure.INVALID_CREDENTIALS -> R.string.sync_error_credentials
-        AuthFailure.ACCOUNT_EXISTS -> R.string.sync_error_exists
-        AuthFailure.WEAK_PASSWORD -> R.string.sync_error_weak_password
-        AuthFailure.INVALID_REQUEST -> R.string.sync_error_invalid
-        AuthFailure.RATE_LIMITED -> R.string.sync_error_rate_limited
-        AuthFailure.NOT_A_SERVER -> R.string.sync_error_not_a_server
-        AuthFailure.NETWORK -> R.string.sync_error_unreachable
-        AuthFailure.SERVER -> R.string.sync_error_server_auth
-        AuthFailure.GOOGLE_REJECTED -> R.string.sync_error_google_rejected
-        AuthFailure.GOOGLE_EMAIL_UNVERIFIED -> R.string.sync_error_google_unverified
-        AuthFailure.GOOGLE_ACCOUNT_MISMATCH -> R.string.sync_error_google_mismatch
-        AuthFailure.GOOGLE_NOT_OFFERED -> R.string.sync_error_google_not_offered
+    private fun message(failure: AuthFailure): StringResource = when (failure) {
+        AuthFailure.INVALID_CREDENTIALS -> Res.string.sync_error_credentials
+        AuthFailure.ACCOUNT_EXISTS -> Res.string.sync_error_exists
+        AuthFailure.WEAK_PASSWORD -> Res.string.sync_error_weak_password
+        AuthFailure.INVALID_REQUEST -> Res.string.sync_error_invalid
+        AuthFailure.RATE_LIMITED -> Res.string.sync_error_rate_limited
+        AuthFailure.NOT_A_SERVER -> Res.string.sync_error_not_a_server
+        AuthFailure.NETWORK -> Res.string.sync_error_unreachable
+        AuthFailure.SERVER -> Res.string.sync_error_server_auth
+        AuthFailure.GOOGLE_REJECTED -> Res.string.sync_error_google_rejected
+        AuthFailure.GOOGLE_EMAIL_UNVERIFIED -> Res.string.sync_error_google_unverified
+        AuthFailure.GOOGLE_ACCOUNT_MISMATCH -> Res.string.sync_error_google_mismatch
+        AuthFailure.GOOGLE_NOT_OFFERED -> Res.string.sync_error_google_not_offered
     }
 }

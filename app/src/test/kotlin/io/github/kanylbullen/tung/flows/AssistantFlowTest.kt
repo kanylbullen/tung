@@ -96,14 +96,14 @@ class AssistantFlowTest : FlowTest() {
             ),
         )
 
-        openSettingsGroup(R.string.settings_group_assistant)
-        waitForText(str(R.string.ai_settings_intro))
+        openSettingsGroup(Res.string.settings_group_assistant)
+        waitForText(str(Res.string.ai_settings_intro))
         // http is fine here: the stand-in listens on localhost.
-        fill(str(R.string.ai_base_url), server.url("/v1").toString())
-        fill(str(R.string.ai_model), "test-model")
-        fill(str(R.string.ai_key), "sk-flow-test")
-        scrollAndClick(str(R.string.ai_save))
-        waitForText(str(R.string.ai_saved))
+        fill(str(Res.string.ai_base_url), server.url("/v1").toString())
+        fill(str(Res.string.ai_model), "test-model")
+        fill(str(Res.string.ai_key), "sk-flow-test")
+        scrollAndClick(str(Res.string.ai_save))
+        waitForText(str(Res.string.ai_saved))
         screenshot("1-settings")
         assertEquals("sk-flow-test", app.aiKeys.token)
         assertEquals(0, server.requestCount)

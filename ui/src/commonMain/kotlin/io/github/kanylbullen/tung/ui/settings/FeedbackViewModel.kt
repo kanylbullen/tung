@@ -40,9 +40,15 @@ data class FeedbackUiState(val signedIn: Boolean? = null, val form: FeedbackForm
 /**
  * Settings → Feedback: a bug or an idea with up to three screenshots, sent
  * with this phone's account to `POST /api/v1/feedback`, where the server's
- * admins read it. Signed out there is nothing to send with.
+ * admins read it. Signed out there is nothing to send with. [platform] is
+ * the server's name for this client (`android`, `ios`), [appVersion] its
+ * build.
  */
-class FeedbackViewModel(private val account: SyncAccount, private val appVersion: String) : ViewModel() {
+class FeedbackViewModel(
+    private val account: SyncAccount,
+    private val platform: String,
+    private val appVersion: String,
+) : ViewModel() {
 
     private val form = MutableStateFlow(FeedbackForm())
 
@@ -76,7 +82,7 @@ class FeedbackViewModel(private val account: SyncAccount, private val appVersion
         if (!current.canSend) return
         form.update { it.copy(sending = true, outcome = null, unreadable = false) }
         viewModelScope.launch {
-            val outcome = account.sendFeedback(current.kind.wire, current.message, current.screenshots.map { it.bytes }, "android", appVersion)
+            val outcome = account.sendFeedback(current.kind.wire, current.message, current.screenshots.map { it.bytes }, platform, appVersion)
             form.update {
                 if (outcome == FeedbackOutcome.SENT) FeedbackForm(kind = it.kind, outcome = outcome)
                 else it.copy(sending = false, outcome = outcome)

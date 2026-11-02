@@ -6,11 +6,11 @@ import io.github.kanylbullen.tung.ai.AiConfig
 import io.github.kanylbullen.tung.ai.AiSettings
 import io.github.kanylbullen.tung.importing.ImportService
 import io.github.kanylbullen.tung.importing.LastImport
-import io.github.kanylbullen.tung.push.PushRegistrar
+import io.github.kanylbullen.tung.push.PushControl
 import io.github.kanylbullen.tung.push.PushStatus
 import io.github.kanylbullen.tung.sync.AccountState
 import io.github.kanylbullen.tung.sync.SyncAccount
-import io.github.kanylbullen.tung.timer.RestTimerController
+import io.github.kanylbullen.tung.timer.RestTimerStore
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -32,8 +32,8 @@ data class SettingsSummary(
  */
 class SettingsViewModel(
     account: SyncAccount,
-    push: PushRegistrar,
-    restTimer: RestTimerController,
+    push: PushControl,
+    restTimer: RestTimerStore,
     aiSettings: AiSettings,
     imports: ImportService,
 ) : ViewModel() {
