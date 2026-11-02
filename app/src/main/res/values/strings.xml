@@ -30,76 +30,14 @@
     <!-- The step follows the ruler: 1 kilo below 30 kg, 2.5 kilos from 30 up. %1$s is the step. -->
 
     <!-- Exercises -->
-    <string name="exercises_title">Exercises</string>
-    <string name="picker_title">Choose exercise</string>
-    <string name="exercises_search">Search exercises</string>
-    <string name="exercises_clear_search">Clear search</string>
-    <string name="exercises_no_match">No exercise has that name. Create it at the bottom.</string>
-    <string name="exercises_create">Create exercise</string>
-    <string name="exercises_custom">Custom</string>
-    <string name="picker_more">More exercises</string>
-    <string name="picker_suggested">Suggested</string>
-    <string name="picker_reason_often_after">Often after %1$s</string>
-    <string name="picker_reason_pairs_with">Pairs with %1$s</string>
-    <string name="picker_reason_not_yet_today">Not trained yet today</string>
-    <string name="picker_reason_often_together">Often together</string>
     <!-- The Exercises tab's group chips and the exercise page (ui/exercises/ExerciseDetailScreen.kt) -->
-    <string name="exercises_all">All</string>
-    <string name="exercise_add_to_routine">Add to routine</string>
-    <string name="exercise_add_to_workout">Add to workout</string>
-    <string name="exercise_choose_routine">Add to which routine?</string>
-    <string name="exercise_no_routines">No routines yet. Create one in the Routines tab with “+ New routine”, or save a finished workout as one.</string>
     <!-- Confirmation after "Add to routine"; %1$s is the routine's name. -->
-    <string name="exercise_added_to_routine">Added to %1$s</string>
-    <string name="exercise_history">History</string>
-    <string name="exercise_not_logged">Not logged yet.</string>
     <!-- Above last session's sets; %1$s is the date. -->
-    <string name="exercise_last_time">Last time, %1$s</string>
     <!-- The best set as a big number: "85 × 6", with the label "Best set, kg". -->
-    <string name="exercise_best_set">Best set, kg</string>
-    <plurals name="exercise_sessions">
-        <item quantity="one">Workout</item>
-        <item quantity="other">Workouts</item>
-    </plurals>
-    <string name="exercise_instructions">How to do it</string>
-    <string name="exercise_not_found">This exercise no longer exists.</string>
-    <string name="create_title">Create exercise</string>
-    <string name="create_name">Name</string>
-    <string name="create_muscle">Muscle group</string>
-    <string name="create_equipment">Equipment</string>
-    <string name="create_save">Save</string>
-    <string name="create_error_name">Enter a name for the exercise.</string>
 
-    <string name="muscle_chest">Chest</string>
-    <string name="muscle_back">Back</string>
-    <string name="muscle_shoulders">Shoulders</string>
-    <string name="muscle_biceps">Biceps</string>
-    <string name="muscle_triceps">Triceps</string>
-    <string name="muscle_legs">Legs</string>
-    <string name="muscle_glutes">Glutes</string>
-    <string name="muscle_core">Core</string>
-    <string name="muscle_fullbody">Full body</string>
 
-    <string name="equipment_barbell">Barbell</string>
-    <string name="equipment_dumbbell">Dumbbells</string>
-    <string name="equipment_machine">Machine</string>
-    <string name="equipment_cable">Cable</string>
-    <string name="equipment_bodyweight">Bodyweight</string>
-    <string name="equipment_other">Other</string>
-    <string name="equipment_ez_bar">EZ bar</string>
-    <string name="equipment_kettlebell">Kettlebell</string>
-    <string name="equipment_band">Band</string>
-    <string name="equipment_medicine_ball">Medicine ball</string>
-    <string name="equipment_exercise_ball">Exercise ball</string>
     <!-- "My equipment": the chip under the Exercises tab's group chips and in the picker, its sheet, and the row in Settings -->
-    <string name="my_equipment_chip_all">Equipment: All</string>
     <!-- How many kinds of equipment are ticked, e.g. "Equipment: 3" -->
-    <string name="my_equipment_chip_count">Equipment: %1$d</string>
-    <string name="my_equipment_title">My equipment</string>
-    <string name="my_equipment_intro">Exercises that need equipment you do not have are hidden from the lists and the suggestions. Exercises already in a workout or routine always show.</string>
-    <string name="my_equipment_everything">Everything</string>
-    <string name="my_equipment_bodyweight_only">Bodyweight only</string>
-    <string name="my_equipment_done">Done</string>
     <!-- Settings' row when more than three are ticked, e.g. "5 of 11" -->
     <string name="my_equipment_some">%1$d of %2$d</string>
 
@@ -480,7 +418,6 @@
         <item quantity="other">Import undone: %d workouts removed</item>
     </plurals>
     <string name="import_done">Done</string>
-    <string name="import_pick_title">Choose exercise</string>
     <plurals name="import_last">
         <item quantity="one">Last import: %1$d workout, %2$s</item>
         <item quantity="other">Last import: %1$d workouts, %2$s</item>
@@ -511,7 +448,6 @@
     <!-- A record's value: "100 kg", "114 kg (90 × 8)". -->
     <!-- The sheet inside a workout. -->
     <!-- The progress row on an exercise page. -->
-    <string name="exercise_progress">Progress</string>
 
     <!-- catalog:begin -->
     <!-- Generated from catalog/core.json, do not edit. Run catalog/tools/gen_android.py. -->

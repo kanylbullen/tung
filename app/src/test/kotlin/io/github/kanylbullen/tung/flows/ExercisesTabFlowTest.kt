@@ -49,7 +49,7 @@ class ExercisesTabFlowTest : FlowTest() {
         searchTab(query)
         clickText(name)
         waitFor(hasTestTag(EXERCISE_PAGE_TAG))
-        waitForText(str(R.string.exercise_add_to_routine))
+        waitForText(str(Res.string.exercise_add_to_routine))
     }
 
     /**
@@ -62,12 +62,12 @@ class ExercisesTabFlowTest : FlowTest() {
     fun theTabShowsTheWholeCatalogueByGroupAndAChipFilters() {
         openTab()
         waitForText(benchPress)
-        assertShown(heading(str(R.string.muscle_chest)))
+        assertShown(heading(str(Res.string.muscle_chest)))
         screenshot("1-tab")
 
         compose.onNode(hasTestTag(groupChipTag(MuscleGroup.BACK))).performClick()
-        waitGone(heading(str(R.string.muscle_chest)))
-        assertShown(heading(str(R.string.muscle_back)))
+        waitGone(heading(str(Res.string.muscle_chest)))
+        assertShown(heading(str(Res.string.muscle_back)))
         waitForText("Alternating Kettlebell Row")
         val list = compose.onNode(hasTestTag(EXERCISES_LIST_TAG))
         list.performScrollToNode(hasText(str(R.string.ex_barbell_row)))
@@ -77,12 +77,12 @@ class ExercisesTabFlowTest : FlowTest() {
 
         compose.onNode(hasTestTag(groupChipTag(null))).performClick()
         waitForText(benchPress)
-        assertShown(heading(str(R.string.muscle_chest)))
+        assertShown(heading(str(Res.string.muscle_chest)))
 
         // The search covers the extended catalogue too, still grouped.
         searchTab("zercher")
         waitForText("Zercher Squats")
-        assertShown(heading(str(R.string.muscle_legs)))
+        assertShown(heading(str(Res.string.muscle_legs)))
         compose.onNode(hasText(benchPress)).assertDoesNotExist()
         screenshot("3-search-extended")
     }
@@ -106,18 +106,18 @@ class ExercisesTabFlowTest : FlowTest() {
         assertShown(hasContentDescription(map))
         assertShown(hasText(str(Res.string.exercise_map_primary)))
         assertShown(hasText(str(Res.string.exercise_map_secondary)))
-        compose.onNode(hasText(str(R.string.exercise_add_to_workout))).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.exercise_add_to_workout))).assertDoesNotExist()
         screenshot("1-page")
 
         val page = compose.onNode(hasTestTag(EXERCISE_PAGE_TAG))
         page.performScrollToNode(hasText(str(Res.string.exercise_set_value, "100", 5)))
-        assertShown(hasText(str(R.string.exercise_best_set)))
-        assertShown(hasText(plural(R.plurals.exercise_sessions, 1)))
+        assertShown(hasText(str(Res.string.exercise_best_set)))
+        assertShown(hasText(plural(Res.plurals.exercise_sessions, 1)))
         page.performScrollToNode(hasText(str(Res.string.detail_set_line, "100", 5)))
         assertShown(hasText(str(Res.string.detail_set_line, "100", 5)))
         screenshot("2-history")
 
-        page.performScrollToNode(heading(str(R.string.exercise_instructions)))
+        page.performScrollToNode(heading(str(Res.string.exercise_instructions)))
         page.performScrollToNode(hasText("Lie back on a flat bench", substring = true))
         assertShown(hasText("Lie back on a flat bench", substring = true))
         screenshot("3-instructions")
@@ -135,12 +135,12 @@ class ExercisesTabFlowTest : FlowTest() {
         val zercher = extendedExerciseId("Zercher_Squats")
 
         openPage("zercher", "Zercher Squats")
-        compose.onNode(heading(str(R.string.exercise_history))).assertDoesNotExist()
-        clickText(str(R.string.exercise_add_to_routine))
-        waitForText(str(R.string.exercise_choose_routine))
+        compose.onNode(heading(str(Res.string.exercise_history))).assertDoesNotExist()
+        clickText(str(Res.string.exercise_add_to_routine))
+        waitForText(str(Res.string.exercise_choose_routine))
         screenshot("1-routine-sheet")
         clickText("Push day")
-        waitForText(str(R.string.exercise_added_to_routine, "Push day"))
+        waitForText(str(Res.string.exercise_added_to_routine, "Push day"))
         waitUntil { count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '$zercher'") == 1 }
         assertEquals(1, count("SELECT COUNT(*) FROM exercise WHERE id = '$zercher' AND isCustom = 0"))
         assertEquals(
@@ -149,7 +149,7 @@ class ExercisesTabFlowTest : FlowTest() {
             count("SELECT COUNT(*) FROM routine_exercise WHERE exerciseId = '$zercher' AND targetSets = 3 AND targetReps IS NULL"),
         )
         // Now a row in Room: the page shows its (empty) history.
-        assertShown(hasText(str(R.string.exercise_not_logged)))
+        assertShown(hasText(str(Res.string.exercise_not_logged)))
         screenshot("2-added")
 
         clickDescription(str(Res.string.action_back))
@@ -169,7 +169,7 @@ class ExercisesTabFlowTest : FlowTest() {
             runBlocking { app.container.commands.execute(Command.StartWorkout()) }.id(CommandIds.WORKOUT_ID),
         )
         openPage("bench", benchPress)
-        clickText(str(R.string.exercise_add_to_workout))
+        clickText(str(Res.string.exercise_add_to_workout))
         waitForText(str(Res.string.workout_finish))
         waitForText(benchPress)
         waitUntil { count("SELECT COUNT(*) FROM workout_exercise WHERE workoutId = '$workoutId' AND exerciseId = '${bench()}'") == 1 }

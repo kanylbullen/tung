@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import io.github.kanylbullen.tung.core.Muscle
+import io.github.kanylbullen.tung.core.MuscleGroup
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.daysAgo
 import io.github.kanylbullen.tung.core.formatWeight
 import io.github.kanylbullen.tung.core.progress.dateOf
@@ -124,4 +126,36 @@ fun clockText(millis: Long): String {
     fun two(n: Long) = n.toString().padStart(2, '0')
     return if (h > 0) "$h:${two(m)}:${two(s)}" else "$m:${two(s)}"
 }
+
+@Composable
+fun muscleGroupLabel(group: MuscleGroup): String = stringResource(
+    when (group) {
+        MuscleGroup.CHEST -> Res.string.muscle_chest
+        MuscleGroup.BACK -> Res.string.muscle_back
+        MuscleGroup.SHOULDERS -> Res.string.muscle_shoulders
+        MuscleGroup.BICEPS -> Res.string.muscle_biceps
+        MuscleGroup.TRICEPS -> Res.string.muscle_triceps
+        MuscleGroup.LEGS -> Res.string.muscle_legs
+        MuscleGroup.GLUTES -> Res.string.muscle_glutes
+        MuscleGroup.CORE -> Res.string.muscle_core
+        MuscleGroup.FULLBODY -> Res.string.muscle_fullbody
+    }
+)
+
+@Composable
+fun equipmentLabel(equipment: Equipment): String = stringResource(
+    when (equipment) {
+        Equipment.BARBELL -> Res.string.equipment_barbell
+        Equipment.EZ_BAR -> Res.string.equipment_ez_bar
+        Equipment.DUMBBELL -> Res.string.equipment_dumbbell
+        Equipment.KETTLEBELL -> Res.string.equipment_kettlebell
+        Equipment.MACHINE -> Res.string.equipment_machine
+        Equipment.CABLE -> Res.string.equipment_cable
+        Equipment.BAND -> Res.string.equipment_band
+        Equipment.BODYWEIGHT -> Res.string.equipment_bodyweight
+        Equipment.MEDICINE_BALL -> Res.string.equipment_medicine_ball
+        Equipment.EXERCISE_BALL -> Res.string.equipment_exercise_ball
+        Equipment.OTHER -> Res.string.equipment_other
+    }
+)
 

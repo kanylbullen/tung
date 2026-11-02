@@ -32,7 +32,7 @@ class PickerFlowTest : FlowTest() {
         screenshot("1-bench")
 
         searchPicker("zzzz")
-        waitForText(str(R.string.exercises_no_match))
+        waitForText(str(Res.string.exercises_no_match))
         compose.onNode(hasText(str(R.string.ex_bench_press))).assertDoesNotExist()
         screenshot("2-no-match")
 
@@ -48,8 +48,8 @@ class PickerFlowTest : FlowTest() {
 
         searchPicker("glute")
         val list = compose.onNode(hasScrollAction())
-        waitFor(hasText(str(R.string.picker_more)), timeoutMillis = 10_000)
-        list.performScrollToNode(hasText(str(R.string.picker_more)))
+        waitFor(hasText(str(Res.string.picker_more)), timeoutMillis = 10_000)
+        list.performScrollToNode(hasText(str(Res.string.picker_more)))
         list.performScrollToNode(hasText(first.displayName))
         assertShown(hasText(first.displayName))
         screenshot("3-more-exercises")

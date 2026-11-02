@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Locale
+import androidx.compose.ui.text.intl.Locale
 
 data class ExerciseDetailUiState(
     val loading: Boolean = true,
@@ -74,8 +74,8 @@ class ExerciseDetailViewModel(
     private val displayName: (Exercise) -> String,
 ) : ViewModel() {
 
-    /** The view model outlives a language change; the screen reports the current locale so the name and the instructions are redone. */
-    private val locale = MutableStateFlow(Locale.getDefault())
+    /** The view model outlives a language change; the screen reports the current language tag so the name and the instructions are redone. */
+    private val locale = MutableStateFlow(Locale.current.toLanguageTag())
 
     /** The Room id this page's exercise has, or will have once added somewhere. */
     private val exerciseId: String = when (ref) {
@@ -105,7 +105,7 @@ class ExerciseDetailViewModel(
                 isCustom = row?.isCustom == true,
                 primary = entry?.muscles?.primary.orEmpty(),
                 secondary = entry?.muscles?.secondary.orEmpty(),
-                instructions = entry?.instructionsIn(loc.language).orEmpty(),
+                instructions = entry?.instructionsIn(loc.substringBefore('-')).orEmpty(),
                 inLibrary = row != null,
             )
         }
@@ -120,7 +120,7 @@ class ExerciseDetailViewModel(
             details.copy(history = history, routines = routineList, workoutInProgress = active?.id)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExerciseDetailUiState())
 
-    fun setLocale(value: Locale) {
+    fun setLocale(value: String) {
         locale.value = value
     }
 

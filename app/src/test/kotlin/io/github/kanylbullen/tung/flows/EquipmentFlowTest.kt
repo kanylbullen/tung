@@ -41,10 +41,10 @@ class EquipmentFlowTest : FlowTest() {
         waitFor(hasTestTag(EQUIPMENT_SHEET_TAG))
         compose.onNode(hasTestTag(EQUIPMENT_BODYWEIGHT_ONLY_TAG)).performClick()
         // Saved at once: the chip under the sheet already says so.
-        waitFor(chip(str(R.string.my_equipment_chip_count, 1)))
+        waitFor(chip(str(Res.string.my_equipment_chip_count, 1)))
         waitForStored(EquipmentFilter.BODYWEIGHT_ONLY)
         screenshot("sheet-bodyweight-only")
-        clickText(str(R.string.my_equipment_done))
+        clickText(str(Res.string.my_equipment_done))
         waitGone(hasTestTag(EQUIPMENT_SHEET_TAG))
     }
 
@@ -58,15 +58,15 @@ class EquipmentFlowTest : FlowTest() {
         clickText(str(R.string.nav_exercises))
         waitFor(hasTestTag(EXERCISES_LIST_TAG))
         waitForText(str(R.string.ex_bench_press))
-        assertShown(chip(str(R.string.my_equipment_chip_all)))
+        assertShown(chip(str(Res.string.my_equipment_chip_all)))
         screenshot("1-tab-all")
 
         chooseBodyweightOnly()
-        assertShown(chip(str(R.string.my_equipment_chip_count, 1)))
+        assertShown(chip(str(Res.string.my_equipment_chip_count, 1)))
         waitGone(hasText(str(R.string.ex_bench_press)))
         assertShown(hasText(str(R.string.ex_push_up)))
-        compose.onNode(hasText(str(R.string.equipment_barbell))).assertDoesNotExist()
-        compose.onNode(hasText(str(R.string.equipment_dumbbell))).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.equipment_barbell))).assertDoesNotExist()
+        compose.onNode(hasText(str(Res.string.equipment_dumbbell))).assertDoesNotExist()
         screenshot("2-tab-bodyweight")
 
         searchTab("press")
@@ -88,11 +88,11 @@ class EquipmentFlowTest : FlowTest() {
         startWorkoutFromHome()
         addExercise("bench", str(R.string.ex_bench_press))
         clickText(str(Res.string.workout_add_exercise))
-        waitForText(str(R.string.picker_title))
-        assertShown(chip(str(R.string.my_equipment_chip_all)))
+        waitForText(str(Res.string.picker_title))
+        assertShown(chip(str(Res.string.my_equipment_chip_all)))
 
         chooseBodyweightOnly()
-        assertShown(chip(str(R.string.my_equipment_chip_count, 1)))
+        assertShown(chip(str(Res.string.my_equipment_chip_count, 1)))
         searchPicker("press")
         waitForText(str(R.string.ex_bench_press))
         compose.onNode(hasText(str(R.string.ex_overhead_press))).assertDoesNotExist()
@@ -106,7 +106,7 @@ class EquipmentFlowTest : FlowTest() {
         }
         searchPicker("push")
         val list = compose.onNode(hasScrollAction() and hasTestTag(EXERCISES_LIST_TAG))
-        waitFor(hasText(str(R.string.picker_more)), timeoutMillis = 10_000)
+        waitFor(hasText(str(Res.string.picker_more)), timeoutMillis = 10_000)
         list.performScrollToNode(hasText(shown.displayName))
         assertShown(hasText(shown.displayName))
         compose.onNode(hasText(hidden.displayName)).assertDoesNotExist()
@@ -124,21 +124,21 @@ class EquipmentFlowTest : FlowTest() {
         // "My equipment" lives in Settings' Training group since #67.
         openSettingsGroup(R.string.settings_group_training)
         waitFor(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG))
-        assertShown(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(R.string.my_equipment_title)))
-        assertShown(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(R.string.equipment_bodyweight)))
+        assertShown(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(Res.string.my_equipment_title)))
+        assertShown(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(Res.string.equipment_bodyweight)))
         screenshot("1-settings")
 
         compose.onNode(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG)).performClick()
         waitFor(hasTestTag(EQUIPMENT_SHEET_TAG))
         compose.onNode(hasTestTag(EQUIPMENT_EVERYTHING_TAG)).performClick()
-        waitFor(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(R.string.my_equipment_everything)))
-        clickText(str(R.string.my_equipment_done))
+        waitFor(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(Res.string.my_equipment_everything)))
+        clickText(str(Res.string.my_equipment_done))
         waitGone(hasTestTag(EQUIPMENT_SHEET_TAG))
         waitForStored(EquipmentFilter.ALL)
 
         leaveSettings()
         clickText(str(R.string.nav_exercises))
-        waitFor(chip(str(R.string.my_equipment_chip_all)))
+        waitFor(chip(str(Res.string.my_equipment_chip_all)))
         waitForText(str(R.string.ex_bench_press))
     }
 
