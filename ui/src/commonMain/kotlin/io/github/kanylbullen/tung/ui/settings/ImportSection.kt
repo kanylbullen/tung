@@ -1,10 +1,8 @@
 package io.github.kanylbullen.tung.ui.settings
 
-import org.jetbrains.compose.resources.stringResource
 import io.github.kanylbullen.tung.ui.resources.*
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -12,22 +10,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.importing.ImportService
 import io.github.kanylbullen.tung.importing.LastImport
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
-import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.localDate
 import io.github.kanylbullen.tung.ui.routines.DeleteRoutinesConfirm
 import io.github.kanylbullen.tung.ui.routines.DeleteRoutinesDialog
@@ -39,9 +31,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
-/** The MIME types the system file picker offers: Jefit's export is a CSV, which phones label in several ways. */
-val IMPORT_MIME_TYPES = arrayOf("text/*", "*/*")
 
 /** The last import, undoing it, and deleting the routines it created, for Settings. */
 class ImportSectionViewModel(
@@ -101,38 +90,31 @@ class ImportSectionViewModel(
 
 /**
  * Settings' "Import" section (CLAUDE.md, "Import"): "Import from Jefit" opens
- * the system file picker (`ACTION_OPEN_DOCUMENT`), and the chosen file goes
- * to the import's preview ([onImportFile]). The last import can be undone
+ * the platform's file picker ([onPickFile]; on Android `ACTION_OPEN_DOCUMENT`),
+ * and the chosen file goes to the import's preview. The last import can be undone
  * here too, after its summary is gone, and while routines it created still
  * exist, "Delete routines from the last import (N)" removes just those
  * (issue #79). One call site, [DataSettingsScreen].
  */
 @Composable
-fun ImportSection(onImportFile: (Uri) -> Unit) {
-    val container = appContainer()
-    val vm: ImportSectionViewModel = viewModel(
-        factory = factoryOf { ImportSectionViewModel(container.imports, container.routineRepository, container.commands) },
-    )
+fun ImportSection(vm: ImportSectionViewModel, onPickFile: () -> Unit) {
     val last by vm.last.collectAsStateWithLifecycle()
     val importedRoutines by vm.importedRoutines.collectAsStateWithLifecycle()
     val confirm by vm.confirm.collectAsStateWithLifecycle()
     val confirmUndo by vm.confirmUndo.collectAsStateWithLifecycle()
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) onImportFile(uri)
-    }
-    Text(stringResource(R.string.import_section), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
-    Text(stringResource(R.string.import_jefit_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-    SecondaryButton(text = stringResource(R.string.import_jefit), onClick = { picker.launch(IMPORT_MIME_TYPES) })
+    Text(stringResource(Res.string.import_section), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
+    Text(stringResource(Res.string.import_jefit_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+    SecondaryButton(text = stringResource(Res.string.import_jefit), onClick = onPickFile)
     last?.let { import ->
         Text(
-            pluralStringResource(R.plurals.import_last, import.workouts, import.workouts, localDate(import.at)),
+            pluralStringResource(Res.plurals.import_last, import.workouts, import.workouts, localDate(import.at)),
             style = MaterialTheme.typography.bodyMedium,
             color = Tung.colors.muted,
         )
-        SecondaryButton(text = stringResource(R.string.import_undo_last), onClick = vm::askUndo)
+        SecondaryButton(text = stringResource(Res.string.import_undo_last), onClick = vm::askUndo)
         if (importedRoutines.isNotEmpty()) {
             SecondaryButton(
-                text = stringResource(R.string.import_delete_routines, importedRoutines.size),
+                text = stringResource(Res.string.import_delete_routines, importedRoutines.size),
                 onClick = vm::askDeleteRoutines,
             )
         }
@@ -141,7 +123,7 @@ fun ImportSection(onImportFile: (Uri) -> Unit) {
         DeleteRoutinesDialog(
             count = asked.ids.size,
             programDays = asked.programDays,
-            body = stringResource(R.string.import_delete_routines_body),
+            body = stringResource(Res.string.import_delete_routines_body),
             onDismiss = vm::dismissDeleteRoutines,
             onConfirm = vm::confirmDeleteRoutines,
         )
@@ -154,11 +136,11 @@ fun ImportSection(onImportFile: (Uri) -> Unit) {
             onDismissRequest = vm::dismissUndo,
             containerColor = Tung.colors.raised,
             tonalElevation = 0.dp,
-            title = { Text(pluralStringResource(R.plurals.import_undo_title, undoing.workouts, undoing.workouts)) },
-            text = { Text(stringResource(R.string.import_undo_body), color = Tung.colors.muted) },
+            title = { Text(pluralStringResource(Res.plurals.import_undo_title, undoing.workouts, undoing.workouts)) },
+            text = { Text(stringResource(Res.string.import_undo_body), color = Tung.colors.muted) },
             confirmButton = {
                 TextButton(onClick = vm::confirmUndo) {
-                    Text(stringResource(R.string.import_undo_confirm), color = Tung.colors.accentText)
+                    Text(stringResource(Res.string.import_undo_confirm), color = Tung.colors.accentText)
                 }
             },
             dismissButton = {

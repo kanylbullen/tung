@@ -61,7 +61,7 @@ class HealthConnectFlowTest : FlowTest() {
             )
         }
 
-        openSettingsGroup(R.string.settings_group_health)
+        openSettingsGroup(Res.string.settings_group_health)
         scrollTo(writeLabel)
         assertShown(hasText(writeLabel) and isOff())
         screenshot("1-settings-off")
@@ -99,7 +99,7 @@ class HealthConnectFlowTest : FlowTest() {
     fun notOptedInNothingIsWrittenOrRead() {
         fake.samples = { start, _ -> HealthSamples(heartRate = listOf(HeartRateSample(start, 120))) }
 
-        openSettingsGroup(R.string.settings_group_health)
+        openSettingsGroup(Res.string.settings_group_health)
         scrollTo(readLabel)
         assertShown(hasText(writeLabel) and isOff())
         assertShown(hasText(readLabel) and isOff())
@@ -130,7 +130,7 @@ class HealthConnectFlowTest : FlowTest() {
     @Test
     fun unavailableShowsAHintAndNoSwitches() {
         fake.availability = HealthAvailability.UNAVAILABLE
-        openSettingsGroup(R.string.settings_group_health)
+        openSettingsGroup(Res.string.settings_group_health)
         scrollTo(str(R.string.health_unavailable))
         compose.onNode(hasText(writeLabel)).assertDoesNotExist()
         compose.onNode(hasText(readLabel)).assertDoesNotExist()

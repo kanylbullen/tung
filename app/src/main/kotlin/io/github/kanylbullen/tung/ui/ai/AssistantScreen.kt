@@ -141,7 +141,7 @@ fun AssistantScreen(
                 Text(stringResource(R.string.ai_voice_heard, ask), style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
             }
             if (state.configured == false) {
-                Text(stringResource(R.string.ai_not_configured), style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
+                Text(stringResource(Res.string.ai_not_configured), style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
                 SecondaryButton(text = stringResource(R.string.ai_open_settings), onClick = onOpenSettings)
             } else {
                 val idle = state.busy == null && state.configured == true && !state.saving
@@ -156,7 +156,7 @@ fun AssistantScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(aiFailureText(failure.failure)), style = MaterialTheme.typography.bodyLarge, color = Tung.colors.accentText)
                     failure.message?.let {
-                        Text(stringResource(R.string.ai_error_provider_says, it), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+                        Text(stringResource(Res.string.ai_error_provider_says, it), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
                     }
                 }
             }

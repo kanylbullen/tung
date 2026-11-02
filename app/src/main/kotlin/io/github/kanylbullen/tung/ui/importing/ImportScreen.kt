@@ -205,7 +205,7 @@ private fun ReviewActions(
             if (state.assist.sending) Muted(stringResource(R.string.import_assist_asking))
             state.assist.failure?.let { failure ->
                 Text(stringResource(aiFailureText(failure.failure)), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
-                failure.message?.let { Muted(stringResource(R.string.ai_error_provider_says, it)) }
+                failure.message?.let { Muted(stringResource(Res.string.ai_error_provider_says, it)) }
             }
             if (state.highConfidence.isNotEmpty()) {
                 SecondaryButton(text = stringResource(R.string.import_assist_accept_all), onClick = onAcceptAll, enabled = idle)

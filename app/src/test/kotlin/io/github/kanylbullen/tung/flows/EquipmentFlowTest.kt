@@ -122,7 +122,7 @@ class EquipmentFlowTest : FlowTest() {
 
         clickText(str(R.string.nav_home))
         // "My equipment" lives in Settings' Training group since #67.
-        openSettingsGroup(R.string.settings_group_training)
+        openSettingsGroup(Res.string.settings_group_training)
         waitFor(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG))
         assertShown(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(Res.string.my_equipment_title)))
         assertShown(hasTestTag(EQUIPMENT_SETTINGS_ROW_TAG) and hasText(str(Res.string.equipment_bodyweight)))

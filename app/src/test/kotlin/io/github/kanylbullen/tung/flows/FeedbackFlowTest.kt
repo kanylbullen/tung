@@ -51,24 +51,24 @@ class FeedbackFlowTest : FlowTest() {
 
     @Test
     fun anIdeaReachesTheServerWithTheAccount() {
-        openSettingsGroup(R.string.settings_group_feedback)
-        waitForText(str(R.string.feedback_signed_out))
+        openSettingsGroup(Res.string.settings_group_feedback)
+        waitForText(str(Res.string.feedback_signed_out))
         screenshot("1-signed-out")
-        clickText(str(R.string.settings_devices_open_account))
+        clickText(str(Res.string.settings_devices_open_account))
 
         useServer(fake.baseUrl)
-        fill(str(R.string.sync_email), "lifter@example.org")
-        fill(str(R.string.sync_password), "correct horse battery")
-        clickText(str(R.string.sync_sign_in))
-        waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
+        fill(str(Res.string.sync_email), "lifter@example.org")
+        fill(str(Res.string.sync_password), "correct horse battery")
+        clickText(str(Res.string.sync_sign_in))
+        waitForText(str(Res.string.sync_signed_in_as, "lifter@example.org"))
         clickDescription(str(Res.string.action_back))
-        clickText(str(R.string.settings_group_feedback))
+        clickText(str(Res.string.settings_group_feedback))
 
-        clickText(str(R.string.feedback_idea))
-        fill(str(R.string.feedback_message), "A plate calculator in the weight sheet")
+        clickText(str(Res.string.feedback_idea))
+        fill(str(Res.string.feedback_message), "A plate calculator in the weight sheet")
         screenshot("2-written")
-        scrollAndClick(str(R.string.feedback_send))
-        waitForText(str(R.string.feedback_sent))
+        scrollAndClick(str(Res.string.feedback_send))
+        waitForText(str(Res.string.feedback_sent))
         screenshot("3-sent")
 
         waitUntil { fake.feedback.size == 1 }
@@ -81,8 +81,8 @@ class FeedbackFlowTest : FlowTest() {
 
         // The form is empty again, and a refusal is said, not swallowed.
         fake.feedbackStatus = 429
-        fill(str(R.string.feedback_message), "Another")
-        scrollAndClick(str(R.string.feedback_send))
-        waitForText(str(R.string.feedback_too_many))
+        fill(str(Res.string.feedback_message), "Another")
+        scrollAndClick(str(Res.string.feedback_send))
+        waitForText(str(Res.string.feedback_too_many))
     }
 }

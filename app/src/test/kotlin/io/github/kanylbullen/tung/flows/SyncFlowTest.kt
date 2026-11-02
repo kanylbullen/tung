@@ -50,18 +50,18 @@ class SyncFlowTest : FlowTest() {
 
     @Test
     fun signInSyncNowAndAFinishedWorkoutEnqueuesASync() {
-        openSettingsGroup(R.string.settings_group_account)
-        waitForText(str(R.string.sync_intro))
+        openSettingsGroup(Res.string.settings_group_account)
+        waitForText(str(Res.string.sync_intro))
         screenshot("1-settings-signed-out")
 
         // http is fine for the fake: it listens on localhost.
         useServer(fake.baseUrl)
-        fill(str(R.string.sync_email), "lifter@example.org")
-        fill(str(R.string.sync_password), "correct horse battery")
-        clickText(str(R.string.sync_sign_in))
+        fill(str(Res.string.sync_email), "lifter@example.org")
+        fill(str(Res.string.sync_password), "correct horse battery")
+        clickText(str(Res.string.sync_sign_in))
 
-        waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
-        waitForText(str(R.string.sync_status_never))
+        waitForText(str(Res.string.sync_signed_in_as, "lifter@example.org"))
+        waitForText(str(Res.string.sync_status_never))
         screenshot("2-signed-in")
         assertEquals(listOf("/api/v1/auth/login"), fake.authPaths)
         assertEquals(fake.token, app.tokens.token)
@@ -69,8 +69,8 @@ class SyncFlowTest : FlowTest() {
         assertEquals(1, workManager.getWorkInfosForUniqueWork(WorkManagerSyncScheduler.PERIODIC_WORK).get().size)
         waitUntil(5_000) { nowWork().isNotEmpty() }
 
-        clickText(str(R.string.sync_now))
-        waitForText(str(R.string.sync_status_just_now))
+        clickText(str(Res.string.sync_now))
+        waitForText(str(Res.string.sync_status_just_now))
         screenshot("3-synced")
         assertEquals(1, fake.syncRequests.size)
         assertEquals(0L, fake.syncRequests.single().cursor)
@@ -93,42 +93,42 @@ class SyncFlowTest : FlowTest() {
     @Test
     fun aNewAccountIsAskedToConfirmItsEmailAndSyncsOnceItHas() {
         fake.emailVerified = false
-        openSettingsGroup(R.string.settings_group_account)
+        openSettingsGroup(Res.string.settings_group_account)
         useServer(fake.baseUrl)
-        fill(str(R.string.sync_email), "new@example.org")
-        fill(str(R.string.sync_password), "correct horse battery")
-        clickText(str(R.string.sync_create_account))
-        waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
+        fill(str(Res.string.sync_email), "new@example.org")
+        fill(str(Res.string.sync_password), "correct horse battery")
+        clickText(str(Res.string.sync_create_account))
+        waitForText(str(Res.string.sync_signed_in_as, "lifter@example.org"))
 
         // The first sync is refused until the emailed link is opened: the screen says what to do.
-        clickText(str(R.string.sync_now))
-        waitForText(str(R.string.sync_confirm_email, "lifter@example.org"))
-        waitForText(str(R.string.sync_error_email_not_verified))
+        clickText(str(Res.string.sync_now))
+        waitForText(str(Res.string.sync_confirm_email, "lifter@example.org"))
+        waitForText(str(Res.string.sync_error_email_not_verified))
         screenshot("1-confirm-email")
 
-        clickText(str(R.string.sync_confirm_resend))
-        waitForText(str(R.string.sync_confirm_sent))
+        clickText(str(Res.string.sync_confirm_resend))
+        waitForText(str(Res.string.sync_confirm_sent))
         assertEquals(1, fake.resends)
         screenshot("2-link-sent")
 
         // The link is opened (on the server); Sync now goes through and the notice goes.
         fake.emailVerified = true
-        clickText(str(R.string.sync_now))
-        waitForText(str(R.string.sync_status_just_now))
-        waitGone(hasText(str(R.string.sync_confirm_email, "lifter@example.org")))
+        clickText(str(Res.string.sync_now))
+        waitForText(str(Res.string.sync_status_just_now))
+        waitGone(hasText(str(Res.string.sync_confirm_email, "lifter@example.org")))
     }
 
     @Test
     fun forgotPasswordMailsALinkToTheTypedAddress() {
-        openSettingsGroup(R.string.settings_group_account)
+        openSettingsGroup(Res.string.settings_group_account)
         useServer(fake.baseUrl)
         // Without an address, it says to type one.
-        clickText(str(R.string.sync_forgot_password))
-        waitForText(str(R.string.sync_forgot_needs_email))
+        clickText(str(Res.string.sync_forgot_password))
+        waitForText(str(Res.string.sync_forgot_needs_email))
 
-        fill(str(R.string.sync_email), "lifter@example.org")
-        clickText(str(R.string.sync_forgot_password))
-        waitForText(str(R.string.sync_forgot_sent, "lifter@example.org"))
+        fill(str(Res.string.sync_email), "lifter@example.org")
+        clickText(str(Res.string.sync_forgot_password))
+        waitForText(str(Res.string.sync_forgot_sent, "lifter@example.org"))
         screenshot("1-forgot-sent")
         assertEquals(1, fake.forgotRequests.size)
         assertTrue(fake.forgotRequests.single().contains("\"email\":\"lifter@example.org\""))

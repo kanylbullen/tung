@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import org.jetbrains.compose.resources.StringResource
 import io.github.kanylbullen.tung.ui.resources.*
 import android.os.Bundle
 import androidx.compose.ui.test.hasSetTextAction
@@ -61,16 +62,16 @@ class PushFlowTest : FlowTest() {
 
     /** Signs in on Settings' Account and stays there. */
     private fun signIn() {
-        openSettingsGroup(R.string.settings_group_account)
+        openSettingsGroup(Res.string.settings_group_account)
         useServer(fake.baseUrl)
-        fill(str(R.string.sync_email), "lifter@example.org")
-        fill(str(R.string.sync_password), "correct horse battery")
-        clickText(str(R.string.sync_sign_in))
-        waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
+        fill(str(Res.string.sync_email), "lifter@example.org")
+        fill(str(Res.string.sync_password), "correct horse battery")
+        clickText(str(Res.string.sync_sign_in))
+        waitForText(str(Res.string.sync_signed_in_as, "lifter@example.org"))
     }
 
     /** From one Settings group to another, through the list. */
-    private fun switchGroup(group: Int) {
+    private fun switchGroup(group: StringResource) {
         clickDescription(str(Res.string.action_back))
         clickText(str(group))
     }
@@ -94,18 +95,18 @@ class PushFlowTest : FlowTest() {
         val (body, auth) = fake.pushRegistrations.first()
         assertEquals(PushEndpointRequest(deviceId(), PushTransport.FCM, "fcm-token-1"), body)
         assertEquals("Bearer ${fake.token}", auth)
-        switchGroup(R.string.settings_group_devices)
-        waitForText(str(R.string.push_status_fcm))
-        waitForText(str(R.string.push_registered))
-        compose.onNode(hasText(str(R.string.push_choose_distributor))).assertDoesNotExist()
+        switchGroup(Res.string.settings_group_devices)
+        waitForText(str(Res.string.push_status_fcm))
+        waitForText(str(Res.string.push_registered))
+        compose.onNode(hasText(str(Res.string.push_choose_distributor))).assertDoesNotExist()
         screenshot("1-settings-push-fcm")
 
-        switchGroup(R.string.settings_group_account)
-        clickText(str(R.string.sync_now))
+        switchGroup(Res.string.settings_group_account)
+        clickText(str(Res.string.sync_now))
         waitUntil { fake.syncDevices.isNotEmpty() }
         assertEquals(deviceId(), fake.syncDevices.last())
 
-        clickText(str(R.string.sync_sign_out))
+        clickText(str(Res.string.sync_sign_out))
         waitUntil { fake.paths.any { it.endsWith("/api/v1/auth/logout") } }
         assertEquals(listOf(FakeSyncServer.PUSH_ENDPOINT_ID to "Bearer ${fake.token}"), fake.pushDeletes.toList())
         val deleteAt = fake.paths.indexOfFirst { it.startsWith("DELETE /api/v1/push/endpoints/") }
@@ -133,15 +134,15 @@ class PushFlowTest : FlowTest() {
             PushEndpointRequest(deviceId(), PushTransport.UNIFIED_PUSH, "https://ntfy.example.org/upAbC123?up=1"),
             fake.pushRegistrations.first().first,
         )
-        switchGroup(R.string.settings_group_devices)
-        waitForText(str(R.string.push_status_unifiedpush, "ntfy"))
-        waitForText(str(R.string.push_registered_at, "ntfy.example.org"))
+        switchGroup(Res.string.settings_group_devices)
+        waitForText(str(Res.string.push_status_unifiedpush, "ntfy"))
+        waitForText(str(Res.string.push_registered_at, "ntfy.example.org"))
         screenshot("1-settings-push-ntfy")
 
-        clickText(str(R.string.push_choose_distributor))
+        clickText(str(Res.string.push_choose_distributor))
         clickInDialog("Other push")
         waitUntil { app.push.registeredWith.lastOrNull() == "org.example.otherpush" }
-        waitForText(str(R.string.push_status_unifiedpush, "Other push"))
+        waitForText(str(Res.string.push_status_unifiedpush, "Other push"))
         // Leaving ntfy unregisters there, and its endpoint is not sent again for the new distributor.
         assertEquals(1, app.push.unregistered)
         assertEquals(1, fake.pushRegistrations.size)
@@ -151,8 +152,8 @@ class PushFlowTest : FlowTest() {
     @Test
     fun withoutATransportSettingsSaysItSyncsEvery15Minutes() {
         signIn()
-        switchGroup(R.string.settings_group_devices)
-        waitForText(str(R.string.push_status_none))
+        switchGroup(Res.string.settings_group_devices)
+        waitForText(str(Res.string.push_status_none))
         assertTrue(fake.pushRegistrations.isEmpty())
     }
 

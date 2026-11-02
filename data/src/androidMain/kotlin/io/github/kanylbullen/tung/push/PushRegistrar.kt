@@ -20,24 +20,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** An installed UnifiedPush distributor, for Settings' "Choose UnifiedPush distributor". */
-data class PushDistributor(val packageName: String, val label: String)
-
-/**
- * What Settings shows about push. [choice] is null until the first
- * [PushRegistrar.refresh]; [registered] is true once the server has the
- * endpoint; [distributors] are the installed ones, to choose among when
- * there are several.
- */
-data class PushStatus(
-    val choice: PushChoice? = null,
-    val distributorLabel: String? = null,
-    val registered: Boolean = false,
-    val distributors: List<PushDistributor> = emptyList(),
-    /** The endpoint the server has: an FCM token or a UnifiedPush URL (show only its host). */
-    val endpoint: String? = null,
-)
-
 /**
  * Push on this device (issue #34): picks the transport ([selectPushTransport]),
  * registers its endpoint with the server under this device's id and keeps it
@@ -55,10 +37,10 @@ class PushRegistrar(
     private val store: DataStore<Preferences>,
     private val signedIn: Flow<Boolean?>,
     private val scope: CoroutineScope,
-) {
+) : PushControl {
     private val mutex = Mutex()
     private val _status = MutableStateFlow(PushStatus())
-    val status: StateFlow<PushStatus> = _status.asStateFlow()
+    override val status: StateFlow<PushStatus> = _status.asStateFlow()
 
     @Volatile private var started = false
 
@@ -80,7 +62,7 @@ class PushRegistrar(
      * ([onNewEndpoint]; registering again at every start is how the connector
      * is meant to be used). A transport given up is unregistered.
      */
-    suspend fun refresh() {
+    override suspend fun refresh() {
         val choice = mutex.withLock {
             val distributors = environment.distributors()
             val choice = selectPushTransport(
@@ -151,7 +133,7 @@ class PushRegistrar(
     }
 
     /** Settings: use [packageName] among several distributors. */
-    suspend fun chooseDistributor(packageName: String) {
+    override suspend fun chooseDistributor(packageName: String) {
         store.edit { it[CHOSEN_DISTRIBUTOR] = packageName }
         refresh()
     }

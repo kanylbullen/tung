@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -31,6 +33,37 @@ import io.github.kanylbullen.tung.health.HealthAvailability
 import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.theme.Tung
+
+/** Settings' Health Connect: its two opt-ins (CLAUDE.md, "Health Connect"). */
+@Composable
+fun HealthConnectSettingsScreen(onBack: () -> Unit) {
+    SettingsPage(title = stringResource(Res.string.settings_group_health), onBack = onBack) { HealthConnectSection() }
+}
+
+/**
+ * Settings' list: Health Connect's line ("Writing workouts", "Off", …), read
+ * again whenever the list resumes, since a permission can be revoked in
+ * Health Connect's own settings meanwhile.
+ */
+@Composable
+fun healthConnectSummary(): String {
+    val container = appContainer()
+    val health: HealthConnectViewModel = viewModel(factory = factoryOf { HealthConnectViewModel(container.healthConnect, container.healthConnectSettings) })
+    val state by health.state.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(health) {
+        health.refresh()
+        onPauseOrDispose { }
+    }
+    return stringResource(
+        when {
+            state.availability != HealthAvailability.AVAILABLE -> R.string.settings_summary_health_unavailable
+            state.write && state.read -> R.string.settings_summary_health_both
+            state.write -> R.string.settings_summary_health_write
+            state.read -> R.string.settings_summary_health_read
+            else -> R.string.settings_summary_health_off
+        },
+    )
+}
 
 /**
  * Settings' "Health Connect" section (CLAUDE.md, "Health Connect"): two

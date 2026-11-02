@@ -114,10 +114,10 @@ class ImportFlowTest : FlowTest() {
      */
     @Test
     fun importReviewHistoryAndUndo() {
-        openSettingsGroup(R.string.settings_group_data)
-        scrollToInSettings(str(R.string.import_jefit))
+        openSettingsGroup(Res.string.settings_group_data)
+        scrollToInSettings(str(Res.string.import_jefit))
         screenshot("1-settings")
-        compose.onNode(hasText(str(R.string.import_jefit))).performClick()
+        compose.onNode(hasText(str(Res.string.import_jefit))).performClick()
         answerFilePicker()
 
         waitForText(str(R.string.import_review_title))
@@ -146,7 +146,7 @@ class ImportFlowTest : FlowTest() {
         assertEquals(0, count("SELECT COUNT(*) FROM workout_exercise we JOIN exercise e ON we.exerciseId = e.id WHERE e.name = 'Heel Walking'"))
 
         clickText(str(R.string.import_done))
-        scrollToInSettings(str(R.string.import_undo_last))
+        scrollToInSettings(str(Res.string.import_undo_last))
         leaveSettings()
         clickText(str(R.string.nav_history))
         waitGone(hasText(str(Res.string.home_recent)))
@@ -154,12 +154,12 @@ class ImportFlowTest : FlowTest() {
         screenshot("4-history")
 
         clickText(str(R.string.nav_home))
-        openSettingsGroup(R.string.settings_group_data)
-        scrollToInSettings(str(R.string.import_undo_last))
-        compose.onNode(hasText(str(R.string.import_undo_last))).performClick()
-        clickInDialog(str(R.string.import_undo_confirm))
+        openSettingsGroup(Res.string.settings_group_data)
+        scrollToInSettings(str(Res.string.import_undo_last))
+        compose.onNode(hasText(str(Res.string.import_undo_last))).performClick()
+        clickInDialog(str(Res.string.import_undo_confirm))
         waitUntil { count("SELECT COUNT(*) FROM workout") == 0 }
-        waitGone(hasText(str(R.string.import_undo_last)))
+        waitGone(hasText(str(Res.string.import_undo_last)))
         assertEquals(0, count("SELECT COUNT(*) FROM routine"))
         leaveSettings()
         clickText(str(R.string.nav_history))
@@ -174,9 +174,9 @@ class ImportFlowTest : FlowTest() {
      */
     @Test
     fun chooseAnExerciseForAnUnmatchedName() {
-        openSettingsGroup(R.string.settings_group_data)
-        scrollToInSettings(str(R.string.import_jefit))
-        compose.onNode(hasText(str(R.string.import_jefit))).performClick()
+        openSettingsGroup(Res.string.settings_group_data)
+        scrollToInSettings(str(Res.string.import_jefit))
+        compose.onNode(hasText(str(Res.string.import_jefit))).performClick()
         answerFilePicker()
 
         waitForText(str(R.string.import_review_title))
@@ -215,37 +215,37 @@ class ImportFlowTest : FlowTest() {
         assertEquals(4, count("SELECT COUNT(*) FROM routine"))
         clickText(str(R.string.import_done))
 
-        scrollToInSettings(str(R.string.import_delete_routines, 3))
+        scrollToInSettings(str(Res.string.import_delete_routines, 3))
         screenshot("1-shortcut")
         val oneImported = db.openHelper.readableDatabase.query("SELECT id FROM routine WHERE name != 'Mine' LIMIT 1").use { it.moveToFirst(); it.getString(0) }
         runBlocking { RoutineRepository(db).delete(oneImported) }
-        scrollToInSettings(str(R.string.import_delete_routines, 2))
+        scrollToInSettings(str(Res.string.import_delete_routines, 2))
 
-        compose.onNode(hasText(str(R.string.import_delete_routines, 2))).performClick()
+        compose.onNode(hasText(str(Res.string.import_delete_routines, 2))).performClick()
         waitFor(isDialog())
         assertShown(hasText(plural(Res.plurals.routines_delete_many_title, 2, 2)))
-        assertShown(hasText(str(R.string.import_delete_routines_body)))
+        assertShown(hasText(str(Res.string.import_delete_routines_body)))
         screenshot("2-confirm")
         clickInDialog(str(Res.string.routine_delete_confirm))
         waitUntil { count("SELECT COUNT(*) FROM routine") == 1 }
         assertEquals(1, count("SELECT COUNT(*) FROM routine WHERE name = 'Mine'"))
-        waitGone(hasText(str(R.string.import_delete_routines, 2)))
+        waitGone(hasText(str(Res.string.import_delete_routines, 2)))
         assertEquals("the import's workouts stay", 4, count("SELECT COUNT(*) FROM workout WHERE importSource = 'jefit'"))
 
-        scrollToInSettings(str(R.string.import_undo_last))
-        compose.onNode(hasText(str(R.string.import_undo_last))).performClick()
-        clickInDialog(str(R.string.import_undo_confirm))
+        scrollToInSettings(str(Res.string.import_undo_last))
+        compose.onNode(hasText(str(Res.string.import_undo_last))).performClick()
+        clickInDialog(str(Res.string.import_undo_confirm))
         waitUntil { count("SELECT COUNT(*) FROM workout WHERE importSource = 'jefit'") == 0 }
-        waitGone(hasText(str(R.string.import_undo_last)))
+        waitGone(hasText(str(Res.string.import_undo_last)))
         assertEquals("the person's own workout and routine stay", 1, count("SELECT COUNT(*) FROM workout"))
         assertEquals(1, count("SELECT COUNT(*) FROM routine"))
         screenshot("3-after-undo")
     }
 
     private fun openImport(text: String) {
-        openSettingsGroup(R.string.settings_group_data)
-        scrollToInSettings(str(R.string.import_jefit))
-        compose.onNode(hasText(str(R.string.import_jefit))).performClick()
+        openSettingsGroup(Res.string.settings_group_data)
+        scrollToInSettings(str(Res.string.import_jefit))
+        compose.onNode(hasText(str(Res.string.import_jefit))).performClick()
         answerFilePicker(text)
         waitForText(str(R.string.import_review_title))
     }

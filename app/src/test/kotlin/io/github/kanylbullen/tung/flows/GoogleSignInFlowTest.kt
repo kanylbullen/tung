@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.flows
 
+import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performTextReplacement
@@ -49,16 +50,16 @@ class GoogleSignInFlowTest : FlowTest() {
     @Test
     fun signInWithGoogleWhenTheServerOffersIt() {
         fake.googleClientId = "1234-web.apps.googleusercontent.com"
-        openSettingsGroup(R.string.settings_group_account)
-        waitForText(str(R.string.sync_intro))
+        openSettingsGroup(Res.string.settings_group_account)
+        waitForText(str(Res.string.sync_intro))
         useServer(fake.baseUrl)
 
-        waitForText(str(R.string.sync_google_sign_in))
+        waitForText(str(Res.string.sync_google_sign_in))
         screenshot("1-google-offered")
-        clickText(str(R.string.sync_google_sign_in))
+        clickText(str(Res.string.sync_google_sign_in))
 
-        waitForText(str(R.string.sync_signed_in_as, fake.googleEmail))
-        waitForText(str(R.string.sync_google_linked))
+        waitForText(str(Res.string.sync_signed_in_as, fake.googleEmail))
+        waitForText(str(Res.string.sync_google_linked))
         screenshot("2-signed-in-with-google")
         assertEquals(listOf("1234-web.apps.googleusercontent.com"), app.google.requestedClientIds)
         assertEquals(listOf(fake.googleIdToken), fake.googleTokens)
@@ -73,32 +74,32 @@ class GoogleSignInFlowTest : FlowTest() {
     fun closingGooglesSheetLeavesTheFormAsItWas() {
         fake.googleClientId = "1234-web.apps.googleusercontent.com"
         app.google.result = GoogleSignInResult.Cancelled
-        openSettingsGroup(R.string.settings_group_account)
+        openSettingsGroup(Res.string.settings_group_account)
         useServer(fake.baseUrl)
-        clickText(str(R.string.sync_google_sign_in))
+        clickText(str(Res.string.sync_google_sign_in))
         waitUntil { app.google.requestedClientIds.isNotEmpty() }
-        waitForText(str(R.string.sync_sign_in))
+        waitForText(str(Res.string.sync_sign_in))
         assertNull(app.tokens.token)
         assertTrue(fake.googleTokens.isEmpty())
 
         app.google.result = GoogleSignInResult.NoAccount
-        clickText(str(R.string.sync_google_sign_in))
-        waitForText(str(R.string.sync_error_google_no_account))
+        clickText(str(Res.string.sync_google_sign_in))
+        waitForText(str(Res.string.sync_error_google_no_account))
     }
 
     @Test
     fun noGoogleButtonWhenTheServerDoesNotOfferIt() {
-        openSettingsGroup(R.string.settings_group_account)
-        waitForText(str(R.string.sync_intro))
+        openSettingsGroup(Res.string.settings_group_account)
+        waitForText(str(Res.string.sync_intro))
         useServer(fake.baseUrl)
 
         // The server has been asked and has answered; give the answer time to reach the screen.
         waitUntil(5_000) { fake.paths.any { it == "GET /api/v1/auth/methods" } }
         val asked = System.currentTimeMillis()
         waitUntil(5_000) { System.currentTimeMillis() - asked > 1_000 }
-        assertTrue(compose.onAllNodes(hasText(str(R.string.sync_google_sign_in))).fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodes(hasText(str(Res.string.sync_google_sign_in))).fetchSemanticsNodes().isEmpty())
         screenshot("1-no-google")
         // The password form is there as always.
-        waitForText(str(R.string.sync_sign_in))
+        waitForText(str(Res.string.sync_sign_in))
     }
 }

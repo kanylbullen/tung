@@ -1,7 +1,7 @@
 package io.github.kanylbullen.tung.ui.settings
 
-import org.jetbrains.compose.resources.stringResource
 import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,24 +15,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.core.sync.PushChoice
 import io.github.kanylbullen.tung.push.PushStatus
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
-import io.github.kanylbullen.tung.ui.common.appContainer
 import io.github.kanylbullen.tung.ui.common.clockText
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.rememberNow
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
-import java.net.URI
 
 /**
  * Settings' Devices: "Link a watch" (CLAUDE.md, "Wear") and how the server
@@ -40,21 +34,19 @@ import java.net.URI
  * account; signed out, a hint and the way to Account.
  */
 @Composable
-fun DevicesScreen(onBack: () -> Unit, onOpenAccount: () -> Unit) {
-    val container = appContainer()
-    val vm: DevicesViewModel = viewModel(factory = factoryOf { DevicesViewModel(container.syncAccount, container.push) })
+fun DevicesScreen(vm: DevicesViewModel, onBack: () -> Unit, onOpenAccount: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
 
-    SettingsPage(title = stringResource(R.string.settings_group_devices), onBack = onBack) {
+    SettingsPage(title = stringResource(Res.string.settings_group_devices), onBack = onBack) {
         when (state.signedIn) {
             null -> Unit
             false -> {
-                Text(stringResource(R.string.settings_devices_signed_out), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-                SecondaryButton(text = stringResource(R.string.settings_devices_open_account), onClick = onOpenAccount)
+                Text(stringResource(Res.string.settings_devices_signed_out), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+                SecondaryButton(text = stringResource(Res.string.settings_devices_open_account), onClick = onOpenAccount)
             }
             true -> {
                 WatchLink(state.watchLink, onLink = vm::linkWatch, onClose = vm::closeWatchLink)
-                Text(stringResource(R.string.push_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
+                Text(stringResource(Res.string.push_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
                 Push(state.push, onChoose = vm::chooseDistributor)
             }
         }
@@ -73,20 +65,20 @@ private fun Push(push: PushStatus, onChoose: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             when (choice) {
-                PushChoice.Fcm -> stringResource(R.string.push_status_fcm)
-                is PushChoice.UnifiedPush -> stringResource(R.string.push_status_unifiedpush, push.distributorLabel ?: choice.distributor)
-                PushChoice.None -> stringResource(R.string.push_status_none)
+                PushChoice.Fcm -> stringResource(Res.string.push_status_fcm)
+                is PushChoice.UnifiedPush -> stringResource(Res.string.push_status_unifiedpush, push.distributorLabel ?: choice.distributor)
+                PushChoice.None -> stringResource(Res.string.push_status_none)
             },
             style = MaterialTheme.typography.bodyLarge,
             color = Tung.colors.text,
         )
         if (choice != PushChoice.None) {
-            val host = push.endpoint?.takeIf { choice is PushChoice.UnifiedPush }?.let { runCatching { URI(it).host }.getOrNull() }
+            val host = push.endpoint?.takeIf { choice is PushChoice.UnifiedPush }?.let(::endpointHost)
             Text(
                 when {
-                    !push.registered -> stringResource(R.string.push_not_registered)
-                    host != null -> stringResource(R.string.push_registered_at, host)
-                    else -> stringResource(R.string.push_registered)
+                    !push.registered -> stringResource(Res.string.push_not_registered)
+                    host != null -> stringResource(Res.string.push_registered_at, host)
+                    else -> stringResource(Res.string.push_registered)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = Tung.colors.muted,
@@ -94,7 +86,7 @@ private fun Push(push: PushStatus, onChoose: (String) -> Unit) {
         }
     }
     if (choice is PushChoice.UnifiedPush && push.distributors.size > 1) {
-        SecondaryButton(text = stringResource(R.string.push_choose_distributor), onClick = { choosing = true })
+        SecondaryButton(text = stringResource(Res.string.push_choose_distributor), onClick = { choosing = true })
     }
     if (choosing) {
         AlertDialog(
@@ -102,7 +94,7 @@ private fun Push(push: PushStatus, onChoose: (String) -> Unit) {
             containerColor = Tung.colors.raised,
             tonalElevation = 0.dp,
             shape = TungCorner,
-            title = { Text(stringResource(R.string.push_choose_title)) },
+            title = { Text(stringResource(Res.string.push_choose_title)) },
             text = {
                 Column {
                     push.distributors.forEach { distributor ->
@@ -140,14 +132,14 @@ private fun Push(push: PushStatus, onChoose: (String) -> Unit) {
  */
 @Composable
 private fun WatchLink(link: WatchLinkState, onLink: () -> Unit, onClose: () -> Unit) {
-    Text(stringResource(R.string.link_watch_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
+    Text(stringResource(Res.string.link_watch_title), style = MaterialTheme.typography.titleMedium, color = Tung.colors.muted)
     val code = link.code
     if (code == null) {
-        Text(stringResource(R.string.link_watch_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+        Text(stringResource(Res.string.link_watch_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
         link.error?.let {
             Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
         }
-        SecondaryButton(text = stringResource(if (link.busy) R.string.link_watch_busy else R.string.link_watch), onClick = onLink)
+        SecondaryButton(text = stringResource(if (link.busy) Res.string.link_watch_busy else Res.string.link_watch), onClick = onLink)
         return
     }
     val now = rememberNow(intervalMillis = 1_000L)
@@ -161,15 +153,26 @@ private fun WatchLink(link: WatchLinkState, onLink: () -> Unit, onClose: () -> U
     )
     if (left > 0) {
         Text(
-            stringResource(R.string.link_watch_valid_for, clockText(left * 1_000L)),
+            stringResource(Res.string.link_watch_valid_for, clockText(left * 1_000L)),
             style = MaterialTheme.typography.bodyMedium,
             color = Tung.colors.muted,
         )
-        Text(stringResource(R.string.link_watch_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
-        SecondaryButton(text = stringResource(R.string.link_watch_done), onClick = onClose)
+        Text(stringResource(Res.string.link_watch_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+        SecondaryButton(text = stringResource(Res.string.link_watch_done), onClick = onClose)
     } else {
-        Text(stringResource(R.string.link_watch_expired), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
-        SecondaryButton(text = stringResource(R.string.link_watch_new_code), onClick = onLink)
+        Text(stringResource(Res.string.link_watch_expired), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
+        SecondaryButton(text = stringResource(Res.string.link_watch_new_code), onClick = onLink)
     }
 }
 
+
+/**
+ * The host of a push endpoint URL ("ntfy.sh" of `https://ntfy.sh/up…`), or
+ * null when it has none: only the host is shown, never the secret path.
+ */
+internal fun endpointHost(url: String): String? {
+    val authority = url.substringAfter("://", "").substringBefore('/').substringBefore('?').substringBefore('#')
+        .substringAfterLast('@')
+    val host = if (authority.startsWith("[")) authority.substringBefore(']') + "]" else authority.substringBefore(':')
+    return host.takeIf { it.isNotEmpty() && it != "]" }
+}

@@ -47,23 +47,23 @@ class LinkWatchFlowTest : FlowTest() {
 
     @Test
     fun settingsShowsASixDigitCodeForTheWatch() {
-        openSettingsGroup(R.string.settings_group_account)
+        openSettingsGroup(Res.string.settings_group_account)
         useServer(fake.baseUrl)
-        fill(str(R.string.sync_email), "lifter@example.org")
-        fill(str(R.string.sync_password), "correct horse battery")
-        clickText(str(R.string.sync_sign_in))
-        waitForText(str(R.string.sync_signed_in_as, "lifter@example.org"))
+        fill(str(Res.string.sync_email), "lifter@example.org")
+        fill(str(Res.string.sync_password), "correct horse battery")
+        clickText(str(Res.string.sync_sign_in))
+        waitForText(str(Res.string.sync_signed_in_as, "lifter@example.org"))
 
         // The watch is in Devices, next to Account.
         clickDescription(str(Res.string.action_back))
-        clickText(str(R.string.settings_group_devices))
-        scrollAndClick(str(R.string.link_watch))
+        clickText(str(Res.string.settings_group_devices))
+        scrollAndClick(str(Res.string.link_watch))
         waitForText("042 917")
-        waitForText(str(R.string.link_watch_hint))
+        waitForText(str(Res.string.link_watch_hint))
         screenshot("1-link-code")
         assertEquals(listOf("/api/v1/auth/login", "/api/v1/link/start"), fake.authPaths)
 
-        scrollAndClick(str(R.string.link_watch_done))
-        waitForText(str(R.string.link_watch))
+        scrollAndClick(str(Res.string.link_watch_done))
+        waitForText(str(Res.string.link_watch))
     }
 }

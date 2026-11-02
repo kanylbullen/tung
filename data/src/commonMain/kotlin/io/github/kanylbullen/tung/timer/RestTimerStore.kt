@@ -13,6 +13,9 @@ interface RestTimerStore {
     /** The rest for exercises without their own setting. */
     val defaultSeconds: Flow<Int>
 
+    /** Stores the default rest (Settings' Training), clamped to 0 (off) .. `MAX_REST_SECONDS`. */
+    suspend fun setDefaultSeconds(seconds: Int)
+
     /** The timer stored for [workoutId], or null if none is (or it belongs to another workout). */
     suspend fun stored(workoutId: String): RestTimer?
 

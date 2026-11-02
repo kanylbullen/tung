@@ -30,7 +30,7 @@ class RestTimerController(
     override val defaultSeconds: Flow<Int> = settings.data.map { it[DEFAULT_SECONDS] ?: DEFAULT_REST_SECONDS }
 
     /** Stores the default rest, clamped to 0 (off) .. [MAX_REST_SECONDS]. */
-    suspend fun setDefaultSeconds(seconds: Int) {
+    override suspend fun setDefaultSeconds(seconds: Int) {
         settings.edit { it[DEFAULT_SECONDS] = seconds.coerceIn(0, MAX_REST_SECONDS) }
     }
 

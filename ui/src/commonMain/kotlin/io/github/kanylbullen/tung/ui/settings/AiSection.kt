@@ -1,6 +1,8 @@
 package io.github.kanylbullen.tung.ui.settings
 
-import androidx.annotation.StringRes
+import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.StringResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -30,8 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.ai.AiService
 import io.github.kanylbullen.tung.ai.AiSettings
 import io.github.kanylbullen.tung.core.ai.AiProviderKind
@@ -39,8 +38,6 @@ import io.github.kanylbullen.tung.core.ai.checkAiBaseUrl
 import io.github.kanylbullen.tung.core.sync.ServerUrlCheck
 import io.github.kanylbullen.tung.ui.ai.aiFailureText
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
-import io.github.kanylbullen.tung.ui.common.appContainer
-import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.common.tungFieldColors
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -61,7 +58,7 @@ data class AiForm(
     val hasKey: Boolean = false,
     val busy: Boolean = false,
     /** The last result line: saved, the test passed, or what is wrong. */
-    @StringRes val message: Int? = null,
+    val message: StringResource? = null,
     val messageIsError: Boolean = false,
     /** The provider's own words after a failed test. */
     val detail: String? = null,
@@ -104,7 +101,7 @@ class AiSettingsViewModel(private val settings: AiSettings, private val ai: AiSe
     fun removeKey() {
         viewModelScope.launch {
             settings.setKey(null)
-            form.value = form.value.copy(hasKey = false, key = "", message = R.string.ai_key_removed, messageIsError = false)
+            form.value = form.value.copy(hasKey = false, key = "", message = Res.string.ai_key_removed, messageIsError = false)
         }
     }
 
@@ -118,10 +115,10 @@ class AiSettingsViewModel(private val settings: AiSettings, private val ai: AiSe
         val baseUrl = when (val check = f.baseUrl.trim().takeIf { it.isNotEmpty() }?.let(::checkAiBaseUrl)) {
             null -> null
             is ServerUrlCheck.Valid -> check.url
-            ServerUrlCheck.NeedsHttps -> return error(R.string.ai_error_url_https)
-            ServerUrlCheck.Malformed -> return error(R.string.ai_error_url)
+            ServerUrlCheck.NeedsHttps -> return error(Res.string.ai_error_url_https)
+            ServerUrlCheck.Malformed -> return error(Res.string.ai_error_url)
         }
-        if (f.model.isBlank()) return error(R.string.ai_error_model)
+        if (f.model.isBlank()) return error(Res.string.ai_error_model)
         form.value = f.copy(busy = true, message = null, detail = null)
         viewModelScope.launch {
             settings.save(f.provider, baseUrl, f.model, f.jsonMode)
@@ -129,48 +126,46 @@ class AiSettingsViewModel(private val settings: AiSettings, private val ai: AiSe
             val hasKey = settings.config().hasKey
             val saved = form.value.copy(busy = false, key = "", hasKey = hasKey, baseUrl = baseUrl.orEmpty(), model = f.model.trim())
             if (!test) {
-                form.value = saved.copy(message = R.string.ai_saved, messageIsError = false)
+                form.value = saved.copy(message = Res.string.ai_saved, messageIsError = false)
                 return@launch
             }
             form.value = saved.copy(busy = true)
             val failure = ai.test()
             form.value = if (failure == null) {
-                saved.copy(message = R.string.ai_test_ok, messageIsError = false)
+                saved.copy(message = Res.string.ai_test_ok, messageIsError = false)
             } else {
                 saved.copy(message = aiFailureText(failure.failure), messageIsError = true, detail = failure.message)
             }
         }
     }
 
-    private fun error(@StringRes message: Int) {
+    private fun error(message: StringResource) {
         form.value = form.value.copy(message = message, messageIsError = true, detail = null)
     }
 }
 
 /** Settings' "Assistant" group ([AssistantSettingsScreen], whose top bar names it); its items go into the page's column. */
 @Composable
-fun AiSection() {
-    val container = appContainer()
-    val vm: AiSettingsViewModel = viewModel(factory = factoryOf { AiSettingsViewModel(container.aiSettings, container.ai) })
+fun AiSection(vm: AiSettingsViewModel) {
     val form by vm.state.collectAsStateWithLifecycle()
 
-    Text(stringResource(R.string.ai_settings_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+    Text(stringResource(Res.string.ai_settings_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
     if (!form.loaded) return
 
     Column(Modifier.selectableGroup()) {
-        ProviderOption(R.string.ai_provider_openai, R.string.ai_provider_openai_hint, form.provider == AiProviderKind.OPENAI_COMPATIBLE) {
+        ProviderOption(Res.string.ai_provider_openai, Res.string.ai_provider_openai_hint, form.provider == AiProviderKind.OPENAI_COMPATIBLE) {
             vm.onProvider(AiProviderKind.OPENAI_COMPATIBLE)
         }
-        ProviderOption(R.string.ai_provider_anthropic, R.string.ai_provider_anthropic_hint, form.provider == AiProviderKind.ANTHROPIC) {
+        ProviderOption(Res.string.ai_provider_anthropic, Res.string.ai_provider_anthropic_hint, form.provider == AiProviderKind.ANTHROPIC) {
             vm.onProvider(AiProviderKind.ANTHROPIC)
         }
     }
     OutlinedTextField(
         value = form.baseUrl,
         onValueChange = vm::onBaseUrl,
-        label = { Text(stringResource(R.string.ai_base_url)) },
+        label = { Text(stringResource(Res.string.ai_base_url)) },
         placeholder = { Text(form.provider.defaultBaseUrl) },
-        supportingText = { Text(stringResource(R.string.ai_base_url_hint)) },
+        supportingText = { Text(stringResource(Res.string.ai_base_url_hint)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
         shape = TungCorner,
@@ -180,8 +175,8 @@ fun AiSection() {
     OutlinedTextField(
         value = form.model,
         onValueChange = vm::onModel,
-        label = { Text(stringResource(R.string.ai_model)) },
-        placeholder = { Text(stringResource(R.string.ai_model_hint)) },
+        label = { Text(stringResource(Res.string.ai_model)) },
+        placeholder = { Text(stringResource(Res.string.ai_model_hint)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
         shape = TungCorner,
@@ -191,8 +186,8 @@ fun AiSection() {
     OutlinedTextField(
         value = form.key,
         onValueChange = vm::onKey,
-        label = { Text(stringResource(R.string.ai_key)) },
-        supportingText = { Text(stringResource(if (form.hasKey) R.string.ai_key_saved else R.string.ai_key_hint)) },
+        label = { Text(stringResource(Res.string.ai_key)) },
+        supportingText = { Text(stringResource(if (form.hasKey) Res.string.ai_key_saved else Res.string.ai_key_hint)) },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
@@ -207,19 +202,19 @@ fun AiSection() {
         Column {
             Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, color = if (form.messageIsError) Tung.colors.accentText else Tung.colors.text)
             form.detail?.let { detail ->
-                Text(stringResource(R.string.ai_error_provider_says, detail), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+                Text(stringResource(Res.string.ai_error_provider_says, detail), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
             }
         }
     }
-    SecondaryButton(text = stringResource(R.string.ai_save), onClick = vm::save, enabled = !form.busy)
-    SecondaryButton(text = stringResource(if (form.busy) R.string.ai_testing else R.string.ai_test), onClick = vm::test, enabled = !form.busy)
+    SecondaryButton(text = stringResource(Res.string.ai_save), onClick = vm::save, enabled = !form.busy)
+    SecondaryButton(text = stringResource(if (form.busy) Res.string.ai_testing else Res.string.ai_test), onClick = vm::test, enabled = !form.busy)
     if (form.hasKey) {
-        SecondaryButton(text = stringResource(R.string.ai_key_remove), onClick = vm::removeKey, enabled = !form.busy)
+        SecondaryButton(text = stringResource(Res.string.ai_key_remove), onClick = vm::removeKey, enabled = !form.busy)
     }
 }
 
 @Composable
-private fun ProviderOption(@StringRes label: Int, @StringRes hint: Int, selected: Boolean, onSelect: () -> Unit) {
+private fun ProviderOption(label: StringResource, hint: StringResource, selected: Boolean, onSelect: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -250,8 +245,8 @@ private fun JsonModeRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.ai_json_mode), style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
-            Text(stringResource(R.string.ai_json_mode_hint), style = MaterialTheme.typography.bodySmall, color = Tung.colors.muted)
+            Text(stringResource(Res.string.ai_json_mode), style = MaterialTheme.typography.bodyLarge, color = Tung.colors.text)
+            Text(stringResource(Res.string.ai_json_mode_hint), style = MaterialTheme.typography.bodySmall, color = Tung.colors.muted)
         }
         Switch(
             checked = checked,
