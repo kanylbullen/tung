@@ -51,7 +51,8 @@ enum class SettingsGroup(val route: String, val title: StringResource) {
  * and a one-line live summary each ("Signed in as …", "Push: FCM",
  * "Default rest 1:30 · kg"). A tap opens the group's own screen. What only
  * the platform knows comes in: [version] and [buildType] for About, and
- * [healthSummary] for the health row (Health Connect on Android).
+ * [healthSummary] for the health row (Health Connect on Android), which is
+ * left out where [showHealth] is false (no health store to open).
  */
 @Composable
 fun SettingsScreen(
@@ -59,13 +60,14 @@ fun SettingsScreen(
     version: String,
     buildType: String,
     healthSummary: String?,
+    showHealth: Boolean,
     onBack: () -> Unit,
     onOpenGroup: (SettingsGroup) -> Unit,
 ) {
     val summary by vm.state.collectAsStateWithLifecycle()
 
     SettingsPage(title = stringResource(Res.string.settings_title), onBack = onBack, padded = false) {
-        SettingsGroup.entries.forEach { group ->
+        SettingsGroup.entries.filter { it != SettingsGroup.HEALTH_CONNECT || showHealth }.forEach { group ->
             val line = when (group) {
                 SettingsGroup.ACCOUNT -> accountSummary(summary)
                 SettingsGroup.DEVICES -> devicesSummary(summary)

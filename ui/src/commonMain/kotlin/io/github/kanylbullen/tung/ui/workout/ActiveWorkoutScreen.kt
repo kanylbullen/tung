@@ -59,7 +59,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.text.intl.Locale
 import io.github.kanylbullen.tung.ui.common.KeepScreenOn
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.runtime.DisposableEffect
@@ -112,6 +111,7 @@ import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepWeight
 import io.github.kanylbullen.tung.core.voice.VoiceLanguage
 import io.github.kanylbullen.tung.core.voice.parseUtterance
+import io.github.kanylbullen.tung.core.voice.worthAskingAssistant
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.DurationStepper
@@ -199,9 +199,10 @@ fun ActiveWorkoutScreen(
     val voice = remember { VoiceController(platform.speech, voiceScope) }
     val voiceState by voice.state.collectAsStateWithLifecycle()
     val aiConfigured = assistantConfigured
-    // The app's language, which the platform keeps as the default locale.
-    val locale = Locale.current.toLanguageTag()
-    val language = VoiceLanguage.of(locale)
+    // The language the app shows ("en", "sv"), never the phone's locale: a Pixel in English with a
+    // Swedish region is en-SE-u-fw-mon-…, which no recogniser has a language pack for.
+    val languageTag = stringResource(Res.string.voice_language_tag)
+    val language = VoiceLanguage.of(languageTag)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(voice, lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) voice.stop() }
@@ -231,9 +232,9 @@ fun ActiveWorkoutScreen(
     }
     fun startVoice(handsFree: Boolean) {
         if (handsFree) {
-            voice.startHandsFree(locale, handleUtterance) { platform.confirmHaptic() }
+            voice.startHandsFree(languageTag, handleUtterance) { platform.confirmHaptic() }
         } else {
-            voice.listenOnce(locale, handleUtterance)
+            voice.listenOnce(languageTag, handleUtterance)
         }
     }
     // The microphone is asked for the first time it is used; denied, the echo says how to allow it.
@@ -387,7 +388,9 @@ fun ActiveWorkoutScreen(
         bottomBar = {
             if (!state.loading && !state.missing && sticky != null) {
                 val echo = voiceState.echo
-                val askable = echo is VoiceEcho.NotUnderstood && aiConfigured
+                // Only words that could be a workout: the assistant answers with one, and a misheard set
+                // would send the history for nothing (`worthAskingAssistant`).
+                val askable = echo is VoiceEcho.NotUnderstood && aiConfigured && worthAskingAssistant(echo.text, language)
                 val echoShown = echo != null &&
                     now - voiceState.echoAt < if (askable) VOICE_ECHO_WITH_ACTION_MILLIS else VOICE_ECHO_MILLIS
                 val echoText = if (echoShown && echo != null) voiceEchoText(echo) else null

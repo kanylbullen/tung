@@ -1,0 +1,454 @@
+---
+name: PR review fleet
+
+# Reviews open PRs with the review-team fleet: five independent reviewer
+# lenses aggregated into one PR comment. The lenses live in
+# .github/review-team/ and are run by the cline CLI (the npm package "cline")
+# with the model in MODEL (below) via OpenRouter.
+#
+# The triggers are workflow_dispatch and schedule (every 30 minutes) —
+# deliberately not pull_request. On that trigger the job definition lives in
+# the PR's merge state: GitHub runs the workflow file from the PR, and a PR
+# that edits the fleet gets its own version of the job with
+# OPENROUTER_API_KEY and GITHUB_TOKEN in the environment — no line inside
+# the job (e.g. a checkout pinning the script source) fixes that, the
+# boundary has to be in the trigger. Why dispatch and schedule hold that
+# boundary — and what stays attacker-controlled (the diff and pr-tree/, data
+# not code) — is in .github/review-team/README.md ("How it is triggered"),
+# and only there.
+#
+# The schedule picks, in resolve-pr.sh, the FIRST open non-draft PR, most
+# recently updated first, whose head lacks a fresh marker AND whose CI has
+# settled — the marker is therefore both gate and queue. "Most recently
+# updated, full stop" would be wrong for a polling run: if the newest PR is
+# already reviewed the freshness gate skips the run, and no other PR is ever
+# reviewed. With no candidate the run is skipped, green and quiet.
+#
+# GitHub-hosted runner (ubuntu-latest, free for a public repository) — the
+# job still assumes nothing about the machine:
+# - no gh login: every gh call is authenticated with GITHUB_TOKEN
+# - no ~/.cline: cline gets --config and CLINE_DATA_DIR under runner.temp,
+#   and HOME is pointed there so nothing is written outside it
+# - no local cline: installed per run into an npm prefix under runner.temp
+# - two trees with different roles: the root checkout is the code that runs
+#   — .github/** is always executed from there — and is on github.ref, the
+#   ref the run started from (the default branch on schedule, the chosen ref
+#   on dispatch — which needs write access). The PR's merge state is in
+#   pr-tree/ (path: on the second checkout) and is readable data only;
+#   nothing is executed from it, on either trigger. The separation still
+#   carries weight: a prompt-injected lens that wrote in the root could edit
+#   templates and scripts that are read later in the same run — the
+#   aggregation and the comment build run after the lenses. A PR without a
+#   merge state — a conflict — fails the checkout loudly instead of
+#   silently reviewing the wrong thing.
+# - everything the fleet writes (diff, reports, prompts, logs, npm cache)
+#   lives in $FLEET_TMP under runner.temp — deliberately OUTSIDE both trees
+#   — and is removed in an always step; the reports also live ONE DIRECTORY
+#   PER LENS (out/<name>/report.md), so an injected lens cannot overwrite a
+#   sibling lens's report on a guessed path, and they are never posted as
+#   they are: build-comment.sh neutralises planted freshness markers first.
+#   If a lens or the aggregator fails the logs are kept as a job artifact
+#   first, so that a soft failure leaves a trace
+#
+# Secrets: GITHUB_TOKEN is given only to the steps that call gh. The lenses
+# — which read untrusted PR content — never see it; their step has only
+# OPENROUTER_API_KEY. No step echoes an environment variable with a secret.
+#
+# Comments and freshness: the fleet comment is posted with
+# gh pr comment --edit-last (--create-if-none), so a PR has ONE comment that
+# is updated in place — never a new copy per push. The freshness marker
+# (<!-- review-fleet:v1 ... -->) is written only when the fleet has taken a
+# position on the head: a real review WHERE EVERY LENS ANSWERED, or the
+# diff-too-large decision — never on a partial run (half a review should be
+# rerunnable without force) and never on "the fleet could not run". Nor does
+# such a run replace a comment that carries the marker: it reports in the
+# job summary instead (build-comment.sh, after PR #188 on 2026-11-02).
+#
+# Scheduled runs share a concurrency group and queue behind each other: a
+# poll that hits a review in progress becomes a quick skip once the marker
+# is there — instead of reviewing the same PR twice and paying for it twice.
+# Manual runs are grouped per PR number, and a rerun queues behind the one
+# in progress instead of killing it halfway — cancelling would also be fatal
+# for the schedule: a new poll every 30 minutes would kill every review that
+# takes longer than that, for ever.
+#
+# Turn the fleet off: remove the schedule trigger below (workflow_dispatch
+# can stay for manual runs). Cost brakes: concurrency (a shared group for the
+# schedule, per PR for dispatch), the freshness gate (the same head reviewed
+# within FRESH_HOURS is skipped), the CI gate (the schedule does not review a
+# head whose checks have not settled — with CI_WAIT_HOURS as a cap, so a
+# check that never turns green does not silence the fleet), the job timeout
+# and a timeout per lens.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number (empty = the most recently updated open non-draft PR)
+        required: false
+        type: string
+      reviewers:
+        description: Comma-separated lenses (empty = the core fleet), e.g. correctness,security-abuse
+        required: false
+        type: string
+      force:
+        description: Ignore the freshness gate and review the same head again
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    # Every 30 minutes the first open non-draft PR whose head lacks a fresh
+    # marker is reviewed (resolve-pr.sh). Offset minutes, not */30: GitHub
+    # runs schedules on the hour by the world clock and drops jobs in the
+    # crowd. The other repositories that run the fleet poll at :07/:37,
+    # :17/:47, :22/:52 and :27/:57 against the same OpenRouter account; this
+    # one takes :12/:42. Not more often — a review takes well over a quarter
+    # of an hour.
+    - cron: '12,42 * * * *'
+
+concurrency:
+  # The scheduled runs share ONE group: while a review is in progress the
+  # next poll queues — and becomes a quick skip when the freshness gate gets
+  # there (github.run_id in the expression would be unique per run and let
+  # every poll start next to the one in progress: double review work and
+  # double the spend). Manual runs are grouped per PR number, and a rerun
+  # queues behind the one in progress instead of killing it halfway —
+  # cancel-in-progress would be fatal for the schedule: a new poll every 30
+  # minutes would kill every review that takes longer than that, for ever.
+  group: ${{ github.workflow }}-pr-${{ (github.event_name == 'schedule' && 'poll') || inputs.pr || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  # The CI gate reads the head's checks, and they are behind scopes of their
+  # own: check runs under `checks`, commit statuses under `statuses`.
+  #
+  # Adding them was NOT enough, and that part is worth knowing:
+  # `gh pr view --json statusCheckRollup` decides for itself which subfields
+  # it fetches and takes `checkSuite.workflowRun`, which is behind `actions`.
+  # GraphQL then answers with data PLUS errors, gh returns exit≠0, and the
+  # gate read an empty rollup — useless in every run. The answer was a query
+  # of its own in ci_settled that asks only for the fields it uses, not one
+  # more scope. Measured on another repository's polls at 15:27 and 15:50
+  # UTC 2026-09-09.
+  checks: read
+  statuses: read
+
+env:
+  REPO: ${{ github.repository }}
+  # The model, from the repository variable FLEET_MODEL when it is set (e.g.
+  # a Claude model on OpenRouter), else GLM. Removing the variable falls back
+  # to GLM; see .github/review-team/README.md.
+  MODEL: ${{ vars.FLEET_MODEL || 'z-ai/glm-5.3-flash' }}
+  CLINE_VERSION: 3.0.60
+  FRESH_HOURS: '24'
+  # The cap on the CI gate: if nothing has happened on the head for this long
+  # and CI is still not green, it is reviewed. Without the cap the gate
+  # becomes a silent shutdown — see ci_settled in resolve-pr.sh. Four hours
+  # is generous against the longest CI path here (the 30-minute Android job,
+  # and the iOS job that may wait for its Mac).
+  #
+  # `0` turns the wait off entirely, and that is not an escape hatch but the
+  # answer for a repository WITHOUT CI: there no head has any checks, the
+  # gate has nothing to wait for, and without the zero every PR would be
+  # reviewed four hours later than it is today.
+  CI_WAIT_HOURS: '4'
+  MAX_DIFF_BYTES: '400000'
+  REVIEWER_TIMEOUT_SECS: '300'
+  # The aggregator reads five reports and also opens the files concerned —
+  # strictly more work than a lens — and gets double the budget
+  # (run-fleet.sh: -t).
+  AGGREGATOR_TIMEOUT_SECS: '600'
+
+jobs:
+  review:
+    name: Reviewer lenses
+    runs-on: ubuntu-latest
+    # Parallel lenses: the longest path is the lens phase plus the aggregator.
+    #
+    # Measured on the fleet's first parallel run (2026-08-31): the lens phase
+    # took 1,345 s — four lenses landed at 592–701 s but the correctness
+    # lens at 1,282 s, three times its wrapper limit (300 + 60 s; the limit
+    # is soft, cline catches TERM and finishes) — then the aggregator 750 s,
+    # exactly its hard limit (600 + 120 + 30 kill). In all 36 min 41 s against
+    # a timeout of 40: three minutes' margin, and a slower day would have
+    # killed the run after the reports but before the comment was posted —
+    # leaving 👀 and a red cross.
+    #
+    # Hence 60, and not a concurrency cap or a shorter PER_REVIEWER_TIMEOUT:
+    # the time distribution shows that the tail is driven by the model and
+    # its retries — ONE lens tripled its time while four kept the budget —
+    # not by CPU or network starvation between five processes. A cap of three
+    # would have serialised the tail (the sum of the lens times / 3) and could
+    # make the lens phase LONGER than today's "wait for the slowest", and
+    # PER_REVIEWER_TIMEOUT is soft anyway (see run-fleet.sh). 60 gives 23
+    # minutes' margin on the measurement.
+    timeout-minutes: 60
+    steps:
+      # Two checkouts with different jobs — keep the code that runs apart
+      # from the tree under review:
+      #
+      # 1) The shallow one in the root is the source of executable code:
+      #    every `bash .github/review-team/scripts/...` runs files from here,
+      #    never from pr-tree/. It is on github.ref — the ref the run started
+      #    from: the default branch on schedule, the chosen ref on dispatch.
+      #    The workflow file was taken from the same ref, so the scripts
+      #    cannot have been swapped by the PR under review — that is what
+      #    pull_request made possible, and why the fleet does not run on
+      #    that trigger.
+      #
+      # 2) The PR's merge state (refs/pull/<nr>/merge) lands in a directory
+      #    of its OWN (path: pr-tree/), with full history for the lenses' git
+      #    log/blame. It is readable data only: the -c of the lenses and the
+      #    aggregator points there, and no step executes anything from it.
+      #    The separation still carries weight: a prompt-injected lens that
+      #    wrote in the root could edit templates and scripts that are read
+      #    later in the same run — the aggregation and the comment build run
+      #    after the lenses — or plant a forged freshness marker on a shared
+      #    path. A PR without a merge state — a conflict — fails the checkout
+      #    loudly instead of silently reviewing the wrong thing.
+      # persist-credentials: false — no token is left in .git/config where a
+      # lens could read it.
+      - uses: actions/checkout@v4
+        with:
+          # The root on github.ref — see point 1 above. The code that runs
+          # never comes from the PR tree: pr-tree/ is read-only data.
+          ref: ${{ github.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Resolve the PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_PR: ${{ inputs.pr }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          # Bootstrap: the code that runs always comes from the ref the run
+          # started from (see the checkout above). If the fleet's scripts are
+          # missing there — an incomplete fleet on a dispatched ref — there
+          # is nothing trusted to run. Falling back to the PR tree would open
+          # the boundary exactly where it is needed; instead the run skips
+          # loudly (green, without 👀).
+          if [ ! -f .github/review-team/scripts/resolve-pr.sh ]; then
+            echo "::notice::The fleet (.github/review-team/) does not exist on the ref"
+            echo "::notice::the run started from — nothing trusted to run."
+            echo "::notice::A trial run is done with workflow_dispatch from a"
+            echo "::notice::trusted ref that has the fleet."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "bootstrap=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          bash .github/review-team/scripts/resolve-pr.sh
+
+      # The tree under review — data, not code. path: keeps it away from the
+      # root, where executable code lives.
+      - uses: actions/checkout@v4
+        if: steps.pr.outputs.skip != 'true' && steps.pr.outputs.pr != ''
+        with:
+          ref: refs/pull/${{ steps.pr.outputs.pr }}/merge
+          fetch-depth: 0
+          path: pr-tree/
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # The fleet's directory lives under the runner's temp — OUTSIDE both
+      # trees: the lenses act in pr-tree/ and must not be able to read each
+      # other's reports, prompts or logs from it (task.md encourages grep,
+      # and git status is enough if the state lies in the tree). The runner
+      # context is not available in job env, but RUNNER_TEMP is an
+      # environment variable in every step — export it on through
+      # GITHUB_ENV.
+      - name: Workspace
+        run: |
+          echo "FLEET_TMP=$RUNNER_TEMP/review-fleet" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/review-fleet"/{home,out,logs,prompts,cline-data,cline-home,npm-cache}
+
+      # GitHub has no ✅ or ⚠️ reaction, so the start marker is 👀 and the
+      # final verdict is 👍 (every lens answered, clean) or 😕 (findings).
+      # A partial run and a failed run leave no reaction behind — they are
+      # not verdicts on the PR. ✅/⚠️ are in the comment.
+      - name: 👀 on start
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr }}
+        run: |
+          gh api "repos/$REPO/issues/$PR_NUMBER/reactions" -f content=eyes --jq .id
+
+      - name: Fetch the diff
+        id: diff
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr }}
+          SHA: ${{ steps.pr.outputs.sha }}
+        run: bash .github/review-team/scripts/fetch-diff.sh
+
+      # Deliberately without GH_TOKEN in this environment: the lenses read
+      # untrusted content and must not be able to pick a token out of the
+      # process env. HOME and the npm cache live under runner.temp, not in
+      # the checkout. Inside the script the -c of the lenses and the
+      # aggregator points at pr-tree/ (data), while the scripts themselves
+      # run from the root (code) — the trees never mix.
+      - name: Run the lenses
+        id: fleet
+        if: steps.diff.outputs.proceed == 'true'
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          INPUT_REVIEWERS: ${{ inputs.reviewers }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr }}
+          SHA: ${{ steps.pr.outputs.sha }}
+          HOME: ${{ runner.temp }}/review-fleet/home
+          npm_config_cache: ${{ runner.temp }}/review-fleet/npm-cache
+        run: bash .github/review-team/scripts/run-fleet.sh
+
+      # Runs even when the lenses died: a fleet that could not run should be
+      # visible in the PR, not only as a red cross.
+      - name: Post the comment
+        id: comment
+        if: always() && steps.diff.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr }}
+          SHA: ${{ steps.pr.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/review-team/scripts/build-comment.sh
+
+      - name: Verdict
+        if: always() && steps.pr.outputs.skip != 'true' && steps.pr.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr }}
+        run: |
+          # The fleet's own old reactions go first — the PR should show the
+          # LATEST verdict: 👍 (every lens answered, clean) or 😕 (findings);
+          # a partial run, a failed run and a skip leave no reaction behind.
+          # Only the fleet's three reactions are deleted — not every
+          # github-actions[bot] reaction on the PR. A run that left a
+          # finished review in place (kept, build-comment.sh) removes only
+          # its own 👀: the review's 👍 or 😕 is still the PR's verdict.
+          VERDICT="$(cat "$FLEET_TMP/verdict" 2>/dev/null || echo dirty)"
+          FL_CONTENT='(.content == "eyes" or .content == "+1" or .content == "confused")'
+          if [ "$VERDICT" = kept ]; then
+            FL_CONTENT='.content == "eyes"'
+          fi
+          FL_REACTS=".[] | select(.user.login == \"github-actions[bot]\" and $FL_CONTENT) | .id"
+          for ID in $(gh api "repos/$REPO/issues/$PR_NUMBER/reactions" \
+              --paginate --jq "$FL_REACTS"); do
+            gh api -X DELETE "repos/$REPO/issues/$PR_NUMBER/reactions/$ID" || true
+          done
+          case "$VERDICT" in
+            clean)    gh api "repos/$REPO/issues/$PR_NUMBER/reactions" -f content='+1' --jq .id ;;
+            findings) gh api "repos/$REPO/issues/$PR_NUMBER/reactions" -f content=confused --jq .id ;;
+            *)        : ;;  # partial/dirty/skip/kept — no new reaction
+          esac
+
+      - name: Summary
+        if: always()
+        env:
+          SKIP: ${{ steps.pr.outputs.skip }}
+          REASON: ${{ steps.pr.outputs.reason }}
+          BOOTSTRAP: ${{ steps.pr.outputs.bootstrap }}
+          PROCEED: ${{ steps.diff.outputs.proceed }}
+          POSTED: ${{ steps.comment.outputs.posted }}
+          KEPT: ${{ steps.comment.outputs.kept }}
+          AGGREGATED: ${{ steps.fleet.outputs.aggregated }}
+          MODE: ${{ steps.comment.outputs.mode }}
+          FINDINGS: ${{ steps.comment.outputs.findings }}
+        run: |
+          {
+            echo '### Review fleet'
+            echo ''
+            if [ "${BOOTSTRAP:-}" = 'true' ]; then
+              echo 'Skipped — the fleet scripts (.github/review-team/) do not'
+              echo 'exist on the ref the run started from: an incomplete'
+              echo 'fleet. A trial run is done with workflow_dispatch from a'
+              echo 'trusted ref that has the fleet.'
+            elif [ "${SKIP:-}" = 'true' ]; then
+              if [ "${REASON:-}" = 'nothing-to-review' ]; then
+                echo 'Nothing to review — every open non-draft PR has a fresh'
+                echo 'marker or is waiting for its CI (or none is open). The'
+                echo 'schedule tries again at the next poll.'
+              elif [ "${REASON:-}" = 'ci-not-green' ]; then
+                echo 'Waiting for CI — the checks on the head have not settled, so'
+                echo 'the fleet saves the lenses until they have. Which checks'
+                echo 'are concerned is in a notice in the job log. A manual run'
+                echo 'bypasses the gate; after CI_WAIT_HOURS the schedule does'
+                echo 'too, so a check that never turns green does not silence'
+                echo 'the fleet.'
+              else
+                echo 'Skipped — the freshness gate or the state of the PR.'
+              fi
+            elif [ "${PROCEED:-}" != 'true' ]; then
+              echo 'The diff could not be reviewed (empty or over the size limit).'
+            elif [ "${KEPT:-}" = 'true' ]; then
+              echo 'The run was not complete (failed or partial), and the PR already'
+              echo 'carries a finished review — left in place, not replaced. What'
+              echo 'this run would have posted is in the section above.'
+            elif [ "${POSTED:-}" != 'true' ]; then
+              echo 'The run failed — no comment was posted. See the job log.'
+            elif [ "${MODE:-}" = 'none' ] || [ -z "${AGGREGATED:-}" ]; then
+              echo 'No lens produced a report — a comment about the failed run was posted.'
+            elif [ "${AGGREGATED:-}" = 'true' ]; then
+              echo "Aggregated report posted as a PR comment · findings counted by machine: ${FINDINGS:-?}"
+            else
+              echo "Raw reports posted (the aggregation failed) · findings counted by machine: ${FINDINGS:-?}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A soft failure should leave a trace. "Clean up" removes $FLEET_TMP —
+      # including logs/aggregate.log, which was the only thing that could
+      # tell why the aggregation died. When a lens or the aggregator failed:
+      # the tail of aggregate.log into the job summary and logs/ as a job
+      # artifact. On a successful run the logs are only noise — then nothing
+      # is kept.
+      - name: Logs on failure
+        if: >-
+          always() &&
+          steps.fleet.outcome != 'skipped' &&
+          (steps.fleet.outputs.aggregated != 'true' || steps.fleet.outputs.failed != '')
+        env:
+          AGGREGATED: ${{ steps.fleet.outputs.aggregated }}
+          FAILED: ${{ steps.fleet.outputs.failed }}
+        run: |
+          {
+            echo '### Fleet logs'
+            echo ''
+            if [ -n "${FAILED:-}" ]; then
+              echo "Lenses without a report: ${FAILED}"
+              echo ''
+            fi
+            if [ "${AGGREGATED:-}" != 'true' ]; then
+              echo 'The aggregation gave no report — tail of `logs/aggregate.log`:'
+              echo ''
+              echo '```'
+              tail -40 "$FLEET_TMP/logs/aggregate.log" 2>/dev/null || echo '(no log)'
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the logs as an artifact
+        if: >-
+          always() &&
+          steps.fleet.outcome != 'skipped' &&
+          (steps.fleet.outputs.aggregated != 'true' || steps.fleet.outputs.failed != '')
+        uses: actions/upload-artifact@v4
+        with:
+          name: fleet-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.FLEET_TMP }}/logs/
+          if-no-files-found: ignore
+
+      # Leave nothing behind: in runner.temp or in the checkout. The hosted
+      # runner is discarded after the job anyway, but the step costs nothing
+      # and keeps the job honest if it ever moves to a runner that is not.
+      - name: Clean up
+        if: always()
+        run: |
+          rm -rf "$FLEET_TMP"
+          rm -rf "$GITHUB_WORKSPACE/pr-tree"

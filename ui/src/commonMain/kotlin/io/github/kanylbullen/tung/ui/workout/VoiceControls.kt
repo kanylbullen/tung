@@ -159,6 +159,7 @@ fun voiceEchoText(echo: VoiceEcho): String? {
             when (echo.kind) {
                 SpeechErrorKind.NO_SPEECH -> Res.string.voice_echo_heard_nothing
                 SpeechErrorKind.UNAVAILABLE -> Res.string.voice_echo_unavailable
+                SpeechErrorKind.LANGUAGE -> Res.string.voice_echo_language
                 SpeechErrorKind.PERMISSION -> Res.string.voice_echo_permission
                 SpeechErrorKind.NETWORK -> Res.string.voice_echo_network
                 SpeechErrorKind.OTHER -> Res.string.voice_echo_failed

@@ -40,6 +40,7 @@ android {
         resourceConfigurations += listOf("en", "sv")
         // The server Settings starts with (issue #67): the public tung-server. A self-hoster's
         // fork changes this one line; anyone can still pick another server in Settings.
+        // Core's DEFAULT_SERVER_URL is the same server for the web and the iPhone: keep them equal.
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://tung.xuper.fun\"")
     }
 
@@ -155,7 +156,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
-    implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 

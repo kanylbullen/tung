@@ -45,8 +45,14 @@ kotlin {
             api("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.9.6")
             api("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.6")
             api("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.9.6")
+            implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.9.6")
+            // The navigation root (TungNavRoot); on Android it resolves to androidx.navigation 2.9.
+            implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.2")
             // The icons were frozen at 1.7.3 upstream; the same core set app/ uses.
             implementation("org.jetbrains.compose.material:material-icons-core:1.7.3")
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
         }
     }
 }
@@ -67,8 +73,24 @@ android {
     }
 }
 
+// The exercise catalogue for the iPhone, from the repository's one copy in
+// catalog/: core.json, extended.json and the import's alias tables, as
+// Compose Resources of iosMain only (files/catalog/…, read with Res.readBytes).
+// Android ships the same files as data/'s assets, so the APK has no second copy.
+val iosCatalogResources = tasks.register<Sync>("iosCatalogResources") {
+    from(rootProject.file("catalog")) {
+        include("core.json", "extended.json", "aliases/*.json")
+        into("files/catalog")
+    }
+    into(layout.buildDirectory.dir("generated/iosCatalog"))
+}
+
 compose.resources {
     // Public, so app/'s flow tests can read the moved strings (str(Res.string.…)).
     publicResClass = true
     packageOfResClass = "io.github.kanylbullen.tung.ui.resources"
+    customDirectory(
+        sourceSetName = "iosMain",
+        directoryProvider = layout.dir(iosCatalogResources.map { it.destinationDir }),
+    )
 }

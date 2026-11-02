@@ -32,7 +32,7 @@ Adding an app language:
 ## Stack (decided)
 
 Kotlin 2.2.21 (KSP 2.2.21-2.0.5, KSP2), Jetpack Compose (BOM 2026.05.01: Compose 1.11; lifecycle 2.9.2) and, for the shared screens in `ui/`, Compose Multiplatform 1.10.3 (the last line whose iOS klibs are compiled with Kotlin 2.2; on Android its artifacts are Jetpack Compose's and the BOM's 1.11 wins),
-Material 3, Room 2.8.5 via KSP, Navigation Compose 2.8.5, ViewModel + StateFlow, coroutines, Preferences
+Material 3, Room 2.8.5 via KSP, Navigation Compose 2.9 (JetBrains' multiplatform `navigation-compose` 2.9.2 in `ui/`, androidx's on Android), ViewModel + StateFlow, coroutines, Preferences
 DataStore 1.1.7 (small state outside Room). AGP 8.9.1,
 Gradle 8.11.1 (wrapper), build-tools 36.0.0 (pinned in the five Android
 modules: AGP's default is not compileSdk's). compileSdk 36; targetSdk 36 on
@@ -45,10 +45,21 @@ for Sign in with Google, Credential Manager (`androidx.credentials` 1.3.0
 with its Play services provider) and `googleid` 1.1.1, in `app/` only.
 
 **No Hilt/Koin.** `TungContainer` (in `data/`, built by `TungApp` and by the
-watch's `TungWearApp`) holds the database and the repositories lazily. ViewModels are created with `viewModel(factory = factoryOf { ... })`
-(`ui/common/Containers.kt`) and get repositories (for reads), `container.commands`
-(for every change, see "Commands") and nav arguments in the constructor;
-the active workout's factory also passes `createSavedStateHandle()`, for the rest timer, and so does the Routines tab's, for its selection.
+watch's `TungWearApp`) holds the database and the repositories lazily, and
+implements data's common `TungServices`: what the shared screens need (the
+repositories, `commands`, the settings, sync, the assistant, the time). The
+whole phone app is `TungNavRoot` in the `ui/` module (`ui/.../ui/TungNavRoot.kt`):
+the bottom bar, every route, and each ViewModel built with `viewModel { ... }`
+from `TungServices`, getting repositories (for reads), `commands` (for every
+change, see "Commands") and nav arguments in the constructor; the active
+workout's also passes `createSavedStateHandle()`, for the rest timer, and so
+does the Routines tab's, for its selection. What only a platform knows comes
+in through ui's `AppPlatform` (the build, exercise names, toasts, back, the
+workout's speech and permissions, Google and Apple sign-in, the import and
+photo pickers, the health store); the phone's is app's `AndroidPlatform`, and
+app's `TungAppRoot` is one call: `TungNavRoot(container, AndroidPlatform(app))`.
+Health Connect's screen still builds its ViewModel with app's `factoryOf`
+(`ui/common/Containers.kt`).
 
 ## Layers
 
@@ -151,7 +162,23 @@ and the settings in DataStore (`datastore-preferences-core`). **`src/androidMain
 holds what needs Android: `TungContainer`, the database builders,
 WorkManager's `SyncWorker`, `EncryptedTokenStore`, the rest timer's alarm and
 alerts, the ongoing notification, push, Health Connect, the Wear state and
-`ExerciseNames`. **`src/iosMain`** holds the iOS actuals (below). The
+`ExerciseNames`. **`src/iosMain`** holds the iOS actuals (below) and the
+iPhone's own parts: `KeychainTokenStore` (the session token and the AI key,
+after first unlock, this device only), `IosRestTimer` (over common
+`StoredRestTimer`, which the phone's `RestTimerController` shares, with a local
+notification for "Rest over"), `IosSyncScheduler` (sync while the app runs),
+`NoPush` and `iosAppDirectory`/`iosSettingsDataStore` (Application Support).
+The iPhone's container is `IosContainer` here in `iosMain`, beside
+`TungContainer`'s layer; what lives in the app bundle comes in as functions
+(the catalogue files, which ui ships as iOS-only Compose Resources copied
+from `catalog/` by its `iosCatalogResources` task, and the "Rest over" text),
+and `iosAppLanguage()` is the one answer to which language the app speaks.
+ui's `MainViewController` builds it and shows `TungNavRoot` over it and
+`IosPlatform`, with the catalogue's names for every screen
+(`LocalCatalogueName`, read by iOS's `exerciseDisplayName`). Workouts it starts are
+`phone`'s, so no server change is needed. A Keychain call from a Kotlin test
+process on the simulator answers `errSecNotAvailable` (no app, no keychain),
+so the Keychain is checked in the app, not in `iosTest`. The
 platform seams, each one file per platform: `TungDatabase.build`, an
 extension on the companion per platform (Room's Android open helper on the
 phone and the watch; `BundledSQLiteDriver` over a file path on iOS), and the
@@ -171,11 +198,11 @@ the files had in `app/`:
 | Package (`data/src/commonMain/kotlin/io/github/kanylbullen/tung/…`, Android-only parts in `androidMain`) | Contents |
 |---|---|
 | `data/` | Entities (`Exercise`, `Workout`, `WorkoutExercise`, `SetEntry`, `Routine`, `RoutineExercise`, `Program`, `ProgramDay`), `ExerciseDao`, `WorkoutDao`, `RoutineDao`, `ProgramDao`, `TungDatabase` (seeds the core catalogue's 70 exercises in `onCreate`), `ExerciseRepository`, `WorkoutRepository`, `RoutineRepository`, `ProgramRepository`, `ExtendedCatalogAssets.kt` (`ExtendedCatalog.fromAssets(context)`), `CatalogueMuscles` (core's `MuscleIndex` over both catalogue assets, `container.catalogueMuscles`), `CatalogueDetails` (core's `CatalogueIndex` the same way, `container.catalogueDetails`, for the exercise page), `EquipmentSettings` ("My equipment" in DataStore), `ProgressSettings` (the compact trends' metric and span), `AppCommandHandler` and `AppExerciseResolver` (see "Commands"), `TungContainer` and `TungHost`. `SeedExercises.kt` is generated. |
-| `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync". |
-| `timer/` | The rest timer's Android side: `RestTimerController` (DataStore + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification). |
+| `sync/` | Sync with tung-server: `SyncClient` (Ktor; also link codes, `/auth/methods`, Google login, `/me`), `SyncStore` (Room side), `SyncAccount` (sign in/out, link codes, triggers), `SyncWorker` + `WorkManagerSyncScheduler`, `SyncSettings` (DataStore), `TokenStore`/`EncryptedTokenStore`, `SyncMapping.kt`. See "Sync".  iOS: `KeychainTokenStore`, `IosSyncScheduler` (sync while the app runs).|
+| `timer/` | `RestTimerStore` and common `StoredRestTimer` (the timer kept in the `settings` DataStore); Android: `RestTimerController` (stored timer + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification); iOS: `IosRestTimer` (stored timer + a local notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
 | `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories, and `chipText`, the Live Update chip's text), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set and Add set). See "Ongoing workout and push". |
-| `push/` | Push: `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`. See "Ongoing workout and push". |
+| `push/` | Push: `PushControl` and `PushStatus` (common), `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`; iOS: `NoPush` until APNs. See "Ongoing workout and push". |
 | `importing/` | Import from other apps: `Importer` (the one bulk write), `ImportService` (`container.imports`), `ImportHistory`. See "Import". |
 | `ui/common/` | `ExerciseNames` and `Exercise.displayName(context)`; the composable `exerciseDisplayName` stays in `app/`. |
 
@@ -208,8 +235,8 @@ what library code shows (the "Rest over" and "Workout in progress" notifications
 
 | Directory | Contents |
 |---|---|
-| `ui/<screen>/` | `Screen` + `ViewModel` + `UiState` per screen: `home` (`HomeRoute` around the `ui/` screen), `workout` (`ActiveWorkoutRoute` around the `ui/` screen: the ViewModel, the phone's `WorkoutPlatform` and the progress sheet), `exercises` (`ExercisesRoute`, the tab and picker in one, and `ExerciseDetailRoute`, the exercise page, around the `ui/` screens, which give each ViewModel the phone's `displayName`), `history` (`HistoryRoute` and `WorkoutDetailRoute` around the `ui/` screens; the detail's "Saved as routine" toast is the route's), `summary` (`SummaryRoute` around the `ui/` screen, with the "Saved as routine" toast; see "Workout summary"), `routines` (`RoutinesRoute`, `RoutineDetailRoute`, `ProgramsRoute` and `ProgramDetailRoute` around the `ui/` screens, `defaultRoutineName`), `progress` (`ProgressRoutes.kt` around the `ui/` screens and the sheet in a workout; see "Progress"), `settings` (`settingsGraph` in `SettingsNavigation.kt` around the `ui/` screens: the ViewModels, the build's version, Health Connect's section and summary, the file and photo pickers and Credential Manager; see "Settings"), `importing` (the import's route in `TungAppRoot` around the `ui/` screen, with `readImportFile` over the content resolver). |
-| `ui/ai/` | `AssistantRoute` around the `ui/` module's Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt` in `ui/`. See "In-app AI (BYOK)". |
+| `ui/` | `TungAppRoot` (the shared `TungNavRoot` over the container) and `AndroidPlatform` (ui's `AppPlatform` for the phone: BuildConfig, `displayName`, toasts, `BackHandler`, the workout's `WorkoutPlatform`, Credential Manager, `ACTION_OPEN_DOCUMENT` and the photo picker, Health Connect). Every screen, its ViewModel and its route are in the `ui/` module. |
+| `ui/ai/` | The `ui/` module's Assistant screen (in-app AI with the user's own key), reached from the last row on Home; its settings are `ui/settings/AiSection.kt` in `ui/`. See "In-app AI (BYOK)". |
 | `auth/` | `GoogleSignIn` and `AndroidGoogleSignIn` (Credential Manager), made by `TungApp.createGoogleSignIn()`. See "Sync", "Account". |
 | `voice/` | `AndroidSpeechInput` (the phone's `SpeechRecognizer`) behind ui's `SpeechInput`, made by `TungApp.createSpeechInput()`; the workout's mic, hands-free mode and the mapping of intents are in the `ui/` module's `ui/workout/Voice*.kt`. See "Voice". |
 | `ui/common/` | Formatting, shared components, `WorkoutReport`, `exerciseDisplayName` (displayed exercise names, over data's `ExerciseNames`), `Containers.kt`; the Canvas charts are in the `ui/` module's `charts/` (see "Progress"). |
@@ -223,7 +250,7 @@ both "Last: 80 × 8" and the pre-fill of new sets.
 
 ### Home
 
-`ui/home/` in the `ui/` module (app's `HomeRoute` builds `HomeViewModel` with today, the zone and the rest timer's clearing from the container, so the ViewModel has no `java.time` or `RestTimerController` of its own): the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
+`ui/home/` in the `ui/` module (`TungNavRoot` builds `HomeViewModel` with today, the zone and the rest timer's clearing from `TungServices`, so the ViewModel has no `java.time` or `RestTimerController` of its own): the wordmark (`Tung.numbers.wordmark`: Archivo at its widest
 and heaviest, `archivoWideFamily()` in `ui/theme/Type.kt` (the `ui/` module), which only the wordmark
 and the hero number use), then, once there is a finished workout, **"This
 week"** (`ThisWeekSection`): the week's volume as the hero number
@@ -270,11 +297,13 @@ Home's gear opens `settings`, a list of groups (issue #67): calm list rows,
 each a title and a one-line live summary (`SettingsScreen` and its read-only
 `SettingsViewModel`; Health Connect's line comes from
 `HealthConnectViewModel`). A row opens `settings/<group>`
-(`SettingsGroup`, `settingsGraph` in `SettingsNavigation.kt`, one call in
-`TungAppRoot`); each group page is a `SettingsPage` (top bar, back, scrolling
+(`SettingsGroup`, `settingsGraph` in ui's `TungNavRoot`; the health group
+only where `AppPlatform.healthSettings` exists); each group page is a `SettingsPage` (top bar, back, scrolling
 column). The screens and their ViewModels are in `ui/.../ui/settings/`, except
-Health Connect's section and ViewModel; the routes, the pickers and
-`Screenshots.kt` are in `app/.../ui/settings/`:
+Health Connect's section and ViewModel, which are in `app/.../ui/settings/`
+with `Screenshots.kt` (the feedback picker's reading and scaling); the routes
+are `TungNavRoot`'s, and the pickers, Credential Manager and the build are
+app's `AndroidPlatform`:
 
 | Group | Route | Summary | What is there |
 |---|---|---|---|
@@ -327,8 +356,8 @@ reader hears "Muscles: quads, glutes, chest" (the row's top three; the page
 names them all with percentages). `RoutineMusclesFlowTest`.
 
 **The Routines tab** (`Routes.ROUTINES`, `RoutinesScreen` in the `ui/` module,
-made by app's `RoutinesRoute` with its ViewModel and back handling; the
-routine page is `RoutineDetailScreen` the same way, via `RoutineDetailRoute`) is
+with its ViewModel and back handling from `TungNavRoot`; the routine page is
+`RoutineDetailScreen` the same way) is
 the second of the bottom bar's tabs, Home · Routines · Exercises · History ·
 Progress,
 switched with `navigateToTab` (`saveState`/`restoreState`, like the others):
@@ -417,7 +446,7 @@ Start and is unchanged. `programDayId` is indexed and, like `routineId`, **not**
 key: removing a day or deleting a program never touches history. "Today" is
 `LocalDate.now(container.clock)`: the system clock in the app, a settable
 one (`FlowTestApp.today`) in the flow tests. Programs are reached from a row
-at the top of the Routines tab (`ui/routines/Program*` in the `ui/` module, built by app's `ProgramsRoute` and `ProgramDetailRoute`; weekday names come from `weekdayName`, `java.time` on Android and `NSDateFormatter` on iOS).
+at the top of the Routines tab (`ui/routines/Program*` in the `ui/` module, built by `TungNavRoot`; weekday names come from `weekdayName`, `java.time` on Android and `NSDateFormatter` on iOS).
 
 ### Log set and rest timer
 
@@ -949,7 +978,7 @@ from 98 to 112 kg", "Weekly volume, 12 months: from 360 to 930 kg";
 
 The screen after Finish (`ui/summary/` in the `ui/` module, route `summary/{id}`,
 `SummaryScreen` + `SummaryViewModel`, which takes today and the zone as
-functions; `SummaryRoute` in app builds it), one `LazyColumn` (`SUMMARY_LIST_TAG`)
+functions; `TungNavRoot` builds it), one `LazyColumn` (`SUMMARY_LIST_TAG`)
 under the top bar, with **Save as routine** and **Done** side by side in a
 bottom bar that stays put whatever is scrolled:
 
@@ -1874,8 +1903,9 @@ not shown. Nothing is written until the user confirms, and then only through
 ## Voice
 
 Issue #48, the first half of step 13 of `docs/architecture.md` ("Voice"):
-one set at a time, spoken in the active workout, with no model and no
-network. The grammar is tried first and never guesses; the assistant is the
+one set at a time, spoken in the active workout, with no model of our own
+and no network of ours (the phone's recogniser may use its provider's when it
+lacks the language offline; see "Speech" below). The grammar is tried first and never guesses; the assistant is the
 fallback, and only on a tap.
 
 - **Grammar in core, `core/.../core/voice/`** (pure, tested):
@@ -1899,10 +1929,31 @@ fallback, and only on a tap.
 - **Speech:** `SpeechInput.listenOnce(languageTag)` (the `ui/` module's `voice/`) is a Flow of
   `Listening`, `Partial`, then one `Result` or `Error(kind)`.
   `AndroidSpeechInput` (app's `voice/`) wraps `SpeechRecognizer` (`ACTION_RECOGNIZE_SPEECH`,
-  `EXTRA_LANGUAGE` from the app locale, `EXTRA_PREFER_OFFLINE`,
-  `EXTRA_PARTIAL_RESULTS`) and answers `UNAVAILABLE` when
-  `isRecognitionAvailable` is false, which on Android 11+ needs the
+  `EXTRA_PREFER_OFFLINE`, `EXTRA_PARTIAL_RESULTS`) and answers `UNAVAILABLE`
+  when `isRecognitionAvailable` is false, which on Android 11+ needs the
   `<queries>` entry for `android.speech.RecognitionService` in the manifest.
+  **The language is the app's, never the phone's locale:** the screen passes
+  the resource `voice_language_tag` (`en`, `sv`), which also picks the
+  grammar, and `recognizerAttempts` (`RecognizerLanguage.kt`,
+  `RecognizerLanguageTest`) turns it into the variants to try: on Android 13+
+  what `checkRecognitionSupport` says is installed (offline), then online
+  (asked once per `AndroidSpeechInput`, 1.5 s at most, and then listening
+  goes to a second recogniser, since the check may still run in the first);
+  without an answer the system locale's region when its language is the
+  app's (`sv-SE`), else the language's usual one (`en-US`), offline, then
+  online, then the bare language. A language error (12 or 13, no pack for
+  that variant) moves on to the next attempt in a new recogniser 150 ms
+  later (the service tears its session down after the error), and after the
+  last one the echo says the phone lacks the language (`LANGUAGE`, fatal for
+  hands-free). Recognisers are destroyed only when the turn ends: the
+  platform keeps one service connection per app, and destroying one cut off
+  the next before it listened. **The online attempt sends audio to the
+  recogniser's provider** (usually Google); the privacy page says so, and
+  the web's `SpeechRecognition` in Chrome always does. Before this, a Pixel in English with a
+  Swedish region asked for `en-SE-u-fw-mon-…`, Google's offline recogniser had
+  only `en-US`, failed with error 12, and the echo said the phone had no
+  speech recognition at all (2026-11-02). `AndroidSpeechInputTest` runs the
+  real class over Robolectric's recogniser.
   The factory is `TungApp.createSpeechInput()`, an open function the flow
   tests' `FlowTestApp` overrides with `FakeSpeechInput` (`say`, `fail`); it is
   deliberately not a `TungContainer` seam, since nothing in `data/` hears.
@@ -1935,7 +1986,14 @@ fallback, and only on a tap.
   phone mostly hears nothing. No foreground service; the screen is already
   kept on.
 - **The assistant link:** on `Unknown` with the assistant set up
-  (`AiConfig.configured`), the echo offers "Ask the assistant" for 8 s. It
+  (`AiConfig.configured`), and only when the words could be a workout
+  (core's `worthAskingAssistant`: a number and a word of three letters or
+  more that is not the grammar's own, most likely an exercise, as in
+  "bänkpress tre set åttio kilo"), the echo offers "Ask the assistant" for
+  8 s. The assistant can only answer with a workout to add, so a misheard
+  set ("Europe's" for "ten reps") gets no offer: it would send the history
+  and spend the user's tokens for an empty plan. The web follows the same
+  rule. It
   opens the Assistant screen with the transcript (`assistant?ask=…`), which
   asks `AiRequest.FreeText(text)` once: the next-workout schema and parser,
   the transcript as a JSON string in the question. The rules of "In-app AI
@@ -2633,6 +2691,38 @@ white, so it is used only as a fill (dark text on it: 5.4:1); as text,
 Copy (English, and the same in each translation): active voice, only the first
 letter capitalised. Buttons say what happens ("Start workout", "Add exercise",
 "Save"). Errors say what happened and what to do, without "oops".
+
+## Review fleet
+
+An automated PR review runs in GitHub Actions: five independent reviewer
+lenses (correctness, security-abuse, architecture,
+code-quality-conventions, simplicity-scope; five specialists more on
+request) read the diff and the merge state, and an aggregator posts **one**
+comment per PR, updated in place, with 👍 or 😕 as its verdict. It lives in
+`.github/review-team/` (roles, task, aggregation rules, scripts; its
+`README.md` explains every design decision) and
+`.github/workflows/pr-review-fleet.yml`, runs cline over OpenRouter with the
+secret `OPENROUTER_API_KEY` and the model in the repository variable
+`FLEET_MODEL` (GLM when unset), and polls every half hour at :12/:42. A
+schedule poll reviews the newest open non-draft PR whose head it has not
+reviewed in 24 h and whose CI has settled (or has sat for 4 h). To have it
+now:
+
+```sh
+gh workflow run pr-review-fleet.yml -R kanylbullen/tung -f pr=<n> -f force=true
+```
+
+- **It reports and never blocks.** Merge is still a human decision; it is
+  no substitute for a review of your own on anything that touches sync, a
+  migration, auth or user data.
+- **It never reviews the PR that changes the fleet itself.** The triggers
+  are `schedule` and `workflow_dispatch`, never `pull_request` (there the
+  job definition would come from the PR, with the secrets in its
+  environment), so fleet changes are tried with a dispatch from their branch.
+- The roles' checklists are drawn from this file: when a rule here changes,
+  the lens that checks it (`.github/review-team/reviewers/`) may need the
+  same change. `test-resolve-pr.sh` pins the PR selection and runs in CI's
+  "Fleet PR selection" job.
 
 ## Traps
 

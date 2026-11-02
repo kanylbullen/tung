@@ -50,7 +50,7 @@ class RoutineNameFlowTest : FlowTest() {
         assertShown(hasText(dayAlone))
         screenshot("1-home")
 
-        compose.onNode(hasText(str(R.string.nav_routines)) and isSelectable()).performClick()
+        compose.onNode(hasText(str(Res.string.nav_routines)) and isSelectable()).performClick()
         waitForText(str(Res.string.routine_new))
         assertShown(hasText(dayAlone))
         screenshot("2-routines-tab")

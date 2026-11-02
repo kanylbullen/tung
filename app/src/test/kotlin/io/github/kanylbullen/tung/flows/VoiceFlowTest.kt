@@ -190,6 +190,12 @@ class VoiceFlowTest : FlowTest() {
             )
 
             benchWorkout()
+            // A misheard set ("Europe's" for "ten reps") names nothing to plan: no offer.
+            tapMic()
+            app.speech.say("Europe's")
+            waitForText(str(Res.string.voice_echo_not_understood, "Europe's"))
+            assertTrue(compose.onAllNodes(hasText(str(Res.string.voice_ask_assistant))).fetchSemanticsNodes().isEmpty())
+
             tapMic()
             val heard = "then three sets of squats at sixty"
             app.speech.say(heard)
