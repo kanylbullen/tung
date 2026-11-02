@@ -35,7 +35,9 @@ jobs:
       # The Kotlin/Native compiler that core's iOS klibs need (a few hundred
       # MB), kept between runs; the key follows the Kotlin version in the
       # root build file.
+      # The Mac keeps ~/.konan between jobs; only a fresh runner needs it.
       - uses: actions/cache@v4
+        if: runner.environment == 'github-hosted'
         with:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ hashFiles('build.gradle.kts') }}
@@ -107,10 +109,20 @@ jobs:
 
   ios:
     name: iOS framework, simulator tests and app build
-    # Apple silicon, Xcode and the iOS simulators; free for a public repository.
-    # What the Linux job cannot do: link the TungUI framework, run the iOS
-    # tests on a simulator, and build the Xcode app around it (iosApp/).
-    runs-on: macos-15
+    # Apple silicon, Xcode and the iOS simulators. What the Linux job cannot
+    # do: link the TungUI framework, run the iOS tests on a simulator, and
+    # build the Xcode app around it (iosApp/).
+    #
+    # The owner's Mac mini (self-hosted runner "tung-mac", account ci) runs
+    # it for pushes and for pull requests from this repository's own
+    # branches, started by a collaborator: warm Kotlin/Native and Gradle
+    # caches, 12 cores. Everything else (a fork's pull request, Dependabot)
+    # gets GitHub's macos-15. The repository is public and a runner executes
+    # whatever the job says, so this is not the guard: a pull request runs
+    # the workflow from its own branch. The guard is on the Mac, a job-started
+    # hook that refuses any job but these (and fork workflows need approval).
+    # Keep the list here and the Mac's hooks/allowed-actors the same.
+    runs-on: ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && contains(fromJSON('["kanylbullen", "unpocomejor"]'), github.actor) && fromJSON('["self-hosted", "tung-mac"]') || 'macos-15' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -124,13 +136,16 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      # The Mac keeps ~/.konan between jobs; only a fresh runner needs it.
       - uses: actions/cache@v4
+        if: runner.environment == 'github-hosted'
         with:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.gradle.kts') }}
 
-      # The runner ships the Android SDK with ANDROID_HOME set: Gradle
-      # configures the Android modules even when it builds only iOS.
+      # Gradle configures the Android modules even when it builds only iOS, so
+      # it needs ANDROID_HOME: GitHub's runner sets it, the Mac's ci account
+      # sets it in ~/.zshenv, which the runner's launchd job reads.
       - name: Run the iOS tests on a simulator and link the framework
         run: ./gradlew :data:iosSimulatorArm64Test :ui:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
 
@@ -147,7 +162,7 @@ jobs:
       - name: Build the iPhone app for the simulator
         working-directory: iosApp
         run: |
-          brew install xcodegen
+          command -v xcodegen >/dev/null || brew install xcodegen
           xcodegen
           xcodebuild -project Tung.xcodeproj -scheme Tung -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
