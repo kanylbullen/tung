@@ -48,7 +48,7 @@ import io.github.kanylbullen.tung.ui.common.factoryOf
 import io.github.kanylbullen.tung.ui.importing.ImportScreen
 import io.github.kanylbullen.tung.ui.importing.ImportViewModel
 import io.github.kanylbullen.tung.ui.importing.readImportFile
-import io.github.kanylbullen.tung.ui.ai.AssistantScreen
+import io.github.kanylbullen.tung.ui.ai.AssistantRoute
 import io.github.kanylbullen.tung.ui.exercises.ExerciseDetailRoute
 import io.github.kanylbullen.tung.ui.exercises.ExercisesRoute
 import io.github.kanylbullen.tung.ui.exercises.PickerTarget
@@ -205,7 +205,7 @@ fun TungAppRoot(openWorkout: OpenWorkout? = null, onWorkoutOpened: () -> Unit = 
                 Routes.ASSISTANT,
                 arguments = listOf(navArgument(Routes.ARG_ASK) { type = NavType.StringType; nullable = true; defaultValue = null }),
             ) { entry ->
-                AssistantScreen(
+                AssistantRoute(
                     ask = entry.arguments?.getString(Routes.ARG_ASK),
                     onBack = { nav.popBackStack() },
                     onOpenSettings = { nav.navigate(SettingsGroup.ASSISTANT.route) },

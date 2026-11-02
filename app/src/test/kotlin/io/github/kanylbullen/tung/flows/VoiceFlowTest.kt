@@ -197,13 +197,13 @@ class VoiceFlowTest : FlowTest() {
             screenshot("1-ask-the-assistant")
             clickText(str(Res.string.voice_ask_assistant))
 
-            waitForText(str(R.string.ai_voice_heard, heard))
-            waitForText(str(R.string.ai_payload_title))
+            waitForText(str(Res.string.ai_voice_heard, heard))
+            waitForText(str(Res.string.ai_payload_title))
             screenshot("2-what-is-sent")
             assertEquals(0, server.requestCount)
-            clickText(str(R.string.ai_payload_send))
+            clickText(str(Res.string.ai_payload_send))
 
-            val start = hasText(str(R.string.ai_start_workout)) and isEnabled()
+            val start = hasText(str(Res.string.ai_start_workout)) and isEnabled()
             waitFor(start)
             val body = server.takeRequest().body.readUtf8()
             assertTrue(body.contains(heard))
