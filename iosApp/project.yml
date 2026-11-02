@@ -26,11 +26,19 @@ targets:
       path: Tung/Info.plist
       properties:
         CFBundleDisplayName: Tung
+        # From the build settings, so CURRENT_PROJECT_VERSION on the command
+        # line (testflight.sh) is the uploaded build number; XcodeGen would
+        # otherwise write a fixed 1.0 (1).
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         # Compose Multiplatform draws at the display's rate; without this key
         # a ProMotion iPhone is capped at 60 Hz and Compose logs an error.
         CADisableMinimumFrameDurationOnPhone: true
+        # Only HTTPS through the system and no encryption of its own, so the
+        # export compliance question is answered here instead of per build.
+        ITSAppUsesNonExemptEncryption: false
     # Sign in with Apple (enabled for the App ID io.github.kanylbullen.tung);
     # appleIdToken() in ui's iosMain asks for it. Generated like Info.plist.
     entitlements:
@@ -45,6 +53,8 @@ targets:
         # Automatic signing: Xcode makes the certificate and the profile once
         # the team's Apple ID is added under Xcode → Settings → Accounts.
         DEVELOPMENT_TEAM: 55BB3CFVQ3
+        # Tung/Assets.xcassets: the launcher's plate at 1024 px, no alpha.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
         PRODUCT_NAME: Tung
         TARGETED_DEVICE_FAMILY: "1"
