@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package io.github.kanylbullen.tung.web.ui
 
 import androidx.compose.runtime.Composable
@@ -20,7 +22,7 @@ import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.progress.exerciseHistory
 import io.github.kanylbullen.tung.web.summary.workoutSummary
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import org.jetbrains.compose.web.dom.A

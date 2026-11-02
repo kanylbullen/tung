@@ -116,9 +116,12 @@ the iOS compile catches what an import scan cannot: a JVM member reached
 without one, such as `java.util.Map.merge` on a `MutableMap` (what
 `Suggestions.kt` used until the targets came). Core's only
 dependencies are `kotlinx-serialization-json`, `kotlinx-coroutines-core` and
-`kotlinx-datetime`, all `api`. Dates and zones in core's API are
+`kotlinx-datetime` (0.7: the version Compose Multiplatform's material3
+pulls into the iOS framework, so an older one leaves core's calls unlinked
+there), all `api`. Dates and zones in core's API are
 kotlinx-datetime's `LocalDate` and `TimeZone` (instants travel as epoch
-millis), and the apps convert at the edge (`toKotlinLocalDate()`,
+millis; inside, `Instant` and `Clock` are `kotlin.time`'s, opted in per
+file with `@file:OptIn(ExperimentalTime::class)` until Kotlin 2.3), and the apps convert at the edge (`toKotlinLocalDate()`,
 `toKotlinTimeZone()`, `toJavaLocalDate()`). What the JVM used to supply is
 pure Kotlin: the name-based ids (`nameBasedUuid` over `Md5.kt`, byte for byte
 what `UUID.nameUUIDFromBytes` made, which `Md5Test` checks against the JDK),

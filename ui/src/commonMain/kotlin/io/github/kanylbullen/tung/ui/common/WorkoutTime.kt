@@ -1,4 +1,4 @@
-// kotlinx-datetime's Instant conversions are opt-in where the iOS klibs resolve a newer kotlinx-datetime.
+// Instant is kotlin.time's, experimental until Kotlin 2.3.
 @file:OptIn(kotlin.time.ExperimentalTime::class)
 
 package io.github.kanylbullen.tung.ui.common
@@ -43,7 +43,7 @@ import io.github.kanylbullen.tung.ui.resources.*
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 import kotlinx.datetime.DatePeriod
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone

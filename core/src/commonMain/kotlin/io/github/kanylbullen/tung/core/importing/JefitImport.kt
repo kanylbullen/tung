@@ -1,10 +1,12 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package io.github.kanylbullen.tung.core.importing
 
 import io.github.kanylbullen.tung.core.ROUTINE_NAME_SEPARATOR
 import io.github.kanylbullen.tung.core.MAX_WEIGHT_KG
 import io.github.kanylbullen.tung.core.clampTargetSets
 import io.github.kanylbullen.tung.core.mostCommonReps
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime

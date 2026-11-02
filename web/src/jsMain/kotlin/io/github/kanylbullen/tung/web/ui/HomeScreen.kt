@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package io.github.kanylbullen.tung.web.ui
 
 import androidx.compose.runtime.Composable
@@ -24,7 +26,7 @@ import io.github.kanylbullen.tung.web.routines.routineMuscles
 import io.github.kanylbullen.tung.web.sync.Account
 import kotlin.js.Date
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import org.jetbrains.compose.web.attributes.disabled
