@@ -1230,7 +1230,15 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   auto-select, a nonce); `SyncAccount.signInWithGoogle` trades it at
   `/api/v1/auth/google` and finishes like `signIn`. "Google linked" under the
   account comes from `SyncSettings.googleLinked`, set at sign-in and
-  refreshed from `/me` when Account opens. The watch keeps the link code. The session token is
+  refreshed from `/me` when Account opens. **Sign in with Apple** (the server's
+  since #170) is the same path with `SyncAccount.signInWithApple` and
+  `/api/v1/auth/apple`: "Continue with Apple" shows when `/auth/methods` names
+  an Apple client id *and* the platform hands `AccountScreen` an
+  `appleIdToken` (on iOS `appleIdToken()` in `ui/src/iosMain`, over
+  AuthenticationServices; Android has none, so never there). The token's
+  audience is the app's bundle id, which the server's `TUNG_APPLE_CLIENT_ID`
+  must list after the web's Services ID; "Apple linked" comes from
+  `SyncSettings.appleLinked`. The watch keeps the link code. The session token is
   in `EncryptedSharedPreferences` (`sync_token`, excluded from backups because
   its Keystore key cannot be restored), never in DataStore or a log; the URL,
   email, cursor and last result are in the `settings` DataStore

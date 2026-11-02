@@ -48,13 +48,18 @@ val SyncJson = Json {
 expect fun syncHttpClient(): HttpClient
 
 sealed interface AuthResult {
-    /** [googleLinked]: the account has a Google account linked (the server's `user.google_linked`). */
-    data class Success(val token: String, val email: String, val googleLinked: Boolean = false) : AuthResult
+    /** [googleLinked], [appleLinked]: the account has a Google account or an Apple ID linked (the server's `user.google_linked`, `user.apple_linked`). */
+    data class Success(val token: String, val email: String, val googleLinked: Boolean = false, val appleLinked: Boolean = false) : AuthResult
     data class Failed(val failure: AuthFailure, val status: Int? = null) : AuthResult
 }
 
-/** `GET /api/v1/auth/methods`: password sign-in, and Google's with the client id to ask Google for, or null. */
-data class AuthMethods(val password: Boolean, val googleClientId: String?)
+/**
+ * `GET /api/v1/auth/methods`: password sign-in, Google's with the client id
+ * to ask Google for, and Apple's with the web's Services ID; each null when
+ * the server does not offer it. An app asks Apple with its own bundle id,
+ * so for it [appleClientId] only says that Apple is offered.
+ */
+data class AuthMethods(val password: Boolean, val googleClientId: String?, val appleClientId: String? = null)
 
 sealed interface AuthMethodsResult {
     data class Success(val methods: AuthMethods) : AuthMethodsResult
@@ -68,7 +73,7 @@ enum class ForgotOutcome { SENT, NOT_OFFERED, RATE_LIMITED, INVALID_EMAIL, NETWO
 enum class ResendOutcome { SENT, RATE_LIMITED, NETWORK, FAILED }
 
 /** `GET /api/v1/me`: the signed-in account as the server has it. */
-data class AccountInfo(val email: String, val hasPassword: Boolean, val googleLinked: Boolean)
+data class AccountInfo(val email: String, val hasPassword: Boolean, val googleLinked: Boolean, val appleLinked: Boolean = false)
 
 enum class AuthFailure {
     /** 401 on login. */
@@ -100,6 +105,18 @@ enum class AuthFailure {
 
     /** 404 `not_configured`: this server does not offer Google sign-in. */
     GOOGLE_NOT_OFFERED,
+
+    /** 401 `invalid_apple_token`: the server did not accept Apple's token (or not for this app's bundle id). */
+    APPLE_REJECTED,
+
+    /** 401 `email_not_verified` from `/auth/apple`: Apple gave no address Tung can use. */
+    APPLE_EMAIL_UNVERIFIED,
+
+    /** 409 `apple_account_mismatch`: the email's account is linked to another Apple ID. */
+    APPLE_ACCOUNT_MISMATCH,
+
+    /** 404 `not_configured` from `/auth/apple`: this server does not offer Sign in with Apple. */
+    APPLE_NOT_OFFERED,
 
     /** No connection, refused, timed out. */
     NETWORK,
@@ -312,7 +329,7 @@ class SyncClient(
                 }
                 if (response.status.isSuccess()) {
                     val session = response.body<Session>()
-                    AuthResult.Success(session.token, session.user?.email ?: email, session.user?.googleLinked == true)
+                    AuthResult.Success(session.token, session.user?.email ?: email, session.user?.googleLinked == true, session.user?.appleLinked == true)
                 } else {
                     AuthResult.Failed(authFailure(response), response.status.value)
                 }
@@ -327,7 +344,7 @@ class SyncClient(
 
     /**
      * `GET /api/v1/auth/methods` at [baseUrl]: whether the server offers Google
-     * sign-in and with which client id. A server from before the route (404)
+     * and Apple sign-in, and with which client ids. A server from before the route (404)
      * offers the password only.
      */
     suspend fun authMethods(baseUrl: String): AuthMethodsResult = withContext(ioDispatcher) {
@@ -336,7 +353,13 @@ class SyncClient(
             when {
                 response.status.isSuccess() -> {
                     val body = response.body<MethodsBody>()
-                    AuthMethodsResult.Success(AuthMethods(body.password, body.google?.clientId?.takeIf { it.isNotBlank() }))
+                    AuthMethodsResult.Success(
+                        AuthMethods(
+                            body.password,
+                            body.google?.clientId?.takeIf { it.isNotBlank() },
+                            body.apple?.clientId?.takeIf { it.isNotBlank() },
+                        ),
+                    )
                 }
                 response.status.value == 404 -> AuthMethodsResult.Success(AuthMethods(password = true, googleClientId = null))
                 response.status.value == 405 -> AuthMethodsResult.Failed(AuthFailure.NOT_A_SERVER)
@@ -357,37 +380,78 @@ class SyncClient(
      * for the server's client id, traded for a session token as `/login`
      * answers. Stores nothing; [SyncAccount] does.
      */
-    suspend fun loginWithGoogle(baseUrl: String, idToken: String): AuthResult = withContext(ioDispatcher) {
-        try {
-            val response = http.post(baseUrl + GOOGLE_PATH) {
-                contentType(ContentType.Application.Json)
-                setBody(GoogleBody(idToken, language()))
+    suspend fun loginWithGoogle(baseUrl: String, idToken: String): AuthResult =
+        idTokenLogin(baseUrl + GOOGLE_PATH, idToken, rejected = AuthFailure.GOOGLE_REJECTED) { code ->
+            when (code) {
+                "email_not_verified" -> AuthFailure.GOOGLE_EMAIL_UNVERIFIED
+                "google_account_mismatch" -> AuthFailure.GOOGLE_ACCOUNT_MISMATCH
+                "not_configured" -> AuthFailure.GOOGLE_NOT_OFFERED
+                else -> null
             }
-            if (response.status.isSuccess()) {
-                val session = response.body<Session>()
-                AuthResult.Success(session.token, session.user?.email.orEmpty(), session.user?.googleLinked ?: true)
-            } else {
-                val code = runCatching { response.body<ErrorBody>().error.code }.getOrNull()
-                AuthResult.Failed(
-                    when {
-                        code == "email_not_verified" -> AuthFailure.GOOGLE_EMAIL_UNVERIFIED
-                        code == "google_account_mismatch" -> AuthFailure.GOOGLE_ACCOUNT_MISMATCH
-                        code == "not_configured" -> AuthFailure.GOOGLE_NOT_OFFERED
-                        response.status.value == 401 -> AuthFailure.GOOGLE_REJECTED
-                        response.status.value == 400 -> AuthFailure.INVALID_REQUEST
-                        else -> authFailure(response)
-                    },
-                    response.status.value,
-                )
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: IOException) {
-            AuthResult.Failed(AuthFailure.NETWORK)
-        } catch (e: Exception) {
-            AuthResult.Failed(AuthFailure.SERVER)
         }
-    }
+
+    /**
+     * `POST /api/v1/auth/apple {id_token}` at [baseUrl]: an ID token from
+     * Sign in with Apple, whose audience is this app's bundle id (which the
+     * server must list in `TUNG_APPLE_CLIENT_ID`), traded for a session as
+     * Google's is. Stores nothing; [SyncAccount] does.
+     */
+    suspend fun loginWithApple(baseUrl: String, idToken: String): AuthResult =
+        idTokenLogin(baseUrl + APPLE_PATH, idToken, rejected = AuthFailure.APPLE_REJECTED) { code ->
+            when (code) {
+                "email_not_verified" -> AuthFailure.APPLE_EMAIL_UNVERIFIED
+                "apple_account_mismatch" -> AuthFailure.APPLE_ACCOUNT_MISMATCH
+                "not_configured" -> AuthFailure.APPLE_NOT_OFFERED
+                else -> null
+            }
+        }
+
+    /**
+     * An identity provider's ID token for a session at [url]. [failure] names
+     * the provider's error codes; another 401 is [rejected], a 400 a
+     * malformed request, anything else as `/login`.
+     */
+    private suspend fun idTokenLogin(
+        url: String,
+        idToken: String,
+        rejected: AuthFailure,
+        failure: (code: String?) -> AuthFailure?,
+    ): AuthResult =
+        withContext(ioDispatcher) {
+            try {
+                val response = http.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(IdTokenBody(idToken, language()))
+                }
+                if (response.status.isSuccess()) {
+                    val session = response.body<Session>()
+                    val user = session.user
+                    AuthResult.Success(
+                        session.token,
+                        user?.email.orEmpty(),
+                        // An older server leaves a flag out: the provider just signed in with is linked.
+                        googleLinked = user?.googleLinked ?: (rejected == AuthFailure.GOOGLE_REJECTED),
+                        appleLinked = user?.appleLinked ?: (rejected == AuthFailure.APPLE_REJECTED),
+                    )
+                } else {
+                    val code = runCatching { response.body<ErrorBody>().error.code }.getOrNull()
+                    AuthResult.Failed(
+                        failure(code) ?: when (response.status.value) {
+                            401 -> rejected
+                            400 -> AuthFailure.INVALID_REQUEST
+                            else -> authFailure(response)
+                        },
+                        response.status.value,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                AuthResult.Failed(AuthFailure.NETWORK)
+            } catch (e: Exception) {
+                AuthResult.Failed(AuthFailure.SERVER)
+            }
+        }
 
     /**
      * `POST /api/v1/auth/verify/resend`: a new link to confirm the account's
@@ -422,7 +486,7 @@ class SyncClient(
             val response = http.get(baseUrl + ME_PATH) { bearerAuth(token) }
             if (!response.status.isSuccess()) return@withContext null
             val user = response.body<SessionUser>()
-            AccountInfo(user.email.orEmpty(), user.hasPassword ?: true, user.googleLinked ?: false)
+            AccountInfo(user.email.orEmpty(), user.hasPassword ?: true, user.googleLinked ?: false, user.appleLinked ?: false)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -658,10 +722,11 @@ class SyncClient(
         val email: String? = null,
         @SerialName("has_password") val hasPassword: Boolean? = null,
         @SerialName("google_linked") val googleLinked: Boolean? = null,
+        @SerialName("apple_linked") val appleLinked: Boolean? = null,
     )
 
     @Serializable
-    private data class GoogleBody(@SerialName("id_token") val idToken: String, val language: String? = null)
+    private data class IdTokenBody(@SerialName("id_token") val idToken: String, val language: String? = null)
 
     @Serializable
     private data class ResendBody(val language: String? = null)
@@ -670,10 +735,10 @@ class SyncClient(
     private data class ForgotBody(val email: String, val language: String? = null)
 
     @Serializable
-    private data class MethodsBody(val password: Boolean = true, val google: GoogleMethodBody? = null)
+    private data class MethodsBody(val password: Boolean = true, val google: MethodBody? = null, val apple: MethodBody? = null)
 
     @Serializable
-    private data class GoogleMethodBody(@SerialName("client_id") val clientId: String)
+    private data class MethodBody(@SerialName("client_id") val clientId: String)
 
     @Serializable
     private data class DeleteAccountBody(val email: String)
@@ -689,6 +754,7 @@ class SyncClient(
         const val REGISTER_PATH = "/api/v1/auth/register"
         const val LOGOUT_PATH = "/api/v1/auth/logout"
         const val GOOGLE_PATH = "/api/v1/auth/google"
+        const val APPLE_PATH = "/api/v1/auth/apple"
         const val METHODS_PATH = "/api/v1/auth/methods"
         const val ME_PATH = "/api/v1/me"
         const val RESEND_CONFIRMATION_PATH = "/api/v1/auth/verify/resend"

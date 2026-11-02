@@ -845,4 +845,12 @@
     <string name="import_title">Import from Jefit</string>
     <string name="import_undo">Undo import</string>
     <string name="import_unreadable">The file could not be read. Choose it again.</string>
+    <!-- Sign in with Apple -->
+    <string name="sync_apple_sign_in">Continue with Apple</string>
+    <string name="sync_apple_linked">Apple linked</string>
+    <string name="sync_error_apple_failed">Apple sign-in did not work. Try again, or use your email and password.</string>
+    <string name="sync_error_apple_rejected">The server did not accept the Apple sign-in. Try again.</string>
+    <string name="sync_error_apple_unverified">Apple did not give an email address Tung can use. Use your email and password.</string>
+    <string name="sync_error_apple_mismatch">This email belongs to an account linked to another Apple ID. Sign in with that one or with your password.</string>
+    <string name="sync_error_apple_not_offered">This server does not offer Sign in with Apple. Use your email and password.</string>
 </resources>
