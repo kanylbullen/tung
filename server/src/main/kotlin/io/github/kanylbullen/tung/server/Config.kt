@@ -2,6 +2,8 @@ package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.server.auth.APPLE_JWKS_URL
 import io.github.kanylbullen.tung.server.auth.GOOGLE_JWKS_URL
+import io.github.kanylbullen.tung.server.push.ApnsConfig
+import io.github.kanylbullen.tung.server.push.DEFAULT_APNS_TOPIC
 import io.github.kanylbullen.tung.server.push.FCM_BASE_URL
 import io.github.kanylbullen.tung.server.push.FcmServiceAccount
 import io.github.kanylbullen.tung.server.push.HostResolver
@@ -45,6 +47,14 @@ data class ServerConfig(
     val fcmServiceAccount: FcmServiceAccount? = null,
     /** FCM's API base. Not an environment variable: only tests point it elsewhere. */
     val fcmBaseUrl: String = FCM_BASE_URL,
+    /**
+     * APNs push to iPhones (`TUNG_APNS_KEY`, `TUNG_APNS_KEY_ID`,
+     * `TUNG_APNS_TEAM_ID`, `TUNG_APNS_TOPIC`, `TUNG_APNS_SANDBOX`); null
+     * turns APNs off.
+     */
+    val apns: ApnsConfig? = null,
+    /** APNs' base URL instead of the one [apns] names. Not an environment variable: only tests point it elsewhere. */
+    val apnsBaseUrl: String? = null,
     /** How long changes are collected before one push goes out per user. Not an environment variable: tests shorten it. */
     val pushDebounceMillis: Long = DEFAULT_PUSH_DEBOUNCE_MILLIS,
     /**
@@ -114,6 +124,12 @@ data class ServerConfig(
                 "true", "1", "yes" -> true
                 else -> throw ConfigException("TUNG_TESTER_SIGNUPS must be true or false, got '$raw'.")
             }
+            val apnsSandbox = when (val raw = value("TUNG_APNS_SANDBOX")?.lowercase()) {
+                null, "false", "0", "no" -> false
+                "true", "1", "yes" -> true
+                else -> throw ConfigException("TUNG_APNS_SANDBOX must be true or false, got '$raw'.")
+            }
+            val apns = apnsConfig(value(APNS_KEY_ENV), value("TUNG_APNS_KEY_ID"), value("TUNG_APNS_TEAM_ID"), value("TUNG_APNS_TOPIC"), apnsSandbox)
             val resendKey = value("TUNG_RESEND_API_KEY")
             val mailFrom = value("TUNG_MAIL_FROM")
             if (resendKey != null && (mailFrom == null || publicUrl == null)) {
@@ -131,6 +147,7 @@ data class ServerConfig(
                 publicUrl = publicUrl,
                 trustProxy = trustProxy,
                 fcmServiceAccount = value(FCM_ENV)?.let(::fcmServiceAccount),
+                apns = apns,
                 pushAllowPrivate = pushAllowPrivate,
                 webDir = value("TUNG_WEB_DIR")?.let(::File)?.also {
                     if (!it.resolve("index.html").isFile) throw ConfigException("TUNG_WEB_DIR has no index.html: ${it.path}")
@@ -146,6 +163,39 @@ data class ServerConfig(
         }
 
         private const val FCM_ENV = "TUNG_FCM_SERVICE_ACCOUNT_JSON"
+        private const val APNS_KEY_ENV = "TUNG_APNS_KEY"
+
+        /**
+         * APNs is on with the key, its id and the team id; none of them is
+         * off, and some but not all is a mistake the operator hears about.
+         * The key is the `.p8`'s contents when it holds a PEM, else a path to
+         * the file.
+         */
+        private fun apnsConfig(key: String?, keyId: String?, teamId: String?, topic: String?, sandbox: Boolean): ApnsConfig? {
+            if (key == null && keyId == null && teamId == null) return null
+            if (key == null || keyId == null || teamId == null) {
+                val missing = listOfNotNull(
+                    APNS_KEY_ENV.takeIf { key == null },
+                    "TUNG_APNS_KEY_ID".takeIf { keyId == null },
+                    "TUNG_APNS_TEAM_ID".takeIf { teamId == null },
+                )
+                throw ConfigException("APNs needs TUNG_APNS_KEY, TUNG_APNS_KEY_ID and TUNG_APNS_TEAM_ID together; ${missing.joinToString()} is not set.")
+            }
+            val pem = if (key.contains("-----BEGIN")) {
+                key
+            } else {
+                try {
+                    File(key).readText()
+                } catch (e: Exception) {
+                    throw ConfigException(
+                        "$APNS_KEY_ENV is '$key', which cannot be read (${e.javaClass.simpleName}). " +
+                            "Set it to the path of the APNs auth key (.p8) inside the container, or to its contents.",
+                    )
+                }
+            }
+            val source = if (pem === key) APNS_KEY_ENV else "$APNS_KEY_ENV ($key)"
+            return ApnsConfig(keyId, teamId, ApnsConfig.parseKey(pem, source), topic ?: DEFAULT_APNS_TOPIC, sandbox)
+        }
 
         /** [raw] is the JSON itself when it starts with `{`, else a path to the file. */
         private fun fcmServiceAccount(raw: String): FcmServiceAccount {

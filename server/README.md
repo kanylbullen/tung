@@ -365,6 +365,13 @@ There is nothing to configure.
 key, id or exact name in any catalogue language, and an unknown name comes
 back as a question with suggestions, never a guess.
 
+**Admin tools.** For the accounts in `TUNG_ADMIN_EMAILS`, the feedback users
+sent: `feedback(include_resolved)`, `feedback_screenshot(feedback_id,
+image_id)` (the screenshot as an image) and `resolve_feedback(feedback_id,
+resolved)`. Every client sees them listed; anyone else, and a read
+connection, gets a tool error, as `/api/v1/admin/feedback` refuses them.
+Deleting feedback stays in the web app's Server admin.
+
 **Prompts.** `suggest_program(goal, days_per_week, equipment)`,
 `next_workout()` and `plateaus()`: each tells the assistant to read your
 history first, to answer in your language, and to save a routine only after
@@ -377,9 +384,9 @@ at its next 15-minute sync. So after every change to your training data
 (a sync that pushed rows, a command, an MCP tool that writes, the REST
 writes), the server sends your **other** devices an empty "sync now",
 `{"type":"sync"}`, and they sync to see what changed. Never content, so
-nothing about your training passes through Google or a push distributor.
+nothing about your training passes through Google, Apple or a push distributor.
 
-Two transports; the app picks one per device and registers it:
+Three transports; the app picks one per device and registers it:
 
 - **UnifiedPush** needs nothing on the server. The device's distributor
   (ntfy is the usual one, and self-hostable) gives it a URL, the app
@@ -404,8 +411,33 @@ Two transports; the app picks one per device and registers it:
   of the same Firebase project.
   Without the variable FCM is off: the server says so once at start, keeps
   devices' FCM registrations and sends them nothing.
+- **APNs** (Apple Push Notification service) wakes the iPhone app with a
+  silent background push, `{"aps":{"content-available":1}}`
+  (`apns-push-type: background`, priority 5), over HTTP/2 to
+  `https://api.push.apple.com/3/device/<token>`. It needs an APNs auth key:
+  in the Apple Developer account, Certificates, Identifiers & Profiles, Keys,
+  **+**, enable Apple Push Notifications service, and download the `.p8`
+  (once: Apple keeps no copy). The app's App ID (Identifiers) needs the Push
+  Notifications capability. Then set:
+  - `TUNG_APNS_KEY`: the `.p8`'s path inside the container, or its contents
+    (in an env file on one line with `\n` for the line breaks);
+  - `TUNG_APNS_KEY_ID`: the key's 10-character id;
+  - `TUNG_APNS_TEAM_ID`: the team id (Membership details);
+  - `TUNG_APNS_TOPIC`: the app's bundle id, default `io.github.kanylbullen.tung`;
+  - `TUNG_APNS_SANDBOX`: `true` only for development builds run from Xcode,
+    which get sandbox device tokens; TestFlight and App Store builds use
+    production, the default. A token from the other environment is answered
+    `BadDeviceToken` and revoked, and the device registers again at its next
+    start.
 
-With neither, nothing changes: devices sync every 15 minutes and when the
+  The server signs an ES256 provider token (JWT) with the key and reuses it
+  for 50 minutes, as Apple asks. Without the three variables APNs is off: the
+  server says so once at start, keeps iPhones' registrations and sends them
+  nothing; some but not all of them stops the server with a message. An
+  iPhone registers `apns` only with a server that knows it, so deploy the
+  server with these variables before the iPhone app ships.
+
+With none of them, nothing changes: devices sync every 15 minutes and when the
 app opens, as before.
 
 **An app build with FCM.** The open-source build has no Firebase app, so it
@@ -420,8 +452,8 @@ google-services plugin only when that file exists. The file is in
 
 **Endpoints API.** `POST /api/v1/push/endpoints {device_id, transport,
 endpoint}` (write token) registers a device: `transport` is `fcm` (endpoint
-= the registration token) or `unifiedpush` (endpoint = the distributor's
-URL). One endpoint per `device_id`: registering again replaces it in place
+= the registration token), `unifiedpush` (endpoint = the distributor's
+URL) or `apns` (endpoint = the device token in hex, 64 to 200 characters). One endpoint per `device_id`: registering again replaces it in place
 and keeps its id (200; new devices get 201). `GET` lists your active
 endpoints, `DELETE /api/v1/push/endpoints/{id}` revokes one. At most 20 per
 user. A client sends its own `device_id` as the `X-Tung-Device` header with

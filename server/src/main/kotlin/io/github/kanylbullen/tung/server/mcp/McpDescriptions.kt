@@ -156,6 +156,19 @@ object McpDescriptions {
             "whether it is the active one, last_completed_day_id (a rotating program continues with the day after it), and its days " +
             "with day_id, routine_id and routine_name."
 
+    const val FEEDBACK =
+        "For the server's admins only (TUNG_ADMIN_EMAILS); anyone else gets an error. The bugs and ideas users sent from the apps, " +
+            "newest first: id, kind (bug or idea), message, platform, app_version, created_at and resolved_at (epoch milliseconds), " +
+            "the sender's email, and images (id, content_type, size) to fetch with feedback_screenshot. open_count is how many are " +
+            "not resolved. Only open ones unless include_resolved is true."
+
+    const val FEEDBACK_SCREENSHOT =
+        "For the server's admins only. One screenshot of a feedback, as an image: feedback_id and image_id from the feedback tool."
+
+    const val RESOLVE_FEEDBACK =
+        "For the server's admins only. Marks a feedback resolved (resolved: true, the default) or opens it again (false). " +
+            "Ask the admin first; it changes what the web app's Server admin shows as open."
+
     const val EXERCISES =
         "Finds exercises. Lists the core catalogue and the user's own exercises (id, catalogue key, every name it has in each " +
             "language, muscle group, equipment, rest timer); with a query of two or more characters also matches from the extended " +

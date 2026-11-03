@@ -98,7 +98,7 @@ class McpTest {
 
         val tools = client.rpc(token, "tools/list", session = session)["tools"]!!.jsonArray.map { it.jsonObject }
         val names = tools.map { it["name"]!!.str }
-        assertEquals((CommandNames.all.values + TungMcp.READ_TOOLS).toSet(), names.toSet())
+        assertEquals((CommandNames.all.values + TungMcp.READ_TOOLS + TungMcp.ADMIN_TOOLS).toSet(), names.toSet())
         val applyPlan = tools.single { it["name"]!!.str == "apply_plan" }
         assertTrue(applyPlan["description"]!!.str.contains("set_count"), "apply_plan carries the plan schema")
         assertEquals("array", applyPlan["inputSchema"]!!.jsonObject["properties"]!!.jsonObject["exercises"]!!.jsonObject["type"]!!.str)

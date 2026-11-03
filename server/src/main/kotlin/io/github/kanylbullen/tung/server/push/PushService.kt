@@ -79,6 +79,10 @@ class PushService(
         if (fcm == null || !fcm.enabled) {
             log.info("FCM push is off: TUNG_FCM_SERVICE_ACCOUNT_JSON is not set. Endpoints with transport fcm are kept but not sent to.")
         }
+        val apns = this.senders[PushTransport.APNS]
+        if (apns == null || !apns.enabled) {
+            log.info("APNs push is off: TUNG_APNS_KEY, TUNG_APNS_KEY_ID and TUNG_APNS_TEAM_ID are not set. Endpoints with transport apns are kept but not sent to.")
+        }
     }
 
     override fun changed(userId: String, sourceDeviceId: String?) {

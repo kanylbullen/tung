@@ -109,6 +109,8 @@ fun Route.apiRoutes(
     pushStore: PushStore,
     push: ChangeNotifier,
     commands: CommandService,
+    admins: Admins,
+    feedback: FeedbackStore,
     welcome: WelcomeMail? = null,
 ) {
     /** After a REST write to training data: wake the user's other devices. */
@@ -123,10 +125,8 @@ fun Route.apiRoutes(
     get("/openapi.yaml") { call.respondText(spec, ContentType.parse("application/yaml")) }
     swaggerUI(path = "docs", swaggerFile = "openapi/openapi.yaml")
 
-    val admins = Admins(db, config.adminEmails, requireProof = accounts.google != null || accounts.apple != null)
     val testers = Testers(db, admins, config.testerSignups, config.clock, welcome)
     val adminStore = AdminStore(db, admins, config.testerSignups, config.clock)
-    val feedback = FeedbackStore(db, admins, config.clock)
     route("/api/v1") {
         linkRoutes(db, accounts)
         rateLimit(AUTH_RATE_LIMIT) {

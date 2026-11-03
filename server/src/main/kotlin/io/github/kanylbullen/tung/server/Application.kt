@@ -11,6 +11,7 @@ import io.github.kanylbullen.tung.core.sync.DEVICE_HEADER
 import io.github.kanylbullen.tung.core.sync.PushTransport
 import io.github.kanylbullen.tung.server.oauth.OAuthStore
 import io.github.kanylbullen.tung.server.routes.siteRoutes
+import io.github.kanylbullen.tung.server.push.ApnsSender
 import io.github.kanylbullen.tung.server.push.DisabledPushSender
 import io.github.kanylbullen.tung.server.push.EndpointGuard
 import io.github.kanylbullen.tung.server.push.FcmSender
@@ -88,6 +89,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
         listOf(
             UnifiedPushSender(pushHttp, pushGuard),
             config.fcmServiceAccount?.let { FcmSender(it, pushHttp, config.fcmBaseUrl) } ?: DisabledPushSender(PushTransport.FCM),
+            config.apns?.let { ApnsSender(it, pushHttp, config.apnsBaseUrl ?: it.baseUrl) } ?: DisabledPushSender(PushTransport.APNS),
         ),
         config.pushDebounceMillis,
     )
@@ -133,7 +135,9 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
         }
     }
     monitor.subscribe(ApplicationStopping) { oauthSweep.cancel() }
-    val mcp = TungMcp(commands, McpReads(db, serverCatalogue, workouts, routines))
+    val admins = Admins(db, config.adminEmails, requireProof = accounts.google != null || accounts.apple != null)
+    val feedback = FeedbackStore(db, admins, config.clock)
+    val mcp = TungMcp(commands, McpReads(db, serverCatalogue, workouts, routines), feedback)
     val mcpTransport = ExchangeTransport().also { runBlocking { mcp.server.connect(it) } }
     val mcpSessions = McpSessions()
 
@@ -182,7 +186,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     }
     installErrorPages()
 
-    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push, commands, welcome) }
+    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push, commands, admins, feedback, welcome) }
     routing { siteRoutes(config, accounts) }
     routing {
         commandRoutes(commands)

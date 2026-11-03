@@ -4,12 +4,18 @@ import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.CommandWire
 import io.github.kanylbullen.tung.core.command.ExerciseRef
 import io.github.kanylbullen.tung.core.command.WireDecoding
+import io.github.kanylbullen.tung.server.ApiException
+import io.github.kanylbullen.tung.server.ApiJson
+import io.github.kanylbullen.tung.server.FeedbackList
+import io.github.kanylbullen.tung.server.FeedbackStore
 import io.github.kanylbullen.tung.server.TokenPrincipal
 import io.github.kanylbullen.tung.server.Tokens
+import io.github.kanylbullen.tung.server.badRequest
 import io.github.kanylbullen.tung.server.command.CommandService
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.GetPromptResult
+import io.modelcontextprotocol.kotlin.sdk.ImageContent
 import io.modelcontextprotocol.kotlin.sdk.Implementation
 import io.modelcontextprotocol.kotlin.sdk.InitializeRequest
 import io.modelcontextprotocol.kotlin.sdk.InitializeResult
@@ -30,11 +36,13 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import java.util.Base64
 import java.util.Properties
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
@@ -68,10 +76,11 @@ class McpExchange(val principal: TokenPrincipal) : AbstractCoroutineContextEleme
  * Tung's MCP server: one tool per command in core's `CommandNames` (same
  * name, the input schema from `CommandWire`, executed by the server-side
  * command handler, so an assistant's change is exactly a button's), the read
- * tools, three prompts and the core catalogue as a resource. One SDK
- * [Server] serves every user; the user comes from the request ([McpExchange]).
+ * tools, the admins' feedback tools, three prompts and the core catalogue as
+ * a resource. One SDK [Server] serves every user; the user comes from the
+ * request ([McpExchange]).
  */
-class TungMcp(private val commands: CommandService, private val reads: McpReads) {
+class TungMcp(private val commands: CommandService, private val reads: McpReads, private val feedback: FeedbackStore) {
 
     private val capabilities = ServerCapabilities(
         experimental = null,
@@ -91,6 +100,7 @@ class TungMcp(private val commands: CommandService, private val reads: McpReads)
         }
         registerCommandTools(server)
         registerReadTools(server)
+        registerAdminTools(server)
         registerPrompts(server)
         server.addResource(
             uri = CATALOG_URI,
@@ -101,7 +111,7 @@ class TungMcp(private val commands: CommandService, private val reads: McpReads)
     }
 
     /** The names of every tool, for tests and the README. */
-    val toolNames: List<String> get() = CommandWire.names + READ_TOOLS
+    val toolNames: List<String> get() = CommandWire.names + READ_TOOLS + ADMIN_TOOLS
 
     private fun registerCommandTools(server: Server) {
         for (name in CommandWire.names) {
@@ -185,6 +195,89 @@ class TungMcp(private val commands: CommandService, private val reads: McpReads)
         }
     }
 
+    /**
+     * The feedback list, a screenshot and resolve, as `/admin/feedback` has them, so an admin's
+     * assistant can triage. Listed to everyone (the SDK's tool list is one for all), refused by
+     * [FeedbackStore] exactly as the REST routes refuse: anyone not in `TUNG_ADMIN_EMAILS`, and a
+     * read token. No delete: that stays a tap in the web app's Server admin.
+     */
+    private fun registerAdminTools(server: Server) {
+        val feedbackId = buildJsonObject {
+            put("type", "string")
+            put("description", "The feedback's id, from the feedback tool.")
+        }
+        server.addTool(
+            "feedback",
+            McpDescriptions.FEEDBACK,
+            Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("include_resolved") {
+                        put("type", "boolean")
+                        put("description", "Also list feedback already marked resolved. Default false.")
+                    }
+                },
+            ),
+        ) { request ->
+            admin {
+                val all = feedback.list(principal())
+                val includeResolved = (request.arguments["include_resolved"] as? JsonPrimitive)?.booleanOrNull ?: false
+                val shown = if (includeResolved) all else all.copy(feedback = all.feedback.filter { it.resolvedAt == null })
+                toolResult(ApiJson.encodeToJsonElement(FeedbackList.serializer(), shown).jsonObject)
+            }
+        }
+        server.addTool(
+            "feedback_screenshot",
+            McpDescriptions.FEEDBACK_SCREENSHOT,
+            Tool.Input(
+                properties = buildJsonObject {
+                    put("feedback_id", feedbackId)
+                    putJsonObject("image_id") {
+                        put("type", "string")
+                        put("description", "The screenshot's id, from the feedback's images.")
+                    }
+                },
+                required = listOf("feedback_id", "image_id"),
+            ),
+        ) { request ->
+            admin {
+                val image = feedback.image(principal(), request.arguments.string("feedback_id"), request.arguments.string("image_id"))
+                CallToolResult(content = listOf(ImageContent(Base64.getEncoder().encodeToString(image.bytes), image.contentType)))
+            }
+        }
+        server.addTool(
+            "resolve_feedback",
+            McpDescriptions.RESOLVE_FEEDBACK,
+            Tool.Input(
+                properties = buildJsonObject {
+                    put("feedback_id", feedbackId)
+                    putJsonObject("resolved") {
+                        put("type", "boolean")
+                        put("description", "true marks it resolved, false opens it again. Default true.")
+                    }
+                },
+                required = listOf("feedback_id"),
+            ),
+        ) { request ->
+            admin {
+                val id = request.arguments.string("feedback_id")
+                val resolved = (request.arguments["resolved"] as? JsonPrimitive)?.booleanOrNull ?: true
+                feedback.setResolved(principal(), id, resolved)
+                toolResult(buildJsonObject {
+                    put("feedback_id", id)
+                    put("resolved", resolved)
+                })
+            }
+        }
+    }
+
+    /** The REST routes' refusals (not an admin, a read token, an id that does not exist) as a tool error with their message. */
+    private suspend fun admin(block: suspend () -> CallToolResult): CallToolResult =
+        try {
+            block()
+        } catch (e: ApiException) {
+            toolError(e.message)
+        }
+
     private fun registerPrompts(server: Server) {
         server.addPrompt(
             name = "suggest_program",
@@ -226,6 +319,10 @@ class TungMcp(private val commands: CommandService, private val reads: McpReads)
         required = (schema["required"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull },
     )
 
+    private fun JsonObject.string(key: String): String =
+        (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+            ?: throw badRequest("$key is required.")
+
     private fun JsonObject.number(key: String): Double? =
         (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.contentOrNull?.toDoubleOrNull()
 
@@ -241,6 +338,7 @@ class TungMcp(private val commands: CommandService, private val reads: McpReads)
     companion object {
         const val CATALOG_URI = "tung://catalog/core"
         val READ_TOOLS = listOf("history", "last_time", "current_workout", "routines", "programs", "exercises")
+        val ADMIN_TOOLS = listOf("feedback", "feedback_screenshot", "resolve_feedback")
         const val DEFAULT_HISTORY = 10
         const val MAX_HISTORY = 50
         private const val NEEDS_ANSWERS_HINT =
