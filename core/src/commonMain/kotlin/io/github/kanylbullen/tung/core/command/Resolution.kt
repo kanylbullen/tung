@@ -66,7 +66,9 @@ data class UnresolvedExercise(val text: String, val suggestions: List<ExerciseCa
 /** How many suggestions a question carries at most. */
 const val MAX_SUGGESTIONS = 5
 
-private val nonWord = Regex("[^\\p{L}\\p{N}]+")
+// Letters and every kind of number (\p{N} spelled out as Nd, Nl and No): Kotlin/Native's
+// regex engine has no \p{N}, and the iPhone app aborted on its first resolved name.
+private val nonWord = Regex("[^\\p{L}\\p{Nd}\\p{Nl}\\p{No}]+")
 
 /**
  * The form names are compared in: [normalizeForSearch] (lowercase, no

@@ -53,4 +53,22 @@ class NoJvmImportsTest {
         }
         assertEquals("platform imports in core's commonMain", emptyList<String>(), offenders)
     }
+
+    /**
+     * Unicode classes a regex may not use: Kotlin/Native's engine (the iPhone) has no `\p{N}`,
+     * no `\p{IsXxx}` and no `\p{javaXxx}`, and a pattern in a top-level `val` that fails to
+     * compile aborts the app the first time its file is touched (2026-11-03: `\p{N}` in
+     * `Resolution.kt` crashed the iPhone on "Add exercise"). `\p{L}`, `\p{Nd}`, `\p{Nl}`,
+     * `\p{No}`, `\p{M}` and `\p{Mn}` are fine; spell `\p{N}` as `\p{Nd}\p{Nl}\p{No}`.
+     */
+    @Test
+    fun commonMainRegexesUseOnlyClassesKotlinNativeHas() {
+        val unsupported = Regex("""\\{1,2}p\{(N|Is[A-Za-z]+|java[A-Za-z]+)\}""")
+        val offenders = commonSources().walkTopDown().filter { it.isFile && it.extension == "kt" }.toList().flatMap { file ->
+            file.readLines().mapIndexedNotNull { i, line ->
+                if (!isComment(line) && unsupported.containsMatchIn(line)) "${file.name}:${i + 1}: ${line.trim()}" else null
+            }
+        }
+        assertEquals("regex classes Kotlin/Native lacks in core's commonMain", emptyList<String>(), offenders)
+    }
 }
