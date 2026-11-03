@@ -2226,7 +2226,8 @@ fallback, and only on a tap.
   at most four at once. The admins list it (`GET
   /api/v1/admin/feedback`, newest first with the open count), fetch a
   screenshot (`…/{id}/images/{imageId}`, `nosniff`), mark it resolved or
-  open (`PATCH {resolved}`) and delete it; the rows go with the account
+  open (`PATCH {resolved}`) and delete it (over MCP too, all but delete:
+  see "MCP"); the rows go with the account
   (`ON DELETE CASCADE`). Clients: the phone's Settings → Feedback, the web's
   Settings → Send feedback (paste with Ctrl+V or pick, scaled in a canvas
   over 1.5 MB or 2000 px, `web/.../feedback/WebFeedback.kt`), and the web's
@@ -2339,8 +2340,14 @@ fallback, and only on a tap.
   per `CommandNames` entry (descriptions in `McpDescriptions`, which a test
   keeps complete; the commands table and the name enum of
   `/api/v1/commands/{name}` in `openapi.yaml` list the same names) plus the
-  read tools in `McpReads`; a read token gets a tool
-  error from a command tool.
+  read tools in `McpReads` and the admins' feedback tools (`feedback`,
+  `feedback_screenshot`, `resolve_feedback`: `FeedbackStore`'s list, image
+  and resolve, so `Admins.require` refuses exactly as the REST routes do;
+  listed to everyone, since the SDK has one tool list; no delete, which
+  stays in the web's Server admin; `McpAdminTest`); a read token gets a
+  tool error from a command tool and from an admin tool. `Admins` and
+  `FeedbackStore` are built once in `Application.module` and handed to
+  both `apiRoutes` and `TungMcp`.
 - **Tests** (`./gradlew :server:test --no-daemon`) use a real Postgres from
   Testcontainers, so they need Docker; `./gradlew test` includes them.
   `server/build.gradle.kts` sets `api.version=1.44` for docker-java, because

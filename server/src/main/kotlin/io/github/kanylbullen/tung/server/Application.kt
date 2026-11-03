@@ -133,7 +133,9 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
         }
     }
     monitor.subscribe(ApplicationStopping) { oauthSweep.cancel() }
-    val mcp = TungMcp(commands, McpReads(db, serverCatalogue, workouts, routines))
+    val admins = Admins(db, config.adminEmails, requireProof = accounts.google != null || accounts.apple != null)
+    val feedback = FeedbackStore(db, admins, config.clock)
+    val mcp = TungMcp(commands, McpReads(db, serverCatalogue, workouts, routines), feedback)
     val mcpTransport = ExchangeTransport().also { runBlocking { mcp.server.connect(it) } }
     val mcpSessions = McpSessions()
 
@@ -182,7 +184,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     }
     installErrorPages()
 
-    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push, commands, welcome) }
+    routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push, commands, admins, feedback, welcome) }
     routing { siteRoutes(config, accounts) }
     routing {
         commandRoutes(commands)
