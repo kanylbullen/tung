@@ -39,6 +39,16 @@ targets:
         # Only HTTPS through the system and no encryption of its own, so the
         # export compliance question is answered here instead of per build.
         ITSAppUsesNonExemptEncryption: false
+        # The app allows http only to localhost and private IP addresses (core's
+        # checkServerUrl: a self-hosted tung-server or Ollama on the home
+        # network); App Transport Security blocks all http unless told, and
+        # NSAllowsLocalNetworking lifts it for exactly those (unqualified and
+        # .local names, IP addresses), nothing on the internet.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        # Shown when iOS asks to let the app reach a device on the home
+        # network (iOS 14+ Local Network privacy).
+        NSLocalNetworkUsageDescription: Tung connects to a server or an AI model you run on your own network, when you choose one in Settings.
     # Sign in with Apple (enabled for the App ID io.github.kanylbullen.tung);
     # appleIdToken() in ui's iosMain asks for it. Generated like Info.plist.
     entitlements:
