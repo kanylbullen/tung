@@ -184,7 +184,12 @@ iPhone's own parts: `KeychainTokenStore` (the session token and the AI key,
 after first unlock, this device only), `IosRestTimer` (over common
 `StoredRestTimer`, which the phone's `RestTimerController` shares, with a local
 notification for "Rest over"), `IosSyncScheduler` (sync while the app runs),
-`NoPush` and `iosAppDirectory`/`iosSettingsDataStore` (Application Support).
+`IosPush` (the APNs device token registered as an `apns` endpoint while
+signed in, forgotten at sign-out) and `iosAppDirectory`/`iosSettingsDataStore`
+(Application Support). Background sync is the Xcode app's `AppDelegate`
+(`TungApp.swift`): the server's silent push and a `BGAppRefreshTask` call ui's
+`IosApp.kt` (`onApnsToken`, `syncInBackground`), which also holds the one
+`appContainer`, so a push that starts the app with no screen finds it.
 The iPhone's container is `IosContainer` here in `iosMain`, beside
 `TungContainer`'s layer; what lives in the app bundle comes in as functions
 (the catalogue files, which ui ships as iOS-only Compose Resources copied
@@ -219,7 +224,7 @@ the files had in `app/`:
 | `timer/` | `RestTimerStore` and common `StoredRestTimer` (the timer kept in the `settings` DataStore); Android: `RestTimerController` (stored timer + alarm), `RestAlarm`, `RestTimerReceiver` (declared in data's manifest), `RestAlerts` (vibration + notification); iOS: `IosRestTimer` (stored timer + a local notification). |
 | `wear/` | `WatchStateSource`: the `WatchWorkoutState` of this device's database, with `WearSelection`/`WearSelectionHolder`. The phone publishes it to a companion watch; a standalone watch shows its own. |
 | `ongoing/` | The ongoing notification of a workout in progress: `OngoingWorkout` (+ `ongoingWorkouts`, its Flow over the repositories, and `chipText`, the Live Update chip's text), `OngoingWorkoutNotifier`, `OngoingWorkoutReceiver` (its Log set and Add set). See "Ongoing workout and push". |
-| `push/` | Push: `PushControl` and `PushStatus` (common), `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`; iOS: `NoPush` until APNs. See "Ongoing workout and push". |
+| `push/` | Push: `PushControl` and `PushStatus` (common), `PushRegistrar`, `PushEnvironment`/`AndroidPushEnvironment`, `TungFirebaseMessagingService`, `TungUnifiedPushReceiver`; iOS: `IosPush` (APNs). See "Ongoing workout and push". |
 | `importing/` | Import from other apps: `Importer` (the one bulk write), `ImportService` (`container.imports`), `ImportHistory`. See "Import". |
 | `ui/common/` | `ExerciseNames` and `Exercise.displayName(context)`; the composable `exerciseDisplayName` stays in `app/`. |
 

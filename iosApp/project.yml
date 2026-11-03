@@ -48,6 +48,10 @@ targets:
           NSAllowsLocalNetworking: true
         # Shown when iOS asks to let the app reach a device on the home
         # network (iOS 14+ Local Network privacy).
+        # Background sync (TungApp.swift's AppDelegate): the server's silent push,
+        # and a refresh task iOS runs when it finds the time.
+        UIBackgroundModes: [remote-notification, fetch]
+        BGTaskSchedulerPermittedIdentifiers: [io.github.kanylbullen.tung.sync]
         NSLocalNetworkUsageDescription: Tung connects to a server or an AI model you run on your own network, when you choose one in Settings.
     # Sign in with Apple (enabled for the App ID io.github.kanylbullen.tung);
     # appleIdToken() in ui's iosMain asks for it. Generated like Info.plist.
@@ -55,6 +59,9 @@ targets:
       path: Tung/Tung.entitlements
       properties:
         com.apple.developer.applesignin: [Default]
+        # Push for the silent "sync now" (APNs). Production: TestFlight and App
+        # Store builds use it, and no build here is signed for development.
+        aps-environment: production
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.kanylbullen.tung
