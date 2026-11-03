@@ -365,6 +365,13 @@ There is nothing to configure.
 key, id or exact name in any catalogue language, and an unknown name comes
 back as a question with suggestions, never a guess.
 
+**Admin tools.** For the accounts in `TUNG_ADMIN_EMAILS`, the feedback users
+sent: `feedback(include_resolved)`, `feedback_screenshot(feedback_id,
+image_id)` (the screenshot as an image) and `resolve_feedback(feedback_id,
+resolved)`. Every client sees them listed; anyone else, and a read
+connection, gets a tool error, as `/api/v1/admin/feedback` refuses them.
+Deleting feedback stays in the web app's Server admin.
+
 **Prompts.** `suggest_program(goal, days_per_week, equipment)`,
 `next_workout()` and `plateaus()`: each tells the assistant to read your
 history first, to answer in your language, and to save a routine only after
