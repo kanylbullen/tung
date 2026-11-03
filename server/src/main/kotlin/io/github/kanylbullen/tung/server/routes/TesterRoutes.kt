@@ -24,6 +24,9 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.selectAll
 
+/** Google Play's opt-in page for the Android app's test: a member of the tester group (`TUNG_TESTER_GROUP_URL`) becomes a tester there. */
+const val PLAY_OPT_IN_URL = "https://play.google.com/apps/testing/io.github.kanylbullen.tung"
+
 /** The most sign-ups kept: a full list answers 503 `list_full` instead of growing for a bot. */
 const val MAX_TESTER_SIGNUPS = 5_000
 

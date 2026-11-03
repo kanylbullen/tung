@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.server.routes.PLAY_OPT_IN_URL
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +82,8 @@ class WelcomeMail(
     private val scope: CoroutineScope,
     /** The server runs the Play test (`TUNG_TESTER_SIGNUPS`): the account welcome says its address is invited too. */
     private val testInvite: Boolean = false,
+    /** The Play test's Google group (`TUNG_TESTER_GROUP_URL`): the sign-up email says how to get in at once. */
+    private val testerGroup: String? = null,
     private val clock: () -> Long = System::currentTimeMillis,
     private val perDay: Int = MAX_WELCOME_MAILS_PER_DAY,
 ) {
@@ -105,7 +108,7 @@ class WelcomeMail(
     fun confirmAgain(email: String, language: String?, token: String) =
         send { url -> confirmMessage(email, swedish(language), confirmLink(url, token)) }
 
-    fun tester(email: String, language: String?) = send { url -> testerMessage(email, swedish(language), url) }
+    fun tester(email: String, language: String?) = send { url -> testerMessage(email, swedish(language), url, testerGroup) }
 
     /**
      * At most [perDay] mails a UTC day per budget, whoever asks: registration
@@ -289,7 +292,7 @@ class WelcomeMail(
                 )
             }
 
-        internal fun testerMessage(email: String, swedish: Boolean, url: String): MailMessage =
+        internal fun testerMessage(email: String, swedish: Boolean, url: String, group: String? = null): MailMessage =
             if (swedish) {
                 MailMessage(
                     email,
@@ -297,7 +300,14 @@ class WelcomeMail(
                     """
                     |Hej!
                     |
-                    |Tack för att du vill testa Tung på Android. När nästa testomgång öppnar kommer en inbjudan från Google Play till den här adressen.
+                    |${if (group == null) {
+                        "Tack för att du vill testa Tung på Android. När nästa testomgång öppnar kommer en inbjudan från Google Play till den här adressen."
+                    } else {
+                        "Tack för att du vill testa Tung på Android. Du kommer in direkt, med Google-kontot du använder i telefonen:\n\n" +
+                            "1. Gå med i Google-gruppen: $group\n" +
+                            "2. Öppna testet på Google Play och välj Bli testare: $PLAY_OPT_IN_URL\n\n" +
+                            "Det kan dröja några minuter innan Google Play låter dig installera."
+                    }}
                     |
                     |Tills dess kan du prova webbappen: $url/app/
                     |
@@ -315,7 +325,14 @@ class WelcomeMail(
                     """
                     |Hi,
                     |
-                    |Thanks for signing up to test Tung on Android. When the next test round opens, an invitation from Google Play comes to this address.
+                    |${if (group == null) {
+                        "Thanks for signing up to test Tung on Android. When the next test round opens, an invitation from Google Play comes to this address."
+                    } else {
+                        "Thanks for signing up to test Tung on Android. You can get in right away, with the Google account you use on your phone:\n\n" +
+                            "1. Join the Google group: $group\n" +
+                            "2. Open the test on Google Play and choose Become a tester: $PLAY_OPT_IN_URL\n\n" +
+                            "It can take a few minutes before Google Play lets you install."
+                    }}
                     |
                     |Until then you can try the web app: $url/app/
                     |

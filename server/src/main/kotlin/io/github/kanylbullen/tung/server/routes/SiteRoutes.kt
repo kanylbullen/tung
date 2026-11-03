@@ -38,7 +38,14 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
     // The page itself by a route of its own: a static tree at "/" would also
     // claim every unknown API path and turn its 404 into another answer.
     // The sign-up for the Play test only where that test is run (TUNG_TESTER_SIGNUPS).
-    page("/", "index.html") { keepBlocks(it, if (config.testerSignups) "testers" else "no-testers", if (config.testerSignups) "no-testers" else "testers") }
+    // With a tester group (TUNG_TESTER_GROUP_URL) the form says how to get in at once.
+    val group = config.testerGroupUrl.takeIf { config.testerSignups }
+    page("/", "index.html") { html ->
+        keepBlocks(html, if (config.testerSignups) "testers" else "no-testers", if (config.testerSignups) "no-testers" else "testers")
+            .let { keepBlocks(it, if (group != null) "group" else "no-group", if (group != null) "no-group" else "group") }
+            .replace("@group@", htmlAttribute(group.orEmpty()))
+            .replace("@opt-in@", htmlAttribute(PLAY_OPT_IN_URL))
+    }
     // What the site and the apps store; also the privacy policy Google Play asks for.
     page("/privacy", "privacy.html")
     // How to delete an account, and what goes; the deletion link Google Play asks for.
