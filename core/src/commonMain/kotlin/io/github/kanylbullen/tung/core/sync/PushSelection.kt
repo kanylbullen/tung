@@ -8,6 +8,9 @@ sealed interface PushChoice {
     /** UnifiedPush through the distributor app [distributor] (a package name; ntfy is the usual one). */
     data class UnifiedPush(val distributor: String) : PushChoice
 
+    /** Apple Push Notification service: the iPhone, which has no other transport. */
+    data object Apns : PushChoice
+
     /** Neither: the periodic sync, every 15 minutes, and a sync when the app opens. */
     data object None : PushChoice
 }
