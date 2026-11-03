@@ -6,7 +6,7 @@ package io.github.kanylbullen.tung.core
  * writes out of the JDK's Unicode data (`DiacriticTables.kt`), plus the
  * Hangul syllables, whose decomposition is a formula rather than a table
  * ([appendHangulJamo]). Together they fold every character of the Basic
- * Multilingual Plane as NFD minus the marks would, which `DiacriticsTest`
+ * Multilingual Plane as NFD minus the marks would, which `DiacriticsJdkTest`
  * checks against the JDK over the whole plane. Outside the plane nothing
  * folds: a surrogate pair is kept as it is (the few canonical decompositions
  * there, some Brahmic vowel signs, the musical symbols and the CJK
