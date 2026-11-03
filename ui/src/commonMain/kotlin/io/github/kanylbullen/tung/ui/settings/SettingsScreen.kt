@@ -105,6 +105,7 @@ private fun devicesSummary(summary: SettingsSummary): String? {
     return when (val choice = summary.push.choice) {
         null -> stringResource(Res.string.settings_summary_devices)
         PushChoice.Fcm -> stringResource(Res.string.push_status_fcm)
+        PushChoice.Apns -> stringResource(Res.string.push_status_apns)
         is PushChoice.UnifiedPush -> stringResource(Res.string.push_status_unifiedpush, summary.push.distributorLabel ?: choice.distributor)
         PushChoice.None -> stringResource(Res.string.push_status_none)
     }

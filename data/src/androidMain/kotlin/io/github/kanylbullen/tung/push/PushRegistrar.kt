@@ -101,7 +101,8 @@ class PushRegistrar(
                 store.data.first()[ENDPOINT]?.let { onNewEndpoint(PushTransport.UNIFIED_PUSH, it) }
                 environment.registerUnifiedPush(choice.distributor)
             }
-            PushChoice.None -> forgetOnServer()
+            // The phone never picks APNs (selectPushTransport offers FCM, UnifiedPush or none).
+            PushChoice.None, PushChoice.Apns -> forgetOnServer()
         }
     }
 
@@ -171,6 +172,7 @@ class PushRegistrar(
         get() = when (this) {
             PushChoice.Fcm -> PushTransport.FCM
             is PushChoice.UnifiedPush -> PushTransport.UNIFIED_PUSH
+            PushChoice.Apns -> PushTransport.APNS
             PushChoice.None -> null
         }
 

@@ -1549,7 +1549,14 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   is the DNS seam tests replace), no redirects, at most 1 KiB of the answer
   read, 5 s in all; `FcmSender` uses the
   HTTP v1 API with a hand-rolled service-account JWT; FCM is off without
-  `TUNG_FCM_SERVICE_ACCOUNT_JSON`.
+  `TUNG_FCM_SERVICE_ACCOUNT_JSON`. `ApnsSender` (the iPhone, transport
+  `apns`, endpoint the device token in hex) POSTs a silent background push
+  `{"aps":{"content-available":1}}` to `/3/device/{token}` over HTTP/2 with
+  a hand-rolled ES256 provider token (kept 50 minutes, dropped on a 403
+  `ExpiredProviderToken`); 410 or `BadDeviceToken`/`DeviceTokenNotForTopic`/
+  `Unregistered` revokes. APNs is off without `TUNG_APNS_KEY`,
+  `TUNG_APNS_KEY_ID` and `TUNG_APNS_TEAM_ID` (`TUNG_APNS_TOPIC`,
+  `TUNG_APNS_SANDBOX`; `server/README.md`, "Push").
 
 ## Health Connect
 

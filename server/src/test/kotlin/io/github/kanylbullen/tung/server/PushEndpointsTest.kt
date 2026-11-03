@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.core.sync.PUSH_ENDPOINTS_PATH
+import io.github.kanylbullen.tung.core.sync.PushTransport.APNS
 import io.github.kanylbullen.tung.core.sync.PushTransport.FCM
 import io.github.kanylbullen.tung.core.sync.PushTransport.UNIFIED_PUSH
 import io.github.kanylbullen.tung.server.push.MAX_ENDPOINTS_PER_USER
@@ -57,6 +58,18 @@ class PushEndpointsTest {
     }
 
     @Test
+    fun anIphoneRegistersItsApnsDeviceToken() = tungTest {
+        val token = client.register()
+        val hex = "0123456789abcdefABCDEF".repeat(3).take(64)
+        val created = client.registerEndpoint(token, "iphone-1", APNS, hex)
+        assertEquals(HttpStatusCode.Created, created.status, created.bodyAsText())
+        assertEquals(APNS to hex, client.endpoints(token).single().let { it.transport to it.endpoint })
+        // A longer token (Apple may lengthen them) is taken too.
+        client.registered(token, "iphone-1", APNS, "a".repeat(200))
+        assertEquals("a".repeat(200), client.endpoints(token).single().endpoint)
+    }
+
+    @Test
     fun anotherUserCanNeitherSeeNorRevokeAnEndpoint() = tungTest {
         val alice = client.register()
         val bob = client.register()
@@ -79,6 +92,11 @@ class PushEndpointsTest {
             Triple(" ", UNIFIED_PUSH, "https://ntfy.sh/up1"),
             Triple("x".repeat(129), UNIFIED_PUSH, "https://ntfy.sh/up1"),
             Triple("phone", "apns", "token"),
+            Triple("phone", APNS, "ab".repeat(31)),
+            Triple("phone", APNS, "ab".repeat(101)),
+            Triple("phone", APNS, "zz".repeat(32)),
+            Triple("phone", APNS, "ab".repeat(16) + " " + "ab".repeat(16)),
+            Triple("phone", APNS, "<" + "ab".repeat(32) + ">"),
             Triple("phone", FCM, ""),
             Triple("phone", FCM, "a token with spaces"),
             Triple("phone", FCM, "t".repeat(4097)),

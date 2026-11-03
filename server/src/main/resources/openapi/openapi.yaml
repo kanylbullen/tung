@@ -2160,7 +2160,8 @@ components:
 
     PushTransport:
       type: string
-      enum: [fcm, unifiedpush]
+      enum: [fcm, unifiedpush, apns]
+      description: "`fcm` (Android with Google Play services), `unifiedpush` (a distributor such as ntfy) or `apns` (the iPhone). A server without the transport configured keeps the endpoint and sends it nothing."
 
     PushEndpointRequest:
       type: object
@@ -2172,7 +2173,7 @@ components:
           type: string
           minLength: 1
           maxLength: 4096
-          description: The FCM registration token, or the UnifiedPush distributor's URL (`https://`; `http://` only to localhost or a private IP).
+          description: The FCM registration token; the UnifiedPush distributor's URL (`https://`; `http://` only to localhost or a private IP); or the APNs device token in hex (64 to 200 characters `0-9a-fA-F`, no spaces).
 
     PushEndpoint:
       type: object

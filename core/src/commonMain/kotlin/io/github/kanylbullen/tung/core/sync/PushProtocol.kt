@@ -17,7 +17,15 @@ object PushTransport {
     /** UnifiedPush (ntfy and other distributors): `endpoint` is the URL the server POSTs to. */
     const val UNIFIED_PUSH = "unifiedpush"
 
-    val ALL: Set<String> = setOf(FCM, UNIFIED_PUSH)
+    /**
+     * Apple Push Notification service (the iPhone): `endpoint` is the device token in hex. The
+     * server sends a silent background push; a server without APNs configured keeps the
+     * endpoint and sends nothing. A client registers it only with a server that knows it (an
+     * older one answers 400 and the device syncs on its own schedule, as without push).
+     */
+    const val APNS = "apns"
+
+    val ALL: Set<String> = setOf(FCM, UNIFIED_PUSH, APNS)
 }
 
 /** `POST /api/v1/push/endpoints`: registers or replaces the endpoint of [deviceId]. */
