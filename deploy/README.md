@@ -63,5 +63,6 @@ keeps its log on its own device.
   and other clients, and the export gives you everything at once.
 
 Sign in with Google and push to phones are optional and need their own
-settings (`TUNG_GOOGLE_CLIENT_ID`, `TUNG_FCM_SERVICE_ACCOUNT_JSON`); see
+settings (`TUNG_GOOGLE_CLIENT_ID`, `TUNG_FCM_SERVICE_ACCOUNT_JSON`, the
+`TUNG_APNS_*` variables for iPhones); see
 [`server/README.md`](../server/README.md).

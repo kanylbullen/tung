@@ -10,6 +10,7 @@ import io.github.kanylbullen.tung.core.sync.SYNC_PATH
 import io.github.kanylbullen.tung.core.sync.SyncChanges
 import io.github.kanylbullen.tung.core.sync.SyncRequest
 import io.github.kanylbullen.tung.core.sync.SyncWorkout
+import io.github.kanylbullen.tung.server.push.ApnsConfig
 import io.github.kanylbullen.tung.server.push.FCM_BASE_URL
 import io.github.kanylbullen.tung.server.push.FcmServiceAccount
 import io.github.kanylbullen.tung.server.push.PushService
@@ -88,6 +89,8 @@ fun pushTest(
     allowPrivate: Boolean = true,
     fcm: FcmServiceAccount? = null,
     fcmBaseUrl: String = FCM_BASE_URL,
+    apns: ApnsConfig? = null,
+    apnsBaseUrl: String? = null,
     block: suspend ApplicationTestBuilder.(PushService) -> Unit,
 ) = testApplication {
     environment { config = MapApplicationConfig() }
@@ -98,6 +101,8 @@ fun pushTest(
                 pushDebounceMillis = debounceMillis,
                 fcmServiceAccount = fcm,
                 fcmBaseUrl = fcmBaseUrl,
+                apns = apns,
+                apnsBaseUrl = apnsBaseUrl,
                 pushAllowPrivate = allowPrivate,
             ),
         )
@@ -156,3 +161,15 @@ fun serviceAccountJson(keys: KeyPair, tokenUri: String, projectId: String = "tun
         put("token_uri", tokenUri)
     }.toString()
 }
+
+/** An EC P-256 key pair, the kind an APNs auth key is. */
+fun ecKeyPair(): KeyPair = KeyPairGenerator.getInstance("EC").apply { initialize(java.security.spec.ECGenParameterSpec("secp256r1")) }.generateKeyPair()
+
+/** [keys]' private key as the PKCS#8 PEM of an APNs `.p8` file. */
+fun p8Pem(keys: KeyPair): String =
+    "-----BEGIN PRIVATE KEY-----\n" +
+        Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(keys.private.encoded) +
+        "\n-----END PRIVATE KEY-----\n"
+
+/** A device token as an iPhone registers it: 32 bytes in hex. */
+fun apnsDeviceToken(seed: Int = 1): String = (0 until 32).joinToString("") { "%02x".format((it * 7 + seed) and 0xff) }

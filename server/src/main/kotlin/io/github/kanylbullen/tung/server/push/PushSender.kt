@@ -44,16 +44,22 @@ interface PushSender {
     suspend fun send(endpoint: String): PushOutcome
 }
 
-/** A transport the server is not configured for (FCM without a service account). */
+/** A transport the server is not configured for (FCM without a service account, APNs without a key). */
 class DisabledPushSender(override val transport: String) : PushSender {
     override val enabled = false
 
     override suspend fun send(endpoint: String): PushOutcome = PushOutcome.Failed("$transport push is not configured on this server")
 }
 
-/** The HTTP client every sender shares: the JDK's own, no redirects followed, [PUSH_TIMEOUT] to connect. */
+/**
+ * The HTTP client every sender shares: the JDK's own, no redirects followed,
+ * [PUSH_TIMEOUT] to connect. HTTP/2, which APNs requires (the JDK's default,
+ * named so nobody pins 1.1): over TLS it is negotiated with ALPN, and a
+ * server that only speaks HTTP/1.1 (a distributor, the tests' fakes) gets that.
+ */
 fun pushHttpClient(): HttpClient =
     HttpClient.newBuilder()
+        .version(HttpClient.Version.HTTP_2)
         .connectTimeout(PUSH_TIMEOUT)
         .followRedirects(HttpClient.Redirect.NEVER)
         .build()

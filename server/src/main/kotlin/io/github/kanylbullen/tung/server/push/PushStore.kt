@@ -157,7 +157,8 @@ class PushStore(
 /**
  * The shape of a registration: a device id of 1 to [MAX_DEVICE_ID]
  * characters, a known transport, and an endpoint of 1 to [MAX_ENDPOINT]
- * characters: an FCM token without spaces, or for UnifiedPush an http(s)
+ * characters: an FCM token without spaces, an APNs device token (64 to 200
+ * hex characters), or for UnifiedPush an http(s)
  * URL without user info or fragment; whether the server may call it is
  * [EndpointGuard]'s, checked in [PushStore.register]. A query is allowed,
  * since distributors put one in their URLs (ntfy's `?up=1`).
@@ -170,6 +171,8 @@ fun validatePushEndpoint(deviceId: String, transport: String, endpoint: String) 
     when (transport) {
         PushTransport.FCM ->
             if (endpoint.any { it.isWhitespace() || it.isISOControl() }) throw badRequest("endpoint must be an FCM registration token, without spaces.")
+        PushTransport.APNS ->
+            if (!isApnsDeviceToken(endpoint)) throw badRequest("endpoint must be an APNs device token: 64 to 200 hex characters, without spaces.")
         PushTransport.UNIFIED_PUSH -> {
             val uri = runCatching { URI(endpoint) }.getOrNull()
             val scheme = uri?.scheme?.lowercase()
