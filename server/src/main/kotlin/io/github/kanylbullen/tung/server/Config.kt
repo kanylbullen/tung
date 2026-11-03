@@ -39,6 +39,13 @@ data class ServerConfig(
      * form is not on the page and `/api/v1/testers` is 404 `not_configured`.
      */
     val testerSignups: Boolean = false,
+    /**
+     * `TUNG_TESTER_GROUP_URL`: the Google group whose members are the Play
+     * test's testers. With [testerSignups] the landing page and the sign-up
+     * email point there and to Play's opt-in page, so a tester gets in at
+     * once instead of waiting to be added by hand. https only.
+     */
+    val testerGroupUrl: String? = null,
     /** Behind a reverse proxy: take the client address from the last X-Forwarded-For entry, for the rate limit and the log. The RFC 7239 `Forwarded` header is ignored: proxies pass a client's copy through. */
     val trustProxy: Boolean = false,
     /** Requests per minute and client address to register and login. */
@@ -155,6 +162,11 @@ data class ServerConfig(
                 adminEmails = value("TUNG_ADMIN_EMAILS")
                     ?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.toSet().orEmpty(),
                 testerSignups = testerSignups,
+                testerGroupUrl = value("TUNG_TESTER_GROUP_URL")?.trim()?.takeIf { it.isNotEmpty() }?.also { url ->
+                    if (!url.startsWith("https://") || url.any { it.isWhitespace() || it in "\"'<>" }) {
+                        throw ConfigException("TUNG_TESTER_GROUP_URL must be an https URL, got '$url'.")
+                    }
+                },
                 googleClientIds = value("TUNG_GOOGLE_CLIENT_ID")
                     ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty(),
                 appleClientIds = value("TUNG_APPLE_CLIENT_ID")

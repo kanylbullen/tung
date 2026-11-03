@@ -104,7 +104,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     // Sign in with Apple, only with a Services ID (the web) or a bundle id (an iPhone app).
     val apple = config.appleClientIds.takeIf { it.isNotEmpty() }?.let { IdTokens(IdProvider.APPLE, it, config.appleJwksUrl, config.clock) }
     // Welcome emails (a new account, a test sign-up), only with TUNG_RESEND_API_KEY; sent on the application's scope.
-    val welcome = WelcomeMail(config.mailer, config.publicUrl, this, testInvite = config.testerSignups)
+    val welcome = WelcomeMail(config.mailer, config.publicUrl, this, testInvite = config.testerSignups, testerGroup = config.testerGroupUrl.takeIf { config.testerSignups })
     val accounts = Accounts(db, google, welcome, config.clock, apple)
     val exercises = ExerciseStore(db)
     val workouts = WorkoutStore(db, exercises)

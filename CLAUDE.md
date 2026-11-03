@@ -2223,7 +2223,12 @@ fallback, and only on a tap.
   `GET /api/v1/testers` (to copy into the Play Console) and
   `DELETE /api/v1/testers/{email}` (once invited); anyone else gets 403
   `not_admin`. The table holds the address, when and the page's language,
-  nothing else, linked to no account. `TesterSignupTest`.
+  nothing else, linked to no account. With `TUNG_TESTER_GROUP_URL` (the
+  Google group the Play Console's closed test lists as testers) the page's
+  `<!-- group:begin -->` block and the sign-up email give the way in at once:
+  join the group, then Play's opt-in page (`PLAY_OPT_IN_URL` in
+  `TesterRoutes.kt`); unset, they say an invitation comes later.
+  `TesterSignupTest`, `WelcomeMailTest`.
 - **Feedback** (`Feedback.kt`, `V13__feedback.sql`): any signed-in user
   (a write token) sends `POST /api/v1/feedback {kind: bug|idea, message,
   platform: android|wear|web|ios, app_version, images}`, up to

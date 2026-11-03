@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.server.routes.PLAY_OPT_IN_URL
 import com.sun.net.httpserver.HttpServer
 import io.ktor.client.request.post
 import io.ktor.http.HttpStatusCode
@@ -20,6 +21,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** The welcome emails: one per new account (password or Google) and one per new test sign-up, never twice, never otherwise. */
@@ -191,5 +193,18 @@ class WelcomeMailTest {
         val config = ServerConfig.fromEnv(base + ("TUNG_MAIL_FROM" to "Tung <t@example.org>") + ("TUNG_PUBLIC_URL" to "https://t.example.org"))
         assertTrue(config.mailer is ResendMailer)
         assertEquals(null, ServerConfig.fromEnv(mapOf("DATABASE_URL" to "jdbc:postgresql://x/y")).mailer)
+    }
+
+    @Test
+    fun withATesterGroupTheSignUpMailHasBothLinks() {
+        val group = "https://groups.google.com/g/tung-testers"
+        for (swedish in listOf(false, true)) {
+            val text = WelcomeMail.testerMessage("a@example.org", swedish, "https://t.example.org", group).text
+            assertTrue(group in text, text)
+            assertTrue(PLAY_OPT_IN_URL in text, text)
+            assertFalse("|" in text, "no margin left: $text")
+            val waiting = WelcomeMail.testerMessage("a@example.org", swedish, "https://t.example.org").text
+            assertFalse(group in waiting || PLAY_OPT_IN_URL in waiting, "without a group the mail is as before")
+        }
     }
 }

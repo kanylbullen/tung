@@ -143,7 +143,17 @@
       <!-- testers:begin -->
       <section class="test" aria-labelledby="test">
         <h2 id="test" data-sv="Testa Android-appen">Test the Android app</h2>
+        <!-- no-group:begin -->
         <p data-sv="Android-appen är i ett test på Google Play. Lämna adressen till Google-kontot du använder i telefonen, så får du en inbjudan när nästa testomgång öppnar.">The Android app is in a test on Google Play. Leave the address of the Google account you use on your phone, and you get an invitation when the next test round opens.</p>
+        <!-- no-group:end -->
+        <!-- group:begin -->
+        <p data-sv="Android-appen är i ett test på Google Play. Du kommer in direkt, med Google-kontot du använder i telefonen:">The Android app is in a test on Google Play. You can get in right away, with the Google account you use on your phone:</p>
+        <ol id="tester-group" class="steps">
+          <li><a href="@group@" data-sv="Gå med i Google-gruppen tung-testers">Join the Google group tung-testers</a></li>
+          <li><a href="@opt-in@" data-sv="Öppna testet på Google Play och välj Bli testare">Open the test on Google Play and choose Become a tester</a></li>
+        </ol>
+        <p data-sv="Det kan dröja några minuter innan Google Play låter dig installera. Vill du hellre bli inbjuden, lämna adressen här.">It can take a few minutes before Google Play lets you install. Rather be invited? Leave your address here.</p>
+        <!-- group:end -->
         <form id="signup" novalidate>
           <label class="field">
             <span data-sv="E-post till ditt Google-konto">Email of your Google account</span>
@@ -334,6 +344,7 @@ docker compose up -d</code></pre>
       // Sign up to test the Android app: POST /api/v1/testers on this server.
       var messages = swedish ? {
         ok: "Tack. Du får en inbjudan från Google Play när nästa testomgång öppnar.",
+        okGroup: "Tack. Du får ett mejl med länkarna. Gå med i gruppen ovan så kommer du in direkt.",
         invalid_email: "Det där är ingen e-postadress. Kontrollera den och försök igen.",
         consent_required: "Kryssa i rutan, så att vi får skicka inbjudan till dig.",
         rate_limited: "För många försök. Vänta en minut och försök igen.",
@@ -342,6 +353,7 @@ docker compose up -d</code></pre>
         sending: "Skickar…"
       } : {
         ok: "Thanks. You get an invitation from Google Play when the next test round opens.",
+        okGroup: "Thanks. An email with the links is on its way. Join the group above to get in right away.",
         invalid_email: "That is not an email address. Check it and try again.",
         consent_required: "Tick the box, so we may send you the invitation.",
         rate_limited: "Too many attempts. Wait a minute and try again.",
@@ -367,7 +379,7 @@ docker compose up -d</code></pre>
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: email, consent: true, language: swedish ? "sv" : "en", website: form.website.value || null })
         }).then(function (response) {
-          if (response.ok) { say(messages.ok, "ok"); form.reset(); return; }
+          if (response.ok) { say(document.getElementById("tester-group") ? messages.okGroup : messages.ok, "ok"); form.reset(); return; }
           if (response.status === 429) { say(messages.rate_limited, "error"); return; }
           return response.json().then(function (body) {
             var code = body && body.error && body.error.code;
