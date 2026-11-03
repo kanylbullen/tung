@@ -24,7 +24,12 @@ kotlin {
     // library is built here (no executable), and its collation is jsMain's
     // Intl.Collator (BrowseJs.kt).
     js {
-        browser()
+        browser {
+            testTask {
+                // commonTest runs here too, in headless Chrome (Karma), as web/'s tests do.
+                useKarma { useChromeHeadless() }
+            }
+        }
     }
 
     jvm {
@@ -47,8 +52,22 @@ kotlin {
             // and Clock are kotlin.time's since 0.7.
             api("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
         }
+        // The portable tests: kotlin.test, run on the JVM, in the browser (JS) and on the iOS
+        // simulator, so a platform difference in commonMain (a regex Kotlin/Native lacks) fails
+        // a test before it reaches a phone.
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+        }
+        // What needs the JVM (files on disk, the JDK's UUID, MD5 and Normalizer, a Locale's
+        // collator, reflection) stays on JUnit 4 here.
         jvmTest.dependencies {
             implementation("junit:junit:4.13.2")
+        }
+        // kotlinx-datetime's time-zone database in the browser, as web/ loads it (jsTest's
+        // TimeZoneDatabase.kt); only the tests need it, core's library leaves it to the app.
+        jsTest.dependencies {
+            implementation(npm("@js-joda/timezone", "2.3.0"))
         }
     }
 }

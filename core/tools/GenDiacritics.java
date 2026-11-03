@@ -20,7 +20,7 @@ import java.util.List;
  *
  * The Hangul syllables are left out: their decomposition into jamo is a
  * formula, which Diacritics.kt applies (appendHangulJamo), and as a table they
- * would be eleven thousand entries. DiacriticsTest compares the folding with
+ * would be eleven thousand entries. DiacriticsJdkTest compares the folding with
  * the running JDK's Normalizer over the whole plane, syllables included; a
  * newer Unicode may need a regeneration.
  */

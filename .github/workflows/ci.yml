@@ -148,8 +148,10 @@ jobs:
       # sets it in ~/.zshenv, which the runner's launchd job reads.
       # The release link for the phone is what an archive (TestFlight) runs;
       # it needs more heap than the debug one (gradle.properties).
+      # core's commonTest runs here too, so a platform difference in commonMain
+      # (a regex Kotlin/Native lacks) fails here and not on a phone.
       - name: Run the iOS tests on a simulator and link the framework
-        run: ./gradlew :data:iosSimulatorArm64Test :ui:linkDebugFrameworkIosSimulatorArm64 :ui:linkReleaseFrameworkIosArm64 --no-daemon --stacktrace
+        run: ./gradlew :core:iosSimulatorArm64Test :data:iosSimulatorArm64Test :ui:linkDebugFrameworkIosSimulatorArm64 :ui:linkReleaseFrameworkIosArm64 --no-daemon --stacktrace
 
       - name: Upload iOS test results
         if: always()
@@ -185,17 +187,20 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      # The PWA's static site, and its tests in the runner's Chrome (Karma).
-      # Kotlin/JS downloads Node.js and Yarn into ~/.gradle (cached above).
+      # The PWA's static site, and its tests and core's commonTest in the
+      # runner's Chrome (Karma). Kotlin/JS downloads Node.js and Yarn into
+      # ~/.gradle (cached above).
       - name: Build the web app and run its tests
-        run: ./gradlew :web:jsBrowserDistribution :web:jsBrowserTest --no-daemon --stacktrace
+        run: ./gradlew :web:jsBrowserDistribution :web:jsBrowserTest :core:jsBrowserTest --no-daemon --stacktrace
 
       - name: Upload web test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: web-test-results
-          path: web/build/test-results/
+          path: |
+            web/build/test-results/
+            core/build/test-results/jsBrowserTest/
           if-no-files-found: ignore
 
       # The site as it would be deployed: open index.html from a static host.

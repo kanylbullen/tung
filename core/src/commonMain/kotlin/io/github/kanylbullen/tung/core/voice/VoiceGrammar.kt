@@ -91,16 +91,26 @@ internal fun normalizeUtterance(text: String): List<String> {
     s = s.replace("×", " x ")
     s = DECIMAL_MARK.replace(s, "#")
     s = WORD_HYPHEN.replace(s, "")
-    s = NOT_WORD.replace(s, " ")
+    s = keepWordCharacters(s)
     s = DIGIT_LETTER.replace(s, " ")
     return s.replace('#', '.').split(' ').filter { it.isNotEmpty() }
 }
 
 private val DECIMAL_MARK = Regex("""(?<=\d)[,.](?=\d)""")
 private val WORD_HYPHEN = Regex("""(?<=\p{L})-(?=\p{L})""")
-private val NOT_WORD = Regex("""[^\p{L}\p{Nd}#]+""")
 private val DIGIT_LETTER = Regex("""(?<=\p{Nd})(?=\p{L})|(?<=\p{L})(?=[\p{Nd}#])""")
 private val DIGITS = Regex("""\d+(\.\d+)?""")
+
+/**
+ * Letters, decimal digits and the decimal mark `#` stay, anything else becomes a space. Not a
+ * regex: Kotlin/Native's engine lets `#` through a negated class that also holds `\p{…}`
+ * classes (`[^\p{L}\p{Nd}#]` matched `#`), so on the iPhone "82,5" split into 82 and 5.
+ */
+private fun keepWordCharacters(s: String): String = buildString(s.length) {
+    s.forEach { c ->
+        append(if (c.isLetter() || c.category == CharCategory.DECIMAL_DIGIT_NUMBER || c == '#') c else ' ')
+    }
+}
 
 // --- tokens ---
 

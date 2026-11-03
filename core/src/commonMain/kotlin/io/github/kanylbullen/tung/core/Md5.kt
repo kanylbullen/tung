@@ -4,7 +4,7 @@ package io.github.kanylbullen.tung.core
  * MD5 (RFC 1321) in plain Kotlin, for the name-based UUIDs ([catalogExerciseId],
  * `importId`): those ids are stored on every device and on the server, so each
  * platform must compute exactly what `java.util.UUID.nameUUIDFromBytes` did.
- * `Md5Test` checks the RFC's vectors and the JDK's UUIDs. Not for anything
+ * `Md5Test` checks the RFC's vectors on every target, `Md5JdkTest` the JDK's UUIDs. Not for anything
  * that needs a secure hash.
  */
 internal fun md5(message: ByteArray): ByteArray {
