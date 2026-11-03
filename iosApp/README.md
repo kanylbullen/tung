@@ -37,8 +37,15 @@ settings in Application Support, the session token and the assistant's key in
 the Keychain, the rest timer over local notifications, sync while the app is
 in front, the catalogue from the app's resources) and `IosPlatform`.
 
+Background sync: the server's silent push (APNs; the server needs its APNs
+key, see `server/README.md`, "Push") wakes the app for one sync, and a
+background refresh task syncs when iOS finds the time. Both are in
+`Tung/TungApp.swift`'s `AppDelegate`; the app also syncs whenever it comes
+to the front. The simulator has no push (an unsigned build has no
+`aps-environment`), so push is checked on a TestFlight build.
+
 Not yet on the iPhone: speech (the mic says it is unavailable), Google sign-in,
-feedback screenshots, push (APNs), background sync, HealthKit.
+feedback screenshots, HealthKit.
 
 The app needs iOS 17.2 or newer (Compose Multiplatform's ICU data is built for
 it) and carries the Sign in with Apple entitlement.

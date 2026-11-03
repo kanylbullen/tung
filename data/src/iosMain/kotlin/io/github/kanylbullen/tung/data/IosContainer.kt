@@ -12,11 +12,12 @@ import io.github.kanylbullen.tung.core.ExtendedCatalog
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.ai.aiCatalogue
 import io.github.kanylbullen.tung.core.command.CommandHandler
+import io.github.kanylbullen.tung.core.sync.SyncResult
 import io.github.kanylbullen.tung.core.importing.ImportAliases
 import io.github.kanylbullen.tung.importing.ImportHistory
 import io.github.kanylbullen.tung.importing.ImportService
 import io.github.kanylbullen.tung.importing.Importer
-import io.github.kanylbullen.tung.push.NoPush
+import io.github.kanylbullen.tung.push.IosPush
 import io.github.kanylbullen.tung.push.PushControl
 import io.github.kanylbullen.tung.sync.IosSyncScheduler
 import io.github.kanylbullen.tung.sync.KeychainTokenStore
@@ -30,6 +31,7 @@ import io.github.kanylbullen.tung.timer.RestTimerStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
@@ -43,8 +45,8 @@ import kotlin.time.Clock
  * Support directory, the session token and the assistant's key in the
  * Keychain, the rest timer over local notifications, sync while the app runs.
  * Workouts it starts are `phone`'s: an iPhone is a phone, and a server that
- * does not know a new `started_by` value refuses the sync. No push and no
- * health store yet.
+ * does not know a new `started_by` value refuses the sync. No health store
+ * yet.
  *
  * What lives in the app bundle comes in as functions, so this module never
  * reaches into `ui`: [readCatalogue] reads a catalogue file by its path under
@@ -154,9 +156,26 @@ class IosContainer(
             syncClient, syncSettings, tokenStore, syncStore,
             IosSyncScheduler(appScope) { syncClient.syncOnce() },
             appScope,
+            beforeSignOut = { url, token -> iosPush.onSignOut(url, token) },
         )
     }
-    override val push: PushControl by lazy { NoPush() }
+
+    // --- push: APNs wakes the app for a sync (the server's silent push) ---
+    private val iosPush: IosPush by lazy { IosPush(syncClient, settings, syncAccount.state.map { it.signedIn }, appScope) }
+    override val push: PushControl get() = iosPush
+
+    /** The device token iOS gave the app delegate, in hex: kept and registered with the server while signed in. */
+    suspend fun onPushToken(token: String) {
+        iosPush.start()
+        iosPush.onToken(token)
+    }
+
+    /**
+     * One sync for a silent push or a background refresh, which iOS gives about
+     * thirty seconds: true when it reached the server. A sync already running
+     * (the app in front) is not waited for; this one runs on its own.
+     */
+    suspend fun syncInBackground(): Boolean = syncClient.syncOnce() is SyncResult.Success
 
     // --- the in-app assistant with the user's own key ---
     private val aiKeyStore by lazy { KeychainTokenStore(KEYCHAIN_SERVICE, "ai_key") }
@@ -180,6 +199,7 @@ class IosContainer(
 
     /** The app came to the front: keep the periodic sync while signed in, and sync now (the phone's `onStart`). */
     fun onForeground() {
+        iosPush.start()
         syncAccount.restoreSchedule()
         syncAccount.requestSync()
     }

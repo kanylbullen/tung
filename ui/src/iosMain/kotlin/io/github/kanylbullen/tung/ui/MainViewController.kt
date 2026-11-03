@@ -23,31 +23,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import io.github.kanylbullen.tung.data.IosContainer
 import io.github.kanylbullen.tung.ui.common.LocalCatalogueName
-import io.github.kanylbullen.tung.ui.resources.Res
-import io.github.kanylbullen.tung.ui.resources.rest_notification_text
-import io.github.kanylbullen.tung.ui.resources.rest_notification_title
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 import io.github.kanylbullen.tung.ui.theme.TungTheme
 import kotlinx.coroutines.delay
-import org.jetbrains.compose.resources.ExperimentalResourceApi
-import org.jetbrains.compose.resources.getString
 import platform.UIKit.UIViewController
 
-/**
- * One container per process, as the phone's `TungApp` holds one. What it
- * needs from the app bundle comes from ui's resources: the catalogue
- * (`files/catalog/…`, iOS-only Compose Resources copied from `catalog/` at
- * build time) and the "Rest over" notification's text.
- */
-@OptIn(ExperimentalResourceApi::class)
-private val container by lazy {
-    IosContainer(
-        readCatalogue = { path -> Res.readBytes("files/catalog/$path").decodeToString() },
-        restOverTitle = { getString(Res.string.rest_notification_title) },
-        restOverText = { getString(Res.string.rest_notification_text) },
-    )
-}
 
 /**
  * The iPhone app, as the Xcode app (iosApp/) embeds it: what Swift calls as
@@ -58,12 +39,12 @@ private val container by lazy {
  * bottom of the screen, where the phone shows a toast.
  */
 fun MainViewController(): UIViewController = ComposeUIViewController {
-    val platform = remember { IosPlatform(container::catalogueName) }
-    LifecycleEventEffect(Lifecycle.Event.ON_START) { container.onForeground() }
-    CompositionLocalProvider(LocalCatalogueName provides container::catalogueName) {
+    val platform = remember { IosPlatform(appContainer::catalogueName) }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { appContainer.onForeground() }
+    CompositionLocalProvider(LocalCatalogueName provides appContainer::catalogueName) {
         TungTheme {
             Box(Modifier.fillMaxSize().background(Tung.colors.background)) {
-                TungNavRoot(container, platform)
+                TungNavRoot(appContainer, platform)
                 Messages(platform)
             }
         }
