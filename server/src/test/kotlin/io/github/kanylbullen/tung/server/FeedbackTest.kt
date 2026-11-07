@@ -143,12 +143,13 @@ class FeedbackTest {
     }
 
     @Test
-    fun aDayHasALimit() = feedbackTest {
+    fun aDayHasALimit() = feedbackTest(trustProxy = true) {
+        // Each send from its own address, so it is the user's budget that runs out, not an address's.
         val token = client.register()
         repeat(MAX_FEEDBACK_PER_DAY) {
-            assertEquals(HttpStatusCode.Created, send(token, """{"kind": "idea", "message": "idea $it", "platform": "web"}""").status)
+            assertEquals(HttpStatusCode.Created, send(token, """{"kind": "idea", "message": "idea $it", "platform": "web"}""", from = "203.0.113.$it").status)
         }
-        val over = send(token, """{"kind": "idea", "message": "one more", "platform": "web"}""")
+        val over = send(token, """{"kind": "idea", "message": "one more", "platform": "web"}""", from = "198.51.100.200")
         assertEquals(HttpStatusCode.TooManyRequests, over.status)
         assertEquals("too_much_feedback", over.errorCode())
     }
@@ -174,17 +175,19 @@ class FeedbackTest {
     }
 
     @Test
-    fun aDayHasAByteBudgetToo() = feedbackTest {
+    fun aDayHasAByteBudgetToo() = feedbackTest(trustProxy = true) {
+        // Each send from its own address, so it is the user's budget that runs out, not an address's.
         val token = client.register()
         val big = "\"${b64(png + ByteArray(MAX_FEEDBACK_IMAGE_BYTES - png.size))}\""
         val three = listOf(big, big, big).joinToString()
         // 12 MB a send: two fit in the day's 30 MB, the third does not.
         repeat(2) {
-            assertEquals(HttpStatusCode.Created, send(token, """{"kind": "bug", "message": "big $it", "platform": "web", "images": [$three]}""").status)
+            assertEquals(HttpStatusCode.Created, send(token, """{"kind": "bug", "message": "big $it", "platform": "web", "images": [$three]}""", from = "203.0.113.${10 + it}").status)
         }
-        val over = send(token, """{"kind": "bug", "message": "big 3", "platform": "web", "images": [$three]}""")
+        val over = send(token, """{"kind": "bug", "message": "big 3", "platform": "web", "images": [$three]}""", from = "203.0.113.20")
         assertEquals(HttpStatusCode.TooManyRequests, over.status)
-        assertEquals(HttpStatusCode.Created, send(token, """{"kind": "bug", "message": "words only", "platform": "web"}""").status, "words still fit")
+        assertEquals("too_much_feedback", over.errorCode())
+        assertEquals(HttpStatusCode.Created, send(token, """{"kind": "bug", "message": "words only", "platform": "web"}""", from = "203.0.113.21").status, "words still fit")
     }
 
     @Test
@@ -240,6 +243,20 @@ class FeedbackTest {
         assertFalse(budget.isExhausted("a"), "a released send is given back")
         now += 1_000
         assertNotNull(budget.reserve("a", 100), "the window has passed")
+        assertFalse(budget.isExhausted("a"), "exactly at the byte budget, a message without screenshots still fits")
+        assertNotNull(budget.reserve("a", 0), "as reserve agrees")
+        assertTrue(budget.isExhausted("a"), "now the count is spent")
+    }
+
+    @Test
+    fun anIpv6ClientCountsByItsSlash64() = feedbackTest(trustProxy = true) {
+        val words = """{"kind": "idea", "message": "an idea", "platform": "web"}"""
+        val token = client.register()
+        repeat(MAX_FEEDBACK_PER_ADDRESS_PER_DAY) {
+            assertEquals(HttpStatusCode.Created, send(client.register(), words, from = "2001:db8:7:8::${(it + 1).toString(16)}").status)
+        }
+        assertEquals(HttpStatusCode.TooManyRequests, send(token, words, from = "2001:db8:7:8:ffff::1").status, "same /64")
+        assertEquals(HttpStatusCode.Created, send(token, words, from = "2001:db8:7:9::1").status, "another /64")
     }
 
     @Test

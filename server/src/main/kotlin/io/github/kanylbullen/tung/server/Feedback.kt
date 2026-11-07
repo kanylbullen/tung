@@ -3,7 +3,6 @@ package io.github.kanylbullen.tung.server
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.plugins.origin
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveChannel
 import io.ktor.utils.io.readRemaining
@@ -119,7 +118,7 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
     private val rowsAlarm = HalfwayAlarm("feedback rows", MAX_FEEDBACK_ROWS.toLong()) { log.warn(it) }
     private val bytesAlarm = HalfwayAlarm("feedback screenshot bytes", MAX_FEEDBACK_STORED_BYTES) { log.warn(it) }
 
-    /** [address] is the client's, as the rate limits see it (`origin.remoteAddress`). */
+    /** [address] is the client's, as the rate limits see it ([clientKey]: an IPv6 client by its /64). */
     suspend fun create(principal: TokenPrincipal, input: FeedbackInput, address: String): FeedbackCreated {
         val kind = input.kind.trim().lowercase()
         if (kind !in FEEDBACK_KINDS) throw badRequest("kind must be one of ${FEEDBACK_KINDS.joinToString()}.", "invalid_kind")
@@ -370,13 +369,18 @@ internal class AddressBudget(
     fun reserve(key: String, bytes: Long): Reservation? {
         val now = clock()
         if (sends.size > PRUNE_AT) prune(now)
-        val entries = sends.computeIfAbsent(key) { ArrayDeque() }
-        synchronized(entries) {
-            expire(entries, now)
-            if (entries.size >= maxCount || entries.sumOf { it[1] } + bytes > maxBytes) return null
-            val entry = longArrayOf(now, bytes)
-            entries.addLast(entry)
-            return Reservation(key, entry)
+        while (true) {
+            val entries = sends.computeIfAbsent(key) { ArrayDeque() }
+            synchronized(entries) {
+                // A prune between the lookup and the lock may have dropped this deque from the map: a send added
+                // to it would count nowhere, so look the key up again.
+                if (sends[key] !== entries) return@synchronized
+                expire(entries, now)
+                if (!fits(entries, bytes)) return null
+                val entry = longArrayOf(now, bytes)
+                entries.addLast(entry)
+                return Reservation(key, entry)
+            }
         }
     }
 
@@ -390,16 +394,29 @@ internal class AddressBudget(
         val entries = sends[key] ?: return false
         synchronized(entries) {
             expire(entries, clock())
-            return entries.size >= maxCount || entries.sumOf { it[1] } >= maxBytes
+            return !fits(entries, 0)
         }
     }
+
+    /** The one rule [reserve] and [isExhausted] share: another send of [bytes] stays within both budgets. */
+    private fun fits(entries: ArrayDeque<LongArray>, bytes: Long) =
+        entries.size < maxCount && entries.sumOf { it[1] } + bytes <= maxBytes
 
     private fun expire(entries: ArrayDeque<LongArray>, now: Long) {
         while (entries.isNotEmpty() && entries.first()[0] <= now - windowMillis) entries.removeFirst()
     }
 
+    /**
+     * Drops the keys whose sends have all left the window. Each key is
+     * removed atomically with its own check (under the deque's lock), and
+     * [reserve] looks a key up again when its deque was dropped meanwhile.
+     */
     private fun prune(now: Long) {
-        sends.entries.removeIf { (_, entries) -> synchronized(entries) { entries.lastOrNull()?.let { it[0] <= now - windowMillis } ?: true } }
+        for (key in sends.keys.toList()) {
+            sends.computeIfPresent(key) { _, entries ->
+                synchronized(entries) { if (entries.lastOrNull()?.let { it[0] > now - windowMillis } == true) entries else null }
+            }
+        }
     }
 
     private companion object {
@@ -441,7 +458,7 @@ private fun bodyTooLarge() =
 fun Route.feedbackRoutes(store: FeedbackStore) = bodyLimit(MAX_FEEDBACK_BODY_BYTES, { bodyTooLarge() }) {
     post("/feedback") {
         val principal = call.user()
-        val address = call.request.origin.remoteAddress
+        val address = clientKey(call)
         store.precheck(principal, address)
         val created = uploads.withPermit {
             val bytes = call.receiveChannel().readRemaining().readByteArray()
