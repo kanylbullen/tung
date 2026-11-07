@@ -10,6 +10,7 @@ import io.github.kanylbullen.tung.server.RequireConfirmedEmail
 import io.github.kanylbullen.tung.server.SessionDto
 import io.github.kanylbullen.tung.server.TokenPrincipal
 import io.github.kanylbullen.tung.server.Tokens
+import io.github.kanylbullen.tung.server.clientKey
 import io.github.kanylbullen.tung.server.forbidden
 import io.github.kanylbullen.tung.server.lockUser
 import io.github.kanylbullen.tung.server.rateLimited
@@ -18,7 +19,6 @@ import io.github.kanylbullen.tung.server.unauthorized
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.principal
-import io.ktor.server.plugins.origin
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -117,7 +117,7 @@ fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::cur
     }
 
     post("/link/claim") {
-        if (!claimLimit.tryAcquire(call.request.origin.remoteAddress)) throw rateLimited()
+        if (!claimLimit.tryAcquire(clientKey(call))) throw rateLimited()
         if (claimFailures.isExhausted(ALL_CLIENTS)) throw rateLimited()
         val code = call.receive<LinkClaim>().code.trim()
         if (!CODE_PATTERN.matches(code)) throw invalidCode()

@@ -127,7 +127,7 @@ class LinkTest {
         // One guesser with many addresses: each stays far below the per-address limit.
         repeat(LINK_CLAIM_FAILURES_PER_TTL) {
             val response = client.post("/api/v1/link/claim") {
-                header("X-Forwarded-For", "2001:db8::${it.toString(16)}")
+                header("X-Forwarded-For", "2001:db8:${it.toString(16)}::1")
                 jsonBody("""{"code": "${"%06d".format(it)}"}""")
             }
             assertEquals(HttpStatusCode.NotFound, response.status, response.bodyAsText())
