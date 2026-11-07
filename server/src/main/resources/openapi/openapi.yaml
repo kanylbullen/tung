@@ -378,6 +378,64 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /api/v1/auth/logout/others:
+    post:
+      tags: [auth]
+      summary: Sign out every other device
+      description: |
+        Revokes every token of the account except the one the request was
+        made with: other sign-ins, watches, API tokens and OAuth grants
+        (with their refresh tokens), and deletes unused link codes. The push
+        endpoints of every device but the caller's (`X-Tung-Device`) are
+        revoked too. Only a sign-in session token may; any other token gets
+        403 `session_required`.
+      operationId: logoutOthers
+      responses:
+        "200":
+          description: Signed out.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revoked_tokens]
+                properties:
+                  revoked_tokens: { type: integer, description: How many tokens were revoked. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/auth/password:
+    post:
+      tags: [auth]
+      summary: Change the password
+      description: |
+        Sets a new password, given the current one. Only a sign-in session
+        token may (403 `session_required`). A wrong current password is 403
+        `wrong_password`, not 401, so a client is not signed out by a typo.
+        An account that signs in only with Google or Apple has no password
+        to change (409 `no_password`): it chooses one with
+        `POST /api/v1/auth/password/forgot`. Afterwards every other way into
+        the account ends, as `POST /api/v1/auth/logout/others` does; the
+        caller stays signed in. Under the sign-in rate limit.
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string }
+                new_password: { type: string, minLength: 8, maxLength: 1024 }
+      responses:
+        "204": { description: Changed. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
   /api/v1/link/start:
     post:
       tags: [link]
@@ -1997,7 +2055,7 @@ components:
           description: Updated at most once a minute.
         expires_at:
           oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
-          description: When the token stops working; null for tokens that never expire. Tokens issued through OAuth (`mcp:<client>`) expire 30 days after they were issued or last refreshed. Revoking one ends that client's access, refresh included.
+          description: When the token stops working; null for tokens that never expire. Tokens issued through OAuth (`mcp:<client>`) expire 30 days after they were issued or last refreshed. Revoking one ends that client's access, refresh included. For sign-in sessions (`session`) and watches (`watch`) it is 180 days after they were last used, and moves on with every use.
         current: { type: boolean, description: True for the token this request was made with. }
 
     TokenList:

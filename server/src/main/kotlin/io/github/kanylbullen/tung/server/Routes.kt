@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server
 
+import io.github.kanylbullen.tung.core.sync.DEVICE_HEADER
 import io.github.kanylbullen.tung.core.sync.PUSH_ENDPOINTS_PATH
 import io.github.kanylbullen.tung.core.sync.SYNC_MAX_ROWS
 import io.github.kanylbullen.tung.core.sync.SYNC_PATH
@@ -82,7 +83,8 @@ internal val RequireConfirmedEmail = createRouteScopedPlugin("RequireConfirmedEm
         val principal = call.principal<TokenPrincipal>() ?: return@on
         if (principal.emailVerified) return@on
         val path = call.request.path()
-        val allowed = path == "/api/v1/auth/logout" || path == "/api/v1/me" || path == "/api/v1/auth/verify/resend" ||
+        val allowed = path == "/api/v1/auth/logout" || path == "/api/v1/auth/logout/others" || path == "/api/v1/auth/password" ||
+            path == "/api/v1/me" || path == "/api/v1/auth/verify/resend" ||
             path == PUSH_ENDPOINTS_PATH || path.startsWith("$PUSH_ENDPOINTS_PATH/")
         if (!allowed) throw emailNotConfirmed()
     }
@@ -179,6 +181,16 @@ fun Route.apiRoutes(
                 accounts.revokeToken(principal.userId, principal.tokenId)
                 call.respond(HttpStatusCode.NoContent)
             }
+
+            post("/auth/logout/others") {
+                call.respond(accounts.signOutOthers(call.user(), call.request.headers[DEVICE_HEADER]))
+            }
+
+            // Under the sign-in rate limit: a stolen session must not be able to guess the current password.
+            rateLimit(AUTH_RATE_LIMIT) { post("/auth/password") {
+                accounts.changePassword(call.user(), call.receive(), call.request.headers[DEVICE_HEADER])
+                call.respond(HttpStatusCode.NoContent)
+            } }
 
             get("/me") {
                 val userId = call.user().userId

@@ -31,6 +31,8 @@ data class AccountState(
     val googleLinked: Boolean = false,
     /** An Apple ID is linked to this account (shown as "Apple linked"). */
     val appleLinked: Boolean = false,
+    /** The account has a password, so "Change password" is offered (false for an account that signs in only with Google or Apple). */
+    val hasPassword: Boolean = true,
     /**
      * A sign-in the server accepted that waits for the user's choice, because
      * this device holds another account's data (issue #152); null otherwise.
@@ -70,8 +72,8 @@ class SyncAccount(
     private val pending = MutableStateFlow<Pending?>(null)
 
     val state: Flow<AccountState> = combine(
-        combine(settings.serverUrl, settings.email, settings.googleLinked, settings.appleLinked) { url, email, google, apple ->
-            Identity(url, email, google, apple)
+        combine(settings.serverUrl, settings.email, settings.googleLinked, settings.appleLinked, settings.hasPassword) { url, email, google, apple, password ->
+            Identity(url, email, google, apple, password)
         },
         settings.state,
         signedIn.onStart { isSignedIn() },
@@ -79,12 +81,12 @@ class SyncAccount(
         pending,
     ) { id, sync, signedIn, running, held ->
         AccountState(
-            id.url, id.email, signedIn, sync, running, id.googleLinked, id.appleLinked,
+            id.url, id.email, signedIn, sync, running, id.googleLinked, id.appleLinked, id.hasPassword,
             held?.let { PendingSignIn(it.serverUrl, it.session.email, it.unsynced) },
         )
     }
 
-    private data class Identity(val url: String?, val email: String?, val googleLinked: Boolean, val appleLinked: Boolean)
+    private data class Identity(val url: String?, val email: String?, val googleLinked: Boolean, val appleLinked: Boolean, val hasPassword: Boolean)
 
     suspend fun isSignedIn(): Boolean =
         signedIn.value ?: withContext(ioDispatcher) { tokens.read() != null }.also { signedIn.value = it }
@@ -143,7 +145,7 @@ class SyncAccount(
     suspend fun refreshAccount() {
         if (!isSignedIn()) return
         val me = client.me() ?: return
-        settings.setLinked(google = me.googleLinked, apple = me.appleLinked)
+        settings.setLinked(google = me.googleLinked, apple = me.appleLinked, hasPassword = me.hasPassword)
         // A device signed in before owners were recorded learns whose data it holds.
         val url = settings.serverUrl()
         if (me.userId != null && url != null && settings.owner() == null) settings.setOwner(DataOwner(url, me.userId))
@@ -222,7 +224,7 @@ class SyncAccount(
                 afterWipe()
             }
             tokens.write(session.token)
-            settings.signedIn(serverUrl, session.email, session.googleLinked, session.appleLinked)
+            settings.signedIn(serverUrl, session.email, session.googleLinked, session.appleLinked, session.hasPassword)
             session.userId?.let { settings.setOwner(DataOwner(serverUrl, it)) }
             if (!wipe) store.markEverythingDirty()
         }
@@ -318,6 +320,37 @@ class SyncAccount(
             else -> Unit
         }
         return result
+    }
+
+    /**
+     * "Sign out other devices" ([SyncClient.signOutOthers]): every other
+     * token of the account stops working, this device stays signed in.
+     * Nothing local changes; a 401 signs out as during sync.
+     */
+    suspend fun signOutOthers(): SignOutOthersOutcome {
+        val result = client.signOutOthers()
+        if (result == SignOutOthersOutcome.SignedOut) signedOutWithToken()
+        return result
+    }
+
+    /**
+     * "Change password" ([SyncClient.changePassword]): this device stays
+     * signed in and every other one is signed out. Only a 401 signs this
+     * device out; a wrong current password (403) does not.
+     */
+    suspend fun changePassword(current: String, new: String): ChangePasswordOutcome {
+        val result = client.changePassword(current, new)
+        if (result == ChangePasswordOutcome.SIGNED_OUT) signedOutWithToken()
+        // The stored flag was out of date (an install from before it was kept): the button goes.
+        if (result == ChangePasswordOutcome.NO_PASSWORD) settings.setHasPassword(false)
+        return result
+    }
+
+    /** A 401 outside sync: the token is dead, so this device is signed out. */
+    private suspend fun signedOutWithToken() {
+        withContext(ioDispatcher) { tokens.write(null) }
+        settings.signedOut(SyncFailure.SIGNED_OUT)
+        signedOutByServer()
     }
 
     /** The server answered 401 during a sync; [SyncClient] has already cleared the token. */

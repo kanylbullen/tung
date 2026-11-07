@@ -56,6 +56,8 @@ sealed interface AuthResult {
         val appleLinked: Boolean = false,
         /** The server's id of the user, which decides whose data is on the device (issue #152); null from a server that leaves it out. */
         val userId: String? = null,
+        /** The account has a password (the server's `user.has_password`), so "Change password" is offered. */
+        val hasPassword: Boolean = true,
     ) : AuthResult
     data class Failed(val failure: AuthFailure, val status: Int? = null) : AuthResult
 }
@@ -202,6 +204,67 @@ enum class FeedbackOutcome {
     SERVER,
 }
 
+/** What "Sign out other devices" gave ([SyncClient.signOutOthers]). */
+sealed interface SignOutOthersOutcome {
+    /** Every other token of the account was revoked; [revoked] of them. */
+    data class Done(val revoked: Int) : SignOutOthersOutcome
+
+    /** No server or token on this device. */
+    data object NotSignedIn : SignOutOthersOutcome
+
+    /** 401: the token is no longer valid. */
+    data object SignedOut : SignOutOthersOutcome
+
+    /** 404 or 405: a server from before the route. */
+    data object NotAServer : SignOutOthersOutcome
+
+    /** 429. */
+    data object RateLimited : SignOutOthersOutcome
+
+    /** No connection, refused, timed out. */
+    data object Network : SignOutOthersOutcome
+
+    /** 5xx, 403 `session_required`, another 4xx, or an answer that is not what the API returns. */
+    data object Server : SignOutOthersOutcome
+}
+
+/** What changing the password gave ([SyncClient.changePassword]). */
+enum class ChangePasswordOutcome {
+    /** Changed; every other device was signed out, this one stays. */
+    CHANGED,
+
+    /** No server or token on this device. */
+    NOT_SIGNED_IN,
+
+    /** 403 `wrong_password`: the current password is not the account's. Not a sign-out. */
+    WRONG_PASSWORD,
+
+    /** 400 `weak_password`: the new one is not [MIN_PASSWORD_LENGTH] to [MAX_PASSWORD_LENGTH] characters. */
+    WEAK_PASSWORD,
+
+    /** 409 `no_password`: the account signs in only with Google or Apple. */
+    NO_PASSWORD,
+
+    /** 401: the token is no longer valid. */
+    SIGNED_OUT,
+
+    /** 429. */
+    RATE_LIMITED,
+
+    /** 404 or 405: a server from before the route. */
+    NOT_A_SERVER,
+
+    /** No connection, refused, timed out. */
+    NETWORK,
+
+    /** 5xx, another 4xx, or an answer that is not what the API returns. */
+    SERVER,
+}
+
+/** The server's bounds for a password (`weak_password` outside them). */
+const val MIN_PASSWORD_LENGTH = 8
+const val MAX_PASSWORD_LENGTH = 1024
+
 /** What deleting the account on the server gave ([SyncClient.deleteAccount]). */
 enum class DeleteAccountOutcome {
     DELETED,
@@ -343,7 +406,14 @@ class SyncClient(
                 }
                 if (response.status.isSuccess()) {
                     val session = response.body<Session>()
-                    AuthResult.Success(session.token, session.user?.email ?: email, session.user?.googleLinked == true, session.user?.appleLinked == true, session.user?.id)
+                    AuthResult.Success(
+                        session.token,
+                        session.user?.email ?: email,
+                        session.user?.googleLinked == true,
+                        session.user?.appleLinked == true,
+                        session.user?.id,
+                        hasPassword = session.user?.hasPassword ?: true,
+                    )
                 } else {
                     AuthResult.Failed(authFailure(response), response.status.value)
                 }
@@ -447,6 +517,8 @@ class SyncClient(
                         googleLinked = user?.googleLinked ?: (rejected == AuthFailure.GOOGLE_REJECTED),
                         appleLinked = user?.appleLinked ?: (rejected == AuthFailure.APPLE_REJECTED),
                         userId = user?.id,
+                        // An older server leaves it out: an account met through a provider may have none.
+                        hasPassword = user?.hasPassword ?: false,
                     )
                 } else {
                     val code = runCatching { response.body<ErrorBody>().error.code }.getOrNull()
@@ -506,6 +578,71 @@ class SyncClient(
             throw e
         } catch (_: Exception) {
             null
+        }
+    }
+
+    /**
+     * `POST /api/v1/auth/logout/others` with this device's token and its
+     * `X-Tung-Device` (so its own push endpoint stays): every other token of
+     * the account stops working. Stores nothing.
+     */
+    suspend fun signOutOthers(): SignOutOthersOutcome = withContext(ioDispatcher) {
+        val baseUrl = settings.serverUrl() ?: return@withContext SignOutOthersOutcome.NotSignedIn
+        val token = tokens.read() ?: return@withContext SignOutOthersOutcome.NotSignedIn
+        try {
+            val response = http.post(baseUrl + LOGOUT_OTHERS_PATH) {
+                bearerAuth(token)
+                header(DEVICE_HEADER, settings.deviceId())
+            }
+            when {
+                response.status.isSuccess() -> SignOutOthersOutcome.Done(response.body<SignedOutOthersBody>().revokedTokens)
+                response.status.value == 401 -> SignOutOthersOutcome.SignedOut
+                response.status.value == 429 -> SignOutOthersOutcome.RateLimited
+                response.status.value == 404 || response.status.value == 405 -> SignOutOthersOutcome.NotAServer
+                else -> SignOutOthersOutcome.Server
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            SignOutOthersOutcome.Network
+        } catch (e: Exception) {
+            SignOutOthersOutcome.Server
+        }
+    }
+
+    /**
+     * `POST /api/v1/auth/password {current_password, new_password}` with this
+     * device's token and `X-Tung-Device`: the server changes the password and
+     * signs every other device out. A 403 `wrong_password` is not a sign-out.
+     * Stores nothing.
+     */
+    suspend fun changePassword(current: String, new: String): ChangePasswordOutcome = withContext(ioDispatcher) {
+        val baseUrl = settings.serverUrl() ?: return@withContext ChangePasswordOutcome.NOT_SIGNED_IN
+        val token = tokens.read() ?: return@withContext ChangePasswordOutcome.NOT_SIGNED_IN
+        try {
+            val response = http.post(baseUrl + CHANGE_PASSWORD_PATH) {
+                bearerAuth(token)
+                header(DEVICE_HEADER, settings.deviceId())
+                contentType(ContentType.Application.Json)
+                setBody(PasswordChangeBody(current, new))
+            }
+            val code = if (response.status.isSuccess()) null else runCatching { response.body<ErrorBody>().error.code }.getOrNull()
+            when {
+                response.status.isSuccess() -> ChangePasswordOutcome.CHANGED
+                response.status.value == 401 -> ChangePasswordOutcome.SIGNED_OUT
+                code == "wrong_password" -> ChangePasswordOutcome.WRONG_PASSWORD
+                code == "weak_password" -> ChangePasswordOutcome.WEAK_PASSWORD
+                code == "no_password" -> ChangePasswordOutcome.NO_PASSWORD
+                response.status.value == 429 -> ChangePasswordOutcome.RATE_LIMITED
+                response.status.value == 404 || response.status.value == 405 -> ChangePasswordOutcome.NOT_A_SERVER
+                else -> ChangePasswordOutcome.SERVER
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            ChangePasswordOutcome.NETWORK
+        } catch (e: Exception) {
+            ChangePasswordOutcome.SERVER
         }
     }
 
@@ -760,6 +897,15 @@ class SyncClient(
     private data class DeleteAccountBody(val email: String)
 
     @Serializable
+    private data class PasswordChangeBody(
+        @SerialName("current_password") val currentPassword: String,
+        @SerialName("new_password") val newPassword: String,
+    )
+
+    @Serializable
+    private data class SignedOutOthersBody(@SerialName("revoked_tokens") val revokedTokens: Int = 0)
+
+    @Serializable
     private data class ErrorBody(val error: ErrorDetail)
 
     @Serializable
@@ -769,6 +915,8 @@ class SyncClient(
         const val LOGIN_PATH = "/api/v1/auth/login"
         const val REGISTER_PATH = "/api/v1/auth/register"
         const val LOGOUT_PATH = "/api/v1/auth/logout"
+        const val LOGOUT_OTHERS_PATH = "/api/v1/auth/logout/others"
+        const val CHANGE_PASSWORD_PATH = "/api/v1/auth/password"
         const val GOOGLE_PATH = "/api/v1/auth/google"
         const val APPLE_PATH = "/api/v1/auth/apple"
         const val METHODS_PATH = "/api/v1/auth/methods"

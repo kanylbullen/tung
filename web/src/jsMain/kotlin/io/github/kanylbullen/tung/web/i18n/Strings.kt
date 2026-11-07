@@ -1,5 +1,7 @@
 package io.github.kanylbullen.tung.web.i18n
 
+import io.github.kanylbullen.tung.web.sync.ChangePasswordResult
+import io.github.kanylbullen.tung.web.sync.SignOutOthersResult
 import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
 import io.github.kanylbullen.tung.core.Muscle
 import io.github.kanylbullen.tung.core.MuscleGroup
@@ -469,6 +471,23 @@ interface Strings {
     val deleteAccountConfirm: String
     val accountDeleted: String
     fun deleteAccountFailure(result: DeleteAccountResult): String
+    /** "Sign out other devices…" and its dialog (issue #147). */
+    val signOutOthers: String
+    val signOutOthersTitle: String
+    val signOutOthersBody: String
+    val signOutOthersConfirm: String
+    /** What it did: [count] other sign-ins revoked, 0 when there were none. */
+    fun signedOutOthers(count: Int): String
+    fun signOutOthersFailure(result: SignOutOthersResult): String
+    /** "Change password…" and its dialog, offered only to an account with a password. */
+    val changePassword: String
+    val changePasswordTitle: String
+    val changePasswordBody: String
+    val currentPassword: String
+    val newPassword: String
+    val changePasswordConfirm: String
+    val passwordChanged: String
+    fun changePasswordFailure(result: ChangePasswordResult): String
     val syncNow: String
     val syncing: String
     val lastSyncNever: String
@@ -1056,6 +1075,38 @@ object English : Strings {
         DeleteAccountResult.NOT_A_SERVER -> "This server cannot delete accounts yet. Ask whoever runs it."
         DeleteAccountResult.NETWORK -> "Could not reach the server. Check your connection."
         DeleteAccountResult.DELETED, DeleteAccountResult.SIGNED_OUT, DeleteAccountResult.SERVER -> "The server had a problem. Try again in a while."
+    }
+    override val signOutOthers = "Sign out other devices…"
+    override val signOutOthersTitle = "Sign out every other device?"
+    override val signOutOthersBody =
+        "Other phones, watches, the web and connected assistants will have to sign in again. This browser stays signed in."
+    override val signOutOthersConfirm = "Sign out other devices"
+    override fun signedOutOthers(count: Int): String = when (count) {
+        0 -> "No other devices were signed in."
+        1 -> "Signed out 1 other device."
+        else -> "Signed out $count other devices."
+    }
+    override fun signOutOthersFailure(result: SignOutOthersResult): String = when (result) {
+        SignOutOthersResult.NotAServer -> "This server cannot do that yet. Ask whoever runs it."
+        SignOutOthersResult.RateLimited -> "Too many attempts. Wait a minute and try again."
+        SignOutOthersResult.Network -> "Could not reach the server. Check your connection."
+        is SignOutOthersResult.Done, SignOutOthersResult.SignedOut, SignOutOthersResult.Server -> "The server had a problem. Try again in a while."
+    }
+    override val changePassword = "Change password…"
+    override val changePasswordTitle = "Change your password"
+    override val changePasswordBody = "Every other device is signed out. This browser stays signed in."
+    override val currentPassword = "Current password"
+    override val newPassword = "New password"
+    override val changePasswordConfirm = "Change password"
+    override val passwordChanged = "Password changed. Other devices are signed out."
+    override fun changePasswordFailure(result: ChangePasswordResult): String = when (result) {
+        ChangePasswordResult.WRONG_PASSWORD -> "That is not your current password."
+        ChangePasswordResult.WEAK_PASSWORD -> "The password needs at least 8 characters."
+        ChangePasswordResult.NO_PASSWORD -> "This account signs in with Google or Apple and has no password."
+        ChangePasswordResult.RATE_LIMITED -> "Too many attempts. Wait a minute and try again."
+        ChangePasswordResult.NOT_A_SERVER -> "This server cannot do that yet. Ask whoever runs it."
+        ChangePasswordResult.NETWORK -> "Could not reach the server. Check your connection."
+        ChangePasswordResult.CHANGED, ChangePasswordResult.SIGNED_OUT, ChangePasswordResult.SERVER -> "The server had a problem. Try again in a while."
     }
     override val syncNow = "Sync now"
     override val syncing = "Syncing…"
@@ -1653,6 +1704,38 @@ object Swedish : Strings {
         DeleteAccountResult.NOT_A_SERVER -> "Den här servern kan inte radera konton än. Fråga den som driver den."
         DeleteAccountResult.NETWORK -> "Kunde inte nå servern. Kontrollera din uppkoppling."
         DeleteAccountResult.DELETED, DeleteAccountResult.SIGNED_OUT, DeleteAccountResult.SERVER -> "Servern fick ett fel. Försök igen om en stund."
+    }
+    override val signOutOthers = "Logga ut andra enheter…"
+    override val signOutOthersTitle = "Logga ut alla andra enheter?"
+    override val signOutOthersBody =
+        "Andra telefoner, klockor, webben och anslutna assistenter måste logga in igen. Den här webbläsaren förblir inloggad."
+    override val signOutOthersConfirm = "Logga ut andra enheter"
+    override fun signedOutOthers(count: Int): String = when (count) {
+        0 -> "Inga andra enheter var inloggade."
+        1 -> "Loggade ut 1 annan enhet."
+        else -> "Loggade ut $count andra enheter."
+    }
+    override fun signOutOthersFailure(result: SignOutOthersResult): String = when (result) {
+        SignOutOthersResult.NotAServer -> "Servern kan inte göra det än. Fråga den som driver den."
+        SignOutOthersResult.RateLimited -> "För många försök. Vänta en minut och försök igen."
+        SignOutOthersResult.Network -> "Kunde inte nå servern. Kontrollera din uppkoppling."
+        is SignOutOthersResult.Done, SignOutOthersResult.SignedOut, SignOutOthersResult.Server -> "Servern fick ett fel. Försök igen om en stund."
+    }
+    override val changePassword = "Byt lösenord…"
+    override val changePasswordTitle = "Byt ditt lösenord"
+    override val changePasswordBody = "Alla andra enheter loggas ut. Den här webbläsaren förblir inloggad."
+    override val currentPassword = "Nuvarande lösenord"
+    override val newPassword = "Nytt lösenord"
+    override val changePasswordConfirm = "Byt lösenord"
+    override val passwordChanged = "Lösenordet är bytt. Andra enheter är utloggade."
+    override fun changePasswordFailure(result: ChangePasswordResult): String = when (result) {
+        ChangePasswordResult.WRONG_PASSWORD -> "Det är inte ditt nuvarande lösenord."
+        ChangePasswordResult.WEAK_PASSWORD -> "Lösenordet behöver minst 8 tecken."
+        ChangePasswordResult.NO_PASSWORD -> "Det här kontot loggar in med Google eller Apple och har inget lösenord."
+        ChangePasswordResult.RATE_LIMITED -> "För många försök. Vänta en minut och försök igen."
+        ChangePasswordResult.NOT_A_SERVER -> "Servern kan inte göra det än. Fråga den som driver den."
+        ChangePasswordResult.NETWORK -> "Kunde inte nå servern. Kontrollera din uppkoppling."
+        ChangePasswordResult.CHANGED, ChangePasswordResult.SIGNED_OUT, ChangePasswordResult.SERVER -> "Servern fick ett fel. Försök igen om en stund."
     }
     override val syncNow = "Synka nu"
     override val syncing = "Synkar…"

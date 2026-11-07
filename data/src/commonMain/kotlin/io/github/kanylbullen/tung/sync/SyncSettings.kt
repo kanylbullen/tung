@@ -29,6 +29,9 @@ class SyncSettings(private val store: DataStore<Preferences>) {
 
     /** The account has an Apple ID linked, as the server last said (sign-in, `/me`). */
     val appleLinked: Flow<Boolean> = store.data.map { it[APPLE_LINKED] ?: false }
+
+    /** The account has a password, as the server last said (sign-in, `/me`): "Change password" shows only then. */
+    val hasPassword: Flow<Boolean> = store.data.map { it[HAS_PASSWORD] ?: true }
     /**
      * Servers this device has signed in to, most recent first, at most
      * [RECENT_LIMIT]: what a watch offers so nobody types a URL twice.
@@ -44,13 +47,20 @@ class SyncSettings(private val store: DataStore<Preferences>) {
     suspend fun cursor(): Long = state.first().cursor
 
     /** A new sign-in: the server and the account, and sync starts over from cursor 0. */
-    suspend fun signedIn(serverUrl: String, email: String, googleLinked: Boolean = false, appleLinked: Boolean = false) = store.edit {
+    suspend fun signedIn(
+        serverUrl: String,
+        email: String,
+        googleLinked: Boolean = false,
+        appleLinked: Boolean = false,
+        hasPassword: Boolean = true,
+    ) = store.edit {
         val recent = it[RECENT]?.split('\n')?.filter { url -> url.isNotBlank() && url != serverUrl }.orEmpty()
         it[RECENT] = (listOf(serverUrl) + recent).take(RECENT_LIMIT).joinToString("\n")
         it[SERVER_URL] = serverUrl
         it[EMAIL] = email
         it[GOOGLE_LINKED] = googleLinked
         it[APPLE_LINKED] = appleLinked
+        it[HAS_PASSWORD] = hasPassword
         it[CURSOR] = 0L
         it.remove(LAST_SYNC_AT)
         it.remove(LAST_ERROR)
@@ -81,11 +91,15 @@ class SyncSettings(private val store: DataStore<Preferences>) {
     /** The email of the last sign-in, kept after signing out. */
     suspend fun email(): String? = email.first()
 
-    /** What `/me` says is linked: a Google account and an Apple ID. */
-    suspend fun setLinked(google: Boolean, apple: Boolean) = store.edit {
+    /** What `/me` says is linked: a Google account and an Apple ID, and whether there is a password. */
+    suspend fun setLinked(google: Boolean, apple: Boolean, hasPassword: Boolean = true) = store.edit {
         it[GOOGLE_LINKED] = google
         it[APPLE_LINKED] = apple
+        it[HAS_PASSWORD] = hasPassword
     }
+
+    /** The server said the account has no password (409 `no_password`): "Change password" goes away. */
+    suspend fun setHasPassword(value: Boolean) = store.edit { it[HAS_PASSWORD] = value }
 
     suspend fun setCursor(cursor: Long) = store.edit { it[CURSOR] = cursor }
 
@@ -116,6 +130,7 @@ class SyncSettings(private val store: DataStore<Preferences>) {
         val EMAIL = stringPreferencesKey("sync_email")
         val GOOGLE_LINKED = booleanPreferencesKey("sync_google_linked")
         val APPLE_LINKED = booleanPreferencesKey("sync_apple_linked")
+        val HAS_PASSWORD = booleanPreferencesKey("sync_has_password")
         val CURSOR = longPreferencesKey("sync_cursor")
         val LAST_SYNC_AT = longPreferencesKey("sync_last_at")
         val LAST_ERROR = stringPreferencesKey("sync_last_error")

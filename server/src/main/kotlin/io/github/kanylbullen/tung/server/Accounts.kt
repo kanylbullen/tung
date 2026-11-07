@@ -24,7 +24,11 @@ import io.github.kanylbullen.tung.server.oauth.OAuthCodes
 import io.github.kanylbullen.tung.server.oauth.OAuthRefreshTokens
 import io.github.kanylbullen.tung.server.routes.LinkCodes
 import io.github.kanylbullen.tung.server.routes.SlidingWindowLimiter
+import io.github.kanylbullen.tung.server.routes.LINK_TOKEN_NAME
+import io.github.kanylbullen.tung.server.routes.TesterSignups
 import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.ResultRow
 
 private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+$")
@@ -58,8 +62,19 @@ const val RESET_MAILS_PER_DAY = 3
 /** What choosing a new password by an emailed link gave. */
 enum class ResetOutcome { DONE, WEAK_PASSWORD, INVALID_LINK }
 
+/**
+ * A sign-in session or a watch's token that nothing has used for this long
+ * stops working, and the device signs in again: a token that leaked once is
+ * not good for ever. API tokens a user made, and OAuth grants (which have
+ * their own `expires_at`), are not affected.
+ */
+const val SESSION_IDLE_MS = 180L * 24 * 60 * 60 * 1000
+
 /** last_used_at is written at most this often per token, so reads do not each cost a write. */
 private const val LAST_USED_RESOLUTION_MS = 60_000L
+
+/** The tokens [SESSION_IDLE_MS] ends: sign-ins and watches. */
+private val IDLE_EXPIRING_TOKENS = setOf(Tokens.SESSION_NAME, LINK_TOKEN_NAME)
 
 /**
  * Users, passwords, sign-in with Google and Apple, session tokens and API
@@ -301,15 +316,28 @@ class Accounts(
      * to create comes after this. The caller holds [lockUser], which every path that issues a
      * credential takes too, so nothing issued on an older password or token outlives this.
      */
-    private fun Transaction.evictUnverifiedHolders(userId: String, now: Long) {
-        ApiTokens.update({ (ApiTokens.userId eq userId) and ApiTokens.revokedAt.isNull() }) { it[revokedAt] = now }
+    private fun Transaction.evictUnverifiedHolders(userId: String, now: Long) = endAccess(userId, now)
+
+    /**
+     * Revokes every token of [userId] but [keepToken], its refresh tokens,
+     * unused OAuth codes and link codes, and the push endpoints of every
+     * device but [keepDevice] (their devices would otherwise still hear when
+     * the account changes). The caller holds [lockUser].
+     */
+    private fun Transaction.endAccess(userId: String, now: Long, keepToken: String? = null, keepDevice: String? = null) {
+        ApiTokens.update({
+            (ApiTokens.userId eq userId) and ApiTokens.revokedAt.isNull() and
+                (if (keepToken == null) Op.TRUE else ApiTokens.id neq keepToken)
+        }) { it[revokedAt] = now }
         OAuthRefreshTokens.update({ (OAuthRefreshTokens.userId eq userId) and OAuthRefreshTokens.revokedAt.isNull() }) {
             it[revokedAt] = now
         }
         OAuthCodes.deleteWhere { (OAuthCodes.userId eq userId) and OAuthCodes.usedAt.isNull() }
         LinkCodes.deleteWhere { LinkCodes.userId eq userId }
-        // Their devices' push endpoints too, or they would still hear when the account changes.
-        PushEndpoints.update({ (PushEndpoints.userId eq userId) and PushEndpoints.revokedAt.isNull() }) { it[revokedAt] = now }
+        PushEndpoints.update({
+            (PushEndpoints.userId eq userId) and PushEndpoints.revokedAt.isNull() and
+                (if (keepDevice == null) Op.TRUE else PushEndpoints.deviceId neq keepDevice)
+        }) { it[revokedAt] = now }
     }
 
     /**
@@ -339,6 +367,11 @@ class Accounts(
                 }
                 .singleOrNull() ?: return@tx null
             val tokenId = row[ApiTokens.id]
+            if (!row.works(now)) {
+                // Revoked as well, so the list of tokens no longer shows it as working.
+                ApiTokens.update({ ApiTokens.id eq tokenId }) { it[revokedAt] = now }
+                return@tx null
+            }
             ApiTokens.update({
                 (ApiTokens.id eq tokenId) and
                     (ApiTokens.lastUsedAt.isNull() or (ApiTokens.lastUsedAt less now - LAST_USED_RESOLUTION_MS))
@@ -496,6 +529,18 @@ class Accounts(
         emailVerified = this[Users.emailVerifiedAt] != null,
     )
 
+    /**
+     * When the token stops working: its `expires_at` (OAuth), or for a
+     * session or watch [SESSION_IDLE_MS] after its last use; null for a
+     * token that never expires.
+     */
+    private fun ResultRow.expiry(): Long? =
+        this[ApiTokens.expiresAt]
+            ?: if (this[ApiTokens.name] in IDLE_EXPIRING_TOKENS) (this[ApiTokens.lastUsedAt] ?: this[ApiTokens.createdAt]) + SESSION_IDLE_MS else null
+
+    /** Whether an unrevoked token row still works at [now]. */
+    private fun ResultRow.works(now: Long): Boolean = expiry()?.let { it > now } ?: true
+
     suspend fun listTokens(principal: TokenPrincipal): TokenList = db.tx {
         val tokens = ApiTokens.selectAll()
             .where { (ApiTokens.userId eq principal.userId) and ApiTokens.revokedAt.isNull() }
@@ -507,7 +552,7 @@ class Accounts(
                     scope = it[ApiTokens.scope],
                     createdAt = it[ApiTokens.createdAt],
                     lastUsedAt = it[ApiTokens.lastUsedAt],
-                    expiresAt = it[ApiTokens.expiresAt],
+                    expiresAt = it.expiry(),
                     current = it[ApiTokens.id] == principal.tokenId,
                 )
             }
@@ -552,16 +597,72 @@ class Accounts(
     suspend fun deleteAccount(principal: TokenPrincipal, confirmEmail: String) {
         db.tx {
             lockUser(principal.userId)
-            val tokenName = ApiTokens.selectAll().where { ApiTokens.id eq principal.tokenId }.single()[ApiTokens.name]
-            if (tokenName != Tokens.SESSION_NAME) {
-                throw forbidden("session_required", "Delete the account from the app or the web, signed in with your password, Google or Apple.")
-            }
+            requireSession(principal, "Delete the account from the app or the web, signed in with your password, Google or Apple.")
             val email = Users.selectAll().where { Users.id eq principal.userId }.single()[Users.email]
             if (!email.equals(confirmEmail.trim(), ignoreCase = true)) {
                 throw badRequest("Type the account's email to confirm.", code = "email_mismatch")
             }
             Users.deleteWhere { Users.id eq principal.userId }
+            // The Play test sign-up is linked to no account, only to the address: it goes with the account too.
+            TesterSignups.deleteWhere { TesterSignups.email eq email.lowercase() }
         }
+    }
+
+    /**
+     * `POST /auth/logout/others`: every other way into the account ends (see
+     * [endAccess]), and the caller's session and its device's push endpoint
+     * ([device], the `X-Tung-Device` header) stay. Only a session token may,
+     * so an API token or an assistant cannot sign its owner out. Answers how
+     * many tokens it revoked.
+     */
+    suspend fun signOutOthers(principal: TokenPrincipal, device: String?): SignedOutOthers = db.tx {
+        lockUser(principal.userId)
+        requireSession(principal, "Sign out other devices from the app or the web.")
+        val now = clock()
+        // Only tokens that still work count: an expired grant or an idle session signed nothing out.
+        val others = ApiTokens.selectAll().where {
+            (ApiTokens.userId eq principal.userId) and ApiTokens.revokedAt.isNull() and (ApiTokens.id neq principal.tokenId)
+        }.count { it.works(now) }
+        endAccess(principal.userId, now, keepToken = principal.tokenId, keepDevice = device)
+        SignedOutOthers(others)
+    }
+
+    /**
+     * `POST /auth/password`: a new password for an account that has one,
+     * given the current one, which a session token that leaked does not
+     * know. 403 `wrong_password` (not 401, which clients read as signed
+     * out), 409 `no_password` for an account that signs in only with Google
+     * or Apple (it sets one by an emailed link, [forgotPassword]). Then, as
+     * after a reset, every other way in ends; the caller stays signed in.
+     */
+    suspend fun changePassword(principal: TokenPrincipal, change: PasswordChange, device: String?) {
+        if (change.newPassword.length !in MIN_PASSWORD..MAX_PASSWORD) {
+            throw badRequest("The password must be $MIN_PASSWORD to $MAX_PASSWORD characters.", "weak_password")
+        }
+        val current = db.tx {
+            requireSession(principal, "Change the password from the app or the web.")
+            Users.select(Users.passwordHash).where { Users.id eq principal.userId }.single()[Users.passwordHash]
+        } ?: throw conflict("no_password", "This account signs in with Google or Apple. Choose a password with 'Forgot password' instead.")
+        val hash = withContext(Dispatchers.Default) {
+            if (!Passwords.verify(change.currentPassword, current)) throw forbidden("wrong_password", "That is not the current password.")
+            Passwords.hash(change.newPassword)
+        }
+        db.tx {
+            lockUser(principal.userId)
+            // Read again under the lock: a reset or another change in between wins, and this one is refused.
+            val stored = Users.select(Users.passwordHash).where { Users.id eq principal.userId }.single()[Users.passwordHash]
+            if (stored != current) throw forbidden("wrong_password", "That is not the current password.")
+            Users.update({ Users.id eq principal.userId }) { it[passwordHash] = hash }
+            // A reset link mailed before the change would otherwise still choose another password.
+            EmailTokens.deleteWhere { (EmailTokens.userId eq principal.userId) and (EmailTokens.kind eq EmailTokens.KIND_RESET) }
+            endAccess(principal.userId, clock(), keepToken = principal.tokenId, keepDevice = device)
+        }
+    }
+
+    /** 403 `session_required` unless [principal] is a sign-in session: no API, watch or OAuth token. */
+    private fun Transaction.requireSession(principal: TokenPrincipal, message: String) {
+        val tokenName = ApiTokens.selectAll().where { ApiTokens.id eq principal.tokenId }.single()[ApiTokens.name]
+        if (tokenName != Tokens.SESSION_NAME) throw forbidden("session_required", message)
     }
 
     suspend fun exportTokens(userId: String): List<ExportTokenDto> = db.tx {

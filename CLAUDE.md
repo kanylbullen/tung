@@ -329,7 +329,7 @@ app's `AndroidPlatform`:
 
 | Group | Route | Summary | What is there |
 |---|---|---|---|
-| Account | `settings/account` | "Signed in as …" / "Not signed in" | `AccountScreen` + `AccountViewModel`: the server (default, see "Sync", "Account"), sign-in, sync status, Sync now, Sign out, and "Delete account…" (see "Server", "Account deletion") |
+| Account | `settings/account` | "Signed in as …" / "Not signed in" | `AccountScreen` + `AccountViewModel`: the server (default, see "Sync", "Account"), sign-in, sync status, Sync now, Sign out, "Change password…" (only with a password), "Sign out other devices…" and "Delete account…" (see "Server", "Account deletion" and "Sessions") |
 | Devices | `settings/devices` | the push transport, or "Link a watch once signed in" | `DevicesScreen` + `DevicesViewModel`: "Link a watch" and push (needs an account; signed out, a hint and "Go to Account") |
 | Training | `settings/training` | "Default rest 1:30 · kg" | `TrainingScreen`: the default rest (−/+ 30 s, 0–300 s), the unit (kg), and "My equipment" (`EquipmentSection`, issue #65) |
 | Assistant | `settings/assistant` | the model, or "Not set up" | `AiSection` |
@@ -1310,7 +1310,19 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   email, cursor and last result are in the `settings` DataStore
   (`SyncSettings`). Signing in resets the cursor to 0 and marks every row
   dirty, so a new account receives everything; signing out cancels the work,
-  forgets the token, calls `/logout` and keeps all local data.
+  forgets the token, calls `/logout` and keeps all local data. A session
+  unused for 180 days stops working on the server, which this device sees
+  as any 401: signed out, local data kept. Signed in, **"Sign out other
+  devices…"** asks first and runs `SyncAccount.signOutOthers`
+  (`/auth/logout/others` with `X-Tung-Device`), then says "Signed out 3
+  other devices" (`sync_sign_out_others_done`, or "No other devices were
+  signed in"); **"Change password…"** shows only while
+  `SyncSettings.hasPassword` (the server's `has_password`, set at sign-in and
+  from `/me` like "Google linked") and asks for the current password and a
+  new one of 8 to 1024 characters (checked here first), through
+  `SyncAccount.changePassword`; a wrong current one (403 `wrong_password`) is
+  said under its field and never signs out, only a 401 does. Both keep this
+  device signed in and change nothing local. `AccountSessionsFlowTest`.
 - **Whose data is on the device** (issue #152). `SyncSettings.owner()` is
   the `DataOwner` (core, `core/sync/DataOwner.kt`): the server and the
   **user id from the server's answer** (login, register, Google, Apple, the
@@ -2331,6 +2343,19 @@ fallback, and only on a tap.
   Server admin lists it, fetching a row's screenshots as object URLs only
   on "Show screenshots" (`ui/AdminFeedback.kt`). The privacy page says so. `FeedbackTest`,
   `WebFeedbackTest`, `FeedbackFlowTest`.
+- **Sessions** (issue #147, `Accounts.kt`): sign-in sessions and watch
+  tokens stop working 180 days after their last use (a plain 401, which
+  every client already reads as signed out). `POST /api/v1/auth/logout/others`
+  revokes every other token of the account (other phones, watches, the web,
+  API tokens, OAuth grants) and the other devices' push endpoints, keeping
+  the caller's by its `X-Tung-Device`, and answers `{revoked_tokens}`.
+  `POST /api/v1/auth/password {current_password, new_password}` changes the
+  password (8 to 1024 characters, else 400 `weak_password`) and then signs
+  the other devices out the same way, 204; a wrong current password is 403
+  `wrong_password`, deliberately not 401, so no client signs itself out over
+  a typo, and an account without a password is 409 `no_password`. Both take
+  only a sign-in session (403 `session_required`), the password change under
+  the sign-in rate limit. `SessionsTest`.
 - **Account deletion** (`Accounts.deleteAccount`, `DELETE /api/v1/me {email}`;
   Google Play requires it in the app and on the web): one transaction under
   `lockUser` deletes the `users` row, and `ON DELETE CASCADE` takes every
@@ -2532,7 +2557,11 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   "Delete them" is `TungStore.wipe` (no tombstones, the catalogue back to
   the seed, one IndexedDB transaction), and dismissing it, or the page's
   `pagehide`, revokes the held token (best effort).
-  `WebSignInTest`.
+  `WebSignInTest`. Settings has the phone's "Change password…" (shown when
+  `/me` says `has_password`, `WebContainer.hasPassword`, asked as Settings
+  opens) and "Sign out other devices…" (`WebContainer.changePassword`,
+  `signOutOthers`, both with the browser's `X-Tung-Device`; only a 401 signs
+  out), each with its dialog. `WebAuthSessionsTest`.
 - **Home and History** (`ui/HomeScreen.kt`, `home/HomeModel.kt`,
   `ui/HistoryScreen.kt`): a bottom bar switches them by the location's
   hash (`#/`, `#/history`), so back and forward work and a link opens a

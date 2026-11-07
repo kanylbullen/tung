@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web.sync
 
+import io.github.kanylbullen.tung.core.sync.DEVICE_HEADER
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -13,6 +14,63 @@ const val APPLE_PATH = "/api/v1/auth/apple"
 const val METHODS_PATH = "/api/v1/auth/methods"
 const val ACCOUNT_PATH = "/api/v1/me"
 const val RESEND_CONFIRMATION_PATH = "/api/v1/auth/verify/resend"
+const val LOGOUT_OTHERS_PATH = "/api/v1/auth/logout/others"
+const val CHANGE_PASSWORD_PATH = "/api/v1/auth/password"
+
+/** The server's bounds for a password (`weak_password` outside them). */
+const val MIN_PASSWORD_LENGTH = 8
+const val MAX_PASSWORD_LENGTH = 1024
+
+/** What "Sign out other devices" gave, as the phone's `SignOutOthersOutcome` names it. */
+sealed interface SignOutOthersResult {
+    /** Every other token of the account was revoked; [revoked] of them. */
+    data class Done(val revoked: Int) : SignOutOthersResult
+
+    /** 401: the token is no longer valid. */
+    data object SignedOut : SignOutOthersResult
+
+    /** 404 or 405: a server from before the route. */
+    data object NotAServer : SignOutOthersResult
+
+    /** 429. */
+    data object RateLimited : SignOutOthersResult
+
+    /** No connection, refused, blocked. */
+    data object Network : SignOutOthersResult
+
+    /** 5xx, 403 `session_required`, another 4xx, or an answer that is not what the API returns. */
+    data object Server : SignOutOthersResult
+}
+
+/** What changing the password gave, as the phone's `ChangePasswordOutcome` names it. */
+enum class ChangePasswordResult {
+    /** Changed; every other device was signed out, this browser stays. */
+    CHANGED,
+
+    /** 403 `wrong_password`: not the current password. Not a sign-out. */
+    WRONG_PASSWORD,
+
+    /** 400 `weak_password`: not [MIN_PASSWORD_LENGTH] to [MAX_PASSWORD_LENGTH] characters. */
+    WEAK_PASSWORD,
+
+    /** 409 `no_password`: the account signs in only with Google or Apple. */
+    NO_PASSWORD,
+
+    /** 401: the token is no longer valid. */
+    SIGNED_OUT,
+
+    /** 429. */
+    RATE_LIMITED,
+
+    /** 404 or 405: a server from before the route. */
+    NOT_A_SERVER,
+
+    /** No connection, refused, blocked. */
+    NETWORK,
+
+    /** 5xx, another 4xx, or an answer that is not what the API returns. */
+    SERVER,
+}
 
 const val FORGOT_PASSWORD_PATH = "/api/v1/auth/password/forgot"
 
@@ -117,6 +175,7 @@ class WebAuth(
     private val post: PostJson = ::postJson,
     private val get: GetJson = { getJson(it) },
     private val delete: PostJson = ::deleteJson,
+    private val getWithHeaders: suspend (url: String, headers: Map<String, String>) -> HttpReply = { url, headers -> getJson(url, headers) },
 ) {
 
     /**
@@ -300,6 +359,80 @@ class WebAuth(
         }
     }
 
+    /**
+     * `GET /api/v1/me`'s `has_password`: whether "Change password" is
+     * offered. Null when the server does not answer; true from a server
+     * that leaves the flag out.
+     */
+    suspend fun hasPassword(baseUrl: String, token: String): Boolean? {
+        val reply = try {
+            getWithHeaders(baseUrl + ACCOUNT_PATH, mapOf("Authorization" to "Bearer $token"))
+        } catch (e: HttpUnreachable) {
+            return null
+        }
+        if (!reply.isSuccess) return null
+        return try {
+            json.decodeFromString(Me.serializer(), reply.body).hasPassword ?: true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * `POST /api/v1/auth/logout/others` with this browser's [deviceId]: every
+     * other token of the account stops working, this one stays. Stores nothing.
+     */
+    suspend fun signOutOthers(baseUrl: String, token: String, deviceId: String): SignOutOthersResult {
+        val reply = try {
+            post(baseUrl + LOGOUT_OTHERS_PATH, "{}", mapOf("Authorization" to "Bearer $token", DEVICE_HEADER to deviceId))
+        } catch (e: HttpUnreachable) {
+            return SignOutOthersResult.Network
+        }
+        return when {
+            reply.isSuccess -> try {
+                SignOutOthersResult.Done(json.decodeFromString(SignedOutOthers.serializer(), reply.body).revokedTokens)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                SignOutOthersResult.Server
+            }
+            reply.status == 401 -> SignOutOthersResult.SignedOut
+            reply.status == 429 -> SignOutOthersResult.RateLimited
+            reply.status == 404 || reply.status == 405 -> SignOutOthersResult.NotAServer
+            else -> SignOutOthersResult.Server
+        }
+    }
+
+    /**
+     * `POST /api/v1/auth/password {current_password, new_password}` with this
+     * browser's [deviceId]: the server changes the password and signs every
+     * other device out. A 403 `wrong_password` is not a sign-out. Stores nothing.
+     */
+    suspend fun changePassword(baseUrl: String, token: String, deviceId: String, current: String, new: String): ChangePasswordResult {
+        val reply = try {
+            post(
+                baseUrl + CHANGE_PASSWORD_PATH,
+                json.encodeToString(PasswordChange.serializer(), PasswordChange(current, new)),
+                mapOf("Authorization" to "Bearer $token", DEVICE_HEADER to deviceId),
+            )
+        } catch (e: HttpUnreachable) {
+            return ChangePasswordResult.NETWORK
+        }
+        if (reply.isSuccess) return ChangePasswordResult.CHANGED
+        val code = errorCode(reply.body)
+        return when {
+            reply.status == 401 -> ChangePasswordResult.SIGNED_OUT
+            code == "wrong_password" -> ChangePasswordResult.WRONG_PASSWORD
+            code == "weak_password" -> ChangePasswordResult.WEAK_PASSWORD
+            code == "no_password" -> ChangePasswordResult.NO_PASSWORD
+            reply.status == 429 -> ChangePasswordResult.RATE_LIMITED
+            reply.status == 404 || reply.status == 405 -> ChangePasswordResult.NOT_A_SERVER
+            else -> ChangePasswordResult.SERVER
+        }
+    }
+
     private fun failureOf(status: Int): AuthFailure = when (status) {
         401 -> AuthFailure.INVALID_CREDENTIALS
         429 -> AuthFailure.RATE_LIMITED
@@ -313,6 +446,18 @@ class WebAuth(
 
     @Serializable
     private data class Confirmation(val email: String)
+
+    @Serializable
+    private data class PasswordChange(
+        @SerialName("current_password") val currentPassword: String,
+        @SerialName("new_password") val newPassword: String,
+    )
+
+    @Serializable
+    private data class SignedOutOthers(@SerialName("revoked_tokens") val revokedTokens: Int = 0)
+
+    @Serializable
+    private data class Me(@SerialName("has_password") val hasPassword: Boolean? = null)
 
     @Serializable
     private data class Resend(val language: String? = null)
