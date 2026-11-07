@@ -92,8 +92,13 @@ private data class ResolvedBody(val resolved: Boolean)
 @Serializable
 private data class TesterList(val testers: List<TesterSignup>)
 
+/** What Settings reads from `/me`: whether to show Server admin and "Change password…". */
 @Serializable
-private data class Me(@SerialName("is_admin") val isAdmin: Boolean = false)
+data class AccountFlags(
+    @SerialName("is_admin") val isAdmin: Boolean = false,
+    /** True from a server that leaves the flag out, as before it existed. */
+    @SerialName("has_password") val hasPassword: Boolean = true,
+)
 
 /** What an admin read gave: the value, or why not. */
 sealed interface AdminResult<out T> {
@@ -122,9 +127,12 @@ class WebAdmin(
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
 
+    /** [token]'s account's flags from `/me`, one read for all of Settings; null when there is no answer. */
+    suspend fun account(baseUrl: String, token: String): AccountFlags? =
+        (read(baseUrl + ME_PATH, token, AccountFlags.serializer()) as? AdminResult.Ok)?.value
+
     /** True when [token]'s account is an admin of [baseUrl]; false for anyone else, an older server, or no answer. */
-    suspend fun isAdmin(baseUrl: String, token: String): Boolean =
-        (read(baseUrl + ME_PATH, token, Me.serializer()) as? AdminResult.Ok)?.value?.isAdmin == true
+    suspend fun isAdmin(baseUrl: String, token: String): Boolean = account(baseUrl, token)?.isAdmin == true
 
     suspend fun users(baseUrl: String, token: String): AdminResult<AdminUsers> =
         read(baseUrl + ADMIN_USERS_PATH, token, AdminUsers.serializer())

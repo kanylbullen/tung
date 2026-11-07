@@ -175,7 +175,6 @@ class WebAuth(
     private val post: PostJson = ::postJson,
     private val get: GetJson = { getJson(it) },
     private val delete: PostJson = ::deleteJson,
-    private val getWithHeaders: suspend (url: String, headers: Map<String, String>) -> HttpReply = { url, headers -> getJson(url, headers) },
 ) {
 
     /**
@@ -360,27 +359,6 @@ class WebAuth(
     }
 
     /**
-     * `GET /api/v1/me`'s `has_password`: whether "Change password" is
-     * offered. Null when the server does not answer; true from a server
-     * that leaves the flag out.
-     */
-    suspend fun hasPassword(baseUrl: String, token: String): Boolean? {
-        val reply = try {
-            getWithHeaders(baseUrl + ACCOUNT_PATH, mapOf("Authorization" to "Bearer $token"))
-        } catch (e: HttpUnreachable) {
-            return null
-        }
-        if (!reply.isSuccess) return null
-        return try {
-            json.decodeFromString(Me.serializer(), reply.body).hasPassword ?: true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    /**
      * `POST /api/v1/auth/logout/others` with this browser's [deviceId]: every
      * other token of the account stops working, this one stays. Stores nothing.
      */
@@ -456,8 +434,6 @@ class WebAuth(
     @Serializable
     private data class SignedOutOthers(@SerialName("revoked_tokens") val revokedTokens: Int = 0)
 
-    @Serializable
-    private data class Me(@SerialName("has_password") val hasPassword: Boolean? = null)
 
     @Serializable
     private data class Resend(val language: String? = null)
