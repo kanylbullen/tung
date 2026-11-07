@@ -690,6 +690,26 @@
     <string name="sync_sign_in">Logga in</string>
     <string name="sync_sign_out">Logga ut</string>
     <string name="sync_sign_out_hint">Din träning finns kvar på telefonen när du loggar ut.</string>
+    <string name="sync_account_error_old_server">Servern kan inte göra det än. Fråga den som driver den.</string>
+    <string name="sync_change_password">Byt lösenord…</string>
+    <string name="sync_change_password_body">Alla andra enheter loggas ut. Den här telefonen förblir inloggad.</string>
+    <string name="sync_change_password_confirm">Byt lösenord</string>
+    <string name="sync_change_password_current">Nuvarande lösenord</string>
+    <string name="sync_change_password_done">Lösenordet är bytt. Andra enheter är utloggade.</string>
+    <string name="sync_change_password_error_current">Ange ditt nuvarande lösenord.</string>
+    <string name="sync_change_password_error_no_password">Det här kontot loggar in med Google eller Apple och har inget lösenord.</string>
+    <string name="sync_change_password_error_wrong">Det är inte ditt nuvarande lösenord.</string>
+    <string name="sync_change_password_new">Nytt lösenord</string>
+    <string name="sync_change_password_title">Byt ditt lösenord</string>
+    <string name="sync_sign_out_others">Logga ut andra enheter…</string>
+    <string name="sync_sign_out_others_body">Andra telefoner, klockor, webben och anslutna assistenter måste logga in igen. Den här telefonen förblir inloggad.</string>
+    <string name="sync_sign_out_others_confirm">Logga ut andra enheter</string>
+    <string name="sync_sign_out_others_none">Inga andra enheter var inloggade.</string>
+    <string name="sync_sign_out_others_title">Logga ut alla andra enheter?</string>
+    <plurals name="sync_sign_out_others_done">
+        <item quantity="one">Loggade ut %1$d annan enhet.</item>
+        <item quantity="other">Loggade ut %1$d andra enheter.</item>
+    </plurals>
     <string name="sync_status_date">Synkade %1$s</string>
     <string name="sync_status_just_now">Synkade nyss</string>
     <string name="sync_status_never">Senaste synk: aldrig</string>

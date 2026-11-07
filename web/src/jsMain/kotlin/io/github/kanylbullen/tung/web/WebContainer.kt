@@ -23,7 +23,9 @@ import io.github.kanylbullen.tung.web.store.WebCommandStore
 import io.github.kanylbullen.tung.web.store.WebExerciseResolver
 import io.github.kanylbullen.tung.web.store.Write
 import io.github.kanylbullen.tung.web.sync.AuthResult
+import io.github.kanylbullen.tung.web.sync.ChangePasswordResult
 import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
+import io.github.kanylbullen.tung.web.sync.SignOutOthersResult
 import io.github.kanylbullen.tung.web.sync.ForgotResult
 import io.github.kanylbullen.tung.web.sync.ResendResult
 import io.github.kanylbullen.tung.web.sync.PeriodicSync
@@ -271,6 +273,39 @@ class WebContainer(
         val account = settings.account.value ?: return ResendResult.FAILED
         val token = settings.token ?: return ResendResult.FAILED
         return auth.resendConfirmation(account.serverUrl, token, languageTag())
+    }
+
+    /** Whether the account has a password (`/me`), so Settings offers "Change password"; null when the server does not answer. */
+    suspend fun hasPassword(): Boolean? {
+        val account = settings.account.value ?: return null
+        val token = settings.token ?: return null
+        return auth.hasPassword(account.serverUrl, token)
+    }
+
+    /**
+     * "Sign out other devices": every other token of the account stops
+     * working; this browser stays signed in and nothing local changes. A 401
+     * signs out as a sync's does.
+     */
+    suspend fun signOutOthers(): SignOutOthersResult {
+        val account = settings.account.value ?: return SignOutOthersResult.SignedOut
+        val token = settings.token ?: return SignOutOthersResult.SignedOut
+        val result = auth.signOutOthers(account.serverUrl, token, settings.deviceId())
+        if (result == SignOutOthersResult.SignedOut) settings.signedOut(SyncFailure.SIGNED_OUT)
+        return result
+    }
+
+    /**
+     * "Change password": the server changes it given the current one and
+     * signs every other device out; this browser stays. Only a 401 signs out
+     * here, never a wrong current password.
+     */
+    suspend fun changePassword(current: String, new: String): ChangePasswordResult {
+        val account = settings.account.value ?: return ChangePasswordResult.SIGNED_OUT
+        val token = settings.token ?: return ChangePasswordResult.SIGNED_OUT
+        val result = auth.changePassword(account.serverUrl, token, settings.deviceId(), current, new)
+        if (result == ChangePasswordResult.SIGNED_OUT) settings.signedOut(SyncFailure.SIGNED_OUT)
+        return result
     }
 
     /**

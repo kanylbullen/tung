@@ -692,6 +692,26 @@
     <string name="sync_sign_in">Sign in</string>
     <string name="sync_sign_out">Sign out</string>
     <string name="sync_sign_out_hint">Signing out keeps your training on this phone.</string>
+    <string name="sync_account_error_old_server">This server cannot do that yet. Ask whoever runs it.</string>
+    <string name="sync_change_password">Change password…</string>
+    <string name="sync_change_password_body">Every other device is signed out. This phone stays signed in.</string>
+    <string name="sync_change_password_confirm">Change password</string>
+    <string name="sync_change_password_current">Current password</string>
+    <string name="sync_change_password_done">Password changed. Other devices are signed out.</string>
+    <string name="sync_change_password_error_current">Enter your current password.</string>
+    <string name="sync_change_password_error_no_password">This account signs in with Google or Apple and has no password.</string>
+    <string name="sync_change_password_error_wrong">That is not your current password.</string>
+    <string name="sync_change_password_new">New password</string>
+    <string name="sync_change_password_title">Change your password</string>
+    <string name="sync_sign_out_others">Sign out other devices…</string>
+    <string name="sync_sign_out_others_body">Other phones, watches, the web and connected assistants will have to sign in again. This phone stays signed in.</string>
+    <string name="sync_sign_out_others_confirm">Sign out other devices</string>
+    <string name="sync_sign_out_others_none">No other devices were signed in.</string>
+    <string name="sync_sign_out_others_title">Sign out every other device?</string>
+    <plurals name="sync_sign_out_others_done">
+        <item quantity="one">Signed out %1$d other device.</item>
+        <item quantity="other">Signed out %1$d other devices.</item>
+    </plurals>
     <string name="sync_status_date">Last sync %1$s</string>
     <string name="sync_status_just_now">Last sync just now</string>
     <string name="sync_status_never">Last sync: never</string>

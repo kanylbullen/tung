@@ -12,6 +12,10 @@ import io.github.kanylbullen.tung.sync.AccountState
 import io.github.kanylbullen.tung.sync.AuthFailure
 import io.github.kanylbullen.tung.sync.AuthMethodsResult
 import io.github.kanylbullen.tung.sync.AuthResult
+import io.github.kanylbullen.tung.sync.ChangePasswordOutcome
+import io.github.kanylbullen.tung.sync.MAX_PASSWORD_LENGTH
+import io.github.kanylbullen.tung.sync.MIN_PASSWORD_LENGTH
+import io.github.kanylbullen.tung.sync.SignOutOthersOutcome
 import io.github.kanylbullen.tung.sync.DeleteAccountOutcome
 import io.github.kanylbullen.tung.sync.ForgotOutcome
 import io.github.kanylbullen.tung.core.sync.OtherAccountChoice
@@ -65,6 +69,41 @@ data class AccountDeletion(
     val error: StringResource? = null,
 )
 
+/** "Sign out other devices…" open: asked once, then the server's answer. */
+data class SignOutOthersState(
+    val busy: Boolean = false,
+    val error: StringResource? = null,
+)
+
+/**
+ * "Change password…" open: the current password and the new one as typed.
+ * [currentError] is said under the current password (a wrong one),
+ * [newError] under the new one (too short or long), [error] under both.
+ */
+data class PasswordChangeState(
+    val current: String = "",
+    val new: String = "",
+    val busy: Boolean = false,
+    val currentError: StringResource? = null,
+    val newError: StringResource? = null,
+    val error: StringResource? = null,
+)
+
+/** One line under the account's actions after one of them worked. */
+sealed interface AccountNotice {
+    /** "Sign out other devices" revoked [count] tokens. */
+    data class SignedOutOthers(val count: Int) : AccountNotice
+
+    data object PasswordChanged : AccountNotice
+}
+
+/** The account's dialogs and the line their success leaves, as one state. */
+private data class AccountActions(
+    val signOutOthers: SignOutOthersState? = null,
+    val passwordChange: PasswordChangeState? = null,
+    val notice: AccountNotice? = null,
+)
+
 data class AccountUiState(
     /** Null until the account has been read. */
     val account: AccountState? = null,
@@ -77,6 +116,12 @@ data class AccountUiState(
     val deleted: Boolean = false,
     /** What asking for a new confirmation link gave, while it is said; [ResendState.Sending] while it runs. */
     val resend: ResendState? = null,
+    /** "Sign out other devices", while its dialog is open. */
+    val signOutOthers: SignOutOthersState? = null,
+    /** "Change password", while its dialog is open. */
+    val passwordChange: PasswordChangeState? = null,
+    /** What the last of those two did, said under the buttons. */
+    val notice: AccountNotice? = null,
 )
 
 /** "Send the link again" under "Confirm your email". */
@@ -97,10 +142,12 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
     private val deletion = MutableStateFlow<AccountDeletion?>(null)
     private val deleted = MutableStateFlow(false)
     private val resend = MutableStateFlow<ResendState?>(null)
+    private val actions = MutableStateFlow(AccountActions())
 
-    val state: StateFlow<AccountUiState> = combine(account.state, form, deletion, deleted, resend) { a, f, d, gone, r ->
-        AccountUiState(a, f, defaultServerUrl, d, gone, r)
-    }
+    val state: StateFlow<AccountUiState> = combine(
+        combine(account.state, form, deletion, deleted, resend) { a, f, d, gone, r -> AccountUiState(a, f, defaultServerUrl, d, gone, r) },
+        actions,
+    ) { ui, more -> ui.copy(signOutOthers = more.signOutOthers, passwordChange = more.passwordChange, notice = more.notice) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountUiState(defaultServerUrl = defaultServerUrl))
 
     private var methodsJob: Job? = null
@@ -125,6 +172,7 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
                 if (signedIn == false) {
                     // Signed out some other way (a 401 in the background): the dialog must not come back at the next sign-in.
                     deletion.value = null
+                    actions.value = AccountActions()
                     lookUpMethods(form.value.serverUrl, waitMillis = 0)
                 }
             }
@@ -338,6 +386,80 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
                 deleted.value = outcome == DeleteAccountOutcome.DELETED
             } else {
                 deletion.update { it?.copy(busy = false, error = error) }
+            }
+        }
+    }
+
+    fun openSignOutOthers() = actions.update { it.copy(signOutOthers = it.signOutOthers ?: SignOutOthersState(), notice = null) }
+
+    fun cancelSignOutOthers() = actions.update { if (it.signOutOthers?.busy == true) it else it.copy(signOutOthers = null) }
+
+    /**
+     * Every other device of the account is signed out
+     * ([SyncAccount.signOutOthers]); this one stays, and nothing local changes.
+     */
+    fun confirmSignOutOthers() {
+        val current = actions.value.signOutOthers ?: return
+        if (current.busy) return
+        actions.update { it.copy(signOutOthers = SignOutOthersState(busy = true)) }
+        viewModelScope.launch {
+            val error = when (val outcome = account.signOutOthers()) {
+                is SignOutOthersOutcome.Done -> {
+                    actions.update { it.copy(signOutOthers = null, notice = AccountNotice.SignedOutOthers(outcome.revoked)) }
+                    return@launch
+                }
+                SignOutOthersOutcome.NotAServer -> Res.string.sync_account_error_old_server
+                SignOutOthersOutcome.RateLimited -> Res.string.sync_error_rate_limited
+                SignOutOthersOutcome.Network -> Res.string.sync_error_unreachable
+                SignOutOthersOutcome.Server -> Res.string.sync_error_server_auth
+                // Signed out already: the form says so.
+                SignOutOthersOutcome.SignedOut, SignOutOthersOutcome.NotSignedIn -> null
+            }
+            actions.update { it.copy(signOutOthers = error?.let { e -> SignOutOthersState(error = e) }) }
+        }
+    }
+
+    fun openPasswordChange() = actions.update { it.copy(passwordChange = it.passwordChange ?: PasswordChangeState(), notice = null) }
+
+    fun cancelPasswordChange() = actions.update { if (it.passwordChange?.busy == true) it else it.copy(passwordChange = null) }
+
+    fun onCurrentPassword(value: String) =
+        actions.update { a -> a.copy(passwordChange = a.passwordChange?.copy(current = value, currentError = null, error = null)) }
+
+    fun onNewPassword(value: String) =
+        actions.update { a -> a.copy(passwordChange = a.passwordChange?.copy(new = value, newError = null, error = null)) }
+
+    /**
+     * Changes the password ([SyncAccount.changePassword]) after the length
+     * rule is checked here too; the server signs every other device out. A
+     * wrong current password is said under its field and signs nothing out.
+     */
+    fun confirmPasswordChange() {
+        val current = actions.value.passwordChange ?: return
+        if (current.busy) return
+        if (current.current.isEmpty()) {
+            return actions.update { it.copy(passwordChange = current.copy(currentError = Res.string.sync_change_password_error_current)) }
+        }
+        if (current.new.length !in MIN_PASSWORD_LENGTH..MAX_PASSWORD_LENGTH) {
+            return actions.update { it.copy(passwordChange = current.copy(newError = Res.string.sync_error_weak_password)) }
+        }
+        actions.update { it.copy(passwordChange = current.copy(busy = true, currentError = null, newError = null, error = null)) }
+        viewModelScope.launch {
+            val outcome = account.changePassword(current.current, current.new)
+            actions.update { a ->
+                val open = a.passwordChange?.copy(busy = false) ?: return@update a
+                when (outcome) {
+                    ChangePasswordOutcome.CHANGED -> a.copy(passwordChange = null, notice = AccountNotice.PasswordChanged)
+                    ChangePasswordOutcome.WRONG_PASSWORD -> a.copy(passwordChange = open.copy(currentError = Res.string.sync_change_password_error_wrong))
+                    ChangePasswordOutcome.WEAK_PASSWORD -> a.copy(passwordChange = open.copy(newError = Res.string.sync_error_weak_password))
+                    ChangePasswordOutcome.NO_PASSWORD -> a.copy(passwordChange = open.copy(error = Res.string.sync_change_password_error_no_password))
+                    ChangePasswordOutcome.RATE_LIMITED -> a.copy(passwordChange = open.copy(error = Res.string.sync_error_rate_limited))
+                    ChangePasswordOutcome.NOT_A_SERVER -> a.copy(passwordChange = open.copy(error = Res.string.sync_account_error_old_server))
+                    ChangePasswordOutcome.NETWORK -> a.copy(passwordChange = open.copy(error = Res.string.sync_error_unreachable))
+                    ChangePasswordOutcome.SERVER -> a.copy(passwordChange = open.copy(error = Res.string.sync_error_server_auth))
+                    // Signed out already: the form says so.
+                    ChangePasswordOutcome.SIGNED_OUT, ChangePasswordOutcome.NOT_SIGNED_IN -> a.copy(passwordChange = null)
+                }
             }
         }
     }

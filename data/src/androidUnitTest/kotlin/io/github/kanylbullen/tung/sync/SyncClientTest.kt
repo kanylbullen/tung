@@ -386,7 +386,7 @@ class SyncClientTest {
         val phone = Device()
         fake.googleClientId = "1234-web.apps.googleusercontent.com"
         val ok = runBlocking { phone.client.loginWithGoogle(fake.baseUrl, fake.googleIdToken) }
-        assertEquals(AuthResult.Success(fake.token, "lifter@gmail.com", googleLinked = true, userId = "g"), ok)
+        assertEquals(AuthResult.Success(fake.token, "lifter@gmail.com", googleLinked = true, userId = "g", hasPassword = false), ok)
         assertEquals(listOf(fake.googleIdToken), fake.googleTokens)
 
         val rejected = runBlocking { phone.client.loginWithGoogle(fake.baseUrl, "forged") }
@@ -422,7 +422,7 @@ class SyncClientTest {
         val phone = Device()
         fake.appleClientId = "io.github.kanylbullen.tung.web"
         val ok = runBlocking { phone.client.loginWithApple(fake.baseUrl, fake.appleIdToken) }
-        assertEquals(AuthResult.Success(fake.token, "lifter@privaterelay.appleid.com", appleLinked = true, userId = "a"), ok)
+        assertEquals(AuthResult.Success(fake.token, "lifter@privaterelay.appleid.com", appleLinked = true, userId = "a", hasPassword = false), ok)
         assertEquals(listOf(fake.appleIdToken), fake.appleTokens)
 
         val rejected = runBlocking { phone.client.loginWithApple(fake.baseUrl, "forged") }
@@ -439,5 +439,30 @@ class SyncClientTest {
         assertEquals(false, runBlocking { phone.client.me() }?.appleLinked)
         fake.appleLinked = true
         assertEquals(true, runBlocking { phone.client.me() }?.appleLinked)
+    }
+
+    @Test
+    fun signOutOthersSendsTheDeviceAndCountsWhatWasRevoked() {
+        val phone = Device()
+        val device = runBlocking { phone.settings.deviceId() }
+        assertEquals(SignOutOthersOutcome.Done(2), runBlocking { phone.client.signOutOthers() })
+        assertEquals(listOf<String?>(device), fake.signOutOthersDevices)
+        assertEquals(SignOutOthersOutcome.Done(0), runBlocking { phone.client.signOutOthers() })
+        phone.tokens.write("tung_dead")
+        assertEquals(SignOutOthersOutcome.SignedOut, runBlocking { phone.client.signOutOthers() })
+    }
+
+    @Test
+    fun changePasswordMapsTheServersAnswers() {
+        val phone = Device()
+        assertEquals(ChangePasswordOutcome.WRONG_PASSWORD, runBlocking { phone.client.changePassword("guess", "a new password") })
+        // A 403 is not a sign-out: the token stays.
+        assertEquals(fake.token, phone.tokens.read())
+        assertEquals(ChangePasswordOutcome.WEAK_PASSWORD, runBlocking { phone.client.changePassword(fake.password, "short") })
+        assertEquals(ChangePasswordOutcome.CHANGED, runBlocking { phone.client.changePassword("correct horse", "a new password") })
+        assertEquals("a new password", fake.password)
+        assertEquals(listOf<String?>(runBlocking { phone.settings.deviceId() }), fake.signOutOthersDevices)
+        fake.hasPassword = false
+        assertEquals(ChangePasswordOutcome.NO_PASSWORD, runBlocking { phone.client.changePassword("a new password", "another one") })
     }
 }

@@ -32,7 +32,11 @@ import org.jetbrains.compose.web.dom.Input
 import org.jetbrains.compose.web.attributes.AutoComplete
 import org.jetbrains.compose.web.attributes.InputType
 import org.jetbrains.compose.web.attributes.autoComplete
+import io.github.kanylbullen.tung.web.sync.ChangePasswordResult
 import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
+import io.github.kanylbullen.tung.web.sync.MAX_PASSWORD_LENGTH
+import io.github.kanylbullen.tung.web.sync.MIN_PASSWORD_LENGTH
+import io.github.kanylbullen.tung.web.sync.SignOutOthersResult
 import org.jetbrains.compose.web.dom.Label
 import org.jetbrains.compose.web.dom.Li
 import org.jetbrains.compose.web.dom.P
@@ -128,6 +132,7 @@ fun SettingsScreen(container: WebContainer, account: Account) {
                 Button({ classes("secondary"); onClick { scope.launch { container.signOut() } } }) { Text(strings.signOut) }
             }
             P({ classes("hint", "flush") }) { Text(strings.signOutHint) }
+            Sessions(container, account)
             DeleteAccount(container, account)
         }
 
@@ -227,6 +232,106 @@ private fun DataSection(container: WebContainer) {
                 confirming = null
                 scope.launch { container.run(Command.DeleteRoutines(routines)) }
             }
+        }
+    }
+}
+
+/**
+ * "Change password…" (only when `/me` says the account has one) and "Sign
+ * out other devices…" (issue #147), each with its dialog, and one line on
+ * what the last of them did. Neither signs this browser out or touches the log.
+ */
+@Composable
+private fun Sessions(container: WebContainer, account: Account) {
+    val strings = container.strings
+    val scope = rememberCoroutineScope()
+    // Asked each time Settings opens, as the admin check is; an account that signs in only with Google or Apple has none.
+    val hasPassword by produceState(false, account) { value = container.hasPassword() == true }
+    var dialog by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var current by remember { mutableStateOf("") }
+    var new by remember { mutableStateOf("") }
+    var notice by remember { mutableStateOf<String?>(null) }
+
+    Div({ classes("setting-buttons") }) {
+        if (hasPassword) {
+            Button({ classes("text-button"); onClick { dialog = "password"; notice = null } }) { Text(strings.changePassword) }
+        }
+        Button({ classes("text-button"); onClick { dialog = "others"; notice = null } }) { Text(strings.signOutOthers) }
+    }
+    notice?.let { P({ classes("hint", "flush"); attr("role", "status") }) { Text(it) } }
+
+    fun close() {
+        if (busy) return
+        dialog = null
+        error = null
+        current = ""
+        new = ""
+    }
+    val open = dialog ?: return
+    val title = if (open == "password") strings.changePasswordTitle else strings.signOutOthersTitle
+    Div({ classes("sheet-backdrop"); onClick { close() } })
+    Div({ classes("dialog"); attr("role", "dialog"); attr("aria-modal", "true"); attr("aria-label", title) }) {
+        H2 { Text(title) }
+        if (open == "password") {
+            P { Text(strings.changePasswordBody) }
+            Label(attrs = { classes("field", "dialog-field") }) {
+                Span { Text(strings.currentPassword) }
+                Input(InputType.Password) {
+                    value(current)
+                    autoComplete(AutoComplete.currentPassword)
+                    onInput { current = it.value; error = null }
+                    if (busy) disabled()
+                }
+            }
+            Label(attrs = { classes("field", "dialog-field") }) {
+                Span { Text(strings.newPassword) }
+                Input(InputType.Password) {
+                    value(new)
+                    autoComplete(AutoComplete.newPassword)
+                    onInput { new = it.value; error = null }
+                    if (busy) disabled()
+                }
+            }
+        } else {
+            P { Text(strings.signOutOthersBody) }
+        }
+        error?.let { message -> P({ classes("error"); attr("role", "alert") }) { Text(message) } }
+        Div({ classes("dialog-actions") }) {
+            Button({ classes("secondary"); if (busy) disabled(); onClick { close() } }) { Text(strings.cancel) }
+            Button({
+                classes("accent-button")
+                if (busy || (open == "password" && (current.isEmpty() || new.isEmpty()))) disabled()
+                onClick {
+                    if (open == "password" && new.length !in MIN_PASSWORD_LENGTH..MAX_PASSWORD_LENGTH) {
+                        error = strings.changePasswordFailure(ChangePasswordResult.WEAK_PASSWORD)
+                        return@onClick
+                    }
+                    busy = true
+                    scope.launch {
+                        val done: String? = if (open == "password") {
+                            when (val result = container.changePassword(current, new)) {
+                                ChangePasswordResult.CHANGED -> strings.passwordChanged
+                                // Signed out: the page turns to the sign-in screen by itself.
+                                ChangePasswordResult.SIGNED_OUT -> ""
+                                else -> { error = strings.changePasswordFailure(result); null }
+                            }
+                        } else {
+                            when (val result = container.signOutOthers()) {
+                                is SignOutOthersResult.Done -> strings.signedOutOthers(result.revoked)
+                                SignOutOthersResult.SignedOut -> ""
+                                else -> { error = strings.signOutOthersFailure(result); null }
+                            }
+                        }
+                        busy = false
+                        if (done != null) {
+                            close()
+                            notice = done.ifEmpty { null }
+                        }
+                    }
+                }
+            }) { Text(if (open == "password") strings.changePasswordConfirm else strings.signOutOthersConfirm) }
         }
     }
 }

@@ -87,6 +87,18 @@ class FakeSyncServer : Dispatcher() {
     /** What `/me` says about Apple: linked after an Apple sign-in, or when a test sets it. */
     @Volatile var appleLinked = false
 
+    /** What login and `/me` say of `has_password`. */
+    @Volatile var hasPassword = true
+
+    /** The current password `POST /api/v1/auth/password` checks (login takes any). */
+    @Volatile var password = "correct horse"
+
+    /** How many other tokens `POST /api/v1/auth/logout/others` (and a password change) revokes. */
+    @Volatile var otherTokens = 2
+
+    /** The `X-Tung-Device` of every `logout/others` and password change, in order. */
+    val signOutOthersDevices = CopyOnWriteArrayList<String?>()
+
     /** Whether `DELETE /api/v1/me` deleted the account (with "lifter@example.org" typed, any case). */
     @Volatile var accountDeleted = false
 
@@ -199,7 +211,7 @@ class FakeSyncServer : Dispatcher() {
             authPaths += request.path
             json(
                 if (request.path.orEmpty().endsWith("register")) 201 else 200,
-                """{"token":"$token","user":{${idField()}"email":"$userEmail","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}}""",
+                """{"token":"$token","user":{${idField()}"email":"$userEmail","created_at":0,"has_password":$hasPassword,"google_linked":$googleLinked,"apple_linked":$appleLinked}}""",
             )
         }
         // Not in authPaths: Settings asks for it whenever the form shows a server.
@@ -248,12 +260,41 @@ class FakeSyncServer : Dispatcher() {
                     json(400, """{"error":{"code":"email_mismatch","message":"Type the account's email to confirm."}}""")
                 }
             } else {
-                json(200, """{${idField()}"email":"$userEmail","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}""")
+                json(200, """{${idField()}"email":"$userEmail","created_at":0,"has_password":$hasPassword,"google_linked":$googleLinked,"apple_linked":$appleLinked}""")
             }
         }
         "/api/v1/auth/logout" -> {
             authPaths += request.path
             MockResponse().setResponseCode(204)
+        }
+        "/api/v1/auth/logout/others" -> {
+            authPaths += request.path
+            if (request.getHeader("Authorization") != "Bearer $token") {
+                json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
+            } else {
+                signOutOthersDevices += request.getHeader(DEVICE_HEADER)
+                val revoked = otherTokens
+                otherTokens = 0
+                json(200, """{"revoked_tokens":$revoked}""")
+            }
+        }
+        "/api/v1/auth/password" -> {
+            authPaths += request.path
+            val body = request.body.readUtf8()
+            val current = Regex("\"current_password\"\\s*:\\s*\"([^\"]*)\"").find(body)?.groupValues?.get(1)
+            val new = Regex("\"new_password\"\\s*:\\s*\"([^\"]*)\"").find(body)?.groupValues?.get(1).orEmpty()
+            when {
+                request.getHeader("Authorization") != "Bearer $token" -> json(401, """{"error":{"code":"unauthorized","message":"Sign in again."}}""")
+                new.length !in 8..1024 -> json(400, """{"error":{"code":"weak_password","message":"The password must be 8 to 1024 characters."}}""")
+                !hasPassword -> json(409, """{"error":{"code":"no_password","message":"This account signs in with Google or Apple."}}""")
+                current != password -> json(403, """{"error":{"code":"wrong_password","message":"That is not the current password."}}""")
+                else -> {
+                    signOutOthersDevices += request.getHeader(DEVICE_HEADER)
+                    password = new
+                    otherTokens = 0
+                    MockResponse().setResponseCode(204)
+                }
+            }
         }
         "/api/v1/link/start" -> {
             authPaths += request.path

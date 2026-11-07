@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.ui.settings
 
 import io.github.kanylbullen.tung.ui.resources.*
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import androidx.compose.foundation.BorderStroke
@@ -69,6 +70,9 @@ fun AccountScreen(
                 onResend = vm::resendConfirmation,
                 onSignOut = vm::signOut,
                 onDelete = vm::openDeletion,
+                notice = state.notice,
+                onChangePassword = vm::openPasswordChange,
+                onSignOutOthers = vm::openSignOutOthers,
             )
             false -> SignInForm(
                 form = state.form,
@@ -88,6 +92,19 @@ fun AccountScreen(
     }
     state.account?.otherAccountData?.let { held ->
         OtherAccountDialog(held, onChoose = vm::resolveOtherAccountData)
+    }
+    val signedIn = state.account?.signedIn == true
+    state.signOutOthers?.takeIf { signedIn }?.let { dialog ->
+        SignOutOthersDialog(dialog, onConfirm = vm::confirmSignOutOthers, onDismiss = vm::cancelSignOutOthers)
+    }
+    state.passwordChange?.takeIf { signedIn }?.let { dialog ->
+        PasswordChangeDialog(
+            dialog,
+            onCurrent = vm::onCurrentPassword,
+            onNew = vm::onNewPassword,
+            onConfirm = vm::confirmPasswordChange,
+            onDismiss = vm::cancelPasswordChange,
+        )
     }
     val deletion = state.deletion
     if (deletion != null && state.account?.signedIn == true) {
@@ -109,6 +126,9 @@ private fun SignedIn(
     onResend: () -> Unit,
     onSignOut: () -> Unit,
     onDelete: () -> Unit,
+    notice: AccountNotice?,
+    onChangePassword: () -> Unit,
+    onSignOutOthers: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
@@ -144,6 +164,27 @@ private fun SignedIn(
     )
     SecondaryButton(text = stringResource(Res.string.sync_sign_out), onClick = onSignOut)
     Text(stringResource(Res.string.sync_sign_out_hint), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+    // Only an account with a password can change it; one that signs in with Google or Apple sets one with "Forgot password?".
+    if (account.hasPassword) {
+        TextButton(onClick = onChangePassword, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(stringResource(Res.string.sync_change_password), color = Tung.colors.text, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+    TextButton(onClick = onSignOutOthers, modifier = Modifier.heightIn(min = 48.dp)) {
+        Text(stringResource(Res.string.sync_sign_out_others), color = Tung.colors.text, style = MaterialTheme.typography.labelLarge)
+    }
+    notice?.let {
+        val text = when (it) {
+            AccountNotice.PasswordChanged -> stringResource(Res.string.sync_change_password_done)
+            is AccountNotice.SignedOutOthers ->
+                if (it.count == 0) {
+                    stringResource(Res.string.sync_sign_out_others_none)
+                } else {
+                    pluralStringResource(Res.plurals.sync_sign_out_others_done, it.count, it.count)
+                }
+        }
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
+    }
     // Quiet and last: a destructive action that asks before it does anything.
     TextButton(onClick = onDelete) {
         Text(stringResource(Res.string.sync_delete_account), color = Tung.colors.muted)
@@ -236,6 +277,103 @@ private fun DeleteAccountDialog(
                 Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
             }
         },
+    )
+}
+
+/** "Sign out every other device?": who has to sign in again, and that this device stays. */
+@Composable
+private fun SignOutOthersDialog(dialog: SignOutOthersState, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Tung.colors.raised,
+        tonalElevation = 0.dp,
+        shape = TungCorner,
+        title = { Text(stringResource(Res.string.sync_sign_out_others_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(Res.string.sync_sign_out_others_body), color = Tung.colors.muted)
+                dialog.error?.let { Text(stringResource(it), color = Tung.colors.accentText) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !dialog.busy) {
+                Text(stringResource(Res.string.sync_sign_out_others_confirm), color = Tung.colors.accentText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !dialog.busy) {
+                Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
+            }
+        },
+    )
+}
+
+/** "Change your password": the current one and the new one, masked as on the sign-in form, and the server's answer under them. */
+@Composable
+private fun PasswordChangeDialog(
+    dialog: PasswordChangeState,
+    onCurrent: (String) -> Unit,
+    onNew: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        // Text fields: Compose's width, or it never settles under Robolectric (CLAUDE.md, "Flow tests").
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.padding(horizontal = 24.dp),
+        containerColor = Tung.colors.raised,
+        tonalElevation = 0.dp,
+        shape = TungCorner,
+        title = { Text(stringResource(Res.string.sync_change_password_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(Res.string.sync_change_password_body), color = Tung.colors.muted)
+                PasswordField(
+                    value = dialog.current,
+                    onValueChange = onCurrent,
+                    label = stringResource(Res.string.sync_change_password_current),
+                    enabled = !dialog.busy,
+                    error = dialog.currentError,
+                )
+                PasswordField(
+                    value = dialog.new,
+                    onValueChange = onNew,
+                    label = stringResource(Res.string.sync_change_password_new),
+                    enabled = !dialog.busy,
+                    error = dialog.newError,
+                )
+                dialog.error?.let { Text(stringResource(it), color = Tung.colors.accentText) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !dialog.busy) {
+                Text(stringResource(Res.string.sync_change_password_confirm), color = Tung.colors.accentText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !dialog.busy) {
+                Text(stringResource(Res.string.action_cancel), color = Tung.colors.text)
+            }
+        },
+    )
+}
+
+@Composable
+private fun PasswordField(value: String, onValueChange: (String) -> Unit, label: String, enabled: Boolean, error: StringResource?) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = true,
+        enabled = enabled,
+        isError = error != null,
+        supportingText = error?.let { e -> { Text(stringResource(e)) } },
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+        shape = TungCorner,
+        colors = tungFieldColors(),
+        modifier = Modifier.fillMaxWidth(),
     )
 }
 
