@@ -460,6 +460,8 @@ interface Strings {
     val otherAccountBody: String
     val otherAccountDelete: String
     fun otherAccountAdd(email: String): String
+    /** [count] local changes never synced, which deleting loses. */
+    fun otherAccountUnsynced(count: Int): String
     val deleteAccount: String
     val deleteAccountTitle: String
     fun deleteAccountBody(server: String): String
@@ -1034,9 +1036,12 @@ object English : Strings {
     override val otherAccountTitle = "This device has workouts from another account"
     override val otherAccountBody =
         "The workouts, routines and programs in this browser were logged with another account. Nothing syncs until you choose. " +
-            "Deleting them removes them from this browser only: an account they were synced to keeps them."
+            "Deleting them removes them from this browser; what was synced stays in the account it was synced to."
     override val otherAccountDelete = "Delete them"
     override fun otherAccountAdd(email: String): String = "Add them to $email"
+    override fun otherAccountUnsynced(count: Int): String =
+        if (count == 1) "1 change in this browser was never synced. Deleting them loses it."
+        else "$count changes in this browser were never synced. Deleting them loses them."
     override val deleteAccount = "Delete account…"
     override val deleteAccountTitle = "Delete your account?"
     override fun deleteAccountBody(server: String): String =
@@ -1628,9 +1633,12 @@ object Swedish : Strings {
     override val otherAccountTitle = "Den här enheten har pass från ett annat konto"
     override val otherAccountBody =
         "Passen, rutinerna och programmen i den här webbläsaren loggades med ett annat konto. Inget synkas förrän du väljer. " +
-            "Raderar du dem försvinner de bara från den här webbläsaren: ett konto de synkats till har dem kvar."
+            "Raderar du dem försvinner de från den här webbläsaren; det som synkats finns kvar i kontot det synkades till."
     override val otherAccountDelete = "Radera dem"
     override fun otherAccountAdd(email: String): String = "Lägg till dem i $email"
+    override fun otherAccountUnsynced(count: Int): String =
+        if (count == 1) "1 ändring i den här webbläsaren har aldrig synkats. Raderar du dem försvinner den."
+        else "$count ändringar i den här webbläsaren har aldrig synkats. Raderar du dem försvinner de."
     override val deleteAccount = "Radera kontot…"
     override val deleteAccountTitle = "Radera ditt konto?"
     override fun deleteAccountBody(server: String): String =

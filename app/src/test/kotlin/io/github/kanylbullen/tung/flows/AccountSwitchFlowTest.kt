@@ -105,11 +105,14 @@ class AccountSwitchFlowTest : FlowTest() {
     fun anotherAccountChoosesToDeleteThem() {
         aRoutine()
         aSignsInSyncsAndSignsOut()
+        // Renamed after the last sync, then signed out: one change no account has.
+        db.openHelper.writableDatabase.execSQL("UPDATE routine SET dirty = 1")
         fake.switchAccount("b", "b@example.org")
         val pushedBefore = fake.syncRequests.size
 
         signIn("b@example.org")
         waitForText(str(Res.string.sync_other_account_title))
+        waitForText(plural(Res.plurals.sync_other_account_unsynced, 1, 1))
         screenshot("1-other-account")
         // Nothing is stored or synced while the question is open.
         assertNull(app.tokens.token)
@@ -133,6 +136,8 @@ class AccountSwitchFlowTest : FlowTest() {
 
         signIn("b@example.org")
         waitForText(str(Res.string.sync_other_account_title))
+        // Everything was synced: no warning about lost changes.
+        waitGone(hasText(plural(Res.plurals.sync_other_account_unsynced, 1, 1)))
         clickText(str(Res.string.sync_other_account_add, "b@example.org"))
         waitForText(str(Res.string.sync_signed_in_as, "b@example.org"))
         clickText(str(Res.string.sync_now))

@@ -40,7 +40,10 @@ class FakeSyncServer : Dispatcher() {
     var token = "tung_fake_session"
 
     /** The user id login, register, `/me` and a link claim answer with (issue #152: the device's data owner). */
-    @Volatile var userId = "u"
+    @Volatile var userId: String? = "u"
+
+    /** The user's `"id":…,` in an answer; nothing for null, as a server that leaves it out. */
+    private fun idField(): String = userId?.let { "\"id\":\"$it\"," } ?: ""
 
     /** The email login, register, `/me` and a link claim answer with. */
     @Volatile var userEmail = "lifter@example.org"
@@ -152,7 +155,7 @@ class FakeSyncServer : Dispatcher() {
      * account's, are no longer this account's to send.
      */
     @Synchronized
-    fun switchAccount(id: String, email: String) {
+    fun switchAccount(id: String?, email: String) {
         userId = id
         userEmail = email
         rows.clear()
@@ -196,7 +199,7 @@ class FakeSyncServer : Dispatcher() {
             authPaths += request.path
             json(
                 if (request.path.orEmpty().endsWith("register")) 201 else 200,
-                """{"token":"$token","user":{"id":"$userId","email":"$userEmail","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}}""",
+                """{"token":"$token","user":{${idField()}"email":"$userEmail","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}}""",
             )
         }
         // Not in authPaths: Settings asks for it whenever the form shows a server.
@@ -245,7 +248,7 @@ class FakeSyncServer : Dispatcher() {
                     json(400, """{"error":{"code":"email_mismatch","message":"Type the account's email to confirm."}}""")
                 }
             } else {
-                json(200, """{"id":"$userId","email":"$userEmail","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}""")
+                json(200, """{${idField()}"email":"$userEmail","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}""")
             }
         }
         "/api/v1/auth/logout" -> {
@@ -287,7 +290,7 @@ class FakeSyncServer : Dispatcher() {
             synchronized(this) {
                 if (sent == linkCode && !linkClaimed) {
                     linkClaimed = true
-                    json(200, """{"token":"$token","user":{"id":"$userId","email":"$userEmail","created_at":0}}""")
+                    json(200, """{"token":"$token","user":{${idField()}"email":"$userEmail","created_at":0}}""")
                 } else {
                     json(404, """{"error":{"code":"invalid_code","message":"That code is not valid."}}""")
                 }

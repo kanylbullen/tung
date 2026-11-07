@@ -230,6 +230,10 @@ class TungStore {
         workouts.rows.isNotEmpty() || routines.rows.isNotEmpty() || programs.rows.isNotEmpty() ||
             exercises.rows.keys.any { !isUntouchedCatalogueRow(it) }
 
+    /** Changes no account has (dirty rows and tombstones), which [wipe] would lose. */
+    fun unsyncedCount(): Int =
+        tables.values.sumOf { t -> t.rows.values.count { it.dirty } } + tombstones.values.count { it.dirty }
+
     /**
      * Another account's log goes ("Delete them", issue #152): every row but
      * the catalogue's, which goes back to the seed (no rest time, `updatedAt`

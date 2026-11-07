@@ -2,6 +2,8 @@ package io.github.kanylbullen.tung.web.sync
 
 import io.github.kanylbullen.tung.core.sync.DataOwner
 import io.github.kanylbullen.tung.core.sync.LocalDataOnSignIn
+import io.github.kanylbullen.tung.core.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.core.sync.PendingSignIn
 import io.github.kanylbullen.tung.core.sync.localDataOnSignIn
 import io.github.kanylbullen.tung.web.store.IndexedDbStore
 import io.github.kanylbullen.tung.web.store.TungStore
@@ -9,18 +11,6 @@ import io.github.kanylbullen.tung.web.store.Write
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-/** A sign-in held back until [WebSignIn.resolve]: who signed in, where. */
-data class PendingSignIn(val serverUrl: String, val email: String)
-
-/** What happens to another account's data in this browser when a new account signs in. */
-enum class OtherAccountChoice {
-    /** "Delete them": the log in this browser goes ([TungStore.wipe]), then the new account syncs down. */
-    DELETE,
-
-    /** "Add them to <email>": everything here is uploaded to the new account, as before issue #152. */
-    ADD,
-}
 
 /**
  * What a sign-in the server accepted does with the log already in this
@@ -53,6 +43,7 @@ class WebSignIn(
             previousServerUrl = settings.lastServerUrl,
             previousEmail = settings.lastEmail,
             incomingEmail = session.email,
+            incomingServerUrl = serverUrl,
         )
         if (rule == LocalDataOnSignIn.UPLOAD) {
             complete(serverUrl, session, wipe = false)
@@ -60,8 +51,20 @@ class WebSignIn(
         }
         held?.let { revoke(it.serverUrl, it.session.token) }
         held = Held(serverUrl, session)
-        _pending.value = PendingSignIn(serverUrl, session.email)
+        _pending.value = PendingSignIn(serverUrl, session.email, store.unsyncedCount())
         return false
+    }
+
+    /**
+     * Gives up a held sign-in (the page is going away): its token is revoked,
+     * best effort, since the page may be gone before the request is. A
+     * browser closed outright leaves the token unrevoked on the server.
+     */
+    suspend fun abandon() {
+        val answered = held ?: return
+        held = null
+        _pending.value = null
+        revoke(answered.serverUrl, answered.session.token)
     }
 
     /**

@@ -2,6 +2,8 @@ package io.github.kanylbullen.tung.sync
 
 import io.github.kanylbullen.tung.core.sync.DataOwner
 import io.github.kanylbullen.tung.core.sync.LocalDataOnSignIn
+import io.github.kanylbullen.tung.core.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.core.sync.PendingSignIn
 import io.github.kanylbullen.tung.core.sync.SyncResult
 import io.github.kanylbullen.tung.core.sync.localDataOnSignIn
 import io.github.kanylbullen.tung.core.sync.SyncFailure
@@ -34,18 +36,6 @@ data class AccountState(
     val otherAccountData: PendingSignIn? = null,
 )
 
-/** A sign-in held back until [SyncAccount.resolveOtherAccountData]: who signed in, where. */
-data class PendingSignIn(val serverUrl: String, val email: String)
-
-/** What happens to another account's data on this device when a new account signs in. */
-enum class OtherAccountChoice {
-    /** "Delete them": the local training data goes ([SyncStore.wipe]), then the new account syncs down. */
-    DELETE,
-
-    /** "Add them to <email>": everything local is uploaded to the new account, as before issue #152. */
-    ADD,
-}
-
 /**
  * The account on a server and when to sync: sign in or create an account,
  * sign out, sync now, and the background triggers ([requestSync] after a
@@ -68,7 +58,7 @@ class SyncAccount(
     private val signedIn = MutableStateFlow<Boolean?>(null)
 
     /** A session the server gave, not stored yet: the user is asked what happens to another account's data. */
-    private class Pending(val serverUrl: String, val session: AuthResult.Success)
+    private class Pending(val serverUrl: String, val session: AuthResult.Success, val unsynced: Int)
 
     private val pending = MutableStateFlow<Pending?>(null)
 
@@ -83,7 +73,7 @@ class SyncAccount(
     ) { id, sync, signedIn, running, held ->
         AccountState(
             id.url, id.email, signedIn, sync, running, id.googleLinked, id.appleLinked,
-            held?.let { PendingSignIn(it.serverUrl, it.session.email) },
+            held?.let { PendingSignIn(it.serverUrl, it.session.email, it.unsynced) },
         )
     }
 
@@ -156,9 +146,12 @@ class SyncAccount(
      * The server accepted [session]: stored at once, or held for the user's
      * choice when the device holds another account's data. With [ask] false
      * (the watch, where a dialog is hard on a wrist) that data is wiped
-     * instead of asked about.
+     * instead of asked about, but only when all of it reached an account:
+     * with unsynced changes the session is refused and its token revoked.
+     *
+     * @return false when the session was refused.
      */
-    private suspend fun storeSession(serverUrl: String, session: AuthResult.Success, ask: Boolean = true) {
+    private suspend fun storeSession(serverUrl: String, session: AuthResult.Success, ask: Boolean = true): Boolean {
         val rule = withContext(ioDispatcher) {
             localDataOnSignIn(
                 recorded = settings.owner(),
@@ -167,13 +160,36 @@ class SyncAccount(
                 previousServerUrl = settings.serverUrl(),
                 previousEmail = settings.email(),
                 incomingEmail = session.email,
+                incomingServerUrl = serverUrl,
             )
         }
-        when {
-            rule == LocalDataOnSignIn.UPLOAD -> completeSession(serverUrl, session, wipe = false)
-            !ask -> completeSession(serverUrl, session, wipe = true)
-            else -> pending.getAndUpdate { Pending(serverUrl, session) }?.let { client.logout(it.serverUrl, it.session.token) }
+        if (rule == LocalDataOnSignIn.UPLOAD) {
+            completeSession(serverUrl, session, wipe = false)
+            return true
         }
+        val unsynced = withContext(ioDispatcher) { store.unsyncedCount() }
+        if (!ask) {
+            if (unsynced > 0) {
+                client.logout(serverUrl, session.token)
+                return false
+            }
+            completeSession(serverUrl, session, wipe = true)
+            return true
+        }
+        pending.getAndUpdate { Pending(serverUrl, session, unsynced) }?.let { client.logout(it.serverUrl, it.session.token) }
+        return true
+    }
+
+    /**
+     * Gives up a sign-in still waiting for [resolveOtherAccountData] (the
+     * Account screen went away): its token is revoked, best effort, on this
+     * class's own scope so it outlives the screen. A process killed while
+     * the question is open leaves the token unrevoked on the server; nothing
+     * here can cover that.
+     */
+    fun abandonPendingSignIn() {
+        val held = pending.getAndUpdate { null } ?: return
+        scope.launch { runCatching { client.logout(held.serverUrl, held.session.token) } }
     }
 
     /**
@@ -213,13 +229,16 @@ class SyncAccount(
      * password): [code] is traded for a token at [serverUrl], an address
      * `core.sync.checkServerUrl` accepted, and from there on it is the same
      * as [signIn], except that another account's data is wiped without
-     * asking (issue #152): a watch has no room for the question, and its log
-     * is the account's once it syncs.
+     * asking (issue #152): a watch has no room for the question. Never data
+     * that was not synced: then the claim fails with
+     * [LinkFailure.UNSYNCED_OTHER_ACCOUNT] and the new token is revoked.
      */
     suspend fun signInWithCode(serverUrl: String, code: String): LinkClaimResult {
         val result = client.claimLink(serverUrl, code)
-        if (result is LinkClaimResult.Success) {
-            storeSession(serverUrl, AuthResult.Success(result.token, result.email, userId = result.userId), ask = false)
+        if (result is LinkClaimResult.Success &&
+            !storeSession(serverUrl, AuthResult.Success(result.token, result.email, userId = result.userId), ask = false)
+        ) {
+            return LinkClaimResult.Failed(LinkFailure.UNSYNCED_OTHER_ACCOUNT)
         }
         return result
     }

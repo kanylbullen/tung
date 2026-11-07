@@ -78,6 +78,7 @@ class DevicesViewModel(private val account: SyncAccount, private val push: PushC
         LinkFailure.RATE_LIMITED -> Res.string.sync_error_rate_limited
         LinkFailure.NOT_A_SERVER -> Res.string.link_watch_error_old_server
         LinkFailure.SIGNED_OUT, LinkFailure.NOT_SIGNED_IN -> Res.string.sync_error_signed_out
-        LinkFailure.INVALID_CODE, LinkFailure.SERVER -> Res.string.sync_error_server_auth
+        // Only a claim (the watch) gives the last one; the phone only starts codes.
+        LinkFailure.INVALID_CODE, LinkFailure.SERVER, LinkFailure.UNSYNCED_OTHER_ACCOUNT -> Res.string.sync_error_server_auth
     }
 }

@@ -1308,33 +1308,47 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   sign-in, kept across sign-outs and account deletion. The rule is core's
   `localDataOnSignIn`: the same server and user id, a first sign-in (no
   owner and no earlier email), or nothing to upload (`SyncDao.hasUserData`)
-  sign in as above; another account asks first. `SyncAccount.storeSession`
+  sign in as above; another account asks first. An answer without a user
+  id (an older server) compares the last sign-in's server and email. `SyncAccount.storeSession`
   then stores nothing, marks nothing and schedules nothing: the session is
-  held in memory, `AccountState.otherAccountData` names it, and Account
-  shows "This device has workouts from another account" (`OtherAccountDialog`)
-  with **Delete them** (`SyncStore.wipe`, then the sign-in: the new account
-  syncs down) and **Add them to <email>** (the old behaviour);
-  dismissing it revokes the held token (`/logout`) and changes nothing
-  (`resolveOtherAccountData(null)`). `SyncStore.wipe` is one transaction,
+  held in memory, `AccountState.otherAccountData` (core's `PendingSignIn`,
+  with `unsynced`: `SyncDao.unsyncedCount`, the dirty rows and tombstones)
+  names it, and Account shows "This device has workouts from another
+  account" (`OtherAccountDialog`) with **Add them to <email>** (the old
+  behaviour, the confirm button) and **Delete them** (`SyncStore.wipe`,
+  then the sign-in: the new account syncs down); neither is in the accent,
+  so deleting is never the default. With unsynced changes a line says how
+  many would be lost ("3 changes on this device were never synced…").
+  Dismissing it revokes the held token (`/logout`) and changes nothing
+  (`resolveOtherAccountData(null)`); leaving Account with it open does the
+  same (`AccountViewModel.onCleared` → `abandonPendingSignIn`, on
+  `SyncAccount`'s own scope). A process killed meanwhile leaves that token
+  unrevoked on the server. `SyncStore.wipe` is one transaction,
   children first, writes **no tombstone** (the rows stay in the account
   they came from), deletes every tombstone, keeps the seeded catalogue and
   sets it back to the seed (no rest time, `updatedAt` 0, not dirty);
-  `afterWipe` forgets the last import (`ImportHistory.clear`). A device
+  `afterWipe` forgets the last import (`ImportHistory.clear`), the
+  assistant's key and settings (`AiSettings.reset`) and a running rest
+  timer and its alarm. A device
   with no owner but an earlier sign-in (an install from before #152) falls
   back on that sign-in's server and email, only to ask more: the same
   server and email upload, anything else asks. Health Connect keeps the
   sessions the phone wrote there. **The watch never asks**: a link code
-  (`signInWithCode`) as another account wipes the watch's data at once,
-  since a dialog is hard on a wrist and a standalone watch's log is the
-  account's once it syncs. Tests: core's `DataOwnerTest`, data's
+  (`signInWithCode`) as another account wipes the watch's data at once
+  when all of it was synced, since a dialog is hard on a wrist; with
+  unsynced changes it never wipes: the claim fails with
+  `LinkFailure.UNSYNCED_OTHER_ACCOUNT`, the new token is revoked, and the
+  watch says "This watch has workouts that were never synced. Link it to
+  the account it used before, or sync first." Tests: core's `DataOwnerTest`, data's
   `AccountOwnerTest`, `AccountSwitchFlowTest`.
 - **Link codes** (issue #30): a signed-in device asks for a six-digit code
   (`SyncAccount.startLink` → `POST /api/v1/link/start`, the phone's "Link a
   watch") and a device that cannot type a password trades it for its own
   token (`SyncAccount.signInWithCode` → `POST /api/v1/link/claim`, the
   watch). After the claim it is the same as a password sign-in: token stored,
-  cursor 0, everything dirty, work scheduled; another account's data on the
-  watch is wiped first, without asking (above). `SyncSettings.recentServers`
+  cursor 0, everything dirty, work scheduled; another account's synced
+  data on the watch is wiped first, without asking, and unsynced data
+  refuses the claim (above). `SyncSettings.recentServers`
   keeps the last five servers for the watch's server list.
 - **Network.** `INTERNET` is each app's only network permission and the
   server URL its only destination. The network security config permits
@@ -2476,9 +2490,11 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   another account's (issue #152): `sync/WebSignIn.kt` is the phone's rule
   (core's `localDataOnSignIn`, the owner in `meta` as `owner_server_url`
   and `owner_user_id`, `WebSettings.owner`), the sign-in screen asks the
-  phone's question (`OtherAccountDialog`), "Delete them" is
-  `TungStore.wipe` (no tombstones, the catalogue back to the seed, one
-  IndexedDB transaction), and dismissing it revokes the held token.
+  phone's question (`OtherAccountDialog`: both buttons secondary, the
+  focus on Add, the unsynced count from `TungStore.unsyncedCount`),
+  "Delete them" is `TungStore.wipe` (no tombstones, the catalogue back to
+  the seed, one IndexedDB transaction), and dismissing it, or the page's
+  `pagehide`, revokes the held token (best effort).
   `WebSignInTest`.
 - **Home and History** (`ui/HomeScreen.kt`, `home/HomeModel.kt`,
   `ui/HistoryScreen.kt`): a bottom bar switches them by the location's

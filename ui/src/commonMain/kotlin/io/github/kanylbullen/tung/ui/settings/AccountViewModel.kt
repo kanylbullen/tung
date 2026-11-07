@@ -14,7 +14,7 @@ import io.github.kanylbullen.tung.sync.AuthMethodsResult
 import io.github.kanylbullen.tung.sync.AuthResult
 import io.github.kanylbullen.tung.sync.DeleteAccountOutcome
 import io.github.kanylbullen.tung.sync.ForgotOutcome
-import io.github.kanylbullen.tung.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.core.sync.OtherAccountChoice
 import io.github.kanylbullen.tung.sync.ResendOutcome
 import io.github.kanylbullen.tung.sync.SyncAccount
 import kotlinx.coroutines.Dispatchers
@@ -275,6 +275,11 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
      */
     fun resolveOtherAccountData(choice: OtherAccountChoice?) {
         viewModelScope.launch { account.resolveOtherAccountData(choice) }
+    }
+
+    /** Leaving Account with the question open: the held sign-in is given up and its token revoked. */
+    override fun onCleared() {
+        account.abandonPendingSignIn()
     }
 
     fun signOut() {

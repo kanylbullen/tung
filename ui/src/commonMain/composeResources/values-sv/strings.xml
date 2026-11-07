@@ -676,9 +676,13 @@
     <string name="sync_intro">Valfritt. Logga in på en Tung-server för att ha din träning där och på dina andra enheter. Utan server stannar allt på den här telefonen.</string>
     <string name="sync_now">Synka nu</string>
     <string name="sync_other_account_add">Lägg till dem i %1$s</string>
-    <string name="sync_other_account_body">Passen, rutinerna och programmen på den här enheten loggades med ett annat konto. Inget synkas förrän du väljer. Raderar du dem försvinner de bara från den här enheten: ett konto de synkats till har dem kvar.</string>
+    <string name="sync_other_account_body">Passen, rutinerna och programmen på den här enheten loggades med ett annat konto. Inget synkas förrän du väljer. Raderar du dem försvinner de från den här enheten; det som synkats finns kvar i kontot det synkades till.</string>
     <string name="sync_other_account_delete">Radera dem</string>
     <string name="sync_other_account_title">Den här enheten har pass från ett annat konto</string>
+    <plurals name="sync_other_account_unsynced">
+        <item quantity="one">%1$d ändring på den här enheten har aldrig synkats. Raderar du dem försvinner den.</item>
+        <item quantity="other">%1$d ändringar på den här enheten har aldrig synkats. Raderar du dem försvinner de.</item>
+    </plurals>
     <string name="sync_password">Lösenord</string>
     <string name="sync_server_url">Serveradress</string>
     <string name="sync_server_url_example">https://tung.example.org</string>

@@ -189,6 +189,19 @@ interface SyncDao {
     )
     suspend fun hasUserData(): Boolean
 
+    /**
+     * Changes no account has: the dirty rows (an untouched catalogue row
+     * never counts) and dirty tombstones, which "Delete them" would lose.
+     */
+    @Query(
+        "SELECT (SELECT COUNT(*) FROM exercise WHERE dirty = 1 AND NOT (nameKey IS NOT NULL AND updatedAt = 0)) " +
+            "+ (SELECT COUNT(*) FROM workout WHERE dirty = 1) + (SELECT COUNT(*) FROM workout_exercise WHERE dirty = 1) " +
+            "+ (SELECT COUNT(*) FROM set_entry WHERE dirty = 1) + (SELECT COUNT(*) FROM routine WHERE dirty = 1) " +
+            "+ (SELECT COUNT(*) FROM routine_exercise WHERE dirty = 1) + (SELECT COUNT(*) FROM program WHERE dirty = 1) " +
+            "+ (SELECT COUNT(*) FROM program_day WHERE dirty = 1) + (SELECT COUNT(*) FROM tombstones WHERE dirty = 1)"
+    )
+    suspend fun unsyncedCount(): Int
+
     @Query("DELETE FROM set_entry")
     suspend fun wipeSets()
 

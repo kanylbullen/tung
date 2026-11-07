@@ -5,6 +5,9 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.core.sync.DataOwner
+import io.github.kanylbullen.tung.core.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.core.sync.PendingSignIn
+import io.github.kanylbullen.tung.core.sync.SyncResult
 import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.TungDatabase
@@ -100,6 +103,15 @@ class AccountOwnerTest {
 
     private fun signOut() = runBlocking { account.signOut() }
 
+    /** Signed in as A: everything goes up, so nothing on the device is unsynced. */
+    private fun syncAndSignOut() {
+        check(runBlocking { client.syncOnce() } is SyncResult.Success)
+        check(runBlocking { store.unsyncedCount() } == 0)
+        signOut()
+    }
+
+    private fun logouts(): Int = fake.authPaths.count { it == "/api/v1/auth/logout" }
+
     private fun pending(): PendingSignIn? = runBlocking { account.state.first().otherAccountData }
 
     @Test
@@ -132,12 +144,11 @@ class AccountOwnerTest {
     fun anotherAccountIsAskedBeforeAnythingIsStoredOrMarked() {
         train()
         signIn()
-        signOut()
-        db.openHelper.writableDatabase.execSQL("UPDATE workout SET dirty = 0")
+        syncAndSignOut()
         fake.switchAccount("b", "b@example.org")
 
         assertTrue(signIn() is AuthResult.Success)
-        assertEquals(PendingSignIn(fake.baseUrl, "b@example.org"), pending())
+        assertEquals(PendingSignIn(fake.baseUrl, "b@example.org", unsynced = 0), pending())
         assertFalse(runBlocking { account.isSignedIn() })
         assertNull(tokens.read())
         assertEquals(0, count("SELECT COUNT(*) FROM workout WHERE dirty = 1"))
@@ -221,7 +232,57 @@ class AccountOwnerTest {
         assertNull(settings.owner())
         fake.switchAccount("b", "b@example.org")
         signIn()
-        assertEquals(PendingSignIn(fake.baseUrl, "b@example.org"), pending())
+        assertEquals("b@example.org", pending()?.email)
+        // Never signed in before: nothing of it reached an account.
+        assertEquals(runBlocking { store.unsyncedCount() }, pending()?.unsynced)
+        assertTrue(pending()!!.unsynced > 0)
+    }
+
+    @Test
+    fun theQuestionCountsTheChangesThatNeverSynced() {
+        train()
+        signIn()
+        syncAndSignOut()
+        // Edited after the last sync, signed out: two rows no account has.
+        db.openHelper.writableDatabase.execSQL("UPDATE routine SET dirty = 1")
+        db.openHelper.writableDatabase.execSQL("UPDATE workout SET dirty = 1")
+        fake.switchAccount("b", "b@example.org")
+        signIn()
+        assertEquals(PendingSignIn(fake.baseUrl, "b@example.org", unsynced = 2), pending())
+    }
+
+    @Test
+    fun leavingTheQuestionRevokesTheHeldToken() {
+        train()
+        signIn()
+        syncAndSignOut()
+        fake.switchAccount("b", "b@example.org")
+        signIn()
+        val before = logouts()
+        account.abandonPendingSignIn()
+        assertNull(pending())
+        val deadline = System.currentTimeMillis() + 5_000
+        while (logouts() == before && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        assertEquals(before + 1, logouts())
+        assertFalse(runBlocking { account.isSignedIn() })
+        assertEquals(1, count("SELECT COUNT(*) FROM workout"))
+    }
+
+    @Test
+    fun anAnswerWithoutAUserIdComparesTheServerAndEmail() {
+        train()
+        signIn()
+        syncAndSignOut()
+        // A server that leaves the id out: the same server and email are the same account.
+        fake.userId = null
+        signIn()
+        assertNull(pending())
+        assertTrue(runBlocking { account.isSignedIn() })
+        syncAndSignOut()
+        // Another email without an id is another account.
+        fake.switchAccount(null, "b@example.org")
+        signIn()
+        assertEquals("b@example.org", pending()?.email)
     }
 
     @Test
@@ -233,10 +294,10 @@ class AccountOwnerTest {
     }
 
     @Test
-    fun theWatchsLinkCodeWipesAnotherAccountsDataWithoutAsking() = runBlocking {
+    fun theWatchsLinkCodeWipesAnotherAccountsSyncedDataWithoutAsking() = runBlocking {
         train()
         signIn()
-        signOut()
+        syncAndSignOut()
         fake.switchAccount("b", "b@example.org")
         val result = account.signInWithCode(fake.baseUrl, fake.linkCode)
         assertTrue(result is LinkClaimResult.Success)
@@ -244,5 +305,22 @@ class AccountOwnerTest {
         assertTrue(account.isSignedIn())
         assertEquals(0, count("SELECT COUNT(*) FROM workout"))
         assertEquals(DataOwner(fake.baseUrl, "b"), settings.owner())
+    }
+
+    @Test
+    fun theWatchsLinkCodeRefusesRatherThanWipeUnsyncedData() = runBlocking {
+        train()
+        signIn()
+        syncAndSignOut()
+        db.openHelper.writableDatabase.execSQL("UPDATE workout SET dirty = 1")
+        fake.switchAccount("b", "b@example.org")
+        val before = logouts()
+        assertEquals(LinkClaimResult.Failed(LinkFailure.UNSYNCED_OTHER_ACCOUNT), account.signInWithCode(fake.baseUrl, fake.linkCode))
+        assertEquals(before + 1, logouts())
+        assertFalse(account.isSignedIn())
+        assertNull(tokens.read())
+        assertNull(pending())
+        assertEquals(1, count("SELECT COUNT(*) FROM workout"))
+        assertEquals(DataOwner(fake.baseUrl, "u"), settings.owner())
     }
 }

@@ -50,4 +50,15 @@ class DataOwnerTest {
         assertEquals(LocalDataOnSignIn.ASK, rule(a.serverUrl, "b@example.org"))
         assertEquals(LocalDataOnSignIn.ASK, rule("https://other.example.org", "a@example.org"))
     }
+
+    @Test
+    fun anAnswerWithoutAUserIdFallsBackOnTheLastSignIn() {
+        fun rule(server: String, email: String) = localDataOnSignIn(
+            a, null, hasLocalData = true,
+            previousServerUrl = a.serverUrl, previousEmail = "a@example.org", incomingEmail = email, incomingServerUrl = server,
+        )
+        assertEquals(LocalDataOnSignIn.UPLOAD, rule(a.serverUrl + "/", "A@example.org"))
+        assertEquals(LocalDataOnSignIn.ASK, rule(a.serverUrl, "b@example.org"))
+        assertEquals(LocalDataOnSignIn.ASK, rule("https://other.example.org", "a@example.org"))
+    }
 }

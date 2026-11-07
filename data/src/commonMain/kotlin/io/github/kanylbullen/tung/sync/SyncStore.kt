@@ -114,6 +114,9 @@ class SyncStore(private val db: TungDatabase) : SyncLocalStore {
     /** Whether this device has anything of an account's to upload ([SyncDao.hasUserData]). */
     suspend fun hasLocalData(): Boolean = dao.hasUserData()
 
+    /** Local changes never synced to any account ([SyncDao.unsyncedCount]). */
+    suspend fun unsyncedCount(): Int = dao.unsyncedCount()
+
     /**
      * Another account's log goes (issue #152, "Delete them"): every workout,
      * routine and program with their children, the custom and extended

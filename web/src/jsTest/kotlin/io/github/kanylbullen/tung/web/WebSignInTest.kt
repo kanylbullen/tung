@@ -2,6 +2,8 @@ package io.github.kanylbullen.tung.web
 
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.core.sync.DataOwner
+import io.github.kanylbullen.tung.core.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.core.sync.PendingSignIn
 import io.github.kanylbullen.tung.core.sync.SyncExercise
 import io.github.kanylbullen.tung.core.sync.SyncRoutine
 import io.github.kanylbullen.tung.core.sync.SyncTable
@@ -10,8 +12,6 @@ import io.github.kanylbullen.tung.web.store.IndexedDbStore
 import io.github.kanylbullen.tung.web.store.Tombstone
 import io.github.kanylbullen.tung.web.store.TungStore
 import io.github.kanylbullen.tung.web.sync.AuthResult
-import io.github.kanylbullen.tung.web.sync.OtherAccountChoice
-import io.github.kanylbullen.tung.web.sync.PendingSignIn
 import io.github.kanylbullen.tung.web.sync.WebSettings
 import io.github.kanylbullen.tung.web.sync.WebSignIn
 import kotlin.test.Test
@@ -90,7 +90,7 @@ class WebSignInTest {
         browser.settings.signedOut(failure = null)
 
         assertFalse(browser.signIns.accept(server, b))
-        assertEquals(PendingSignIn(server, "b@example.org"), browser.signIns.pending.value)
+        assertEquals(PendingSignIn(server, "b@example.org", unsynced = browser.store.unsyncedCount()), browser.signIns.pending.value)
         assertNull(browser.settings.account.value)
         assertNull(browser.settings.token)
         assertEquals(DataOwner(server, "a"), browser.settings.owner)
@@ -159,7 +159,7 @@ class WebSignInTest {
         browser.settings.signedOut(failure = null)
         assertNull(browser.settings.owner)
         assertFalse(browser.signIns.accept(server, b))
-        assertEquals(PendingSignIn(server, "b@example.org"), browser.signIns.pending.value)
+        assertEquals(PendingSignIn(server, "b@example.org", unsynced = browser.store.unsyncedCount()), browser.signIns.pending.value)
     }
 
     @Test
@@ -169,5 +169,56 @@ class WebSignInTest {
         browser.settings.signedOut(failure = null)
         assertTrue(browser.signIns.accept(server, b))
         assertNull(browser.signIns.pending.value)
+    }
+
+    /** What a sync leaves: no dirty row, no dirty tombstone. */
+    private fun Browser.synced() {
+        store.tables.values.forEach { t ->
+            @Suppress("UNCHECKED_CAST")
+            val table = t as io.github.kanylbullen.tung.web.store.Table<Any>
+            table.rows.keys.toList().forEach { id -> table.rows[id] = table.rows.getValue(id).copy(dirty = false) }
+        }
+        store.tombstones.keys.toList().forEach { k -> store.tombstones[k] = store.tombstones.getValue(k).copy(dirty = false) }
+    }
+
+    @Test
+    fun theQuestionCountsTheChangesThatNeverSynced() = runTest {
+        val browser = browser("signin-unsynced")
+        browser.train()
+        browser.signIns.accept(server, a)
+        browser.synced()
+        browser.settings.signedOut(failure = null)
+        assertEquals(0, browser.store.unsyncedCount())
+        browser.store.routines.put(browser.store.routines.get("r1")!!.copy(name = "Push day", updatedAt = 8), dirty = true)
+        browser.store.tombstones[SyncTable.SETS to "s-gone"] = Tombstone(9, dirty = true)
+
+        assertFalse(browser.signIns.accept(server, b))
+        assertEquals(PendingSignIn(server, "b@example.org", unsynced = 2), browser.signIns.pending.value)
+    }
+
+    @Test
+    fun leavingThePageRevokesTheHeldToken() = runTest {
+        val browser = browser("signin-abandon")
+        browser.train()
+        browser.signIns.accept(server, a)
+        browser.settings.signedOut(failure = null)
+        browser.signIns.accept(server, b)
+
+        browser.signIns.abandon()
+        assertEquals(listOf("tung_b"), browser.revoked)
+        assertNull(browser.signIns.pending.value)
+        assertNull(browser.settings.account.value)
+        assertEquals(1, browser.store.workouts.rows.size)
+    }
+
+    @Test
+    fun anAnswerWithoutAUserIdComparesTheServerAndEmail() = runTest {
+        val browser = browser("signin-no-id")
+        browser.train()
+        browser.signIns.accept(server, a)
+        browser.settings.signedOut(failure = null)
+        assertTrue(browser.signIns.accept(server, a.copy(userId = null)))
+        browser.settings.signedOut(failure = null)
+        assertFalse(browser.signIns.accept(server, b.copy(userId = null)))
     }
 }

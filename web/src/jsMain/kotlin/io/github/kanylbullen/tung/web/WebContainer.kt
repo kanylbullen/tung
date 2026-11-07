@@ -30,7 +30,7 @@ import io.github.kanylbullen.tung.web.sync.PeriodicSync
 import io.github.kanylbullen.tung.web.sync.WebAuth
 import io.github.kanylbullen.tung.web.sync.WebSettings
 import io.github.kanylbullen.tung.web.sync.WebSync
-import io.github.kanylbullen.tung.web.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.core.sync.OtherAccountChoice
 import io.github.kanylbullen.tung.web.sync.WebSignIn
 import kotlin.js.Date
 import kotlinx.browser.window
@@ -187,6 +187,8 @@ class WebContainer(
         // The phone syncs when it comes to the foreground; the browser when
         // the page is shown again or the connection comes back.
         window.addEventListener("online", { syncInBackground() })
+        // A sign-in still waiting for the question's answer: its token is revoked as the page goes.
+        window.addEventListener("pagehide", { scope.launch { signIns.abandon() } })
         window.addEventListener("visibilitychange", { if (window.document.asDynamic().visibilityState == "visible") syncInBackground() })
         // And every few minutes while it stays open and shown: a page gets no push.
         PeriodicSync(

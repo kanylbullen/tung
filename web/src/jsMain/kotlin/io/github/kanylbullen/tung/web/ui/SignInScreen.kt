@@ -16,7 +16,8 @@ import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 import io.github.kanylbullen.tung.web.sync.AuthResult
 import io.github.kanylbullen.tung.web.sync.ForgotResult
-import io.github.kanylbullen.tung.web.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.core.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.core.sync.PendingSignIn
 import io.github.kanylbullen.tung.web.sync.SignInMethods
 import kotlinx.browser.window
 import kotlinx.coroutines.launch
@@ -169,7 +170,7 @@ fun SignInScreen(container: WebContainer) {
     // Another account's log is in this browser: nothing is stored or synced until this is answered (issue #152).
     val held by container.signIns.pending.collectAsState()
     held?.let { pending ->
-        OtherAccountDialog(container, pending.email) { choice -> scope.launch { container.resolveOtherAccountData(choice) } }
+        OtherAccountDialog(container, pending) { choice -> scope.launch { container.resolveOtherAccountData(choice) } }
     }
 
     Div({ classes("screen") }) {
@@ -291,9 +292,11 @@ fun SignInScreen(container: WebContainer) {
  * "This device has workouts from another account" (issue #152), the phone's
  * dialog: delete the log in this browser, add it to the account that just
  * signed in, or (the backdrop, Escape) neither, which signs out again.
+ * Neither button is the accent and Delete never has the focus: deleting is
+ * not the default. Changes that never synced are counted, since deleting loses them.
  */
 @Composable
-private fun OtherAccountDialog(container: WebContainer, email: String, onChoose: (OtherAccountChoice?) -> Unit) {
+private fun OtherAccountDialog(container: WebContainer, held: PendingSignIn, onChoose: (OtherAccountChoice?) -> Unit) {
     val strings = container.strings
     Div({ classes("sheet-backdrop"); onClick { onChoose(null) } })
     Div({
@@ -305,9 +308,10 @@ private fun OtherAccountDialog(container: WebContainer, email: String, onChoose:
     }) {
         H2 { Text(strings.otherAccountTitle) }
         P({ classes("hint") }) { Text(strings.otherAccountBody) }
+        if (held.unsynced > 0) P { Text(strings.otherAccountUnsynced(held.unsynced)) }
         Div({ classes("dialog-actions") }) {
-            Button({ classes("secondary"); onClick { onChoose(OtherAccountChoice.ADD) } }) { Text(strings.otherAccountAdd(email)) }
-            Button({ classes("accent-button"); attr("autofocus", ""); onClick { onChoose(OtherAccountChoice.DELETE) } }) { Text(strings.otherAccountDelete) }
+            Button({ classes("secondary"); onClick { onChoose(OtherAccountChoice.DELETE) } }) { Text(strings.otherAccountDelete) }
+            Button({ classes("secondary"); attr("autofocus", ""); onClick { onChoose(OtherAccountChoice.ADD) } }) { Text(strings.otherAccountAdd(held.email)) }
         }
     }
 }

@@ -167,6 +167,13 @@ enum class LinkFailure {
 
     /** 5xx, another 4xx, or an answer that is not what the API returns. */
     SERVER,
+
+    /**
+     * The code was for another account than the one whose data is on this
+     * device, and some of it was never synced (issue #152): the watch does
+     * not ask, so it refuses rather than wipe it. The new token is revoked.
+     */
+    UNSYNCED_OTHER_ACCOUNT,
 }
 
 /** What sending feedback gave ([SyncClient.sendFeedback]). */
