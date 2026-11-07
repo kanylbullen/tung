@@ -48,6 +48,15 @@ data class ServerConfig(
     val testerGroupUrl: String? = null,
     /** Behind a reverse proxy: take the client address from the last X-Forwarded-For entry, for the rate limit and the log. The RFC 7239 `Forwarded` header is ignored: proxies pass a client's copy through. */
     val trustProxy: Boolean = false,
+    /**
+     * `TUNG_CLIENT_IP_HEADER`, only with [trustProxy]: take the client
+     * address from this one single-valued header (`CF-Connecting-IP` behind
+     * Cloudflare) instead of X-Forwarded-For. A request without it counts
+     * under the connection's own address, never under X-Forwarded-For. Set it
+     * only when the origin is reachable through that proxy alone: a client
+     * that reaches the next proxy directly can write the header itself.
+     */
+    val clientIpHeader: String? = null,
     /** Requests per minute and client address to register and login. */
     val authRequestsPerMinute: Int = DEFAULT_AUTH_REQUESTS_PER_MINUTE,
     /** The Firebase service account for FCM push (`TUNG_FCM_SERVICE_ACCOUNT_JSON`); null turns FCM off. */
@@ -97,7 +106,23 @@ data class ServerConfig(
      */
     val mailer: Mailer? = null,
 ) {
+    init {
+        if (clientIpHeader != null) {
+            if (clientIpHeader.isEmpty() || !clientIpHeader.all { it in HEADER_TOKEN_CHARS }) {
+                throw ConfigException("TUNG_CLIENT_IP_HEADER must be a header name such as CF-Connecting-IP, got '$clientIpHeader'.")
+            }
+            if (!trustProxy) {
+                throw ConfigException(
+                    "TUNG_CLIENT_IP_HEADER needs TUNG_TRUST_PROXY=true: the header is only believed from a proxy in front.",
+                )
+            }
+        }
+    }
+
     companion object {
+        /** RFC 9110's token characters, the ones a header name may have. */
+        private val HEADER_TOKEN_CHARS = ('a'..'z').toSet() + ('A'..'Z') + ('0'..'9') + "!#$%&'*+-.^_`|~".toSet()
+
         const val DEFAULT_PORT = 8080
         const val DEFAULT_AUTH_REQUESTS_PER_MINUTE = 10
         const val DEFAULT_PUSH_DEBOUNCE_MILLIS = 2_000L
@@ -153,6 +178,7 @@ data class ServerConfig(
                 port = port,
                 publicUrl = publicUrl,
                 trustProxy = trustProxy,
+                clientIpHeader = value("TUNG_CLIENT_IP_HEADER"),
                 fcmServiceAccount = value(FCM_ENV)?.let(::fcmServiceAccount),
                 apns = apns,
                 pushAllowPrivate = pushAllowPrivate,

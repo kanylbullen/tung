@@ -40,7 +40,6 @@ import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
-import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.ratelimit.RateLimit
 import io.ktor.server.request.path
 import io.ktor.server.routing.routing
@@ -148,7 +147,17 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
         // RFC 7239 `Forwarded` header from the client through untouched. Ktor's ForwardedHeaders, installed
         // after this one, would take the address from that header instead, and a client could pick a new
         // address for every request and walk past every per-address rate limit.
-        install(XForwardedHeaders) { useLastProxy() }
+        //
+        // With TUNG_CLIENT_IP_HEADER (CF-Connecting-IP behind Cloudflare) that one header replaces
+        // X-Forwarded-For: behind a tunnel, X-Forwarded-For's last hop is the tunnel's own address,
+        // which every client would share. A request without the header keeps the connection's address.
+        install(XForwardedHeaders) {
+            config.clientIpHeader?.let { header ->
+                forHeaders.clear()
+                forHeaders.add(header)
+            }
+            useLastProxy()
+        }
     }
     install(CallLogging) {
         level = Level.INFO
@@ -175,7 +184,7 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     install(RateLimit) {
         register(AUTH_RATE_LIMIT) {
             rateLimiter(limit = config.authRequestsPerMinute, refillPeriod = 1.minutes)
-            requestKey { call -> call.request.origin.remoteAddress }
+            requestKey { call -> clientKey(call) }
         }
     }
     install(Authentication) {

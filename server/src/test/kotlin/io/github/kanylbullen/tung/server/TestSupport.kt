@@ -36,12 +36,13 @@ object TestDatabase {
         PostgreSQLContainer("postgres:17-alpine").apply { start() }
     }
 
-    fun config(authRequestsPerMinute: Int = 10_000, trustProxy: Boolean = false) = ServerConfig(
+    fun config(authRequestsPerMinute: Int = 10_000, trustProxy: Boolean = false, clientIpHeader: String? = null) = ServerConfig(
         databaseUrl = container.jdbcUrl,
         databaseUser = container.username,
         databasePassword = container.password,
         authRequestsPerMinute = authRequestsPerMinute,
         trustProxy = trustProxy,
+        clientIpHeader = clientIpHeader,
         pushResolver = TestResolver,
     )
 }
@@ -63,11 +64,12 @@ val TestResolver = HostResolver { host ->
 fun tungTest(
     authRequestsPerMinute: Int = 10_000,
     trustProxy: Boolean = false,
+    clientIpHeader: String? = null,
     pushAllowPrivate: Boolean = false,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     environment { config = MapApplicationConfig() }
-    application { module(TestDatabase.config(authRequestsPerMinute, trustProxy).copy(pushAllowPrivate = pushAllowPrivate)) }
+    application { module(TestDatabase.config(authRequestsPerMinute, trustProxy, clientIpHeader).copy(pushAllowPrivate = pushAllowPrivate)) }
     block()
 }
 

@@ -2178,6 +2178,12 @@ fallback, and only on a tap.
 - **Errors** are thrown as `ApiException` (`badRequest`, `notFound`, …), never
   responded by hand, so they come out as `{"error": {"code", "message"}}` and
   StatusPages' handlers for Ktor's own 401/404/405/429 do not replace them.
+- **The client address** every per-address limit counts (the auth rate
+  limit, link claims) is `clientKey(call)` (`ClientAddress.kt`): the address
+  the forwarded-header plugin leaves with `TUNG_TRUST_PROXY` (the last
+  X-Forwarded-For hop, or with `TUNG_CLIENT_IP_HEADER` that one header, such
+  as Cloudflare's `CF-Connecting-IP`, falling back to the connection's own
+  address), an IPv6 address cut to its /64. A new per-address limit uses it.
 - **Tokens:** `tung_` + 32 random bytes, SHA-256 in `api_tokens`; sessions
   are tokens named `session`. A `read` token gets 403 on anything but GET.
   `api_tokens.expires_at` (V5) is null except on OAuth tokens; `authenticate`

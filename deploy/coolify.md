@@ -27,6 +27,7 @@ DATABASE_PASSWORD=<generated>
 PORT=8080
 TUNG_PUBLIC_URL=https://tung.xuper.fun        # must be the exact URL clients use: it is the OAuth issuer
 TUNG_TRUST_PROXY=true                         # behind Traefik/cloudflared: rate limits see the client
+TUNG_CLIENT_IP_HEADER=CF-Connecting-IP        # the client is Cloudflare's header, not X-Forwarded-For's last hop (cloudflared); only while the origin is reachable through Cloudflare alone
 TUNG_PUSH_ALLOW_PRIVATE=false                 # public instance: never POST to internal addresses
 TUNG_FCM_SERVICE_ACCOUNT_JSON=                # later, when the Firebase project exists
 TUNG_APNS_KEY=                                # iPhone push: the .p8 (path or contents), with TUNG_APNS_KEY_ID and TUNG_APNS_TEAM_ID; empty = off
