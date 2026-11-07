@@ -118,22 +118,40 @@ Without the key it is signed with the debug key, as before.
    testing** and add the testers' emails. Internal testing has no review
    wait; closed and open testing and production do.
 2. **App content**, before the first release goes out:
-   - **Privacy policy:** a URL is required. One page: training data stays on
-     the phone unless sync is turned on, then it goes to the server the user
-     chose; email and password for the account, or Google sign-in; no
-     analytics, no ads, no third-party SDKs that collect anything. Host it on
-     `tung.xuper.fun` or GitHub Pages.
+   - **Privacy policy:** a URL is required: `https://tung.xuper.fun/privacy`
+     (`server/src/main/resources/site/privacy.html`, which is the source of
+     truth; change it with the code). In short: training data stays on the
+     phone unless sync is turned on, then it goes to the server the user
+     chose; email and password for the account, or Google sign-in; on a tap,
+     the assistant sends the user's own provider (OpenAI, Anthropic,
+     OpenRouter, a self-hosted model) the last 90 days of finished workouts
+     (at most 30, with exercise names, custom ones included), the routines and
+     programs with their names, and the equipment list when narrowed, or for
+     an import's matching only the file's names and the catalogue; voice goes
+     to the phone's recogniser, which may send audio online when it has no
+     on-device model for the language; the hosted instance's processors
+     (Cloudflare, Hetzner backups, Google, Apple, Resend); no analytics, no
+     ads. Firebase Cloud Messaging is active only in a build with a
+     `google-services.json`.
    - **Data safety:** what the policy says, in the form's terms. Personal
      info (email) and fitness info (workouts, and heart rate and calories
      when Health Connect is on), collected only with an account, transmitted
-     with encryption, deletable (sign out keeps local data; the server has
-     the account's deletion).
+     with encryption, deletable (sign out keeps local data; the account is
+     deleted in the app, on the web, or by email, see `/delete-account`).
+     The assistant's request is sent by the user's tap, with the user's own
+     key, to a provider the user chose, never to the developer: declare it as
+     the form's guidance for user-initiated transfers says (the owner decides
+     how). Audio: the app records nothing and sends nothing itself; the
+     system recogniser may send audio to its provider.
    - **Health Connect:** the `android.permission.health.*` permissions need
      the Health Connect declaration form, which Google reviews. Fill it in
      with the two opt-ins (write sessions, read heart rate and calories) and
      the rationale page the app already shows (`HealthPermissionsActivity`).
-   - **Permissions:** `RECORD_AUDIO` is on-device speech for logging sets,
-     nothing recorded or sent; `SCHEDULE_EXACT_ALARM` is the rest timer
+   - **Permissions:** `RECORD_AUDIO` is speech for logging sets through the
+     phone's `SpeechRecognizer`: offline is preferred, and when the phone has
+     no on-device model for the language the recogniser may send the audio to
+     its provider (usually Google) to be transcribed; the app keeps no audio
+     and sends none itself; `SCHEDULE_EXACT_ALARM` is the rest timer
      (`USE_EXACT_ALARM`, which Play reserves for alarm apps, is not used);
      `POST_NOTIFICATIONS` is the rest alert and the ongoing workout;
      `POST_PROMOTED_NOTIFICATIONS` (Android 16, granted by default) makes the
