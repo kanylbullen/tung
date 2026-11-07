@@ -1255,7 +1255,18 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   re-asserted at app start), and `enqueueNow` (unique, `APPEND_OR_REPLACE`)
   after `FinishWorkout` from `AppCommandHandler`'s result path
   (`onWorkoutFinished`) and when the app comes to the foreground
-  (`ProcessLifecycleOwner`). Exponential backoff from 30 s; network and 5xx
+  (`ProcessLifecycleOwner`). Every other command that goes through
+  (`select_current` aside), and every change a companion watch sends the
+  phone (`WearCommandHandler`), calls `SyncAccount.changed` (`onChanged`):
+  one sync `CHANGE_SYNC_DELAY_MILLIS` (3 s) after the last change, so
+  another device sees a workout in progress, not only a finished one
+  (issue #199; `ChangeSyncTest`). It goes through
+  `SyncScheduler.enqueueSoon`, which adds nothing while a sync is already
+  waiting to start (`WorkManagerSyncSchedulerTest`), so a phone offline for
+  a whole workout does not queue a sync per set. A standalone watch, which
+  gets no push, also syncs while it is on screen: every 30 s in a workout,
+  every 2 min otherwise, backing off to 5 min without a network
+  (`nextForegroundSyncDelay`, `ForegroundSyncTest`). Exponential backoff from 30 s; network and 5xx
   retry, 401 and other 4xx do not. Sign-out cancels both. "Sync now" in
   Settings calls `syncOnce` directly, so the screen sees the result.
   WorkManager is initialised on demand (`TungApp` and `TungWearApp` are
@@ -1396,8 +1407,10 @@ and WorkManager `Configuration.Provider`). Install and pairing: `wear/README.md`
   phone's workout screen keeps it: the current-set selection in a
   `WearSelectionHolder`, the rest timer in the watch's `RestTimerController`
   (DataStore + alarm, `RestAlerts` buzzes once per rest). Sync is the
-  phone's: `SyncWorker` periodic while signed in, after `FinishWorkout`, and
-  when the app comes to the foreground, over whatever network the watch has.
+  phone's: `SyncWorker` periodic while signed in, after `FinishWorkout`, a
+  moment after any other change, and when the app comes to the foreground,
+  plus every 30 s in a workout while it is on screen (no push reaches a
+  watch; see "Sync", "Triggers"), over whatever network the watch has.
 - **Companion** when it has no token: v0, unchanged. The watch mirrors the
   phone over the Data Layer (`PhoneLink`) and sends it commands. Without a
   paired phone it shows the hint to open the phone or link the watch.

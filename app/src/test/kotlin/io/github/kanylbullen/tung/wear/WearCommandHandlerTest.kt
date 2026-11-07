@@ -53,6 +53,7 @@ class WearCommandHandlerTest {
     private lateinit var handler: WearCommandHandler
     private val written = mutableListOf<String>()
     private var commandCount = 0
+    private var changes = 0
 
     @Before
     fun setUp() {
@@ -64,7 +65,7 @@ class WearCommandHandlerTest {
         }
         restTimer = RestTimerController(context, settings)
         publisher = WearStatePublisher(context, workouts, routines, restTimer, settings.data, { written += it })
-        handler = WearCommandHandler(workouts, routines, restTimer, publisher.selection)
+        handler = WearCommandHandler(workouts, routines, restTimer, publisher.selection, onChanged = { changes++ })
     }
 
     @After
@@ -88,6 +89,19 @@ class WearCommandHandlerTest {
 
     private suspend fun sets(workoutId: String): List<SetEntry> =
         workouts.observeExercises(workoutId).first().single().sortedSets
+
+    @Test
+    fun aChangeToTrainingDataAsksForASyncAndTheSelectionAndRestDoNot() = runBlocking {
+        val (_, first) = benchWorkout()
+        assertTrue(handler.handle(json { id, at -> WatchCommand.SelectSet(first.id, id, at) }))
+        assertTrue(handler.handle(json { id, at -> WatchCommand.LogSet(first.id, id, at) }))
+        assertTrue(handler.handle(json { id, at -> WatchCommand.SkipRest(id, at) }))
+        // Issue #199: only the logged set, so the phone's sync carries it to a standalone device soon.
+        assertEquals(1, changes)
+        // A command repeated with the same id changes nothing and asks for nothing.
+        assertFalse(handler.apply(WatchCommand.LogSet(first.id, "cmd-2", 1_000L)))
+        assertEquals(1, changes)
+    }
 
     @Test
     fun logSetOnlyTicksTheSetAndStartsTheRest() = runBlocking {

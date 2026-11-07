@@ -8,6 +8,14 @@ interface SyncScheduler {
     /** One sync as soon as there is a network, after any that is running. */
     fun enqueueNow()
 
+    /**
+     * Like [enqueueNow], but nothing when a sync is already waiting to start:
+     * it will carry this change too. For the many small changes of a workout
+     * ([SyncAccount.changed]), so a device offline for a whole workout does
+     * not queue a sync per set.
+     */
+    suspend fun enqueueSoon() = enqueueNow()
+
     /** Both, on sign out. */
     fun cancel()
 }

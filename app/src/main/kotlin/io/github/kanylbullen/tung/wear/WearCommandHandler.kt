@@ -38,6 +38,8 @@ class WearCommandHandler(
     private val restTimer: RestTimerController,
     private val selection: WearSelectionHolder,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** After a command that changed training data (not the selection or the rest timer): the phone's sync soon (issue #199). */
+    private val onChanged: () -> Unit = {},
 ) {
     private val lock = Mutex()
 
@@ -61,7 +63,14 @@ class WearCommandHandler(
     }
 
     /** True when [command] changed something. */
-    suspend fun apply(command: WatchCommand): Boolean = lock.withLock {
+    suspend fun apply(command: WatchCommand): Boolean {
+        val changed = applyOnce(command)
+        val training = command !is WatchCommand.SelectSet && command !is WatchCommand.SkipRest && command !is WatchCommand.AddRest30
+        if (changed && training) onChanged()
+        return changed
+    }
+
+    private suspend fun applyOnce(command: WatchCommand): Boolean = lock.withLock {
         if (seen.containsKey(command.commandId)) return@withLock false
         seen[command.commandId] = Unit
         when (command) {

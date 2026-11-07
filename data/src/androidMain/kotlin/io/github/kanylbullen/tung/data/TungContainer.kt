@@ -149,6 +149,7 @@ class TungContainer(
             workouts = workoutRepository,
             resolver = exerciseResolver,
             onWorkoutFinished = ::workoutFinished,
+            onChanged = { syncAccount.changed() },
             startedBy = startedBy,
         )
     }
