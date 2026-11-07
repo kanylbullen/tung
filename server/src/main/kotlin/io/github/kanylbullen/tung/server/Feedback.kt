@@ -20,9 +20,12 @@ import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.util.Base64
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 const val MAX_FEEDBACK_MESSAGE = 5_000
 const val MAX_FEEDBACK_IMAGES = 3
@@ -36,6 +39,16 @@ const val FEEDBACK_WINDOW_MILLIS = 24 * 60 * 60 * 1000L
 
 /** What one user's screenshots may add up to in [FEEDBACK_WINDOW_MILLIS]; more is 429 `too_much_feedback`. */
 const val MAX_FEEDBACK_BYTES_PER_DAY = 30L * 1024 * 1024
+
+/**
+ * What one client address may send in [FEEDBACK_WINDOW_MILLIS], whatever
+ * account it uses (issue #150): accounts are free, so the per-user budget
+ * alone lets one script fill the store with many accounts. More is 429
+ * `too_much_feedback`, like the user's own budget. Counted in memory only,
+ * like the rate limits: a restart starts the day over.
+ */
+const val MAX_FEEDBACK_PER_ADDRESS_PER_DAY = 20
+const val MAX_FEEDBACK_BYTES_PER_ADDRESS_PER_DAY = 30L * 1024 * 1024
 
 /** The most rows kept: past it the server answers 503 `feedback_full` rather than grow without end. */
 const val MAX_FEEDBACK_ROWS = 10_000
@@ -101,7 +114,12 @@ class FeedbackImage(val contentType: String, val bytes: ByteArray)
  */
 class FeedbackStore(private val db: Db, private val admins: Admins, private val clock: () -> Long) {
 
-    suspend fun create(principal: TokenPrincipal, input: FeedbackInput): FeedbackCreated {
+    private val addresses = AddressBudget(MAX_FEEDBACK_PER_ADDRESS_PER_DAY, MAX_FEEDBACK_BYTES_PER_ADDRESS_PER_DAY, FEEDBACK_WINDOW_MILLIS, clock)
+    private val rowsAlarm = HalfwayAlarm("feedback rows", MAX_FEEDBACK_ROWS.toLong()) { log.warn(it) }
+    private val bytesAlarm = HalfwayAlarm("feedback screenshot bytes", MAX_FEEDBACK_STORED_BYTES) { log.warn(it) }
+
+    /** [address] is the client's, as the rate limits see it ([clientKey]: an IPv6 client by its /64). */
+    suspend fun create(principal: TokenPrincipal, input: FeedbackInput, address: String): FeedbackCreated {
         val kind = input.kind.trim().lowercase()
         if (kind !in FEEDBACK_KINDS) throw badRequest("kind must be one of ${FEEDBACK_KINDS.joinToString()}.", "invalid_kind")
         val platform = input.platform.trim().lowercase()
@@ -116,6 +134,28 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
         val now = clock()
         val id = UUID.randomUUID().toString()
         val bytes = images.sumOf { it.bytes.size.toLong() }
+        // Taken before the transaction, so two sends at once from one address cannot both pass; given back if it fails.
+        val reservation = addresses.reserve(address, bytes) ?: throw tooMuchFeedback()
+        try {
+            store(principal, id, kind, message, platform, version, now, images, bytes)
+        } catch (e: Throwable) {
+            addresses.release(reservation)
+            throw e
+        }
+        return FeedbackCreated(id)
+    }
+
+    private suspend fun store(
+        principal: TokenPrincipal,
+        id: String,
+        kind: String,
+        message: String,
+        platform: String,
+        version: String?,
+        now: Long,
+        images: List<FeedbackImage>,
+        bytes: Long,
+    ) {
         db.tx {
             // One user's sends one at a time, so two at once cannot both pass the day's limit.
             lockUser(principal.userId)
@@ -147,21 +187,23 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
                 }
             }
         }
-        return FeedbackCreated(id)
     }
 
     /**
      * The limits before a body is read: a user over the day's count or bytes,
      * or a full table, is refused without the server holding the upload.
      */
-    suspend fun precheck(principal: TokenPrincipal) {
+    suspend fun precheck(principal: TokenPrincipal, address: String) {
         db.tx { checkBudgets(connection.connection as Connection, principal.userId, clock(), 0) }
+        if (addresses.isExhausted(address)) throw tooMuchFeedback()
     }
 
     private fun checkBudgets(connection: Connection, userId: String, now: Long, adding: Long) {
         val (rows, stored) = connection.prepareStatement(
             "SELECT (SELECT count(*) FROM feedback), (SELECT coalesce(sum(size), 0) FROM feedback_images)",
         ).use { it.executeQuery().use { r -> r.next(); r.getInt(1) to r.getLong(2) } }
+        rowsAlarm.observe(rows.toLong())
+        bytesAlarm.observe(stored)
         if (rows >= MAX_FEEDBACK_ROWS || stored + adding > MAX_FEEDBACK_STORED_BYTES) {
             throw ApiException(HttpStatusCode.ServiceUnavailable, "feedback_full", "Feedback is full for now. Try again later.")
         }
@@ -176,9 +218,7 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
             it.setLong(2, now - FEEDBACK_WINDOW_MILLIS)
             it.executeQuery().use { r -> r.next(); r.getInt(1) to r.getLong(2) }
         }
-        if (recent >= MAX_FEEDBACK_PER_DAY || recentBytes + adding > MAX_FEEDBACK_BYTES_PER_DAY) {
-            throw ApiException(HttpStatusCode.TooManyRequests, "too_much_feedback", "That is a lot of feedback for one day. Try again tomorrow.")
-        }
+        if (recent >= MAX_FEEDBACK_PER_DAY || recentBytes + adding > MAX_FEEDBACK_BYTES_PER_DAY) throw tooMuchFeedback()
     }
 
     suspend fun list(principal: TokenPrincipal): FeedbackList {
@@ -291,6 +331,8 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
         ApiException(HttpStatusCode.PayloadTooLarge, "image_too_large", "A screenshot may be at most ${MAX_FEEDBACK_IMAGE_BYTES / (1024 * 1024)} MB.")
 
     companion object {
+        private val log = LoggerFactory.getLogger(FeedbackStore::class.java)
+
         /** The type by the file's own signature, never by what the client claims. */
         fun imageType(bytes: ByteArray): String? {
             fun at(offset: Int, vararg expected: Int) =
@@ -301,6 +343,101 @@ class FeedbackStore(private val db: Db, private val admins: Admins, private val 
                 at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50) -> "image/webp"
                 else -> null
             }
+        }
+    }
+}
+
+private fun tooMuchFeedback() =
+    ApiException(HttpStatusCode.TooManyRequests, "too_much_feedback", "That is a lot of feedback for one day. Try again tomorrow.")
+
+/**
+ * Sends and bytes per key (a client address) in a sliding window, in memory.
+ * [reserve] takes a send's place and bytes at once, or refuses when either
+ * budget would be passed; [release] gives back a send that failed after.
+ */
+internal class AddressBudget(
+    private val maxCount: Int,
+    private val maxBytes: Long,
+    private val windowMillis: Long,
+    private val clock: () -> Long,
+) {
+    class Reservation internal constructor(internal val key: String, internal val entry: LongArray)
+
+    /** Per key: one `[time, bytes]` per send in the window, oldest first. */
+    private val sends = ConcurrentHashMap<String, ArrayDeque<LongArray>>()
+
+    fun reserve(key: String, bytes: Long): Reservation? {
+        val now = clock()
+        if (sends.size > PRUNE_AT) prune(now)
+        while (true) {
+            val entries = sends.computeIfAbsent(key) { ArrayDeque() }
+            synchronized(entries) {
+                // A prune between the lookup and the lock may have dropped this deque from the map: a send added
+                // to it would count nowhere, so look the key up again.
+                if (sends[key] !== entries) return@synchronized
+                expire(entries, now)
+                if (!fits(entries, bytes)) return null
+                val entry = longArrayOf(now, bytes)
+                entries.addLast(entry)
+                return Reservation(key, entry)
+            }
+        }
+    }
+
+    fun release(reservation: Reservation) {
+        val entries = sends[reservation.key] ?: return
+        synchronized(entries) { entries.removeAll { it === reservation.entry } }
+    }
+
+    /** True when [key] may not send even a message without screenshots now; reserves nothing. */
+    fun isExhausted(key: String): Boolean {
+        val entries = sends[key] ?: return false
+        synchronized(entries) {
+            expire(entries, clock())
+            return !fits(entries, 0)
+        }
+    }
+
+    /** The one rule [reserve] and [isExhausted] share: another send of [bytes] stays within both budgets. */
+    private fun fits(entries: ArrayDeque<LongArray>, bytes: Long) =
+        entries.size < maxCount && entries.sumOf { it[1] } + bytes <= maxBytes
+
+    private fun expire(entries: ArrayDeque<LongArray>, now: Long) {
+        while (entries.isNotEmpty() && entries.first()[0] <= now - windowMillis) entries.removeFirst()
+    }
+
+    /**
+     * Drops the keys whose sends have all left the window. Each key is
+     * removed atomically with its own check (under the deque's lock), and
+     * [reserve] looks a key up again when its deque was dropped meanwhile.
+     */
+    private fun prune(now: Long) {
+        for (key in sends.keys.toList()) {
+            sends.computeIfPresent(key) { _, entries ->
+                synchronized(entries) { if (entries.lastOrNull()?.let { it[0] > now - windowMillis } == true) entries else null }
+            }
+        }
+    }
+
+    private companion object {
+        const val PRUNE_AT = 10_000
+    }
+}
+
+/**
+ * Warns once when a stored amount reaches half of [max], and again only
+ * after it has gone back under half (an admin deleted feedback) and reaches
+ * it anew. Not per request: an amount that stays above half is quiet.
+ */
+internal class HalfwayAlarm(private val what: String, private val max: Long, private val warn: (String) -> Unit) {
+    private val above = AtomicBoolean(false)
+
+    fun observe(value: Long) {
+        val atHalf = value * 2 >= max
+        if (atHalf && above.compareAndSet(false, true)) {
+            warn("Stored $what passed half the cap: $value of $max. At the cap feedback answers 503 feedback_full for everyone.")
+        } else if (!atHalf) {
+            above.set(false)
         }
     }
 }
@@ -321,7 +458,8 @@ private fun bodyTooLarge() =
 fun Route.feedbackRoutes(store: FeedbackStore) = bodyLimit(MAX_FEEDBACK_BODY_BYTES, { bodyTooLarge() }) {
     post("/feedback") {
         val principal = call.user()
-        store.precheck(principal)
+        val address = clientKey(call)
+        store.precheck(principal, address)
         val created = uploads.withPermit {
             val bytes = call.receiveChannel().readRemaining().readByteArray()
             val input = try {
@@ -331,7 +469,7 @@ fun Route.feedbackRoutes(store: FeedbackStore) = bodyLimit(MAX_FEEDBACK_BODY_BYT
             } catch (e: IllegalArgumentException) {
                 throw badRequest("The body is not the feedback JSON.")
             }
-            store.create(principal, input)
+            store.create(principal, input, address)
         }
         call.respond(HttpStatusCode.Created, created)
     }

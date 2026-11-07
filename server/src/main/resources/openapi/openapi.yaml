@@ -573,7 +573,8 @@ paths:
       summary: Send feedback
       description: >-
         A bug or an idea, with up to 3 screenshots as base64 (a data URL is taken too). Each may be at most 4 MB
-        decoded and must be a PNG, JPEG or WebP image, read from its bytes. At most 20 per user and day
+        decoded and must be a PNG, JPEG or WebP image, read from its bytes. At most 20 sends and 30 MB of screenshots per user
+        and day, and the same per client address whatever the account
         (429 `too_much_feedback`); a full table is 503 `feedback_full`.
       operationId: sendFeedback
       requestBody:
@@ -600,7 +601,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "429":
-          description: Too much feedback from this account today (`too_much_feedback`).
+          description: Too much feedback from this account or this address today (`too_much_feedback`).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
