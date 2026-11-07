@@ -275,13 +275,6 @@ class WebContainer(
         return auth.resendConfirmation(account.serverUrl, token, languageTag())
     }
 
-    /** Whether the account has a password (`/me`), so Settings offers "Change password"; null when the server does not answer. */
-    suspend fun hasPassword(): Boolean? {
-        val account = settings.account.value ?: return null
-        val token = settings.token ?: return null
-        return auth.hasPassword(account.serverUrl, token)
-    }
-
     /**
      * "Sign out other devices": every other token of the account stops
      * working; this browser stays signed in and nothing local changes. A 401

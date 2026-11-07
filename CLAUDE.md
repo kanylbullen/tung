@@ -2558,7 +2558,7 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   the seed, one IndexedDB transaction), and dismissing it, or the page's
   `pagehide`, revokes the held token (best effort).
   `WebSignInTest`. Settings has the phone's "Change password…" (shown when
-  `/me` says `has_password`, `WebContainer.hasPassword`, asked as Settings
+  `/me` says `has_password`, `WebAdmin.account`, the one `/me` read Settings makes as it
   opens) and "Sign out other devices…" (`WebContainer.changePassword`,
   `signOutOthers`, both with the browser's `X-Tung-Device`; only a 401 signs
   out), each with its dialog. `WebAuthSessionsTest`.

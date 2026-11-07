@@ -19,6 +19,7 @@ import io.github.kanylbullen.tung.core.MAX_REST_SECONDS
 import io.github.kanylbullen.tung.core.REST_STEP_SECONDS
 import io.github.kanylbullen.tung.core.catalog.EquipmentFilter
 import io.github.kanylbullen.tung.web.WebContainer
+import io.github.kanylbullen.tung.web.admin.AccountFlags
 import io.github.kanylbullen.tung.web.sync.Account
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.disabled
@@ -118,6 +119,10 @@ fun SettingsScreen(container: WebContainer, account: Account) {
 
         DataSection(container)
 
+        // `/me` once each time Settings opens: Server admin (TUNG_ADMIN_EMAILS) and "Change password…" both read it.
+        val flags by produceState<AccountFlags?>(null, account) {
+            value = container.settings.token?.let { container.admin.account(account.serverUrl, it) }
+        }
         H2({ classes("section") }) { Text(strings.account) }
         Div({ classes("setting", "column") }) {
             Span { Text(strings.signedInAs(account.email)) }
@@ -132,16 +137,11 @@ fun SettingsScreen(container: WebContainer, account: Account) {
                 Button({ classes("secondary"); onClick { scope.launch { container.signOut() } } }) { Text(strings.signOut) }
             }
             P({ classes("hint", "flush") }) { Text(strings.signOutHint) }
-            Sessions(container, account)
+            Sessions(container, hasPassword = flags?.hasPassword == true)
             DeleteAccount(container, account)
         }
 
-        // Only for the server's admins (TUNG_ADMIN_EMAILS); asked once each time Settings opens.
-        val isAdmin by produceState(false, account) {
-            val token = container.settings.token
-            value = token != null && container.admin.isAdmin(account.serverUrl, token)
-        }
-        if (isAdmin) {
+        if (flags?.isAdmin == true) {
             H2({ classes("section") }) { Text(strings.serverAdmin) }
             Ul({ classes("rows") }) {
                 Li {
@@ -242,11 +242,9 @@ private fun DataSection(container: WebContainer) {
  * what the last of them did. Neither signs this browser out or touches the log.
  */
 @Composable
-private fun Sessions(container: WebContainer, account: Account) {
+private fun Sessions(container: WebContainer, hasPassword: Boolean) {
     val strings = container.strings
     val scope = rememberCoroutineScope()
-    // Asked each time Settings opens, as the admin check is; an account that signs in only with Google or Apple has none.
-    val hasPassword by produceState(false, account) { value = container.hasPassword() == true }
     var dialog by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }

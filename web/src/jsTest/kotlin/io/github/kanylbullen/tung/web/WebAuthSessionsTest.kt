@@ -9,7 +9,6 @@ import io.github.kanylbullen.tung.web.sync.WebAuth
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -75,18 +74,5 @@ class WebAuthSessionsTest {
         assertEquals(ChangePasswordResult.NOT_A_SERVER, answer(HttpReply(405, "")))
         val offline = WebAuth(post = { _, _, _ -> throw HttpUnreachable(null) }).changePassword("https://s", "t", "d", "a", "bbbbbbbb")
         assertEquals(ChangePasswordResult.NETWORK, offline)
-    }
-
-    @Test
-    fun hasPasswordComesFromMe() = runTest {
-        suspend fun answer(reply: HttpReply) = WebAuth(getWithHeaders = { url, h ->
-            assertEquals("https://s/api/v1/me", url)
-            assertEquals("Bearer t", h["Authorization"])
-            reply
-        }).hasPassword("https://s", "t")
-        assertEquals(false, answer(HttpReply(200, """{"email":"x@example.org","has_password":false}""")))
-        assertEquals(true, answer(HttpReply(200, """{"email":"x@example.org","has_password":true}""")))
-        assertEquals(true, answer(HttpReply(200, """{"email":"x@example.org"}""")))
-        assertNull(answer(HttpReply(401, "")))
     }
 }

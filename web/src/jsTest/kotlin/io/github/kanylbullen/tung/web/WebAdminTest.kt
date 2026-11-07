@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web
 
+import io.github.kanylbullen.tung.web.admin.AccountFlags
 import io.github.kanylbullen.tung.web.admin.AdminResult
 import io.github.kanylbullen.tung.web.admin.AdminUser
 import io.github.kanylbullen.tung.web.admin.TesterSignup
@@ -10,6 +11,7 @@ import io.github.kanylbullen.tung.web.sync.HttpUnreachable
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
@@ -27,6 +29,17 @@ class WebAdminTest {
         assertFalse(admin { HttpReply(200, """{"id":"u","email":"a@b.c","is_admin":false}""") }.isAdmin("https://s", "t"))
         assertFalse(admin { HttpReply(200, """{"id":"u","email":"a@b.c"}""") }.isAdmin("https://s", "t"), "a server from before the field")
         assertFalse(admin { throw HttpUnreachable(null) }.isAdmin("https://s", "t"))
+    }
+
+    @Test
+    fun oneReadOfMeGivesBothFlags() = runTest {
+        val flags = admin { url ->
+            assertEquals("https://s/api/v1/me", url)
+            HttpReply(200, """{"id":"u","email":"a@b.c","is_admin":true,"has_password":false}""")
+        }.account("https://s", "t")
+        assertEquals(AccountFlags(isAdmin = true, hasPassword = false), flags)
+        assertEquals(AccountFlags(), admin { HttpReply(200, """{"id":"u","email":"a@b.c"}""") }.account("https://s", "t"), "a server from before the fields")
+        assertNull(admin { HttpReply(401, "") }.account("https://s", "t"))
     }
 
     @Test
