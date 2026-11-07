@@ -51,7 +51,8 @@ class ChangeSyncTest {
     private val enqueued = AtomicInteger()
     private val scheduler = object : SyncScheduler {
         override fun schedulePeriodic() = Unit
-        override fun enqueueNow() { enqueued.incrementAndGet() }
+        override fun enqueueNow() = error("a change asks for enqueueSoon, which carries it along with a sync already waiting")
+        override suspend fun enqueueSoon() { enqueued.incrementAndGet() }
         override fun cancel() = Unit
     }
 
@@ -68,25 +69,27 @@ class ChangeSyncTest {
         db.close()
     }
 
-    /** Waits past the delay, then a little more for the request itself. */
-    private fun settle() = Thread.sleep(DELAY + 300)
+    /** Waits until [count] syncs were asked for (at most 5 s), then a little longer for any that should not come. */
+    private fun settleAt(count: Int) {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (enqueued.get() < count && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        Thread.sleep(DELAY * 2)
+        assertEquals(count, enqueued.get())
+    }
 
     @Test
     fun changesCloseTogetherShareOneSync() {
         val account = account("token")
         repeat(3) { account.changed() }
-        settle()
-        assertEquals(1, enqueued.get())
+        settleAt(1)
         account.changed()
-        settle()
-        assertEquals(2, enqueued.get())
+        settleAt(2)
     }
 
     @Test
     fun signedOutAChangeAsksForNothing() {
         account(null).changed()
-        settle()
-        assertEquals(0, enqueued.get())
+        settleAt(0)
     }
 
     @Test

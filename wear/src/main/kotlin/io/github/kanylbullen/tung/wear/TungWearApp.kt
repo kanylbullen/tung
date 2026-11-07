@@ -4,15 +4,19 @@ import android.app.Activity
 import android.app.Application
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.Configuration
 import io.github.kanylbullen.tung.core.StartedBy
+import io.github.kanylbullen.tung.core.sync.SyncResult
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungHost
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -54,21 +58,35 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
         })
         ongoing.start()
         // The phone's triggers: periodic work while signed in, and a sync whenever the app comes to the
-        // foreground. A watch gets no push, so while it is on screen it also syncs every
-        // FOREGROUND_SYNC_MILLIS, to see what the phone logs meanwhile (issue #199): directly, not
-        // through WorkManager, so a watch offline on screen does not queue a sync every round.
-        // Signed out (companion mode) each is a no-op.
+        // foreground. A watch gets no push, so while it is on screen it also syncs now and then, to see
+        // what the phone logs meanwhile (issue #199; nextForegroundSyncDelay): directly, not through
+        // WorkManager, so a watch offline on screen does not queue a sync every round. Signed out
+        // (companion mode) each is a no-op.
         container.syncAccount.restoreSchedule()
         val process = ProcessLifecycleOwner.get()
         process.lifecycleScope.launch {
             process.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 container.syncAccount.requestSync()
+                var wait = FOREGROUND_SYNC_MILLIS
+                var result: SyncResult? = null
                 while (true) {
-                    delay(FOREGROUND_SYNC_MILLIS)
-                    if (container.syncAccount.isSignedIn()) container.syncAccount.syncNow()
+                    val inProgress = runCatching { container.workoutRepository.observeActiveWorkout().first() != null }.getOrDefault(true)
+                    wait = nextForegroundSyncDelay(result, inProgress, wait)
+                    delay(wait)
+                    result = if (container.syncAccount.isSignedIn()) foregroundSync() else null
                 }
             }
         }
+    }
+
+    /** One sync from the loop above. An error the sync does not handle itself (the database) is logged, never thrown at the app. */
+    private suspend fun foregroundSync(): SyncResult? = try {
+        container.syncAccount.syncNow()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w(TAG, "Foreground sync failed", e)
+        null
     }
 
     /** WorkManager is initialised on demand (the default initializer is removed in the manifest). */
@@ -76,5 +94,4 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
         get() = Configuration.Builder().build()
 }
 
-/** How often a standalone watch syncs while the app is on screen. */
-const val FOREGROUND_SYNC_MILLIS = 30_000L
+private const val TAG = "TungWearApp"

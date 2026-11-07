@@ -10,6 +10,8 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
+import kotlinx.coroutines.flow.first
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import io.github.kanylbullen.tung.data.TungHost
@@ -37,6 +39,14 @@ class WorkManagerSyncScheduler(private val context: Context) : SyncScheduler {
             .build()
         // Appended, not replacing: a sync in flight finishes, and this one picks up what changed meanwhile.
         workManager.enqueueUniqueWork(NOW_WORK, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+    }
+
+    override suspend fun enqueueSoon() {
+        // Enqueued (waiting for a network) or blocked behind the running one: it has not read the
+        // dirty rows yet, so it takes this change along. Only a running sync, or none, needs another.
+        val waiting = workManager.getWorkInfosForUniqueWorkFlow(NOW_WORK).first()
+            .any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }
+        if (!waiting) enqueueNow()
     }
 
     override fun cancel() {

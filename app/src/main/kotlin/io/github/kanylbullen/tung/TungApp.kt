@@ -35,7 +35,13 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
         }
     }
     val wearCommands: WearCommandHandler by lazy {
-        WearCommandHandler(container.workoutRepository, container.routineRepository, container.restTimer, wearPublisher.selection)
+        WearCommandHandler(
+            container.workoutRepository,
+            container.routineRepository,
+            container.restTimer,
+            wearPublisher.selection,
+            onChanged = { container.syncAccount.changed() },
+        )
     }
 
     private var startedActivities = 0

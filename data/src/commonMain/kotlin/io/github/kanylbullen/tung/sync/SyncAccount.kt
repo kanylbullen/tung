@@ -343,7 +343,7 @@ class SyncAccount(
     fun changed() {
         val next = scope.launch {
             delay(changeSyncDelayMillis)
-            if (isSignedIn()) scheduler.enqueueNow()
+            if (isSignedIn()) withContext(ioDispatcher) { scheduler.enqueueSoon() }
         }
         changeSync.getAndUpdate { next }?.cancel()
     }
