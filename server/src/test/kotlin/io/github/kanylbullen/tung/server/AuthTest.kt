@@ -141,4 +141,24 @@ class AuthTest {
         assertEquals(HttpStatusCode.Unauthorized, login("10.0.0.2"))
         assertEquals(HttpStatusCode.TooManyRequests, login("10.0.0.3"))
     }
+
+    @Test
+    fun anOversizedBodyOnThePublicRoutesIs413BeforeItIsRead() = tungTest {
+        val huge = paddedJson(PUBLIC_MAX_BODY_BYTES.toInt() + 1)
+        for (path in listOf("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/google", "/api/v1/auth/password/forgot")) {
+            val response = client.post(path) { jsonBody(huge) }
+            assertEquals(HttpStatusCode.PayloadTooLarge, response.status, path)
+            assertEquals("payload_too_large", response.errorCode(), path)
+        }
+        // Under the cap the route answers as ever: a body that is not a login is 400, not 413.
+        val under = client.post("/api/v1/auth/login") { jsonBody(paddedJson(PUBLIC_MAX_BODY_BYTES.toInt() - 1024)) }
+        assertEquals(HttpStatusCode.BadRequest, under.status, under.bodyAsText())
+    }
+
+    @Test
+    fun aBodyWithoutALengthIsCutOffAtTheCapToo() = tungTest {
+        val response = client.post("/api/v1/auth/login") { chunkedJsonBody(4 * PUBLIC_MAX_BODY_BYTES.toInt()) }
+        assertEquals(HttpStatusCode.PayloadTooLarge, response.status)
+        assertEquals("payload_too_large", response.errorCode())
+    }
 }

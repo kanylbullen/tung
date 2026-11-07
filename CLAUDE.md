@@ -2184,6 +2184,19 @@ fallback, and only on a tap.
   X-Forwarded-For hop, or with `TUNG_CLIENT_IP_HEADER` that one header, such
   as Cloudflare's `CF-Connecting-IP`, falling back to the connection's own
   address), an IPv6 address cut to its /64. A new per-address limit uses it.
+- **Every request body is capped** (`BodyLimit.kt`, issue #149): the
+  route-scoped `RequestBodyLimit` at the routing root gives 1 MiB
+  (`DEFAULT_MAX_BODY_BYTES`), and `bodyLimit(max) { … }` sets another cap
+  for a subtree, the nearest one winning: 64 KiB (`PUBLIC_MAX_BODY_BYTES`)
+  on everything callable without a token (auth, link claim, testers, OAuth,
+  the site's forms), 256 KiB for commands, 8 MiB for sync, 18 MiB for
+  feedback. A Content-Length over the cap is 413 before the handler runs;
+  without one the body is read only to the cap. A new route needs nothing to
+  be capped; one that takes more says so with `bodyLimit`. `POST
+  /oauth/token` has its own per-address rate limit, `OAUTH_TOKEN_RATE_LIMIT`
+  (60 a minute: hosted MCP clients call from a few shared addresses). Its
+  429 and 413, and those of `/oauth/register`, are RFC 6749-shaped
+  (`slow_down`, `invalid_request`), since OAuth clients read `error`.
 - **Tokens:** `tung_` + 32 random bytes, SHA-256 in `api_tokens`; sessions
   are tokens named `session`. A `read` token gets 403 on anything but GET.
   `api_tokens.expires_at` (V5) is null except on OAuth tokens; `authenticate`

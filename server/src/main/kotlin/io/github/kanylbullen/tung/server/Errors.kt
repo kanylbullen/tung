@@ -6,8 +6,10 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.request.path
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
+import io.github.kanylbullen.tung.server.oauth.OAUTH_JSON_PATHS
 import io.github.kanylbullen.tung.server.oauth.OAuthException
 import io.github.kanylbullen.tung.server.oauth.respondOAuthError
 import kotlinx.serialization.Serializable
@@ -74,6 +76,10 @@ fun Application.installErrorPages() {
             call.respond(status, ErrorBody(ErrorDetail("unauthorized", "Send a valid API token as 'Authorization: Bearer tung_…'.")))
         }
         status(HttpStatusCode.TooManyRequests) { call, status ->
+            if (call.request.path() in OAUTH_JSON_PATHS) {
+                // An OAuth client reads RFC 6749's `error`; RFC 6749 has no rate-limit code, slow_down (RFC 8628) is the nearest.
+                return@status call.respondOAuthError(OAuthException("slow_down", "Too many requests. Wait a minute and try again.", status))
+            }
             call.respond(status, ErrorBody(ErrorDetail("rate_limited", "Too many requests. Wait a minute and try again.")))
         }
     }

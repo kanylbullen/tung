@@ -12,9 +12,12 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.http.content.OutgoingContent
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.writeFully
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -36,11 +39,17 @@ object TestDatabase {
         PostgreSQLContainer("postgres:17-alpine").apply { start() }
     }
 
-    fun config(authRequestsPerMinute: Int = 10_000, trustProxy: Boolean = false, clientIpHeader: String? = null) = ServerConfig(
+    fun config(
+        authRequestsPerMinute: Int = 10_000,
+        trustProxy: Boolean = false,
+        tokenRequestsPerMinute: Int = 10_000,
+        clientIpHeader: String? = null,
+    ) = ServerConfig(
         databaseUrl = container.jdbcUrl,
         databaseUser = container.username,
         databasePassword = container.password,
         authRequestsPerMinute = authRequestsPerMinute,
+        tokenRequestsPerMinute = tokenRequestsPerMinute,
         trustProxy = trustProxy,
         clientIpHeader = clientIpHeader,
         pushResolver = TestResolver,
@@ -66,11 +75,29 @@ fun tungTest(
     trustProxy: Boolean = false,
     clientIpHeader: String? = null,
     pushAllowPrivate: Boolean = false,
+    tokenRequestsPerMinute: Int = 10_000,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     environment { config = MapApplicationConfig() }
-    application { module(TestDatabase.config(authRequestsPerMinute, trustProxy, clientIpHeader).copy(pushAllowPrivate = pushAllowPrivate)) }
+    application { module(TestDatabase.config(authRequestsPerMinute, trustProxy, tokenRequestsPerMinute, clientIpHeader).copy(pushAllowPrivate = pushAllowPrivate)) }
     block()
+}
+
+/** A JSON object of about [bytes] bytes: one string field of padding. */
+fun paddedJson(bytes: Int, field: String = "padding"): String = """{"$field": "${"x".repeat(bytes)}"}"""
+
+/** A JSON body sent without a Content-Length (chunked): [bytes] bytes of padding in one string field. */
+fun HttpRequestBuilder.chunkedJsonBody(bytes: Int, field: String = "padding") {
+    setBody(object : OutgoingContent.WriteChannelContent() {
+        override val contentType = ContentType.Application.Json
+        override val contentLength: Long? = null
+        override suspend fun writeTo(channel: ByteWriteChannel) {
+            channel.writeFully("""{"$field": """".toByteArray())
+            val chunk = ByteArray(8 * 1024) { 'x'.code.toByte() }
+            repeat(bytes / chunk.size) { channel.writeFully(chunk) }
+            channel.writeFully("\"}".toByteArray())
+        }
+    })
 }
 
 fun uniqueEmail() = "user-${UUID.randomUUID()}@example.org"

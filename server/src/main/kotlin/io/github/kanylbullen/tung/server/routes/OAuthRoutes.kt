@@ -5,7 +5,10 @@ import io.github.kanylbullen.tung.server.Accounts
 import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.ApiJson
 import io.github.kanylbullen.tung.server.Credentials
+import io.github.kanylbullen.tung.server.OAUTH_TOKEN_RATE_LIMIT
+import io.github.kanylbullen.tung.server.PUBLIC_MAX_BODY_BYTES
 import io.github.kanylbullen.tung.server.ServerConfig
+import io.github.kanylbullen.tung.server.bodyLimit
 import io.github.kanylbullen.tung.server.lockUser
 import io.github.kanylbullen.tung.server.auth.IdProvider
 import io.github.kanylbullen.tung.server.oauth.AUTH_NONE
@@ -18,6 +21,7 @@ import io.github.kanylbullen.tung.server.oauth.OAuthException
 import io.github.kanylbullen.tung.server.oauth.OAuthScopes
 import io.github.kanylbullen.tung.server.oauth.OAuthStore
 import io.github.kanylbullen.tung.server.oauth.authorizationServerMetadata
+import io.github.kanylbullen.tung.server.oauth.oauthTooLarge
 import io.github.kanylbullen.tung.server.oauth.protectedResourceMetadata
 import io.github.kanylbullen.tung.server.oauth.publicBaseUrl
 import io.ktor.http.ContentType
@@ -58,7 +62,6 @@ import org.jetbrains.exposed.sql.Transaction
 private const val CSRF_COOKIE = "tung_oauth_csrf"
 /** The double-submit cookie Google Identity Services sets and posts back as a field. */
 private const val GOOGLE_CSRF = "g_csrf_token"
-private const val MAX_REGISTRATION_BYTES = 64L * 1024
 private const val MAX_REDIRECT_URIS = 10
 private const val MAX_REDIRECT_URI_LENGTH = 2000
 private const val MAX_CLIENT_NAME = 100
@@ -111,8 +114,9 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
         }
     }
 
-    rateLimit(AUTH_RATE_LIMIT) {
-        post("/oauth/register") { register(call, store) }
+    // Anyone may call these: a body of at most PUBLIC_MAX_BODY_BYTES, which also bounds a registration request.
+    rateLimit(AUTH_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES) {
+        bodyLimit(PUBLIC_MAX_BODY_BYTES, ::oauthTooLarge) { post("/oauth/register") { register(call, store) } }
 
         post("/oauth/authorize") {
             val form = call.receiveParameters()
@@ -207,9 +211,11 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
             }
             call.respondPage(ConsentPage.renderSignedIn(request, csrf, user.email, googleConsent.ticket(user.id, csrf, request.clientId)))
         }
-    }
+    } }
 
-    post("/oauth/token") {
+    // Its own limit, per address: a client refreshes far more often than a person signs in.
+    // Its 429 is RFC 6749-shaped too (`slow_down`, installErrorPages): MCP clients read `error`.
+    rateLimit(OAUTH_TOKEN_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES, ::oauthTooLarge) { post("/oauth/token") {
         if (call.request.contentType().withoutParameters() != ContentType.Application.FormUrlEncoded) {
             throw OAuthException("invalid_request", "Send the token request as application/x-www-form-urlencoded.")
         }
@@ -237,7 +243,7 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
                 put("scope", tokens.scope)
             },
         )
-    }
+    } } }
 }
 
 private sealed interface Checked {
@@ -278,8 +284,7 @@ private suspend fun checkAuthorization(params: Parameters, store: OAuthStore): C
 }
 
 private suspend fun register(call: ApplicationCall, store: OAuthStore) {
-    val bytes = call.receiveChannel().readRemaining(MAX_REGISTRATION_BYTES + 1).readByteArray()
-    if (bytes.size > MAX_REGISTRATION_BYTES) throw OAuthException("invalid_client_metadata", "The registration request is too large.")
+    val bytes = call.receiveChannel().readRemaining().readByteArray()
     val request = try {
         ApiJson.decodeFromString(ClientRegistration.serializer(), bytes.decodeToString())
     } catch (e: SerializationException) {

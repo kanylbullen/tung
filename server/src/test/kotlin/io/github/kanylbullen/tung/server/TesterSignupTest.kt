@@ -115,4 +115,11 @@ class TesterSignupTest {
         assertTrue("In a test on Google Play." in html, "Android is still listed")
         assertFalse("testers:" in html, "no marker is left in the page")
     }
+
+    @Test
+    fun anOversizedSignUpIs413() = testersTest {
+        val response = signUp(paddedJson(PUBLIC_MAX_BODY_BYTES.toInt() + 1, field = "email"))
+        assertEquals(HttpStatusCode.PayloadTooLarge, response.status)
+        assertEquals("payload_too_large", response.errorCode())
+    }
 }

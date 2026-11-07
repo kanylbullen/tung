@@ -136,6 +136,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/RateLimited" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/auth/login:
     post:
@@ -158,6 +159,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/auth/password/forgot:
     post:
@@ -197,6 +199,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/auth/verify/resend:
     post:
@@ -234,6 +237,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/auth/google:
     post:
@@ -289,6 +293,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/auth/apple:
     post:
@@ -341,6 +346,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/auth/methods:
     get:
@@ -426,6 +432,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/me:
     get:
@@ -462,6 +469,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/testers:
     post:
@@ -495,6 +503,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
     get:
       tags: [testers]
       summary: The sign-ups, oldest first
@@ -646,6 +655,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
     delete:
       tags: [admin, feedback]
       summary: Delete feedback and its screenshots
@@ -711,6 +721,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/tokens/{id}:
     delete:
@@ -757,6 +768,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/exercises/{id}:
     patch:
@@ -781,6 +793,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/exercises/{id}/last:
     get:
@@ -868,6 +881,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
     delete:
       tags: [workouts]
       summary: Delete a workout
@@ -908,6 +922,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/routines:
     get:
@@ -951,6 +966,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/routines/{id}:
     get:
@@ -1001,6 +1017,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
     delete:
       tags: [routines]
       summary: Delete a routine
@@ -1058,6 +1075,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/programs/{id}:
     get:
@@ -1110,6 +1128,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
     delete:
       tags: [programs]
       summary: Delete a program
@@ -1241,6 +1260,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /api/v1/push/endpoints/{id}:
     delete:
@@ -1453,7 +1473,16 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OAuthError" }
-        "429": { $ref: "#/components/responses/RateLimited" }
+        "429":
+          description: "`slow_down`: the client address has made too many requests this minute."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
+        "413":
+          description: "`invalid_request`: the body is over 64 KiB."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
 
   /oauth/authorize:
     get:
@@ -1520,6 +1549,7 @@ paths:
             text/html:
               schema: { type: string }
         "429": { $ref: "#/components/responses/RateLimited" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /oauth/google:
     post:
@@ -1559,6 +1589,7 @@ paths:
             text/html:
               schema: { type: string }
         "429": { $ref: "#/components/responses/RateLimited" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
   /oauth/token:
     post:
@@ -1572,6 +1603,8 @@ paths:
         30 more days, and replaces the refresh token. A refresh token used
         twice revokes the grant; a code used twice revokes what it was
         exchanged for. Revoking the API token ends the client's access.
+        Rate-limited per client address (60 a minute), apart from the sign-in
+        routes.
       operationId: oauthToken
       security: []
       requestBody:
@@ -1602,6 +1635,16 @@ paths:
               schema: { $ref: "#/components/schemas/OAuthError" }
         "401":
           description: "`invalid_client`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
+        "413":
+          description: "`invalid_request`: the body is over 64 KiB."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
+        "429":
+          description: "`slow_down`: the client address has made too many requests this minute."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OAuthError" }
@@ -1732,7 +1775,12 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     PayloadTooLarge:
-      description: More than 8 MiB (`payload_too_large`) or more than 20 000 rows (`too_many_rows`). Push in batches.
+      description: |
+        The request body is larger than the route takes (`payload_too_large`):
+        64 KiB on the routes that need no token, 256 KiB for a command, 1 MiB
+        by default, 8 MiB for a sync (which also answers `too_many_rows` past
+        20 000 rows; push in batches). A Content-Length over the cap is refused
+        before anything is read; a body without one is read only up to it.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

@@ -7,7 +7,9 @@ import io.ktor.server.application.ApplicationCall
 import io.github.kanylbullen.tung.server.ResetOutcome
 import io.github.kanylbullen.tung.server.AUTH_RATE_LIMIT
 import io.github.kanylbullen.tung.server.Accounts
+import io.github.kanylbullen.tung.server.PUBLIC_MAX_BODY_BYTES
 import io.github.kanylbullen.tung.server.ServerConfig
+import io.github.kanylbullen.tung.server.bodyLimit
 import io.ktor.http.ContentType
 import io.ktor.server.http.content.staticFiles
 import io.ktor.server.http.content.staticResources
@@ -67,7 +69,7 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
             response.header("Content-Security-Policy", "frame-ancestors 'none'; form-action 'self'; base-uri 'none'")
             respondText(html, ContentType.Text.Html, status)
         }
-        rateLimit(AUTH_RATE_LIMIT) {
+        rateLimit(AUTH_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES) {
             get("/verify-email") {
                 val token = call.request.queryParameters["token"]?.takeIf { it.length <= 200 }
                 if (token != null && accounts.confirmLinkWorks(token)) {
@@ -84,7 +86,7 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
                     call.respondConfirm(confirmView("failed"), HttpStatusCode.BadRequest)
                 }
             }
-        }
+        } }
     }
 
     // The link in a password-reset email: the GET only shows the form (a mail scanner may open it), the POST sets
@@ -105,7 +107,7 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
             response.header("Content-Security-Policy", "frame-ancestors 'none'; form-action 'self'; base-uri 'none'")
             respondText(html, ContentType.Text.Html, status)
         }
-        rateLimit(AUTH_RATE_LIMIT) {
+        rateLimit(AUTH_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES) {
             get("/reset-password") {
                 val token = call.request.queryParameters["token"]?.takeIf { it.length <= 200 }
                 if (token != null && accounts.resetLinkWorks(token)) {
@@ -123,7 +125,7 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
                     ResetOutcome.INVALID_LINK -> call.respondReset(resetView("failed"), HttpStatusCode.BadRequest)
                 }
             }
-        }
+        } }
     }
     staticResources("/site", "site")
 

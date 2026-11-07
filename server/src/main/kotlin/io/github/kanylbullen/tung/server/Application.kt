@@ -186,6 +186,10 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
             rateLimiter(limit = config.authRequestsPerMinute, refillPeriod = 1.minutes)
             requestKey { call -> clientKey(call) }
         }
+        register(OAUTH_TOKEN_RATE_LIMIT) {
+            rateLimiter(limit = config.tokenRequestsPerMinute, refillPeriod = 1.minutes)
+            requestKey { call -> clientKey(call) }
+        }
     }
     install(Authentication) {
         bearer(BEARER) {
@@ -195,6 +199,8 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
     }
     installErrorPages()
 
+    // Every request body is capped (issue #149); routes that take more or less say so with bodyLimit.
+    routing { install(RequestBodyLimit) { maxBytes = DEFAULT_MAX_BODY_BYTES } }
     routing { apiRoutes(config, db, accounts, exercises, workouts, routines, sync, pushStore, push, commands, admins, feedback, welcome) }
     routing { siteRoutes(config, accounts) }
     routing {

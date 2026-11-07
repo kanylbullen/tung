@@ -3,7 +3,6 @@ package io.github.kanylbullen.tung.server
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.request.contentLength
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveChannel
 import io.ktor.utils.io.readRemaining
@@ -313,19 +312,18 @@ private fun bodyTooLarge() =
 
 /**
  * `POST /feedback` for any signed-in user (a write token), behind the bearer
- * token. The limits are checked before the body is read, at most
- * [MAX_FEEDBACK_UPLOADS] bodies are held at once, and a body is read only up
- * to [MAX_FEEDBACK_BODY_BYTES], with or without a Content-Length.
+ * token. A Content-Length over [MAX_FEEDBACK_BODY_BYTES] is refused before
+ * anything else ([bodyLimit]), the limits are checked before the body is
+ * read, at most [MAX_FEEDBACK_UPLOADS] bodies are held at once, and a body
+ * is read only up to [MAX_FEEDBACK_BODY_BYTES], with or without a
+ * Content-Length.
  */
-fun Route.feedbackRoutes(store: FeedbackStore) {
+fun Route.feedbackRoutes(store: FeedbackStore) = bodyLimit(MAX_FEEDBACK_BODY_BYTES, { bodyTooLarge() }) {
     post("/feedback") {
         val principal = call.user()
-        val length = call.request.contentLength()
-        if (length != null && length > MAX_FEEDBACK_BODY_BYTES) throw bodyTooLarge()
         store.precheck(principal)
         val created = uploads.withPermit {
-            val bytes = call.receiveChannel().readRemaining(MAX_FEEDBACK_BODY_BYTES + 1).readByteArray()
-            if (bytes.size > MAX_FEEDBACK_BODY_BYTES) throw bodyTooLarge()
+            val bytes = call.receiveChannel().readRemaining().readByteArray()
             val input = try {
                 ApiJson.decodeFromString(FeedbackInput.serializer(), bytes.decodeToString())
             } catch (e: SerializationException) {

@@ -353,6 +353,10 @@ class SyncTest {
         val huge = client.syncRaw(token, """{"cursor": 0, "padding": "${"x".repeat(9 * 1024 * 1024)}"}""")
         assertEquals(HttpStatusCode.PayloadTooLarge, huge.status)
         assertEquals("payload_too_large", huge.errorCode())
+
+        // Sync raises the server's default cap: a body over a MiB is read.
+        val overDefault = client.syncRaw(token, """{"cursor": 0, "padding": "${"x".repeat(2 * 1024 * 1024)}"}""")
+        assertEquals(HttpStatusCode.OK, overDefault.status, overDefault.bodyAsText().take(200))
     }
 
     @Test

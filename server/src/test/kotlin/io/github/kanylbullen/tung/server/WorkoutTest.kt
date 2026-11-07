@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.server
 
+import io.ktor.client.request.put
 import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
@@ -236,5 +237,19 @@ class WorkoutTest {
         assertTrue(discarded.discarded)
         assertNull(discarded.workout)
         assertEquals(HttpStatusCode.NotFound, client.authedGet("/api/v1/workouts/$emptyId", token).status)
+    }
+
+    @Test
+    fun aWriteBodyOverTheDefaultCapIs413() = tungTest {
+        val token = client.register()
+        val tooLarge = client.putWorkout(token, id(), paddedJson(DEFAULT_MAX_BODY_BYTES.toInt() + 1))
+        assertEquals(HttpStatusCode.PayloadTooLarge, tooLarge.status)
+        assertEquals("payload_too_large", tooLarge.errorCode())
+        // Without a Content-Length too.
+        val chunked = client.put("/api/v1/workouts/${id()}") {
+            bearerAuth(token)
+            chunkedJsonBody(2 * DEFAULT_MAX_BODY_BYTES.toInt())
+        }
+        assertEquals(HttpStatusCode.PayloadTooLarge, chunked.status)
     }
 }
