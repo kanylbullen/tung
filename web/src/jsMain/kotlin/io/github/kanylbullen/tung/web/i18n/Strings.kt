@@ -453,6 +453,13 @@ interface Strings {
     // Account and sync
     fun signedInAs(email: String): String
     val signOut: String
+    /** Under Sign out: what stays and what goes. */
+    val signOutHint: String
+    /** The question when another account signs in to a browser holding someone's log (issue #152). */
+    val otherAccountTitle: String
+    val otherAccountBody: String
+    val otherAccountDelete: String
+    fun otherAccountAdd(email: String): String
     val deleteAccount: String
     val deleteAccountTitle: String
     fun deleteAccountBody(server: String): String
@@ -1023,6 +1030,13 @@ object English : Strings {
 
     override fun signedInAs(email: String): String = "Signed in as $email"
     override val signOut = "Sign out"
+    override val signOutHint = "Signing out keeps your training in this browser and forgets the assistant's API key."
+    override val otherAccountTitle = "This device has workouts from another account"
+    override val otherAccountBody =
+        "The workouts, routines and programs in this browser were logged with another account. Nothing syncs until you choose. " +
+            "Deleting them removes them from this browser only: an account they were synced to keeps them."
+    override val otherAccountDelete = "Delete them"
+    override fun otherAccountAdd(email: String): String = "Add them to $email"
     override val deleteAccount = "Delete account…"
     override val deleteAccountTitle = "Delete your account?"
     override fun deleteAccountBody(server: String): String =
@@ -1610,6 +1624,13 @@ object Swedish : Strings {
 
     override fun signedInAs(email: String): String = "Inloggad som $email"
     override val signOut = "Logga ut"
+    override val signOutHint = "När du loggar ut finns träningen kvar i den här webbläsaren, och assistentens API-nyckel glöms."
+    override val otherAccountTitle = "Den här enheten har pass från ett annat konto"
+    override val otherAccountBody =
+        "Passen, rutinerna och programmen i den här webbläsaren loggades med ett annat konto. Inget synkas förrän du väljer. " +
+            "Raderar du dem försvinner de bara från den här webbläsaren: ett konto de synkats till har dem kvar."
+    override val otherAccountDelete = "Radera dem"
+    override fun otherAccountAdd(email: String): String = "Lägg till dem i $email"
     override val deleteAccount = "Radera kontot…"
     override val deleteAccountTitle = "Radera ditt konto?"
     override fun deleteAccountBody(server: String): String =

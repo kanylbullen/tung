@@ -45,7 +45,7 @@ class WebAuthGoogleTest {
             return result
         }
         assertEquals(
-            AuthResult.Success("tung_g", "x@example.org"),
+            AuthResult.Success("tung_g", "x@example.org", userId = "u"),
             answer { HttpReply(200, """{"token":"tung_g","user":{"id":"u","email":"x@example.org","created_at":1,"has_password":false,"google_linked":true}}""") },
         )
         fun error(status: Int, code: String) = HttpReply(status, """{"error":{"code":"$code","message":"…"}}""")
@@ -91,7 +91,7 @@ class WebAuthAppleTest {
             return result
         }
         assertEquals(
-            AuthResult.Success("tung_a", "x@privaterelay.appleid.com"),
+            AuthResult.Success("tung_a", "x@privaterelay.appleid.com", userId = "u"),
             answer { HttpReply(200, """{"token":"tung_a","user":{"id":"u","email":"x@privaterelay.appleid.com","created_at":1,"has_password":false,"google_linked":false,"apple_linked":true}}""") },
         )
         fun error(status: Int, code: String) = HttpReply(status, """{"error":{"code":"$code","message":"…"}}""")

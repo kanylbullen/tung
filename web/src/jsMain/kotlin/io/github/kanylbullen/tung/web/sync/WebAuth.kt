@@ -106,7 +106,8 @@ enum class AuthFailure {
 data class SignInMethods(val google: String?, val apple: String?)
 
 sealed interface AuthResult {
-    data class Success(val token: String, val email: String) : AuthResult
+    /** [userId] is the server's id of the user, which decides whose data is in the browser (issue #152); null from a server that leaves it out. */
+    data class Success(val token: String, val email: String, val userId: String? = null) : AuthResult
     data class Failed(val failure: AuthFailure) : AuthResult
 }
 
@@ -227,7 +228,7 @@ class WebAuth(
             return AuthResult.Failed(AuthFailure.SERVER)
         }
         val email = session.user?.email ?: fallbackEmail ?: return AuthResult.Failed(AuthFailure.SERVER)
-        return AuthResult.Success(session.token, email)
+        return AuthResult.Success(session.token, email, session.user?.id)
     }
 
     /** `POST /api/v1/auth/logout`: the server forgets the token. Best effort; the browser forgets it either way. */
@@ -338,7 +339,7 @@ class WebAuth(
     private data class Session(val token: String, val user: SessionUser? = null)
 
     @Serializable
-    private data class SessionUser(val email: String)
+    private data class SessionUser(val email: String, val id: String? = null)
 
     companion object {
         val AuthJson: Json = Json { ignoreUnknownKeys = true }

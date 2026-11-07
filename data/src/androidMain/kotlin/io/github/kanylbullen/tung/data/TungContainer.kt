@@ -227,6 +227,8 @@ class TungContainer(
         SyncAccount(
             syncClient, syncSettings, tokenStore, syncStore, syncScheduler, appScope,
             beforeSignOut = { url, token -> push.onSignOut(url, token) },
+            // The last import was the wiped account's: "Undo last import" would find nothing.
+            afterWipe = { ImportHistory(settings).clear() },
         )
     }
 

@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.web.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -15,6 +16,7 @@ import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.sync.AuthFailure
 import io.github.kanylbullen.tung.web.sync.AuthResult
 import io.github.kanylbullen.tung.web.sync.ForgotResult
+import io.github.kanylbullen.tung.web.sync.OtherAccountChoice
 import io.github.kanylbullen.tung.web.sync.SignInMethods
 import kotlinx.browser.window
 import kotlinx.coroutines.launch
@@ -25,6 +27,7 @@ import org.jetbrains.compose.web.attributes.disabled
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Form
+import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Input
 import org.jetbrains.compose.web.dom.Label
 import org.jetbrains.compose.web.dom.P
@@ -163,6 +166,12 @@ fun SignInScreen(container: WebContainer) {
         }
     }
 
+    // Another account's log is in this browser: nothing is stored or synced until this is answered (issue #152).
+    val held by container.signIns.pending.collectAsState()
+    held?.let { pending ->
+        OtherAccountDialog(container, pending.email) { choice -> scope.launch { container.resolveOtherAccountData(choice) } }
+    }
+
     Div({ classes("screen") }) {
         Div({ classes("wordmark") }) { Text(strings.appName) }
         P({ classes("intro") }) { Text(strings.signInIntro) }
@@ -274,6 +283,31 @@ fun SignInScreen(container: WebContainer) {
                 onClick { forgot() }
             }) { Text(strings.forgotPassword) }
             notice?.let { P({ classes("hint"); attr("role", "status") }) { Text(it) } }
+        }
+    }
+}
+
+/**
+ * "This device has workouts from another account" (issue #152), the phone's
+ * dialog: delete the log in this browser, add it to the account that just
+ * signed in, or (the backdrop, Escape) neither, which signs out again.
+ */
+@Composable
+private fun OtherAccountDialog(container: WebContainer, email: String, onChoose: (OtherAccountChoice?) -> Unit) {
+    val strings = container.strings
+    Div({ classes("sheet-backdrop"); onClick { onChoose(null) } })
+    Div({
+        classes("dialog")
+        attr("role", "alertdialog")
+        attr("aria-modal", "true")
+        attr("aria-label", strings.otherAccountTitle)
+        onKeyDown { if (it.key == "Escape") onChoose(null) }
+    }) {
+        H2 { Text(strings.otherAccountTitle) }
+        P({ classes("hint") }) { Text(strings.otherAccountBody) }
+        Div({ classes("dialog-actions") }) {
+            Button({ classes("secondary"); onClick { onChoose(OtherAccountChoice.ADD) } }) { Text(strings.otherAccountAdd(email)) }
+            Button({ classes("accent-button"); attr("autofocus", ""); onClick { onChoose(OtherAccountChoice.DELETE) } }) { Text(strings.otherAccountDelete) }
         }
     }
 }

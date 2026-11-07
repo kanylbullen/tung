@@ -1,6 +1,9 @@
 package io.github.kanylbullen.tung.sync
 
+import io.github.kanylbullen.tung.core.sync.DataOwner
+import io.github.kanylbullen.tung.core.sync.LocalDataOnSignIn
 import io.github.kanylbullen.tung.core.sync.SyncResult
+import io.github.kanylbullen.tung.core.sync.localDataOnSignIn
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncState
 import io.github.kanylbullen.tung.data.ioDispatcher
@@ -8,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -23,13 +27,31 @@ data class AccountState(
     val googleLinked: Boolean = false,
     /** An Apple ID is linked to this account (shown as "Apple linked"). */
     val appleLinked: Boolean = false,
+    /**
+     * A sign-in the server accepted that waits for the user's choice, because
+     * this device holds another account's data (issue #152); null otherwise.
+     */
+    val otherAccountData: PendingSignIn? = null,
 )
+
+/** A sign-in held back until [SyncAccount.resolveOtherAccountData]: who signed in, where. */
+data class PendingSignIn(val serverUrl: String, val email: String)
+
+/** What happens to another account's data on this device when a new account signs in. */
+enum class OtherAccountChoice {
+    /** "Delete them": the local training data goes ([SyncStore.wipe]), then the new account syncs down. */
+    DELETE,
+
+    /** "Add them to <email>": everything local is uploaded to the new account, as before issue #152. */
+    ADD,
+}
 
 /**
  * The account on a server and when to sync: sign in or create an account,
  * sign out, sync now, and the background triggers ([requestSync] after a
  * finished workout and when the app comes to the foreground, the periodic
- * work while signed in). Local data is never touched by signing in or out.
+ * work while signed in). Signing out keeps local data; signing in as
+ * another account than the one it belongs to asks first (issue #152).
  */
 class SyncAccount(
     private val client: SyncClient,
@@ -40,8 +62,15 @@ class SyncAccount(
     private val scope: CoroutineScope,
     /** Runs with the server and token just before signing out, while the token still works (the push endpoint's removal). */
     private val beforeSignOut: suspend (serverUrl: String, token: String) -> Unit = { _, _ -> },
+    /** Runs right after another account's data was wiped: what else on the device was that account's (the last import). */
+    private val afterWipe: suspend () -> Unit = {},
 ) {
     private val signedIn = MutableStateFlow<Boolean?>(null)
+
+    /** A session the server gave, not stored yet: the user is asked what happens to another account's data. */
+    private class Pending(val serverUrl: String, val session: AuthResult.Success)
+
+    private val pending = MutableStateFlow<Pending?>(null)
 
     val state: Flow<AccountState> = combine(
         combine(settings.serverUrl, settings.email, settings.googleLinked, settings.appleLinked) { url, email, google, apple ->
@@ -50,7 +79,13 @@ class SyncAccount(
         settings.state,
         signedIn.onStart { isSignedIn() },
         client.running,
-    ) { id, sync, signedIn, running -> AccountState(id.url, id.email, signedIn, sync, running, id.googleLinked, id.appleLinked) }
+        pending,
+    ) { id, sync, signedIn, running, held ->
+        AccountState(
+            id.url, id.email, signedIn, sync, running, id.googleLinked, id.appleLinked,
+            held?.let { PendingSignIn(it.serverUrl, it.session.email) },
+        )
+    }
 
     private data class Identity(val url: String?, val email: String?, val googleLinked: Boolean, val appleLinked: Boolean)
 
@@ -63,6 +98,12 @@ class SyncAccount(
      * the cursor starts over at 0 and every local row is marked dirty, so a
      * new account or server receives everything this phone has; then the
      * periodic sync is scheduled and a first one enqueued.
+     *
+     * Unless the device holds another account's data (issue #152,
+     * `core.sync.localDataOnSignIn`): then nothing is stored, marked or
+     * synced yet, the result is still [AuthResult.Success], and
+     * [AccountState.otherAccountData] asks the user, who answers with
+     * [resolveOtherAccountData].
      */
     suspend fun signIn(serverUrl: String, email: String, password: String, create: Boolean): AuthResult {
         val result = client.authenticate(serverUrl, email.trim(), password, create)
@@ -104,14 +145,63 @@ class SyncAccount(
     /** Asks the server (`/me`) whether a Google account or an Apple ID is linked, so Settings shows it after a link made elsewhere. */
     suspend fun refreshAccount() {
         if (!isSignedIn()) return
-        client.me()?.let { settings.setLinked(google = it.googleLinked, apple = it.appleLinked) }
+        val me = client.me() ?: return
+        settings.setLinked(google = me.googleLinked, apple = me.appleLinked)
+        // A device signed in before owners were recorded learns whose data it holds.
+        val url = settings.serverUrl()
+        if (me.userId != null && url != null && settings.owner() == null) settings.setOwner(DataOwner(url, me.userId))
     }
 
-    private suspend fun storeSession(serverUrl: String, session: AuthResult.Success) {
+    /**
+     * The server accepted [session]: stored at once, or held for the user's
+     * choice when the device holds another account's data. With [ask] false
+     * (the watch, where a dialog is hard on a wrist) that data is wiped
+     * instead of asked about.
+     */
+    private suspend fun storeSession(serverUrl: String, session: AuthResult.Success, ask: Boolean = true) {
+        val rule = withContext(ioDispatcher) {
+            localDataOnSignIn(
+                recorded = settings.owner(),
+                incoming = session.userId?.let { DataOwner(serverUrl, it) },
+                hasLocalData = store.hasLocalData(),
+                previousServerUrl = settings.serverUrl(),
+                previousEmail = settings.email(),
+                incomingEmail = session.email,
+            )
+        }
+        when {
+            rule == LocalDataOnSignIn.UPLOAD -> completeSession(serverUrl, session, wipe = false)
+            !ask -> completeSession(serverUrl, session, wipe = true)
+            else -> pending.getAndUpdate { Pending(serverUrl, session) }?.let { client.logout(it.serverUrl, it.session.token) }
+        }
+    }
+
+    /**
+     * The user's answer to [AccountState.otherAccountData]: [OtherAccountChoice.DELETE]
+     * wipes the local training data and signs in, [OtherAccountChoice.ADD]
+     * signs in as before issue #152 (everything is uploaded), and null (the
+     * dialog dismissed) signs out again: the held token is revoked and
+     * nothing on the device changes.
+     */
+    suspend fun resolveOtherAccountData(choice: OtherAccountChoice?) {
+        val held = pending.getAndUpdate { null } ?: return
+        when (choice) {
+            OtherAccountChoice.DELETE -> completeSession(held.serverUrl, held.session, wipe = true)
+            OtherAccountChoice.ADD -> completeSession(held.serverUrl, held.session, wipe = false)
+            null -> client.logout(held.serverUrl, held.session.token)
+        }
+    }
+
+    private suspend fun completeSession(serverUrl: String, session: AuthResult.Success, wipe: Boolean) {
         withContext(ioDispatcher) {
+            if (wipe) {
+                store.wipe()
+                afterWipe()
+            }
             tokens.write(session.token)
             settings.signedIn(serverUrl, session.email, session.googleLinked, session.appleLinked)
-            store.markEverythingDirty()
+            session.userId?.let { settings.setOwner(DataOwner(serverUrl, it)) }
+            if (!wipe) store.markEverythingDirty()
         }
         signedIn.value = true
         scheduler.schedulePeriodic()
@@ -122,11 +212,15 @@ class SyncAccount(
      * Signs in with a link code from another device (the watch's way in, no
      * password): [code] is traded for a token at [serverUrl], an address
      * `core.sync.checkServerUrl` accepted, and from there on it is the same
-     * as [signIn].
+     * as [signIn], except that another account's data is wiped without
+     * asking (issue #152): a watch has no room for the question, and its log
+     * is the account's once it syncs.
      */
     suspend fun signInWithCode(serverUrl: String, code: String): LinkClaimResult {
         val result = client.claimLink(serverUrl, code)
-        if (result is LinkClaimResult.Success) storeSession(serverUrl, AuthResult.Success(result.token, result.email))
+        if (result is LinkClaimResult.Success) {
+            storeSession(serverUrl, AuthResult.Success(result.token, result.email, userId = result.userId), ask = false)
+        }
         return result
     }
 

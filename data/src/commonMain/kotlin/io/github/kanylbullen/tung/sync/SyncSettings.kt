@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import io.github.kanylbullen.tung.core.newId
+import io.github.kanylbullen.tung.core.sync.DataOwner
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncState
 import kotlinx.coroutines.flow.Flow
@@ -61,6 +62,25 @@ class SyncSettings(private val store: DataStore<Preferences>) {
         if (failure == null) it.remove(LAST_ERROR) else it[LAST_ERROR] = failure.key
     }
 
+    /**
+     * The account the local data belongs to (issue #152): set after every
+     * sign-in, kept across sign-outs. Null on a device that has never signed
+     * in since owners were recorded.
+     */
+    suspend fun owner(): DataOwner? = store.data.first().let { prefs ->
+        val server = prefs[OWNER_SERVER]
+        val user = prefs[OWNER_USER]
+        if (server != null && user != null) DataOwner(server, user) else null
+    }
+
+    suspend fun setOwner(owner: DataOwner) = store.edit {
+        it[OWNER_SERVER] = owner.serverUrl
+        it[OWNER_USER] = owner.userId
+    }
+
+    /** The email of the last sign-in, kept after signing out. */
+    suspend fun email(): String? = email.first()
+
     /** What `/me` says is linked: a Google account and an Apple ID. */
     suspend fun setLinked(google: Boolean, apple: Boolean) = store.edit {
         it[GOOGLE_LINKED] = google
@@ -100,5 +120,7 @@ class SyncSettings(private val store: DataStore<Preferences>) {
         val LAST_SYNC_AT = longPreferencesKey("sync_last_at")
         val LAST_ERROR = stringPreferencesKey("sync_last_error")
         val DEVICE_ID = stringPreferencesKey("device_id")
+        val OWNER_SERVER = stringPreferencesKey("sync_owner_server_url")
+        val OWNER_USER = stringPreferencesKey("sync_owner_user_id")
     }
 }

@@ -49,7 +49,14 @@ expect fun syncHttpClient(): HttpClient
 
 sealed interface AuthResult {
     /** [googleLinked], [appleLinked]: the account has a Google account or an Apple ID linked (the server's `user.google_linked`, `user.apple_linked`). */
-    data class Success(val token: String, val email: String, val googleLinked: Boolean = false, val appleLinked: Boolean = false) : AuthResult
+    data class Success(
+        val token: String,
+        val email: String,
+        val googleLinked: Boolean = false,
+        val appleLinked: Boolean = false,
+        /** The server's id of the user, which decides whose data is on the device (issue #152); null from a server that leaves it out. */
+        val userId: String? = null,
+    ) : AuthResult
     data class Failed(val failure: AuthFailure, val status: Int? = null) : AuthResult
 }
 
@@ -73,7 +80,7 @@ enum class ForgotOutcome { SENT, NOT_OFFERED, RATE_LIMITED, INVALID_EMAIL, NETWO
 enum class ResendOutcome { SENT, RATE_LIMITED, NETWORK, FAILED }
 
 /** `GET /api/v1/me`: the signed-in account as the server has it. */
-data class AccountInfo(val email: String, val hasPassword: Boolean, val googleLinked: Boolean, val appleLinked: Boolean = false)
+data class AccountInfo(val email: String, val hasPassword: Boolean, val googleLinked: Boolean, val appleLinked: Boolean = false, val userId: String? = null)
 
 enum class AuthFailure {
     /** 401 on login. */
@@ -130,7 +137,7 @@ data class LinkCode(val code: String, val expiresAt: Long)
 
 /** What `POST /api/v1/link/claim` gave: a token for [email]'s account, or why not. */
 sealed interface LinkClaimResult {
-    data class Success(val token: String, val email: String) : LinkClaimResult
+    data class Success(val token: String, val email: String, val userId: String? = null) : LinkClaimResult
     data class Failed(val failure: LinkFailure) : LinkClaimResult
 }
 
@@ -329,7 +336,7 @@ class SyncClient(
                 }
                 if (response.status.isSuccess()) {
                     val session = response.body<Session>()
-                    AuthResult.Success(session.token, session.user?.email ?: email, session.user?.googleLinked == true, session.user?.appleLinked == true)
+                    AuthResult.Success(session.token, session.user?.email ?: email, session.user?.googleLinked == true, session.user?.appleLinked == true, session.user?.id)
                 } else {
                     AuthResult.Failed(authFailure(response), response.status.value)
                 }
@@ -432,6 +439,7 @@ class SyncClient(
                         // An older server leaves a flag out: the provider just signed in with is linked.
                         googleLinked = user?.googleLinked ?: (rejected == AuthFailure.GOOGLE_REJECTED),
                         appleLinked = user?.appleLinked ?: (rejected == AuthFailure.APPLE_REJECTED),
+                        userId = user?.id,
                     )
                 } else {
                     val code = runCatching { response.body<ErrorBody>().error.code }.getOrNull()
@@ -486,7 +494,7 @@ class SyncClient(
             val response = http.get(baseUrl + ME_PATH) { bearerAuth(token) }
             if (!response.status.isSuccess()) return@withContext null
             val user = response.body<SessionUser>()
-            AccountInfo(user.email.orEmpty(), user.hasPassword ?: true, user.googleLinked ?: false, user.appleLinked ?: false)
+            AccountInfo(user.email.orEmpty(), user.hasPassword ?: true, user.googleLinked ?: false, user.appleLinked ?: false, user.id)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -602,7 +610,7 @@ class SyncClient(
             }
             if (response.status.isSuccess()) {
                 val session = response.body<Session>()
-                LinkClaimResult.Success(session.token, session.user?.email.orEmpty())
+                LinkClaimResult.Success(session.token, session.user?.email.orEmpty(), session.user?.id)
             } else {
                 val errorCode = runCatching { response.body<ErrorBody>().error.code }.getOrNull()
                 LinkClaimResult.Failed(
@@ -719,6 +727,7 @@ class SyncClient(
     /** The server's user; the flags are null from a server from before Google sign-in. */
     @Serializable
     private data class SessionUser(
+        val id: String? = null,
         val email: String? = null,
         @SerialName("has_password") val hasPassword: Boolean? = null,
         @SerialName("google_linked") val googleLinked: Boolean? = null,

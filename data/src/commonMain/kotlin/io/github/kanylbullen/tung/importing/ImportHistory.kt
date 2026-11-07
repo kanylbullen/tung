@@ -55,6 +55,15 @@ class ImportHistory(private val store: DataStore<Preferences>) {
         }
     }
 
+    /** Forgets the last import, whatever it was: another account's data was wiped (issue #152). */
+    suspend fun clear() = store.edit {
+        it.remove(SOURCE)
+        it.remove(BATCH)
+        it.remove(ROUTINES)
+        it.remove(WORKOUTS)
+        it.remove(AT)
+    }
+
     private companion object {
         val SOURCE = stringPreferencesKey("import_last_source")
         val BATCH = stringPreferencesKey("import_last_batch")

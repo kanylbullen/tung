@@ -39,6 +39,12 @@ class FakeSyncServer : Dispatcher() {
     /** The token register and login hand out, and the one sync accepts. */
     var token = "tung_fake_session"
 
+    /** The user id login, register, `/me` and a link claim answer with (issue #152: the device's data owner). */
+    @Volatile var userId = "u"
+
+    /** The email login, register, `/me` and a link claim answer with. */
+    @Volatile var userEmail = "lifter@example.org"
+
     /** The code `POST /api/v1/link/start` hands out, and the one `/link/claim` accepts once. */
     @Volatile var linkCode = "042917"
 
@@ -140,6 +146,18 @@ class FakeSyncServer : Dispatcher() {
     @Synchronized
     fun storedCount(): Int = rows.size
 
+    /**
+     * Another account signs in from here on (issue #152): login and `/me`
+     * answer [id] and [email], and the rows stored so far, the last
+     * account's, are no longer this account's to send.
+     */
+    @Synchronized
+    fun switchAccount(id: String, email: String) {
+        userId = id
+        userEmail = email
+        rows.clear()
+    }
+
     private fun store(entry: SyncEntry) {
         val key = entry.table to entry.id
         val current = rows[key]
@@ -178,7 +196,7 @@ class FakeSyncServer : Dispatcher() {
             authPaths += request.path
             json(
                 if (request.path.orEmpty().endsWith("register")) 201 else 200,
-                """{"token":"$token","user":{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}}""",
+                """{"token":"$token","user":{"id":"$userId","email":"$userEmail","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}}""",
             )
         }
         // Not in authPaths: Settings asks for it whenever the form shows a server.
@@ -227,7 +245,7 @@ class FakeSyncServer : Dispatcher() {
                     json(400, """{"error":{"code":"email_mismatch","message":"Type the account's email to confirm."}}""")
                 }
             } else {
-                json(200, """{"id":"u","email":"lifter@example.org","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}""")
+                json(200, """{"id":"$userId","email":"$userEmail","created_at":0,"has_password":true,"google_linked":$googleLinked,"apple_linked":$appleLinked}""")
             }
         }
         "/api/v1/auth/logout" -> {
@@ -269,7 +287,7 @@ class FakeSyncServer : Dispatcher() {
             synchronized(this) {
                 if (sent == linkCode && !linkClaimed) {
                     linkClaimed = true
-                    json(200, """{"token":"$token","user":{"id":"u","email":"lifter@example.org","created_at":0}}""")
+                    json(200, """{"token":"$token","user":{"id":"$userId","email":"$userEmail","created_at":0}}""")
                 } else {
                     json(404, """{"error":{"code":"invalid_code","message":"That code is not valid."}}""")
                 }

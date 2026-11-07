@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.web.sync
 
 import io.github.kanylbullen.tung.core.newId
+import io.github.kanylbullen.tung.core.sync.DataOwner
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncState
 import io.github.kanylbullen.tung.web.store.IndexedDbStore
@@ -42,9 +43,18 @@ class WebSettings(private val db: IndexedDbStore) {
     var lastEmail: String? = null
         private set
 
+    /**
+     * The account the log in this browser belongs to (issue #152): set after
+     * every sign-in, kept across sign-outs; null in a browser that has not
+     * signed in since owners were recorded.
+     */
+    var owner: DataOwner? = null
+        private set
+
     suspend fun load() {
         lastServerUrl = db.meta(SERVER)
         lastEmail = db.meta(EMAIL)
+        owner = db.meta(OWNER_SERVER)?.let { server -> db.meta(OWNER_USER)?.let { DataOwner(server, it) } }
         token = db.meta(TOKEN)
         _syncState.value = SyncState(
             cursor = db.meta(CURSOR)?.toLongOrNull() ?: 0,
@@ -77,6 +87,12 @@ class WebSettings(private val db: IndexedDbStore) {
         lastEmail = email
         _syncState.value = SyncState()
         _account.value = Account(serverUrl, email)
+    }
+
+    suspend fun setOwner(owner: DataOwner) {
+        db.putMeta(OWNER_SERVER, owner.serverUrl)
+        db.putMeta(OWNER_USER, owner.userId)
+        this.owner = owner
     }
 
     /** The token goes; the server and email stay for the next sign-in. [failure] is shown on the sign-in screen (a 401), null for the user's own sign-out. */
@@ -112,5 +128,7 @@ class WebSettings(private val db: IndexedDbStore) {
         const val LAST_SYNC_AT = "last_sync_at"
         const val LAST_ERROR = "last_error"
         const val DEVICE_ID = "device_id"
+        const val OWNER_SERVER = "owner_server_url"
+        const val OWNER_USER = "owner_user_id"
     }
 }

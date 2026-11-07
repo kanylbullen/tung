@@ -157,6 +157,8 @@ class IosContainer(
             IosSyncScheduler(appScope) { syncClient.syncOnce() },
             appScope,
             beforeSignOut = { url, token -> iosPush.onSignOut(url, token) },
+            // The last import was the wiped account's: "Undo last import" would find nothing.
+            afterWipe = { ImportHistory(settings).clear() },
         )
     }
 

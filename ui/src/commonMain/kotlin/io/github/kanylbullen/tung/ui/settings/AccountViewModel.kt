@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.sync.AuthMethodsResult
 import io.github.kanylbullen.tung.sync.AuthResult
 import io.github.kanylbullen.tung.sync.DeleteAccountOutcome
 import io.github.kanylbullen.tung.sync.ForgotOutcome
+import io.github.kanylbullen.tung.sync.OtherAccountChoice
 import io.github.kanylbullen.tung.sync.ResendOutcome
 import io.github.kanylbullen.tung.sync.SyncAccount
 import kotlinx.coroutines.Dispatchers
@@ -265,6 +266,15 @@ class AccountViewModel(private val account: SyncAccount, private val defaultServ
                 is AuthResult.Failed -> form.update { it.copy(busy = false, error = message(result.failure)) }
             }
         }
+    }
+
+    /**
+     * The answer to "This device has workouts from another account"
+     * ([AccountState.otherAccountData]): delete them, add them to the new
+     * account, or (null, the dialog dismissed) sign out again with nothing changed.
+     */
+    fun resolveOtherAccountData(choice: OtherAccountChoice?) {
+        viewModelScope.launch { account.resolveOtherAccountData(choice) }
     }
 
     fun signOut() {

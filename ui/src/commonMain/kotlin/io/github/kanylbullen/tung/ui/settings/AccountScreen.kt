@@ -30,6 +30,8 @@ import io.github.kanylbullen.tung.auth.GoogleSignInResult
 import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncState
 import io.github.kanylbullen.tung.sync.AccountState
+import io.github.kanylbullen.tung.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.sync.PendingSignIn
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
 import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.common.localDate
@@ -83,6 +85,9 @@ fun AccountScreen(
                 onApple = appleIdToken?.let { obtain -> { vm.signInWithApple(obtain) } },
             )
         }
+    }
+    state.account?.otherAccountData?.let { held ->
+        OtherAccountDialog(held, onChoose = vm::resolveOtherAccountData)
     }
     val deletion = state.deletion
     if (deletion != null && state.account?.signedIn == true) {
@@ -143,6 +148,33 @@ private fun SignedIn(
     TextButton(onClick = onDelete) {
         Text(stringResource(Res.string.sync_delete_account), color = Tung.colors.muted)
     }
+}
+
+/**
+ * "This device has workouts from another account" (issue #152): the server
+ * accepted [held], and nothing is stored or synced until the user deletes
+ * the local data or adds it to the new account. Dismissing it signs out again.
+ */
+@Composable
+private fun OtherAccountDialog(held: PendingSignIn, onChoose: (OtherAccountChoice?) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onChoose(null) },
+        containerColor = Tung.colors.raised,
+        tonalElevation = 0.dp,
+        shape = TungCorner,
+        title = { Text(stringResource(Res.string.sync_other_account_title)) },
+        text = { Text(stringResource(Res.string.sync_other_account_body), color = Tung.colors.muted) },
+        confirmButton = {
+            TextButton(onClick = { onChoose(OtherAccountChoice.DELETE) }) {
+                Text(stringResource(Res.string.sync_other_account_delete), color = Tung.colors.accentText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onChoose(OtherAccountChoice.ADD) }) {
+                Text(stringResource(Res.string.sync_other_account_add, held.email), color = Tung.colors.text)
+            }
+        },
+    )
 }
 
 /**
