@@ -55,15 +55,17 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
         ongoing.start()
         // The phone's triggers: periodic work while signed in, and a sync whenever the app comes to the
         // foreground. A watch gets no push, so while it is on screen it also syncs every
-        // FOREGROUND_SYNC_MILLIS, to see what the phone logs meanwhile (issue #199). Signed out
-        // (companion mode) each is a no-op.
+        // FOREGROUND_SYNC_MILLIS, to see what the phone logs meanwhile (issue #199): directly, not
+        // through WorkManager, so a watch offline on screen does not queue a sync every round.
+        // Signed out (companion mode) each is a no-op.
         container.syncAccount.restoreSchedule()
         val process = ProcessLifecycleOwner.get()
         process.lifecycleScope.launch {
             process.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                container.syncAccount.requestSync()
                 while (true) {
-                    container.syncAccount.requestSync()
                     delay(FOREGROUND_SYNC_MILLIS)
+                    if (container.syncAccount.isSignedIn()) container.syncAccount.syncNow()
                 }
             }
         }
