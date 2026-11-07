@@ -2,7 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Sync with a tung-server the user names in Settings; the only network the app uses. -->
+    <!-- Two destinations, both named by the user in Settings: the tung-server for sync, and the assistant's AI provider
+         (ai/ in data/, only on a tap). The system's speech recogniser may use its own network; that is not the app's. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Rest timer: the buzz and the "Rest over" notification (asked for when the first timer starts). -->
@@ -14,7 +15,8 @@
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Exact end of a rest in the background when the user allows it; see timer/RestAlarm.kt. Not USE_EXACT_ALARM. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <!-- Voice in the active workout: asked for the first time the mic is tapped. Audio goes to the phone's recogniser only. -->
+    <!-- Voice in the active workout: asked for the first time the mic is tapped. Audio goes to the phone's recogniser only,
+         which works on the device when it has the language and may send the audio to its provider when it does not. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Android 11+ hides other apps' services: without this, SpeechRecognizer.isRecognitionAvailable is always false. -->
