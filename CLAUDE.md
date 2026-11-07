@@ -1255,7 +1255,13 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   re-asserted at app start), and `enqueueNow` (unique, `APPEND_OR_REPLACE`)
   after `FinishWorkout` from `AppCommandHandler`'s result path
   (`onWorkoutFinished`) and when the app comes to the foreground
-  (`ProcessLifecycleOwner`). Exponential backoff from 30 s; network and 5xx
+  (`ProcessLifecycleOwner`). Every other command that goes through
+  (`select_current` aside) calls `SyncAccount.changed` (`onChanged`): one
+  `enqueueNow` `CHANGE_SYNC_DELAY_MILLIS` (3 s) after the last change, so
+  another device sees a workout in progress, not only a finished one
+  (issue #199; `ChangeSyncTest`). A standalone watch, which gets no push,
+  also syncs every `FOREGROUND_SYNC_MILLIS` (30 s) while it is on screen
+  (`TungWearApp`). Exponential backoff from 30 s; network and 5xx
   retry, 401 and other 4xx do not. Sign-out cancels both. "Sync now" in
   Settings calls `syncOnce` directly, so the screen sees the result.
   WorkManager is initialised on demand (`TungApp` and `TungWearApp` are
@@ -1396,8 +1402,10 @@ and WorkManager `Configuration.Provider`). Install and pairing: `wear/README.md`
   phone's workout screen keeps it: the current-set selection in a
   `WearSelectionHolder`, the rest timer in the watch's `RestTimerController`
   (DataStore + alarm, `RestAlerts` buzzes once per rest). Sync is the
-  phone's: `SyncWorker` periodic while signed in, after `FinishWorkout`, and
-  when the app comes to the foreground, over whatever network the watch has.
+  phone's: `SyncWorker` periodic while signed in, after `FinishWorkout`, a
+  moment after any other change, and when the app comes to the foreground,
+  plus every 30 s while it is on screen (no push reaches a watch), over
+  whatever network the watch has.
 - **Companion** when it has no token: v0, unchanged. The watch mirrors the
   phone over the Data Layer (`PhoneLink`) and sends it commands. Without a
   paired phone it shows the hint to open the phone or link the watch.

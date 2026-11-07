@@ -4,13 +4,16 @@ import android.app.Activity
 import android.app.Application
 import android.content.Intent
 import android.os.Bundle
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.Configuration
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungHost
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * The watch app. It builds the same [TungContainer] as the phone: its own
@@ -50,14 +53,26 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
         ongoing.start()
-        // The phone's triggers: periodic work while signed in, and a sync whenever the app comes to the foreground.
+        // The phone's triggers: periodic work while signed in, and a sync whenever the app comes to the
+        // foreground. A watch gets no push, so while it is on screen it also syncs every
+        // FOREGROUND_SYNC_MILLIS, to see what the phone logs meanwhile (issue #199). Signed out
+        // (companion mode) each is a no-op.
         container.syncAccount.restoreSchedule()
-        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) = container.syncAccount.requestSync()
-        })
+        val process = ProcessLifecycleOwner.get()
+        process.lifecycleScope.launch {
+            process.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    container.syncAccount.requestSync()
+                    delay(FOREGROUND_SYNC_MILLIS)
+                }
+            }
+        }
     }
 
     /** WorkManager is initialised on demand (the default initializer is removed in the manifest). */
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().build()
 }
+
+/** How often a standalone watch syncs while the app is on screen. */
+const val FOREGROUND_SYNC_MILLIS = 30_000L

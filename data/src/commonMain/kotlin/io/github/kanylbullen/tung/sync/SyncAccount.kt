@@ -10,6 +10,8 @@ import io.github.kanylbullen.tung.core.sync.SyncFailure
 import io.github.kanylbullen.tung.core.sync.SyncState
 import io.github.kanylbullen.tung.data.ioDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -39,8 +41,8 @@ data class AccountState(
 /**
  * The account on a server and when to sync: sign in or create an account,
  * sign out, sync now, and the background triggers ([requestSync] after a
- * finished workout and when the app comes to the foreground, the periodic
- * work while signed in). Signing out keeps local data; signing in as
+ * finished workout and when the app comes to the foreground, [changed] a
+ * moment after any other change, the periodic work while signed in). Signing out keeps local data; signing in as
  * another account than the one it belongs to asks first (issue #152).
  */
 class SyncAccount(
@@ -54,8 +56,13 @@ class SyncAccount(
     private val beforeSignOut: suspend (serverUrl: String, token: String) -> Unit = { _, _ -> },
     /** Runs right after another account's data was wiped: what else on the device was that account's (the last import). */
     private val afterWipe: suspend () -> Unit = {},
+    /** How long [changed] waits for more changes before it asks for one sync. */
+    private val changeSyncDelayMillis: Long = CHANGE_SYNC_DELAY_MILLIS,
 ) {
     private val signedIn = MutableStateFlow<Boolean?>(null)
+
+    /** The sync [changed] has asked for and is still waiting to request. */
+    private val changeSync = MutableStateFlow<Job?>(null)
 
     /** A session the server gave, not stored yet: the user is asked what happens to another account's data. */
     private class Pending(val serverUrl: String, val session: AuthResult.Success, val unsynced: Int)
@@ -327,8 +334,25 @@ class SyncAccount(
         scope.launch { if (isSignedIn()) scheduler.enqueueNow() }
     }
 
+    /**
+     * Training data changed here: a sync [changeSyncDelayMillis] after the last
+     * change, if signed in, so another device sees a workout in progress and
+     * not only once it is finished (issue #199). Changes within the delay
+     * share one sync.
+     */
+    fun changed() {
+        val next = scope.launch {
+            delay(changeSyncDelayMillis)
+            if (isSignedIn()) scheduler.enqueueNow()
+        }
+        changeSync.getAndUpdate { next }?.cancel()
+    }
+
     /** At app start: keeps the periodic sync scheduled while signed in (it survives reboots anyway). */
     fun restoreSchedule() {
         scope.launch { if (isSignedIn()) scheduler.schedulePeriodic() }
     }
 }
+
+/** A sync this long after the last change to training data ([SyncAccount.changed]). */
+const val CHANGE_SYNC_DELAY_MILLIS = 3_000L

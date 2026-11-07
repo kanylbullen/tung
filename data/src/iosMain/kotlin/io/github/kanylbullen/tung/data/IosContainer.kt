@@ -125,6 +125,7 @@ class IosContainer(
             workouts = workoutRepository,
             resolver = exerciseResolver,
             onWorkoutFinished = { syncAccount.requestSync() },
+            onChanged = { syncAccount.changed() },
             startedBy = StartedBy.PHONE,
         )
     }
