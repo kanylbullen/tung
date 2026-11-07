@@ -76,6 +76,9 @@ class AccountSwitchFlowTest : FlowTest() {
         waitForText(str(Res.string.sync_status_just_now))
         clickText(str(Res.string.sync_sign_out))
         waitForText(str(Res.string.sync_sign_in))
+        // The form shows before /logout has reached the server (with Firebase configured, the push
+        // endpoint is deleted first), so wait for it, or a test counting logouts counts too early.
+        waitUntil { "/api/v1/auth/logout" in fake.authPaths }
     }
 
     @Test
