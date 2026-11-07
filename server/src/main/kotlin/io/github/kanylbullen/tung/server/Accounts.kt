@@ -367,7 +367,7 @@ class Accounts(
                 }
                 .singleOrNull() ?: return@tx null
             val tokenId = row[ApiTokens.id]
-            if (row[ApiTokens.name] in IDLE_EXPIRING_TOKENS && (row[ApiTokens.lastUsedAt] ?: row[ApiTokens.createdAt]) < now - SESSION_IDLE_MS) {
+            if (!row.works(now)) {
                 // Revoked as well, so the list of tokens no longer shows it as working.
                 ApiTokens.update({ ApiTokens.id eq tokenId }) { it[revokedAt] = now }
                 return@tx null
@@ -529,6 +529,18 @@ class Accounts(
         emailVerified = this[Users.emailVerifiedAt] != null,
     )
 
+    /**
+     * When the token stops working: its `expires_at` (OAuth), or for a
+     * session or watch [SESSION_IDLE_MS] after its last use; null for a
+     * token that never expires.
+     */
+    private fun ResultRow.expiry(): Long? =
+        this[ApiTokens.expiresAt]
+            ?: if (this[ApiTokens.name] in IDLE_EXPIRING_TOKENS) (this[ApiTokens.lastUsedAt] ?: this[ApiTokens.createdAt]) + SESSION_IDLE_MS else null
+
+    /** Whether an unrevoked token row still works at [now]. */
+    private fun ResultRow.works(now: Long): Boolean = expiry()?.let { it > now } ?: true
+
     suspend fun listTokens(principal: TokenPrincipal): TokenList = db.tx {
         val tokens = ApiTokens.selectAll()
             .where { (ApiTokens.userId eq principal.userId) and ApiTokens.revokedAt.isNull() }
@@ -540,7 +552,7 @@ class Accounts(
                     scope = it[ApiTokens.scope],
                     createdAt = it[ApiTokens.createdAt],
                     lastUsedAt = it[ApiTokens.lastUsedAt],
-                    expiresAt = it[ApiTokens.expiresAt],
+                    expiresAt = it.expiry(),
                     current = it[ApiTokens.id] == principal.tokenId,
                 )
             }
@@ -606,10 +618,12 @@ class Accounts(
     suspend fun signOutOthers(principal: TokenPrincipal, device: String?): SignedOutOthers = db.tx {
         lockUser(principal.userId)
         requireSession(principal, "Sign out other devices from the app or the web.")
+        val now = clock()
+        // Only tokens that still work count: an expired grant or an idle session signed nothing out.
         val others = ApiTokens.selectAll().where {
             (ApiTokens.userId eq principal.userId) and ApiTokens.revokedAt.isNull() and (ApiTokens.id neq principal.tokenId)
-        }.count().toInt()
-        endAccess(principal.userId, clock(), keepToken = principal.tokenId, keepDevice = device)
+        }.count { it.works(now) }
+        endAccess(principal.userId, now, keepToken = principal.tokenId, keepDevice = device)
         SignedOutOthers(others)
     }
 
@@ -639,6 +653,8 @@ class Accounts(
             val stored = Users.select(Users.passwordHash).where { Users.id eq principal.userId }.single()[Users.passwordHash]
             if (stored != current) throw forbidden("wrong_password", "That is not the current password.")
             Users.update({ Users.id eq principal.userId }) { it[passwordHash] = hash }
+            // A reset link mailed before the change would otherwise still choose another password.
+            EmailTokens.deleteWhere { (EmailTokens.userId eq principal.userId) and (EmailTokens.kind eq EmailTokens.KIND_RESET) }
             endAccess(principal.userId, clock(), keepToken = principal.tokenId, keepDevice = device)
         }
     }

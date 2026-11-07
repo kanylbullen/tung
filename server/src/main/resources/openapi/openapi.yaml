@@ -2055,7 +2055,7 @@ components:
           description: Updated at most once a minute.
         expires_at:
           oneOf: [{ $ref: "#/components/schemas/Millis" }, { type: "null" }]
-          description: When the token stops working; null for tokens that never expire. Tokens issued through OAuth (`mcp:<client>`) expire 30 days after they were issued or last refreshed. Revoking one ends that client's access, refresh included. Sign-in sessions (`session`) and watches (`watch`) have null here but stop working 180 days after they were last used.
+          description: When the token stops working; null for tokens that never expire. Tokens issued through OAuth (`mcp:<client>`) expire 30 days after they were issued or last refreshed. Revoking one ends that client's access, refresh included. For sign-in sessions (`session`) and watches (`watch`) it is 180 days after they were last used, and moves on with every use.
         current: { type: boolean, description: True for the token this request was made with. }
 
     TokenList:

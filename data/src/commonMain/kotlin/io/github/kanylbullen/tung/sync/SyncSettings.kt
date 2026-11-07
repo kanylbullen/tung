@@ -98,6 +98,9 @@ class SyncSettings(private val store: DataStore<Preferences>) {
         it[HAS_PASSWORD] = hasPassword
     }
 
+    /** The server said the account has no password (409 `no_password`): "Change password" goes away. */
+    suspend fun setHasPassword(value: Boolean) = store.edit { it[HAS_PASSWORD] = value }
+
     suspend fun setCursor(cursor: Long) = store.edit { it[CURSOR] = cursor }
 
     suspend fun recordSuccess(at: Long) = store.edit {

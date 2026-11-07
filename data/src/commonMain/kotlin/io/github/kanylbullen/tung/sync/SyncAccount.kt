@@ -341,6 +341,8 @@ class SyncAccount(
     suspend fun changePassword(current: String, new: String): ChangePasswordOutcome {
         val result = client.changePassword(current, new)
         if (result == ChangePasswordOutcome.SIGNED_OUT) signedOutWithToken()
+        // The stored flag was out of date (an install from before it was kept): the button goes.
+        if (result == ChangePasswordOutcome.NO_PASSWORD) settings.setHasPassword(false)
         return result
     }
 

@@ -10,7 +10,13 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.long
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
@@ -84,6 +90,19 @@ class SessionsTest {
     }
 
     @Test
+    fun theListSaysWhenASessionStopsWorking() = tungTest {
+        val session = client.register()
+        val script = client.apiToken(session)
+        val tokens = client.authedGet("/api/v1/tokens", session).json()["tokens"]!!.jsonArray.map { it.jsonObject }
+        val own = tokens.single { it["current"]!!.jsonPrimitive.boolean }
+        val made = tokens.single { it["name"]!!.str == "my script" }
+        val lastUse = (own["last_used_at"]!!.jsonPrimitive.longOrNull ?: own["created_at"]!!.jsonPrimitive.long)
+        assertEquals(lastUse + SESSION_IDLE_MS, own["expires_at"]!!.jsonPrimitive.long)
+        assertEquals(JsonNull, made["expires_at"], "a made token never expires")
+        assertTrue(script.isNotEmpty())
+    }
+
+    @Test
     fun aNeverUsedSessionCountsFromWhenItWasMade() = tungTest {
         val stale = client.register()
         Db.connect(TestDatabase.config()).use { db ->
@@ -103,6 +122,11 @@ class SessionsTest {
         val phone = client.register(email)
         val laptop = client.sessionFor(email)
         val script = client.apiToken(phone)
+        // A session nobody used for 180 days is not "signed out" by this: it already does not work.
+        val idle = client.sessionFor(email)
+        Db.connect(TestDatabase.config()).use { db ->
+            db.tx { ApiTokens.update({ ApiTokens.tokenHash eq Tokens.hash(idle) }) { it[lastUsedAt] = System.currentTimeMillis() - SESSION_IDLE_MS - 1000 } }
+        }
         client.registerPush(phone, "phone-device")
         client.registerPush(laptop, "laptop-device")
         val userId = client.userId(phone)

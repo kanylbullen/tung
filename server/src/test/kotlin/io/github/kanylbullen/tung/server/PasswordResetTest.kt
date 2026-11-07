@@ -133,6 +133,23 @@ class PasswordResetTest {
         assertEquals("not_configured", refused.errorCode())
         assertFalse(sent.any { it.to == email })
     }
+
+    @Test
+    fun changingThePasswordSpendsAResetLinkMailedBefore() = resetTest {
+        val email = uniqueEmail()
+        val session = client.register(email, "the old password")
+        assertEquals(HttpStatusCode.Accepted, forgot(email).status)
+        val token = resetLink(email)
+
+        val changed = client.post("/api/v1/auth/password") {
+            bearerAuth(session)
+            jsonBody("""{"current_password": "the old password", "new_password": "the changed password"}""")
+        }
+        assertEquals(HttpStatusCode.NoContent, changed.status)
+
+        assertEquals(HttpStatusCode.BadRequest, choose(token, "a password from the link").status)
+        assertEquals(HttpStatusCode.OK, login(email, "the changed password").status)
+    }
 }
 
 private fun kotlinx.serialization.json.JsonElement.jsonObjectField(name: String): String? =
