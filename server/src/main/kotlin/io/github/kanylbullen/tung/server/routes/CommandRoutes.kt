@@ -10,13 +10,13 @@ import io.github.kanylbullen.tung.server.RequireConfirmedEmail
 import io.github.kanylbullen.tung.server.TokenPrincipal
 import io.github.kanylbullen.tung.server.Tokens
 import io.github.kanylbullen.tung.server.badRequest
+import io.github.kanylbullen.tung.server.bodyLimit
 import io.github.kanylbullen.tung.server.command.CommandService
 import io.github.kanylbullen.tung.server.forbidden
 import io.github.kanylbullen.tung.server.payloadTooLarge
 import io.github.kanylbullen.tung.server.push.sourceDevice
 import io.github.kanylbullen.tung.server.unauthorized
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.auth.authenticate
@@ -45,7 +45,7 @@ fun Route.commandRoutes(commands: CommandService) {
     route("/api/v1") {
         authenticate(BEARER) {
             install(RequireConfirmedEmail)
-            post("/commands/{name}") {
+            bodyLimit(MAX_COMMAND_BODY_BYTES, { commandTooLarge() }) { post("/commands/{name}") {
                 val principal = call.principal<TokenPrincipal>()
                     ?: throw unauthorized("unauthorized", "Send a valid API token as 'Authorization: Bearer tung_…'.")
                 if (principal.scope != Tokens.SCOPE_WRITE) {
@@ -69,19 +69,16 @@ fun Route.commandRoutes(commands: CommandService) {
                     ContentType.Application.Json,
                     if (result is CommandResult.Rejected) HttpStatusCode.UnprocessableEntity else HttpStatusCode.OK,
                 )
-            }
+            } }
         }
     }
 }
 
-/** The body as a JSON object; an empty body is `{}` (commands without fields). */
+private fun commandTooLarge() = payloadTooLarge("payload_too_large", "A command can be at most ${MAX_COMMAND_BODY_BYTES / 1024} KiB.")
+
+/** The body as a JSON object; an empty body is `{}` (commands without fields). [bodyLimit] caps it. */
 private suspend fun ApplicationCall.readCommandBody(): JsonObject {
-    request.headers[HttpHeaders.ContentLength]?.toLongOrNull()?.let {
-        if (it > MAX_COMMAND_BODY_BYTES) throw payloadTooLarge("payload_too_large", "A command can be at most ${MAX_COMMAND_BODY_BYTES / 1024} KiB.")
-    }
-    val bytes = receiveChannel().readRemaining(MAX_COMMAND_BODY_BYTES + 1).readByteArray()
-    if (bytes.size > MAX_COMMAND_BODY_BYTES) throw payloadTooLarge("payload_too_large", "A command can be at most ${MAX_COMMAND_BODY_BYTES / 1024} KiB.")
-    val text = bytes.decodeToString()
+    val text = receiveChannel().readRemaining().readByteArray().decodeToString()
     if (text.isBlank()) return JsonObject(emptyMap())
     return runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject
         ?: throw badRequest("The body must be a JSON object with the command's fields.")

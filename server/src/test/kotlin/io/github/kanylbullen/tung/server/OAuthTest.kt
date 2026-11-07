@@ -344,4 +344,29 @@ class OAuthTest {
         )
         assertEquals(HttpStatusCode.OK, withSecret.status, withSecret.bodyAsText())
     }
+
+    @Test
+    fun anOversizedFormIs413() = tungTest {
+        val form = "a=" + "x".repeat(PUBLIC_MAX_BODY_BYTES.toInt())
+        for (path in listOf("/oauth/token", "/oauth/authorize", "/oauth/register")) {
+            val response = client.post(path) {
+                header(HttpHeaders.ContentType, "application/x-www-form-urlencoded")
+                setBody(form)
+            }
+            assertEquals(HttpStatusCode.PayloadTooLarge, response.status, path)
+        }
+    }
+
+    @Test
+    fun theTokenEndpointIsRateLimitedPerAddress() = tungTest(tokenRequestsPerMinute = 3) {
+        val oauth = OAuthDriver(this)
+        repeat(3) {
+            val response = oauth.token("grant_type" to "refresh_token", "client_id" to "nobody", "refresh_token" to "nothing")
+            assertTrue(response.status != HttpStatusCode.TooManyRequests, "request ${it + 1} is within the limit")
+        }
+        val limited = oauth.token("grant_type" to "refresh_token", "client_id" to "nobody", "refresh_token" to "nothing")
+        assertEquals(HttpStatusCode.TooManyRequests, limited.status)
+        // The sign-in routes keep their own budget.
+        assertEquals(HttpStatusCode.Created, client.post("/api/v1/auth/register") { jsonBody("""{"email": "${uniqueEmail()}", "password": "long enough"}""") }.status)
+    }
 }

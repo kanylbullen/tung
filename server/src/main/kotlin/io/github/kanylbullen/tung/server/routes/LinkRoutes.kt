@@ -8,8 +8,10 @@ import io.github.kanylbullen.tung.server.BEARER
 import io.github.kanylbullen.tung.server.Db
 import io.github.kanylbullen.tung.server.RequireConfirmedEmail
 import io.github.kanylbullen.tung.server.SessionDto
+import io.github.kanylbullen.tung.server.PUBLIC_MAX_BODY_BYTES
 import io.github.kanylbullen.tung.server.TokenPrincipal
 import io.github.kanylbullen.tung.server.Tokens
+import io.github.kanylbullen.tung.server.bodyLimit
 import io.github.kanylbullen.tung.server.clientKey
 import io.github.kanylbullen.tung.server.forbidden
 import io.github.kanylbullen.tung.server.lockUser
@@ -116,7 +118,7 @@ fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::cur
         }
     }
 
-    post("/link/claim") {
+    bodyLimit(PUBLIC_MAX_BODY_BYTES) { post("/link/claim") {
         if (!claimLimit.tryAcquire(clientKey(call))) throw rateLimited()
         if (claimFailures.isExhausted(ALL_CLIENTS)) throw rateLimited()
         val code = call.receive<LinkClaim>().code.trim()
@@ -150,7 +152,7 @@ fun Route.linkRoutes(db: Db, accounts: Accounts, clock: () -> Long = System::cur
             throw invalidCode()
         }
         call.respond(SessionDto(claimed.second, accounts.me(claimed.first)))
-    }
+    } }
 }
 
 /** Deletes expired codes, then inserts a fresh one for [userId]; draws again on the rare collision. */

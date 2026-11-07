@@ -5,6 +5,7 @@ import io.github.kanylbullen.tung.server.ApiException
 import io.github.kanylbullen.tung.server.ServerConfig
 import io.github.kanylbullen.tung.server.TokenPrincipal
 import io.github.kanylbullen.tung.server.badRequest
+import io.github.kanylbullen.tung.server.bodyLimit
 import io.github.kanylbullen.tung.server.emailNotConfirmed
 import io.github.kanylbullen.tung.server.mcp.MCP_PROTOCOL_VERSIONS
 import io.github.kanylbullen.tung.server.mcp.McpExchange
@@ -137,7 +138,7 @@ class McpSessions(
  * one the 401 names the OAuth metadata, which is how hosted clients find the
  * login. Bearer tokens make DNS rebinding harmless, so `Origin` is not checked.
  */
-fun Route.mcpRoutes(config: ServerConfig, accounts: Accounts, mcp: TungMcp, transport: ExchangeTransport, sessions: McpSessions) {
+fun Route.mcpRoutes(config: ServerConfig, accounts: Accounts, mcp: TungMcp, transport: ExchangeTransport, sessions: McpSessions) = bodyLimit(MAX_MCP_BODY_BYTES, { mcpTooLarge() }) {
     post("/mcp") {
         val principal = call.mcpPrincipal(config, accounts)
         call.request.headers[PROTOCOL_HEADER]?.let {
@@ -216,12 +217,11 @@ private suspend fun ApplicationCall.mcpPrincipal(config: ServerConfig, accounts:
     )
 }
 
-/** The body as JSON, null when it is not JSON; 413 past [MAX_MCP_BODY_BYTES]. */
+private fun mcpTooLarge() = payloadTooLarge("payload_too_large", "An MCP request can be at most ${MAX_MCP_BODY_BYTES / 1024} KiB.")
+
+/** The body as JSON, null when it is not JSON; [bodyLimit] stops it past [MAX_MCP_BODY_BYTES] with 413. */
 private suspend fun ApplicationCall.readBody(): JsonElement? {
-    val tooLarge = { payloadTooLarge("payload_too_large", "An MCP request can be at most ${MAX_MCP_BODY_BYTES / 1024} KiB.") }
-    request.headers[HttpHeaders.ContentLength]?.toLongOrNull()?.let { if (it > MAX_MCP_BODY_BYTES) throw tooLarge() }
-    val bytes = receiveChannel().readRemaining(MAX_MCP_BODY_BYTES + 1).readByteArray()
-    if (bytes.size > MAX_MCP_BODY_BYTES) throw tooLarge()
+    val bytes = receiveChannel().readRemaining().readByteArray()
     return runCatching { mcpJson.parseToJsonElement(bytes.decodeToString()) }.getOrNull()
 }
 

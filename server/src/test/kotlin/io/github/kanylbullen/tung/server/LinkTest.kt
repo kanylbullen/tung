@@ -168,4 +168,11 @@ class LinkTest {
         // Another user has a budget of their own.
         assertEquals(HttpStatusCode.Created, client.start(client.register()).status)
     }
+
+    @Test
+    fun anOversizedClaimIs413() = tungTest {
+        val response = client.post("/api/v1/link/claim") { jsonBody(paddedJson(PUBLIC_MAX_BODY_BYTES.toInt() + 1, field = "code")) }
+        assertEquals(HttpStatusCode.PayloadTooLarge, response.status)
+        assertEquals("payload_too_large", response.errorCode())
+    }
 }

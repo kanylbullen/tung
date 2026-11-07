@@ -54,6 +54,9 @@ import kotlinx.serialization.json.JsonObject
 const val BEARER = "bearer"
 val AUTH_RATE_LIMIT = RateLimitName("auth")
 
+/** `POST /oauth/token`, per client address: its own budget, since MCP clients refresh tokens on their own. */
+val OAUTH_TOKEN_RATE_LIMIT = RateLimitName("oauth_token")
+
 /** Read tokens may only read: anything but GET/HEAD/OPTIONS with one is refused. */
 private val RequireWriteScope = createRouteScopedPlugin("RequireWriteScope") {
     on(AuthenticationChecked) { call ->
@@ -129,7 +132,7 @@ fun Route.apiRoutes(
     val adminStore = AdminStore(db, admins, config.testerSignups, config.clock)
     route("/api/v1") {
         linkRoutes(db, accounts)
-        rateLimit(AUTH_RATE_LIMIT) {
+        rateLimit(AUTH_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES) {
             testerSignupRoute(testers)
             post("/auth/register") { call.respond(HttpStatusCode.Created, accounts.register(call.receive())) }
             post("/auth/login") { call.respond(accounts.login(call.receive())) }
@@ -146,7 +149,7 @@ fun Route.apiRoutes(
                 val body = call.receive<IdTokenSignIn>()
                 call.respond(accounts.signInWith(IdProvider.APPLE, body.idToken, body.language))
             }
-        }
+        } }
         get("/auth/methods") {
             call.respond(
                 AuthMethods(
@@ -283,7 +286,7 @@ fun Route.apiRoutes(
         // Outside RequireWriteScope: a read token may pull (empty changes); the handler refuses its pushes.
         authenticate(BEARER) {
             install(RequireConfirmedEmail)
-            post(SYNC_PATH.removePrefix("/api/v1")) {
+            bodyLimit(SYNC_MAX_BODY_BYTES, { syncTooLarge() }) { post(SYNC_PATH.removePrefix("/api/v1")) {
                 val principal = call.user()
                 val request = call.receiveSyncRequest()
                 if (!request.changes.isEmpty() && principal.scope != Tokens.SCOPE_WRITE) {
@@ -293,7 +296,7 @@ fun Route.apiRoutes(
                 // Only a request that pushed rows is a write: a pull-only sync (every device's periodic one) wakes nobody.
                 if (!request.changes.isEmpty()) push.changed(principal.userId, call.sourceDevice())
                 call.respond(response)
-            }
+            } }
         }
     }
 }
@@ -301,16 +304,16 @@ fun Route.apiRoutes(
 /** The largest sync request body: 20 000 rows of the widest table fit with room to spare. */
 const val SYNC_MAX_BODY_BYTES = 8L * 1024 * 1024
 
+private fun syncTooLarge() =
+    payloadTooLarge("payload_too_large", "A sync request can be at most ${SYNC_MAX_BODY_BYTES / (1024 * 1024)} MiB. Push in smaller batches.")
+
 /**
- * Reads the body itself instead of `receive()`, to stop at
- * [SYNC_MAX_BODY_BYTES] (413) before parsing, and to answer more than
- * [SYNC_MAX_ROWS] rows with 413 too.
+ * Reads the body itself instead of `receive()`, to answer more than
+ * [SYNC_MAX_ROWS] rows with 413; the route's [bodyLimit] has already stopped
+ * a body over [SYNC_MAX_BODY_BYTES].
  */
 private suspend fun ApplicationCall.receiveSyncRequest(): SyncRequest {
-    val tooLarge = { payloadTooLarge("payload_too_large", "A sync request can be at most ${SYNC_MAX_BODY_BYTES / (1024 * 1024)} MiB. Push in smaller batches.") }
-    request.headers[HttpHeaders.ContentLength]?.toLongOrNull()?.let { if (it > SYNC_MAX_BODY_BYTES) throw tooLarge() }
-    val bytes = receiveChannel().readRemaining(SYNC_MAX_BODY_BYTES + 1).readByteArray()
-    if (bytes.size > SYNC_MAX_BODY_BYTES) throw tooLarge()
+    val bytes = receiveChannel().readRemaining().readByteArray()
     val request = try {
         ApiJson.decodeFromString(SyncRequest.serializer(), bytes.decodeToString())
     } catch (e: SerializationException) {

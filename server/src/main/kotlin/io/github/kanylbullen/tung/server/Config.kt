@@ -59,6 +59,8 @@ data class ServerConfig(
     val clientIpHeader: String? = null,
     /** Requests per minute and client address to register and login. */
     val authRequestsPerMinute: Int = DEFAULT_AUTH_REQUESTS_PER_MINUTE,
+    /** Requests per minute and client address to `POST /oauth/token` (code exchanges and refreshes). */
+    val tokenRequestsPerMinute: Int = DEFAULT_TOKEN_REQUESTS_PER_MINUTE,
     /** The Firebase service account for FCM push (`TUNG_FCM_SERVICE_ACCOUNT_JSON`); null turns FCM off. */
     val fcmServiceAccount: FcmServiceAccount? = null,
     /** FCM's API base. Not an environment variable: only tests point it elsewhere. */
@@ -125,6 +127,7 @@ data class ServerConfig(
 
         const val DEFAULT_PORT = 8080
         const val DEFAULT_AUTH_REQUESTS_PER_MINUTE = 10
+        const val DEFAULT_TOKEN_REQUESTS_PER_MINUTE = 30
         const val DEFAULT_PUSH_DEBOUNCE_MILLIS = 2_000L
 
         fun fromEnv(env: Map<String, String> = System.getenv()): ServerConfig {
