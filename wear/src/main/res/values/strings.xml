@@ -92,6 +92,7 @@
     <string name="link_error_rate">Too many tries. Wait a minute.</string>
     <string name="link_error_not_server">That server cannot link watches. Update tung-server.</string>
     <string name="link_error_network">No connection to the server.</string>
+    <string name="link_error_unsynced_other_account">This watch has workouts that were never synced. Link it to the account it used before, or sync first.</string>
     <string name="link_error_server">The server had a problem. Try again.</string>
 
     <!-- Exercise names of the core catalogue, for a standalone watch's own log. -->

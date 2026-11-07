@@ -222,6 +222,48 @@ class TungStore {
         }
     }
 
+    /**
+     * Anything a sign-in would upload (issue #152): a workout, a routine, a
+     * program, or an exercise that is not an untouched catalogue row.
+     */
+    fun hasUserData(): Boolean =
+        workouts.rows.isNotEmpty() || routines.rows.isNotEmpty() || programs.rows.isNotEmpty() ||
+            exercises.rows.keys.any { !isUntouchedCatalogueRow(it) }
+
+    /** Changes no account has (dirty rows and tombstones), which [wipe] would lose. */
+    fun unsyncedCount(): Int =
+        tables.values.sumOf { t -> t.rows.values.count { it.dirty } } + tombstones.values.count { it.dirty }
+
+    /**
+     * Another account's log goes ("Delete them", issue #152): every row but
+     * the catalogue's, which goes back to the seed (no rest time, `updatedAt`
+     * 0, not dirty), and every tombstone. No tombstone is written: this is
+     * not a delete the server should hear of. The phone's `SyncStore.wipe`.
+     */
+    fun wipe(journal: MutableList<Write>) {
+        tables.values.reversed().forEach { table ->
+            table.rows.keys.toList().forEach { id ->
+                if (table === exercises) {
+                    val row = exercises.get(id) ?: return@forEach
+                    if (row.nameKey != null) {
+                        val seed = row.copy(restSeconds = null, updatedAt = 0)
+                        if (seed != row || exercises.rows[id]?.dirty == true) {
+                            exercises.put(seed, dirty = false)
+                            journal += Write.Put(SyncTable.EXERCISES, id, exercises.encoded(id) ?: return@forEach)
+                        }
+                        return@forEach
+                    }
+                }
+                table.remove(id)
+                journal += Write.Delete(table.table, id)
+            }
+        }
+        tombstones.keys.toList().forEach { (table, id) ->
+            tombstones.remove(table to id)
+            journal += Write.DeleteTombstone(table, id)
+        }
+    }
+
     /** Reads a tombstone written by [encodeTombstone]. */
     fun loadTombstone(text: String) {
         val stored = StoreJson.decodeFromString(StoredTombstone.serializer(), text)

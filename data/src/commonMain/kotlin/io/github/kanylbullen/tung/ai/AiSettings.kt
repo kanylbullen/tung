@@ -80,6 +80,23 @@ class AiSettings(private val store: DataStore<Preferences>, private val keyStore
     /** The API key; only `AiService` reads it, to put it in the provider's header. */
     internal suspend fun key(): String? = withContext(ioDispatcher) { keyStore.read() }?.takeIf { it.isNotBlank() }
 
+    /**
+     * Forgets the key and the settings, as on a fresh install: another
+     * account's data was wiped from the device (issue #152), and its owner's
+     * provider and key must not be spent by the next person.
+     */
+    suspend fun reset() {
+        setKey(null)
+        store.edit {
+            it.remove(PROVIDER)
+            it.remove(BASE_URL)
+            it.remove(MODEL)
+            it.remove(JSON_MODE)
+            it.remove(PAYLOAD_SHOWN)
+            it.remove(ALWAYS_SHOW_PAYLOAD)
+        }
+    }
+
     suspend fun markPayloadShown() {
         store.edit { it[PAYLOAD_SHOWN] = true }
     }

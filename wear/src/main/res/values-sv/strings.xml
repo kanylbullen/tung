@@ -92,6 +92,7 @@
     <string name="link_error_rate">För många försök. Vänta en minut.</string>
     <string name="link_error_not_server">Den servern kan inte länka klockor. Uppdatera tung-server.</string>
     <string name="link_error_network">Ingen anslutning till servern.</string>
+    <string name="link_error_unsynced_other_account">Klockan har pass som aldrig synkats. Länka den till kontot den använde förut, eller synka först.</string>
     <string name="link_error_server">Servern hade problem. Försök igen.</string>
 
     <!-- Exercise names of the core catalogue, for a standalone watch's own log. -->

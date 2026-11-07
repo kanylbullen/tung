@@ -453,6 +453,15 @@ interface Strings {
     // Account and sync
     fun signedInAs(email: String): String
     val signOut: String
+    /** Under Sign out: what stays and what goes. */
+    val signOutHint: String
+    /** The question when another account signs in to a browser holding someone's log (issue #152). */
+    val otherAccountTitle: String
+    val otherAccountBody: String
+    val otherAccountDelete: String
+    fun otherAccountAdd(email: String): String
+    /** [count] local changes never synced, which deleting loses. */
+    fun otherAccountUnsynced(count: Int): String
     val deleteAccount: String
     val deleteAccountTitle: String
     fun deleteAccountBody(server: String): String
@@ -1023,6 +1032,16 @@ object English : Strings {
 
     override fun signedInAs(email: String): String = "Signed in as $email"
     override val signOut = "Sign out"
+    override val signOutHint = "Signing out keeps your training in this browser and forgets the assistant's API key."
+    override val otherAccountTitle = "This device has workouts from another account"
+    override val otherAccountBody =
+        "The workouts, routines and programs in this browser were logged with another account. Nothing syncs until you choose. " +
+            "Deleting them removes them from this browser; what was synced stays in the account it was synced to."
+    override val otherAccountDelete = "Delete them"
+    override fun otherAccountAdd(email: String): String = "Add them to $email"
+    override fun otherAccountUnsynced(count: Int): String =
+        if (count == 1) "1 change in this browser was never synced. Deleting them loses it."
+        else "$count changes in this browser were never synced. Deleting them loses them."
     override val deleteAccount = "Delete account…"
     override val deleteAccountTitle = "Delete your account?"
     override fun deleteAccountBody(server: String): String =
@@ -1610,6 +1629,16 @@ object Swedish : Strings {
 
     override fun signedInAs(email: String): String = "Inloggad som $email"
     override val signOut = "Logga ut"
+    override val signOutHint = "När du loggar ut finns träningen kvar i den här webbläsaren, och assistentens API-nyckel glöms."
+    override val otherAccountTitle = "Den här enheten har pass från ett annat konto"
+    override val otherAccountBody =
+        "Passen, rutinerna och programmen i den här webbläsaren loggades med ett annat konto. Inget synkas förrän du väljer. " +
+            "Raderar du dem försvinner de från den här webbläsaren; det som synkats finns kvar i kontot det synkades till."
+    override val otherAccountDelete = "Radera dem"
+    override fun otherAccountAdd(email: String): String = "Lägg till dem i $email"
+    override fun otherAccountUnsynced(count: Int): String =
+        if (count == 1) "1 ändring i den här webbläsaren har aldrig synkats. Raderar du dem försvinner den."
+        else "$count ändringar i den här webbläsaren har aldrig synkats. Raderar du dem försvinner de."
     override val deleteAccount = "Radera kontot…"
     override val deleteAccountTitle = "Radera ditt konto?"
     override fun deleteAccountBody(server: String): String =

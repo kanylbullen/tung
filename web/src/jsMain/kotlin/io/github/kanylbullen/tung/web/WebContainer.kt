@@ -30,6 +30,8 @@ import io.github.kanylbullen.tung.web.sync.PeriodicSync
 import io.github.kanylbullen.tung.web.sync.WebAuth
 import io.github.kanylbullen.tung.web.sync.WebSettings
 import io.github.kanylbullen.tung.web.sync.WebSync
+import io.github.kanylbullen.tung.core.sync.OtherAccountChoice
+import io.github.kanylbullen.tung.web.sync.WebSignIn
 import kotlin.js.Date
 import kotlinx.browser.window
 import kotlinx.coroutines.CancellationException
@@ -90,6 +92,13 @@ class WebContainer(
     lateinit var sync: WebSync
         private set
 
+    /** Whose data is in this browser, and the question when another account signs in (issue #152). */
+    lateinit var signIns: WebSignIn
+        private set
+
+    /** The assistant's settings and key in localStorage; the key is forgotten on sign-out. */
+    val aiSettings = WebAiSettings()
+
     /**
      * Every change to training data, core's [CommandExecutor] over the
      * browser's store ([WebCommandStore]), as on the phone and the server;
@@ -126,6 +135,7 @@ class WebContainer(
             settings = WebSettings(db).also { it.load() }
             db.loadInto(store)
             sync = WebSync(store, db, settings)
+            signIns = WebSignIn(store, db, settings, revoke = { url, token -> auth.signOut(url, token) })
             resolver = WebExerciseResolver(store, { catalogueNames }) { _catalogue.value.extended }
             importer = WebImporter(store, persist = { db.write(it) }, extended = { _catalogue.value.extended }, clock = { Date.now().toLong() })
             val executor = CommandExecutor(
@@ -134,7 +144,7 @@ class WebContainer(
                 startedBy = StartedBy.WEB,
             )
             ai = WebAi(
-                store, WebAiSettings(), resolver,
+                store, aiSettings, resolver,
                 catalogueKeys = { catalogueNames.keys },
                 commands = object : CommandHandler {
                     override suspend fun execute(command: Command): CommandResult = commands.execute(command)
@@ -177,6 +187,8 @@ class WebContainer(
         // The phone syncs when it comes to the foreground; the browser when
         // the page is shown again or the connection comes back.
         window.addEventListener("online", { syncInBackground() })
+        // A sign-in still waiting for the question's answer: its token is revoked as the page goes.
+        window.addEventListener("pagehide", { scope.launch { signIns.abandon() } })
         window.addEventListener("visibilitychange", { if (window.document.asDynamic().visibilityState == "visible") syncInBackground() })
         // And every few minutes while it stays open and shown: a page gets no push.
         PeriodicSync(
@@ -221,22 +233,32 @@ class WebContainer(
     /** The app's language for the server's welcome email: `sv` or `en`. */
     private fun languageTag(): String = if (strings === Swedish) "sv" else "en"
 
+    /**
+     * The server accepted the sign-in: stored, unless this browser holds
+     * another account's data, when [WebSignIn.pending] asks first and
+     * [resolveOtherAccountData] answers (issue #152).
+     */
     private suspend fun signedIn(serverUrl: String, result: AuthResult): AuthResult {
-        if (result is AuthResult.Success) {
-            settings.signedIn(serverUrl, result.email, result.token)
-            val journal = ArrayList<Write>()
-            store.markEverythingDirty(journal)
-            db.write(journal)
-            syncInBackground()
-        }
+        if (result is AuthResult.Success && signIns.accept(serverUrl, result)) syncInBackground()
         return result
     }
 
-    /** Forgets the token here and on the server; the log stays in this browser, as on the phone. */
+    /** "Delete them", "Add them to <email>", or null: the question dismissed, nothing changes and nobody is signed in. */
+    suspend fun resolveOtherAccountData(choice: OtherAccountChoice?) {
+        if (signIns.resolve(choice)) syncInBackground()
+    }
+
+    /**
+     * Forgets the token here and on the server, and the assistant's API key
+     * in localStorage (the next person at this browser must not spend it);
+     * the log stays in this browser, as on the phone, and a different
+     * account signing in next is asked about it first.
+     */
     suspend fun signOut() {
         val account = settings.account.value
         val token = settings.token
         settings.signedOut(failure = null)
+        aiSettings.removeKey()
         if (account != null && token != null) auth.signOut(account.serverUrl, token)
     }
 
@@ -264,6 +286,7 @@ class WebContainer(
             DeleteAccountResult.DELETED -> {
                 accountDeleted = true
                 settings.signedOut(failure = null)
+                aiSettings.removeKey()
             }
             DeleteAccountResult.SIGNED_OUT -> settings.signedOut(SyncFailure.SIGNED_OUT)
             else -> Unit

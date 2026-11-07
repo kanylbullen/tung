@@ -127,6 +127,7 @@ fun SettingsScreen(container: WebContainer, account: Account) {
                 }) { Text(if (running) strings.syncing else strings.syncNow) }
                 Button({ classes("secondary"); onClick { scope.launch { container.signOut() } } }) { Text(strings.signOut) }
             }
+            P({ classes("hint", "flush") }) { Text(strings.signOutHint) }
             DeleteAccount(container, account)
         }
 

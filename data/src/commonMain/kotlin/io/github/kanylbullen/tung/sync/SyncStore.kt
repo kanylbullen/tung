@@ -111,6 +111,33 @@ class SyncStore(private val db: TungDatabase) : SyncLocalStore {
         tombstones.markAllDirty()
     }
 
+    /** Whether this device has anything of an account's to upload ([SyncDao.hasUserData]). */
+    suspend fun hasLocalData(): Boolean = dao.hasUserData()
+
+    /** Local changes never synced to any account ([SyncDao.unsyncedCount]). */
+    suspend fun unsyncedCount(): Int = dao.unsyncedCount()
+
+    /**
+     * Another account's log goes (issue #152, "Delete them"): every workout,
+     * routine and program with their children, the custom and extended
+     * exercises, and every tombstone, in one transaction, children first.
+     * No tombstone is written: this is not a delete the server should hear
+     * of, the rows stay in the account they came from. The seeded catalogue
+     * stays, reset to the seed.
+     */
+    suspend fun wipe() = db.transaction {
+        dao.wipeSets()
+        dao.wipeWorkoutExercises()
+        dao.wipeWorkouts()
+        dao.wipeProgramDays()
+        dao.wipePrograms()
+        dao.wipeRoutineExercises()
+        dao.wipeRoutines()
+        dao.wipeOwnExercises()
+        dao.resetCatalogue()
+        dao.wipeTombstones()
+    }
+
     private fun ops(table: SyncTable): TableOps<*, *> = tables.getValue(table)
 
     /** How one table maps between Room and the wire; [E] the entity, [R] the wire row. */

@@ -386,7 +386,7 @@ class SyncClientTest {
         val phone = Device()
         fake.googleClientId = "1234-web.apps.googleusercontent.com"
         val ok = runBlocking { phone.client.loginWithGoogle(fake.baseUrl, fake.googleIdToken) }
-        assertEquals(AuthResult.Success(fake.token, "lifter@gmail.com", googleLinked = true), ok)
+        assertEquals(AuthResult.Success(fake.token, "lifter@gmail.com", googleLinked = true, userId = "g"), ok)
         assertEquals(listOf(fake.googleIdToken), fake.googleTokens)
 
         val rejected = runBlocking { phone.client.loginWithGoogle(fake.baseUrl, "forged") }
@@ -400,7 +400,7 @@ class SyncClientTest {
     @Test
     fun meSaysWhetherGoogleIsLinked() {
         val phone = Device()
-        assertEquals(AccountInfo("lifter@example.org", hasPassword = true, googleLinked = false), runBlocking { phone.client.me() })
+        assertEquals(AccountInfo("lifter@example.org", hasPassword = true, googleLinked = false, userId = "u"), runBlocking { phone.client.me() })
         fake.googleLinked = true
         assertEquals(true, runBlocking { phone.client.me() }?.googleLinked)
         phone.tokens.write("tung_dead")
@@ -422,7 +422,7 @@ class SyncClientTest {
         val phone = Device()
         fake.appleClientId = "io.github.kanylbullen.tung.web"
         val ok = runBlocking { phone.client.loginWithApple(fake.baseUrl, fake.appleIdToken) }
-        assertEquals(AuthResult.Success(fake.token, "lifter@privaterelay.appleid.com", appleLinked = true), ok)
+        assertEquals(AuthResult.Success(fake.token, "lifter@privaterelay.appleid.com", appleLinked = true, userId = "a"), ok)
         assertEquals(listOf(fake.appleIdToken), fake.appleTokens)
 
         val rejected = runBlocking { phone.client.loginWithApple(fake.baseUrl, "forged") }

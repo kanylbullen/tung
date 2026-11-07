@@ -68,7 +68,7 @@ class LinkClientTest {
 
         val watch = Device(token = null)
         val claimed = watch.account.signInWithCode(fake.baseUrl, started.code.code)
-        assertEquals(LinkClaimResult.Success(fake.token, "lifter@example.org"), claimed)
+        assertEquals(LinkClaimResult.Success(fake.token, "lifter@example.org", userId = "u"), claimed)
         assertEquals(fake.token, watch.tokens.read())
         assertTrue(watch.account.isSignedIn())
         assertEquals(fake.baseUrl, watch.settings.serverUrl())

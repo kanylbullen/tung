@@ -184,7 +184,7 @@ class WebSyncTest {
             return result
         }
         assertEquals(
-            AuthResult.Success("tung_abc", "X@example.org"),
+            AuthResult.Success("tung_abc", "X@example.org", userId = "u"),
             answer { HttpReply(200, """{"token":"tung_abc","user":{"id":"u","email":"X@example.org","created_at":1,"has_password":true,"google_linked":false}}""") },
         )
         assertEquals(AuthResult.Failed(AuthFailure.INVALID_CREDENTIALS), answer { HttpReply(401, "") })
@@ -206,7 +206,7 @@ class WebSyncTest {
             return auth.register("https://tung.example.org", "x@example.org", "secret123", "sv")
         }
         assertEquals(
-            AuthResult.Success("tung_new", "x@example.org"),
+            AuthResult.Success("tung_new", "x@example.org", userId = "u"),
             answer { HttpReply(201, """{"token":"tung_new","user":{"id":"u","email":"x@example.org","created_at":1,"has_password":true,"google_linked":false}}""") },
         )
         assertEquals("https://tung.example.org/api/v1/auth/register", url)

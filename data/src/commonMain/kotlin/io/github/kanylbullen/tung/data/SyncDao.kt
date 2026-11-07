@@ -175,4 +175,62 @@ interface SyncDao {
 
     @Query("UPDATE program_day SET dirty = 1")
     suspend fun markProgramDaysDirty()
+
+    // --- another account's data on this device (issue #152) ---
+
+    /**
+     * Anything a sign-in would upload: a workout, a routine, a program, or an
+     * exercise that is not an untouched catalogue row (a custom one, an
+     * extended entry picked, a catalogue row whose rest time was set).
+     */
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM workout) OR EXISTS(SELECT 1 FROM routine) OR EXISTS(SELECT 1 FROM program) " +
+            "OR EXISTS(SELECT 1 FROM exercise WHERE NOT (nameKey IS NOT NULL AND updatedAt = 0))"
+    )
+    suspend fun hasUserData(): Boolean
+
+    /**
+     * Changes no account has: the dirty rows (an untouched catalogue row
+     * never counts) and dirty tombstones, which "Delete them" would lose.
+     */
+    @Query(
+        "SELECT (SELECT COUNT(*) FROM exercise WHERE dirty = 1 AND NOT (nameKey IS NOT NULL AND updatedAt = 0)) " +
+            "+ (SELECT COUNT(*) FROM workout WHERE dirty = 1) + (SELECT COUNT(*) FROM workout_exercise WHERE dirty = 1) " +
+            "+ (SELECT COUNT(*) FROM set_entry WHERE dirty = 1) + (SELECT COUNT(*) FROM routine WHERE dirty = 1) " +
+            "+ (SELECT COUNT(*) FROM routine_exercise WHERE dirty = 1) + (SELECT COUNT(*) FROM program WHERE dirty = 1) " +
+            "+ (SELECT COUNT(*) FROM program_day WHERE dirty = 1) + (SELECT COUNT(*) FROM tombstones WHERE dirty = 1)"
+    )
+    suspend fun unsyncedCount(): Int
+
+    @Query("DELETE FROM set_entry")
+    suspend fun wipeSets()
+
+    @Query("DELETE FROM workout_exercise")
+    suspend fun wipeWorkoutExercises()
+
+    @Query("DELETE FROM workout")
+    suspend fun wipeWorkouts()
+
+    @Query("DELETE FROM program_day")
+    suspend fun wipeProgramDays()
+
+    @Query("DELETE FROM program")
+    suspend fun wipePrograms()
+
+    @Query("DELETE FROM routine_exercise")
+    suspend fun wipeRoutineExercises()
+
+    @Query("DELETE FROM routine")
+    suspend fun wipeRoutines()
+
+    /** Custom exercises and picked extended entries: everything but the seeded catalogue. */
+    @Query("DELETE FROM exercise WHERE nameKey IS NULL")
+    suspend fun wipeOwnExercises()
+
+    /** The catalogue's rows back to the seed: no rest time of the account's, `updatedAt` 0 ([DatabaseSchema.CATALOG_UPDATED_AT]), not dirty. */
+    @Query("UPDATE exercise SET restSeconds = NULL, updatedAt = 0, dirty = 0 WHERE nameKey IS NOT NULL")
+    suspend fun resetCatalogue()
+
+    @Query("DELETE FROM tombstones")
+    suspend fun wipeTombstones()
 }

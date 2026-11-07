@@ -227,6 +227,14 @@ class TungContainer(
         SyncAccount(
             syncClient, syncSettings, tokenStore, syncStore, syncScheduler, appScope,
             beforeSignOut = { url, token -> push.onSignOut(url, token) },
+            // The last import was the wiped account's: "Undo last import" would find nothing.
+            afterWipe = {
+                ImportHistory(settings).clear()
+                // The wiped account's assistant key and settings, and a rest still running from its workout.
+                aiSettings.reset()
+                // A null timer clears the stored one and cancels its alarm whatever the workout id.
+                restTimer.set(workoutId = "", timer = null)
+            },
         )
     }
 

@@ -128,6 +128,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         LinkFailure.RATE_LIMITED -> R.string.link_error_rate
         LinkFailure.NOT_A_SERVER -> R.string.link_error_not_server
         LinkFailure.NETWORK -> R.string.link_error_network
+        LinkFailure.UNSYNCED_OTHER_ACCOUNT -> R.string.link_error_unsynced_other_account
         LinkFailure.NOT_SIGNED_IN, LinkFailure.SIGNED_OUT, LinkFailure.SERVER -> R.string.link_error_server
     }
 }
