@@ -1,5 +1,9 @@
 package io.github.kanylbullen.tung.server
 
+import kotlin.test.assertNull
+import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
+import io.ktor.client.request.header
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -40,15 +44,17 @@ class FeedbackTest {
 
     private fun b64(bytes: ByteArray) = Base64.getEncoder().encodeToString(bytes)
 
-    private fun feedbackTest(block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
+    private fun feedbackTest(trustProxy: Boolean = false, block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
         environment { config = MapApplicationConfig() }
-        application { module(TestDatabase.config().copy(adminEmails = setOf(admin))) }
+        application { module(TestDatabase.config(trustProxy = trustProxy).copy(adminEmails = setOf(admin))) }
         block()
     }
 
-    private suspend fun ApplicationTestBuilder.send(token: String, body: String): HttpResponse =
+    /** With [from], the client address the server sees (behind a trusted proxy, the last X-Forwarded-For entry). */
+    private suspend fun ApplicationTestBuilder.send(token: String, body: String, from: String? = null): HttpResponse =
         client.post("/api/v1/feedback") {
             bearerAuth(token)
+            if (from != null) header("X-Forwarded-For", from)
             jsonBody(body)
         }
 
@@ -179,6 +185,77 @@ class FeedbackTest {
         val over = send(token, """{"kind": "bug", "message": "big 3", "platform": "web", "images": [$three]}""")
         assertEquals(HttpStatusCode.TooManyRequests, over.status)
         assertEquals(HttpStatusCode.Created, send(token, """{"kind": "bug", "message": "words only", "platform": "web"}""").status, "words still fit")
+    }
+
+    @Test
+    fun anAddressHasADailyLimitWhateverTheAccount() = feedbackTest(trustProxy = true) {
+        val words = """{"kind": "idea", "message": "an idea", "platform": "web"}"""
+        val first = client.register()
+        val second = client.register()
+        repeat(MAX_FEEDBACK_PER_ADDRESS_PER_DAY / 2) {
+            assertEquals(HttpStatusCode.Created, send(first, words, from = "198.51.100.7").status)
+            assertEquals(HttpStatusCode.Created, send(second, words, from = "198.51.100.7").status)
+        }
+        // A third account, well within its own budget, is refused from that address and let through from another.
+        val third = client.register()
+        val over = send(third, words, from = "198.51.100.7")
+        assertEquals(HttpStatusCode.TooManyRequests, over.status)
+        assertEquals("too_much_feedback", over.errorCode())
+        assertEquals(HttpStatusCode.Created, send(third, words, from = "198.51.100.8").status)
+    }
+
+    @Test
+    fun anAddressHasAByteBudgetWhateverTheAccount() = feedbackTest(trustProxy = true) {
+        val big = "\"${b64(png + ByteArray(MAX_FEEDBACK_IMAGE_BYTES - png.size))}\""
+        val three = """{"kind": "bug", "message": "big", "platform": "web", "images": [${listOf(big, big, big).joinToString()}]}"""
+        // 12 MB a send from two accounts: the address's 30 MB holds two, not three.
+        assertEquals(HttpStatusCode.Created, send(client.register(), three, from = "198.51.100.9").status)
+        assertEquals(HttpStatusCode.Created, send(client.register(), three, from = "198.51.100.9").status)
+        val fresh = client.register()
+        val over = send(fresh, three, from = "198.51.100.9")
+        assertEquals(HttpStatusCode.TooManyRequests, over.status)
+        assertEquals("too_much_feedback", over.errorCode())
+        assertEquals(HttpStatusCode.Created, send(fresh, three, from = "198.51.100.10").status)
+    }
+
+    @Test
+    fun aRefusedSendCostsTheAddressNothing() = feedbackTest(trustProxy = true) {
+        val token = client.register()
+        repeat(MAX_FEEDBACK_PER_ADDRESS_PER_DAY) {
+            assertEquals(HttpStatusCode.BadRequest, send(token, """{"kind": "rant", "message": "x", "platform": "web"}""", from = "198.51.100.11").status)
+        }
+        assertEquals(HttpStatusCode.Created, send(token, """{"kind": "bug", "message": "x", "platform": "web"}""", from = "198.51.100.11").status)
+    }
+
+    @Test
+    fun theAddressBudgetSlidesWithTheDay() {
+        var now = 1_000_000L
+        val budget = AddressBudget(maxCount = 2, maxBytes = 100, windowMillis = 1_000, clock = { now })
+        assertNotNull(budget.reserve("a", 60))
+        assertNull(budget.reserve("a", 50), "60 + 50 is over 100 bytes")
+        val second = assertNotNull(budget.reserve("a", 40))
+        assertTrue(budget.isExhausted("a"))
+        assertFalse(budget.isExhausted("b"), "another address has its own")
+        budget.release(second)
+        assertFalse(budget.isExhausted("a"), "a released send is given back")
+        now += 1_000
+        assertNotNull(budget.reserve("a", 100), "the window has passed")
+    }
+
+    @Test
+    fun theHalfwayWarningIsOncePerCrossing() {
+        val warnings = mutableListOf<String>()
+        val alarm = HalfwayAlarm("rows", 100) { warnings += it }
+        alarm.observe(10)
+        alarm.observe(49)
+        assertEquals(0, warnings.size)
+        alarm.observe(50)
+        alarm.observe(70)
+        alarm.observe(99)
+        assertEquals(1, warnings.size, "once while it stays above half")
+        alarm.observe(40)
+        alarm.observe(60)
+        assertEquals(2, warnings.size, "again after it went under half")
     }
 
     @Test

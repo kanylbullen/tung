@@ -2312,8 +2312,13 @@ fallback, and only on a tap.
   as `bytea` in `feedback_images` (with its `size`); at most
   `MAX_FEEDBACK_PER_DAY` (20) and `MAX_FEEDBACK_BYTES_PER_DAY` (30 MB) per
   user and day (429 `too_much_feedback`, checked under `lockUser`, and once
-  before the body is read), `MAX_FEEDBACK_ROWS` and
-  `MAX_FEEDBACK_STORED_BYTES` (2 GB) in all (503 `feedback_full`). The body
+  before the body is read), the same per client address whatever the
+  account (`MAX_FEEDBACK_PER_ADDRESS_PER_DAY`,
+  `MAX_FEEDBACK_BYTES_PER_ADDRESS_PER_DAY`, issue #150: accounts are free;
+  `AddressBudget`, in memory like the rate limits, so the address is never
+  stored and a restart starts the day over), `MAX_FEEDBACK_ROWS` and
+  `MAX_FEEDBACK_STORED_BYTES` (2 GB) in all (503 `feedback_full`; a log
+  warning once each passes half, `HalfwayAlarm`). The body
   is read only up to 18 MB whether or not it has a Content-Length (413), and
   at most four at once. The admins list it (`GET
   /api/v1/admin/feedback`, newest first with the open count), fetch a
