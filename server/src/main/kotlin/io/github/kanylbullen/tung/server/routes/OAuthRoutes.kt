@@ -21,6 +21,7 @@ import io.github.kanylbullen.tung.server.oauth.OAuthException
 import io.github.kanylbullen.tung.server.oauth.OAuthScopes
 import io.github.kanylbullen.tung.server.oauth.OAuthStore
 import io.github.kanylbullen.tung.server.oauth.authorizationServerMetadata
+import io.github.kanylbullen.tung.server.oauth.oauthTooLarge
 import io.github.kanylbullen.tung.server.oauth.protectedResourceMetadata
 import io.github.kanylbullen.tung.server.oauth.publicBaseUrl
 import io.ktor.http.ContentType
@@ -115,7 +116,7 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
 
     // Anyone may call these: a body of at most PUBLIC_MAX_BODY_BYTES, which also bounds a registration request.
     rateLimit(AUTH_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES) {
-        post("/oauth/register") { register(call, store) }
+        bodyLimit(PUBLIC_MAX_BODY_BYTES, ::oauthTooLarge) { post("/oauth/register") { register(call, store) } }
 
         post("/oauth/authorize") {
             val form = call.receiveParameters()
@@ -213,7 +214,8 @@ fun Route.oauthRoutes(config: ServerConfig, accounts: Accounts, store: OAuthStor
     } }
 
     // Its own limit, per address: a client refreshes far more often than a person signs in.
-    rateLimit(OAUTH_TOKEN_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES) { post("/oauth/token") {
+    // Its 429 is RFC 6749-shaped too (`slow_down`, installErrorPages): MCP clients read `error`.
+    rateLimit(OAUTH_TOKEN_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES, ::oauthTooLarge) { post("/oauth/token") {
         if (call.request.contentType().withoutParameters() != ContentType.Application.FormUrlEncoded) {
             throw OAuthException("invalid_request", "Send the token request as application/x-www-form-urlencoded.")
         }

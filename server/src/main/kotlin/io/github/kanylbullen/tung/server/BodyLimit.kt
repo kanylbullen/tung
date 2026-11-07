@@ -24,8 +24,11 @@ const val PUBLIC_MAX_BODY_BYTES = 64L * 1024
 class BodyLimitConfig {
     var maxBytes: Long = DEFAULT_MAX_BODY_BYTES
 
-    /** The error a body over [maxBytes] answers; a route whose clients read the code may name its own. */
-    var tooLarge: (maxBytes: Long) -> ApiException = ::defaultTooLarge
+    /**
+     * The error a body over [maxBytes] answers; a route whose clients read the
+     * code may name its own (the OAuth endpoints throw an RFC 6749 error).
+     */
+    var tooLarge: (maxBytes: Long) -> RuntimeException = ::defaultTooLarge
 }
 
 private fun defaultTooLarge(maxBytes: Long) = payloadTooLarge(
@@ -58,7 +61,8 @@ private object ReceiveBody : Hook<suspend (ApplicationCall, ByteReadChannel) -> 
  * the cap and answers 413 too. Every reader buffers the whole body anyway
  * (the JSON parser, a form, `readRemaining`), so reading it here once costs
  * nothing more, and the error comes out of `receive()` as the [ApiException]
- * itself, before a converter could wrap it.
+ * itself (or the route's own [BodyLimitConfig.tooLarge]), before a converter
+ * could wrap it.
  *
  * Installed at the routing root with [DEFAULT_MAX_BODY_BYTES]; [bodyLimit]
  * sets another cap for a subtree. The nearest installation wins: Ktor runs a
@@ -88,7 +92,7 @@ private class BodyLimitSelector(private val maxBytes: Long) : RouteSelector() {
 /** The routes in [build] take a body of at most [maxBytes]; [tooLarge] is the 413 they answer past it. */
 fun Route.bodyLimit(
     maxBytes: Long,
-    tooLarge: (maxBytes: Long) -> ApiException = ::defaultTooLarge,
+    tooLarge: (maxBytes: Long) -> RuntimeException = ::defaultTooLarge,
     build: Route.() -> Unit,
 ): Route {
     val route = createChild(BodyLimitSelector(maxBytes))

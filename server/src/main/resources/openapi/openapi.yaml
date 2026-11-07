@@ -1473,8 +1473,16 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OAuthError" }
-        "429": { $ref: "#/components/responses/RateLimited" }
-        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "429":
+          description: "`slow_down`: the client address has made too many requests this minute."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
+        "413":
+          description: "`invalid_request`: the body is over 64 KiB."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
 
   /oauth/authorize:
     get:
@@ -1595,7 +1603,8 @@ paths:
         30 more days, and replaces the refresh token. A refresh token used
         twice revokes the grant; a code used twice revokes what it was
         exchanged for. Revoking the API token ends the client's access.
-        Rate-limited per client address, apart from the sign-in routes.
+        Rate-limited per client address (60 a minute), apart from the sign-in
+        routes.
       operationId: oauthToken
       security: []
       requestBody:
@@ -1629,8 +1638,16 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OAuthError" }
-        "413": { $ref: "#/components/responses/PayloadTooLarge" }
-        "429": { $ref: "#/components/responses/RateLimited" }
+        "413":
+          description: "`invalid_request`: the body is over 64 KiB."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
+        "429":
+          description: "`slow_down`: the client address has made too many requests this minute."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthError" }
 
   /mcp:
     post:

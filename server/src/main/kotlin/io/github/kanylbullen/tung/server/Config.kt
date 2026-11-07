@@ -127,7 +127,7 @@ data class ServerConfig(
 
         const val DEFAULT_PORT = 8080
         const val DEFAULT_AUTH_REQUESTS_PER_MINUTE = 10
-        const val DEFAULT_TOKEN_REQUESTS_PER_MINUTE = 30
+        const val DEFAULT_TOKEN_REQUESTS_PER_MINUTE = 60
         const val DEFAULT_PUSH_DEBOUNCE_MILLIS = 2_000L
 
         fun fromEnv(env: Map<String, String> = System.getenv()): ServerConfig {

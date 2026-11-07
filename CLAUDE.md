@@ -2180,7 +2180,10 @@ fallback, and only on a tap.
   feedback. A Content-Length over the cap is 413 before the handler runs;
   without one the body is read only to the cap. A new route needs nothing to
   be capped; one that takes more says so with `bodyLimit`. `POST
-  /oauth/token` has its own per-address rate limit, `OAUTH_TOKEN_RATE_LIMIT`.
+  /oauth/token` has its own per-address rate limit, `OAUTH_TOKEN_RATE_LIMIT`
+  (60 a minute: hosted MCP clients call from a few shared addresses). Its
+  429 and 413, and those of `/oauth/register`, are RFC 6749-shaped
+  (`slow_down`, `invalid_request`), since OAuth clients read `error`.
 - **Tokens:** `tung_` + 32 random bytes, SHA-256 in `api_tokens`; sessions
   are tokens named `session`. A `read` token gets 403 on anything but GET.
   `api_tokens.expires_at` (V5) is null except on OAuth tokens; `authenticate`
