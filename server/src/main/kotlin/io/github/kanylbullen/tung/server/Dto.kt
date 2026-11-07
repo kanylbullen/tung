@@ -50,6 +50,14 @@ data class UserDto(
 @Serializable
 data class DeleteAccountInput(val email: String)
 
+/** `POST /api/v1/auth/password`: the current password and the new one. */
+@Serializable
+data class PasswordChange(val currentPassword: String, val newPassword: String)
+
+/** `POST /api/v1/auth/logout/others`: how many tokens it revoked. */
+@Serializable
+data class SignedOutOthers(val revokedTokens: Int)
+
 /**
  * `POST /api/v1/auth/google` and `/auth/apple`: an ID token (a JWT) from Credential
  * Manager or Google Identity Services, or from Sign in with Apple.
