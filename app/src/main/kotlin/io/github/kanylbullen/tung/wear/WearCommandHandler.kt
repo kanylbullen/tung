@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.wear
 
+import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
 import io.github.kanylbullen.tung.core.MAX_REPS
 import io.github.kanylbullen.tung.core.MAX_WEIGHT_KG
@@ -76,6 +77,7 @@ class WearCommandHandler(
         when (command) {
             is WatchCommand.LogSet -> logSet(command.setId)
             is WatchCommand.AddSet -> addSet(command.workoutExerciseId)
+            is WatchCommand.AddExercise -> addExercise(command.exerciseId)
             is WatchCommand.SetWeight -> setWeight(command.setId, command.kg)
             is WatchCommand.SetReps -> setReps(command.setId, command.reps)
             is WatchCommand.SelectSet -> selectSet(command.setId)
@@ -149,6 +151,28 @@ class WearCommandHandler(
         if (exercisesOf(workout).none { it.workoutExercise.id == workoutExerciseId }) return false
         val added = workouts.addSet(workoutExerciseId) ?: return false
         selection.set(WearSelection(workout.id, added, workoutExerciseId))
+        return true
+    }
+
+    /**
+     * Add exercise: at the end of the workout in progress, with as many sets as
+     * it had last time ([WorkoutRepository.addExercise]), and its first set
+     * becomes the current one. Ignored for an exercise that is not there or is
+     * already in the workout.
+     */
+    private suspend fun addExercise(exerciseId: String): Boolean {
+        val workout = active() ?: return false
+        if (exercisesOf(workout).any { it.exercise.id == exerciseId }) return false
+        // An exercise that does not exist breaks a foreign key (rolled back), a refused rule is an IllegalStateException;
+        // a cancellation must pass, so runCatching is not used.
+        val added = try {
+            workouts.addExercise(workout.id, exerciseId)
+        } catch (e: IllegalStateException) {
+            return false
+        } catch (e: SQLiteConstraintException) {
+            return false
+        }
+        selection.set(WearSelection(workout.id, null, added))
         return true
     }
 

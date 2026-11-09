@@ -120,6 +120,35 @@ class LocalWatchCommandsTest {
     }
 
     @Test
+    fun anExerciseFromHistoryCanBeAddedToAnotherWorkout() {
+        val routineId = benchRoutine()
+        send { id, at -> WatchCommand.StartRoutine(routineId, id, at) }
+        assertTrue("nothing has been trained yet", state().addable.isEmpty())
+        state().exercises.single().sets.forEach { set ->
+            send { id, at -> WatchCommand.SetWeight(set.setId, 60.0, id, at) }
+            send { id, at -> WatchCommand.LogSet(set.setId, id, at) }
+        }
+        send { id, at -> WatchCommand.FinishWorkout(id, at) }
+
+        send { id, at -> WatchCommand.StartWorkout(id, at) }
+        val empty = state()
+        val bench = empty.addable.single()
+        assertEquals("Bench press", bench.name)
+
+        send { id, at -> WatchCommand.AddExercise(bench.exerciseId, id, at) }
+        val withBench = state()
+        val page = withBench.exercises.single()
+        assertEquals("Bench press", page.name)
+        assertEquals("as many sets as last time", 2, page.sets.size)
+        assertEquals(page.sets.first().setId, withBench.currentSetId)
+        assertTrue("it is in the workout now", withBench.addable.isEmpty())
+
+        // Sent twice, it is still one exercise.
+        send { id, at -> WatchCommand.AddExercise(bench.exerciseId, id, at) }
+        assertEquals(1, state().exercises.size)
+    }
+
+    @Test
     fun aSetWithoutRepsIsNotLogged() {
         send { id, at -> WatchCommand.StartWorkout(id, at) }
         val workoutId = checkNotNull(state().workoutId)

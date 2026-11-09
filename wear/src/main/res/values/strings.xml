@@ -23,6 +23,8 @@
     <string name="set_number">Set %1$d</string>
     <string name="edit_weight">Change weight, %1$s kilos</string>
     <string name="edit_reps">Change reps, %1$s</string>
+    <string name="add_exercise">Add exercise</string>
+    <string name="add_exercise_none">No other exercises yet. Add one on the phone.</string>
     <string name="finish_workout">Finish workout</string>
     <string name="finish_title">Finish workout?</string>
     <string name="finish_body">Sets that are not ticked and exercises without sets will be removed.</string>

@@ -62,6 +62,14 @@ class WatchProtocolTest {
     }
 
     @Test
+    fun addableExercisesAreAdditive() {
+        assertEquals(emptyList(), WatchProtocol.decodeState("""{"workoutId":"w","updatedAt":3}""").addable)
+        val offered = WatchWorkoutState(workoutId = "w", updatedAt = 3L, addable = listOf(WatchChoice("e1", "Squat")))
+        assertEquals(offered, WatchProtocol.decodeState(WatchProtocol.encodeState(offered)))
+        assertTrue(WatchProtocol.encodeCommand(WatchCommand.AddExercise("e1", "c", 1L)).contains("\"type\":\"add_exercise\""))
+    }
+
+    @Test
     fun everyCommandRoundTrips() {
         val commands: List<WatchCommand> = listOf(
             WatchCommand.LogSet("s1", "c1", 10L),
@@ -74,9 +82,10 @@ class WatchProtocolTest {
             WatchCommand.SkipRest("c8", 17L),
             WatchCommand.AddRest30("c9", 18L),
             WatchCommand.AddSet("we1", "c10", 19L),
+            WatchCommand.AddExercise("e1", "c11", 20L),
         )
         // One of each subtype, so a new command cannot be added without a round trip here.
-        assertEquals(10, commands.map { it::class }.toSet().size)
+        assertEquals(11, commands.map { it::class }.toSet().size)
         commands.forEach { command ->
             assertEquals(command, WatchProtocol.decodeCommand(WatchProtocol.encodeCommand(command)))
         }

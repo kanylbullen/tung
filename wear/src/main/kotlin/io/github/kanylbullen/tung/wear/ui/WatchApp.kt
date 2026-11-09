@@ -23,6 +23,7 @@ import kotlin.math.roundToInt
 private const val MAIN = "main"
 private const val ADJUST = "adjust/{field}/{setId}"
 private const val SETTINGS = "settings"
+private const val ADD_EXERCISE = "add_exercise"
 private const val SERVERS = "servers"
 private const val LINK = "link"
 
@@ -59,11 +60,26 @@ fun WatchApp(viewModel: WatchViewModel, accountViewModel: AccountViewModel) {
                     onSelectSet = viewModel::selectSet,
                     onAdjust = { field, setId -> navController.navigate(adjustRoute(field, setId)) },
                     onFinish = viewModel::finishWorkout,
+                    onAddExercise = if (state.addable.isNotEmpty()) ({ navController.navigate(ADD_EXERCISE) }) else null,
                     onSkipRest = viewModel::skipRest,
                     onAddRest = viewModel::addRest,
                     claimRestBuzz = viewModel::claimRestBuzz,
                 )
             }
+        }
+        composable(ADD_EXERCISE) {
+            if (ui.state?.isActive != true) {
+                // The workout ended (finished here or synced from the phone) while the list was open.
+                LaunchedEffect(Unit) { navController.popBackStack() }
+                return@composable
+            }
+            AddExerciseScreen(
+                choices = ui.state?.addable.orEmpty(),
+                onPick = { exerciseId ->
+                    viewModel.addExercise(exerciseId)
+                    navController.popBackStack(MAIN, inclusive = false)
+                },
+            )
         }
         composable(SETTINGS) {
             SettingsScreen(

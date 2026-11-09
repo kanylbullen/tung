@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import io.github.kanylbullen.tung.core.wear.WatchProtocol
 import io.github.kanylbullen.tung.core.wear.WatchWorkoutState
+import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.timer.RestTimerController
@@ -51,8 +52,9 @@ class WearStatePublisher(
     serverUrl: Flow<String?> = flowOf(null),
     clock: () -> Long = System::currentTimeMillis,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    exercises: ExerciseRepository? = null,
 ) {
-    private val source = WatchStateSource(context, workouts, routines, restTimer, restChanges, WearSelectionHolder(), serverUrl, clock)
+    private val source = WatchStateSource(context, workouts, routines, restTimer, restChanges, WearSelectionHolder(), serverUrl, clock, exercises)
 
     /** The watch's current-set selection, set by [WearCommandHandler]. */
     val selection: WearSelectionHolder get() = source.selection

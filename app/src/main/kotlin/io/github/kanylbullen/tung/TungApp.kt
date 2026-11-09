@@ -37,7 +37,7 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
     /** Mirrors the active workout to a watch in companion mode (`wear/`); started in [onCreate] and by `WearSyncService`. */
     val wearPublisher: WearStatePublisher by lazy {
         with(container) {
-            WearStatePublisher(this@TungApp, workoutRepository, routineRepository, restTimer, settings.data, DataLayerStateWriter(this@TungApp), syncSettings.serverUrl)
+            WearStatePublisher(this@TungApp, workoutRepository, routineRepository, restTimer, settings.data, DataLayerStateWriter(this@TungApp), syncSettings.serverUrl, exercises = exerciseRepository)
         }
     }
     val wearCommands: WearCommandHandler by lazy {
