@@ -63,7 +63,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 as on the phone: the unshrunk watch bundle was 13 MB, over what the Play Console's
+            // browser upload takes (10 MB), and it carries the whole shared data layer.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release")
         }
     }
