@@ -11,12 +11,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.Configuration
 import io.github.kanylbullen.tung.core.StartedBy
-import io.github.kanylbullen.tung.core.sync.SyncResult
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungHost
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
+import io.github.kanylbullen.tung.sync.runForegroundSync
 import kotlinx.coroutines.launch
 
 /**
@@ -67,26 +64,11 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
         process.lifecycleScope.launch {
             process.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 container.syncAccount.requestSync()
-                var wait = FOREGROUND_SYNC_MILLIS
-                var result: SyncResult? = null
-                while (true) {
-                    val inProgress = runCatching { container.workoutRepository.observeActiveWorkout().first() != null }.getOrDefault(true)
-                    wait = nextForegroundSyncDelay(result, inProgress, wait)
-                    delay(wait)
-                    result = if (container.syncAccount.isSignedIn()) foregroundSync() else null
+                runForegroundSync(container.syncAccount, container.workoutRepository, syncWhenIdle = true) { e ->
+                    Log.w(TAG, "Foreground sync failed", e)
                 }
             }
         }
-    }
-
-    /** One sync from the loop above. An error the sync does not handle itself (the database) is logged, never thrown at the app. */
-    private suspend fun foregroundSync(): SyncResult? = try {
-        container.syncAccount.syncNow()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        Log.w(TAG, "Foreground sync failed", e)
-        null
     }
 
     /** WorkManager is initialised on demand (the default initializer is removed in the manifest). */

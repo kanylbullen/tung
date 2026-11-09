@@ -4,21 +4,27 @@ import android.app.Activity
 import android.app.Application
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.Configuration
 import io.github.kanylbullen.tung.auth.AndroidGoogleSignIn
 import io.github.kanylbullen.tung.auth.GoogleSignIn
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.health.AndroidHealthConnectGateway
 import io.github.kanylbullen.tung.data.TungHost
+import io.github.kanylbullen.tung.sync.runForegroundSync
 import io.github.kanylbullen.tung.voice.AndroidSpeechInput
 import io.github.kanylbullen.tung.voice.SpeechInput
 import io.github.kanylbullen.tung.wear.DataLayerStateWriter
 import io.github.kanylbullen.tung.wear.WearCommandHandler
 import io.github.kanylbullen.tung.wear.WearStatePublisher
 import io.github.kanylbullen.tung.wear.isWearableApiAvailable
+import kotlinx.coroutines.launch
 
 /**
  * The phone app. Its data layer is a [TungContainer] (module `data/`, shared
@@ -78,6 +84,17 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) = container.syncAccount.requestSync()
         })
+        // A watch that runs on its own syncs through the server, and a phone without push never hears of it:
+        // while the app is on screen, ask now and then: every 30 s in a workout, every 2 min otherwise, so a
+        // workout the watch starts shows up too (issue #199).
+        val process = ProcessLifecycleOwner.get()
+        process.lifecycleScope.launch {
+            process.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                runForegroundSync(container.syncAccount, container.workoutRepository, syncWhenIdle = true) { e ->
+                    Log.w("TungApp", "Foreground sync failed", e)
+                }
+            }
+        }
     }
 
     /**
