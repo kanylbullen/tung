@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +27,7 @@ private const val MAIN = "main"
 private const val ADJUST = "adjust/{field}/{setId}"
 private const val SETTINGS = "settings"
 private const val ADD_EXERCISE = "add_exercise"
+private const val EXERCISES = "exercises"
 private const val SERVERS = "servers"
 private const val LINK = "link"
 
@@ -35,6 +39,8 @@ fun WatchApp(viewModel: WatchViewModel, accountViewModel: AccountViewModel) {
     val account by accountViewModel.ui.collectAsStateWithLifecycle()
     val link by accountViewModel.link.collectAsStateWithLifecycle()
     val navController = rememberSwipeDismissableNavController()
+    // The page the exercise list asked for; the workout screen takes it and clears it.
+    var jumpToPage by rememberSaveable { mutableStateOf<Int?>(null) }
 
     SwipeDismissableNavHost(navController = navController, startDestination = MAIN) {
         composable(MAIN) {
@@ -61,11 +67,31 @@ fun WatchApp(viewModel: WatchViewModel, accountViewModel: AccountViewModel) {
                     onAdjust = { field, setId -> navController.navigate(adjustRoute(field, setId)) },
                     onFinish = viewModel::finishWorkout,
                     onAddExercise = if (state.addable.isNotEmpty()) ({ navController.navigate(ADD_EXERCISE) }) else null,
+                    onOpenExercises = if (state.exercises.isNotEmpty()) ({ navController.navigate(EXERCISES) }) else null,
+                    jumpToPage = jumpToPage,
+                    onJumpHandled = { jumpToPage = null },
                     onSkipRest = viewModel::skipRest,
                     onAddRest = viewModel::addRest,
                     claimRestBuzz = viewModel::claimRestBuzz,
                 )
             }
+        }
+        composable(EXERCISES) {
+            val state = ui.state
+            if (state == null || !state.isActive) {
+                LaunchedEffect(Unit) { navController.popBackStack() }
+                return@composable
+            }
+            ExerciseListScreen(
+                state = state,
+                onPick = { index ->
+                    // The pager turns to it; with a set still open it also becomes the current one.
+                    state.exercises.getOrNull(index)?.sets?.firstOrNull { !it.completed }?.let { viewModel.selectSet(it.setId) }
+                    jumpToPage = index
+                    navController.popBackStack(MAIN, inclusive = false)
+                },
+                onAddExercise = if (state.addable.isNotEmpty()) ({ navController.navigate(ADD_EXERCISE) }) else null,
+            )
         }
         composable(ADD_EXERCISE) {
             if (ui.state?.isActive != true) {

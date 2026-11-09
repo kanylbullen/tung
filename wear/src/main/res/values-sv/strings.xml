@@ -23,6 +23,8 @@
     <string name="set_number">Set %1$d</string>
     <string name="edit_weight">Ändra vikt, %1$s kilo</string>
     <string name="edit_reps">Ändra reps, %1$s</string>
+    <string name="exercises_title">Övningar</string>
+    <string name="sets_done">%1$d/%2$d set</string>
     <string name="add_exercise">Lägg till övning</string>
     <string name="add_exercise_none">Inga andra övningar än. Lägg till en på telefonen.</string>
     <string name="finish_workout">Avsluta pass</string>

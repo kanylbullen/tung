@@ -95,6 +95,9 @@ fun WorkoutScreen(
     onAdjust: (AdjustField, String) -> Unit,
     onFinish: () -> Unit,
     onAddExercise: (() -> Unit)?,
+    onOpenExercises: (() -> Unit)? = null,
+    jumpToPage: Int? = null,
+    onJumpHandled: () -> Unit = {},
     onSkipRest: () -> Unit,
     onAddRest: () -> Unit,
     claimRestBuzz: (endsAtMillis: Long) -> Boolean,
@@ -123,8 +126,21 @@ fun WorkoutScreen(
     }
 
     val pageCount = state.exercises.size.coerceAtLeast(1) + 1
-    val pagerState = rememberPagerState(initialPage = state.focusExerciseIndex() ?: 0) { pageCount }
+    // A jump from the exercise list wins over the current set on the first frame.
+    val pagerState = rememberPagerState(initialPage = (jumpToPage ?: state.focusExerciseIndex() ?: 0).coerceIn(0, pageCount - 1)) { pageCount }
+    LaunchedEffect(jumpToPage) {
+        if (jumpToPage == null) return@LaunchedEffect
+        val page = jumpToPage.coerceIn(0, pageCount - 1)
+        if (page != pagerState.currentPage) pagerState.animateScrollToPage(page)
+        onJumpHandled()
+    }
+    // The first run only restates the initial page; it must not undo a jump from the exercise list.
+    var followFocus by remember { mutableStateOf(false) }
     LaunchedEffect(state.currentSetId, state.addSetWorkoutExerciseId) {
+        if (!followFocus) {
+            followFocus = true
+            return@LaunchedEffect
+        }
         val index = state.focusExerciseIndex() ?: return@LaunchedEffect
         if (index != pagerState.currentPage) pagerState.animateScrollToPage(index)
     }
@@ -144,6 +160,7 @@ fun WorkoutScreen(
                             onAddSet = onAddSet,
                             onSelectSet = onSelectSet,
                             onAdjust = onAdjust,
+                            onOpenExercises = onOpenExercises,
                         )
                         page == pageCount - 1 -> FinishPage(phoneUnreachable, onAddExercise, onFinish)
                         else -> EmptyWorkoutPage(onAddExercise)
@@ -176,6 +193,7 @@ private fun ExercisePage(
     onAddSet: (String) -> Unit,
     onSelectSet: (String) -> Unit,
     onAdjust: (AdjustField, String) -> Unit,
+    onOpenExercises: (() -> Unit)?,
 ) {
     val focus = exercise.focusSet(currentSetId)
     val diameter = screenDiameter()
@@ -200,11 +218,14 @@ private fun ExercisePage(
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    // A tap on the name makes this exercise the current one, as the header does on the phone.
+                    // A tap on the name opens the list of the workout's exercises to jump between them; without one
+                    // (an older caller) it makes this exercise the current one, as the header does on the phone.
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = textInset)
-                        .clickable(enabled = focus != null && focus.setId != currentSetId) { focus?.let { onSelectSet(it.setId) } },
+                        .clickable(enabled = onOpenExercises != null || (focus != null && focus.setId != currentSetId)) {
+                            if (onOpenExercises != null) onOpenExercises() else focus?.let { onSelectSet(it.setId) }
+                        },
                 )
             }
             if (focus == null) {
