@@ -1481,9 +1481,14 @@ restarts the process for the next command. The phone's workout screen does
 not see a companion watch's selection or rest. The phone's
 `WearCommandHandler` still writes through the repositories' wrappers rather
 than a `CommandExecutor` of its own (its rules are the same `CommandRules`;
-an executor built with `StartedBy.WATCH` would replace it, a follow-up). A standalone
-watch cannot add exercises: start a routine, or add them on the phone and
-sync. The watch asks for the notification permission once, the first time a
+an executor built with `StartedBy.WATCH` would replace it, a follow-up). **Add exercise** (both modes): the finish page has "Add exercise" when
+`WatchWorkoutState.addable` is not empty (`WatchStateSource`: up to eight exercises
+from the latest 30 finished workouts, most recent first, none already in the
+workout, names in the device's language; additive, an older phone leaves it
+out). A tap on one sends `WatchCommand.AddExercise(exerciseId)` (`add_exercise`),
+which is `AddExercise` on the phone and the watch, appended with last time's
+set count, its first set current. Exercises never trained are not offered:
+add those on the phone and sync. The watch asks for the notification permission once, the first time a
 workout is on screen (Wear OS 4+), for its Ongoing Activity and "Rest over".
 
 **Round screens** (issue #84). Every list is a `RoundList`

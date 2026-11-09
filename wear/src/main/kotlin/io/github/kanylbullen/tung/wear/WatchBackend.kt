@@ -33,6 +33,7 @@ class LocalWatchBackend(container: TungContainer, context: Context) : WatchBacke
         routines = container.routineRepository,
         restTimer = container.restTimer,
         restChanges = container.settings.data,
+        exercises = container.exerciseRepository,
     )
     private val commands = LocalWatchCommands(container.commands, container.workoutRepository, container.restTimer, source.selection)
 

@@ -6,6 +6,7 @@ import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandHandler
 import io.github.kanylbullen.tung.core.command.CommandIds
 import io.github.kanylbullen.tung.core.command.CommandResult
+import io.github.kanylbullen.tung.core.command.ExerciseRef
 import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
@@ -47,6 +48,7 @@ class LocalWatchCommands(
         when (command) {
             is WatchCommand.LogSet -> logSet(command.setId)
             is WatchCommand.AddSet -> addSet(command.workoutExerciseId)
+            is WatchCommand.AddExercise -> addExercise(command.exerciseId)
             is WatchCommand.SetWeight -> edit(command.setId) { Command.SetWeight(command.setId, command.kg) }
             is WatchCommand.SetReps -> edit(command.setId) { Command.SetReps(command.setId, command.reps) }
             is WatchCommand.SelectSet -> selectSet(command.setId)
@@ -111,6 +113,19 @@ class LocalWatchCommands(
         if (exercisesOf(workout).none { it.workoutExercise.id == workoutExerciseId }) return false
         val result = commands.execute(Command.AddSet(workoutExerciseId)) as? CommandResult.Done ?: return false
         selection.set(WearSelection(workout.id, result.id(CommandIds.SET_ID), workoutExerciseId))
+        return true
+    }
+
+    /**
+     * Add exercise: `Command.AddExercise` at the end of the workout (as many
+     * sets as last time), and its first set becomes current. Ignored for an
+     * exercise already in the workout.
+     */
+    private suspend fun addExercise(exerciseId: String): Boolean {
+        val workout = active() ?: return false
+        if (exercisesOf(workout).any { it.exercise.id == exerciseId }) return false
+        val result = commands.execute(Command.AddExercise(workout.id, ExerciseRef.ById(exerciseId))) as? CommandResult.Done ?: return false
+        selection.set(WearSelection(workout.id, null, result.id(CommandIds.WORKOUT_EXERCISE_ID)))
         return true
     }
 

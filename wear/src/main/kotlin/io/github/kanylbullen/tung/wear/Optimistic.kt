@@ -28,7 +28,7 @@ fun WatchWorkoutState.applying(command: WatchCommand, nowMillis: Long): WatchWor
         )
     }
     // The new set's id is the phone's; wait for its state, which makes that set current.
-    is WatchCommand.AddSet -> this
+    is WatchCommand.AddSet, is WatchCommand.AddExercise -> this
     is WatchCommand.SetWeight -> updateSet(command.setId) { it.copy(weightKg = command.kg) }
     is WatchCommand.SetReps -> updateSet(command.setId) { it.copy(reps = command.reps) }
     is WatchCommand.SelectSet -> if (set(command.setId)?.completed == false) copy(currentSetId = command.setId) else this

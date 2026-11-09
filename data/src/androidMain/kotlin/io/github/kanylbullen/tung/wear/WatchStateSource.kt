@@ -7,11 +7,13 @@ import io.github.kanylbullen.tung.core.SetIndex
 import io.github.kanylbullen.tung.core.StickyAction
 import io.github.kanylbullen.tung.core.currentSet
 import io.github.kanylbullen.tung.core.stickyAction
+import io.github.kanylbullen.tung.core.wear.WatchChoice
 import io.github.kanylbullen.tung.core.wear.WatchExercise
 import io.github.kanylbullen.tung.core.wear.WatchRoutine
 import io.github.kanylbullen.tung.core.wear.WatchSet
 import io.github.kanylbullen.tung.core.wear.WatchWorkoutState
 import io.github.kanylbullen.tung.core.wear.toWatch
+import io.github.kanylbullen.tung.data.ExerciseRepository
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.RoutineSummaryRow
 import io.github.kanylbullen.tung.data.Workout
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.ConcurrentHashMap
@@ -63,6 +66,7 @@ class WearSelectionHolder {
  * @param restChanges emits whenever the stored rest timer may have changed
  *   (the settings DataStore's data); the timer itself is read through [restTimer].
  * @param serverUrl the server this device is signed in to, carried in the state.
+ * @param exercises where [WatchWorkoutState.addable] comes from; null offers none.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WatchStateSource(
@@ -74,11 +78,15 @@ class WatchStateSource(
     val selection: WearSelectionHolder = WearSelectionHolder(),
     private val serverUrl: Flow<String?> = flowOf(null),
     private val clock: () -> Long = System::currentTimeMillis,
+    private val exercises: ExerciseRepository? = null,
 ) {
     private val appContext = context.applicationContext ?: context
 
     /** Last session's sets per (workout, exercise). They cannot change while that workout is in progress. */
     private val lastTimeCache = ConcurrentHashMap<Pair<String, String>, List<LoggedSet>>()
+
+    /** Exercises worth adding, most recently trained first, per workout: history cannot change while it is in progress. */
+    private val addableCache = ConcurrentHashMap<String, List<WatchChoice>>()
 
     fun states(): Flow<WatchWorkoutState> =
         combine(activeParts(), routines.observeRoutines(), selection.state, serverUrl) { parts, routineRows, sel, url ->
@@ -135,7 +143,19 @@ class WatchStateSource(
             routines = watchRoutines,
             updatedAt = now,
             startedBy = parts.workout.startedBy,
+            addable = addable(workoutId, parts.exercises.map { it.exercise.id }.toSet()),
         )
+    }
+
+    /** Up to [ADDABLE_LIMIT] exercises from recent workouts that this one does not have yet. */
+    private suspend fun addable(workoutId: String, inWorkout: Set<String>): List<WatchChoice> {
+        val repository = exercises ?: return emptyList()
+        val candidates = addableCache.getOrPut(workoutId) {
+            val byId = repository.observeExercises().first().associateBy { it.id }
+            workouts.recentHistory(ADDABLE_HISTORY).flatMap { it.exerciseIdsInOrder }.distinct()
+                .mapNotNull { id -> byId[id]?.let { WatchChoice(id, it.displayName(appContext)) } }
+        }
+        return candidates.filter { it.exerciseId !in inWorkout }.take(ADDABLE_LIMIT)
     }
 
     private suspend fun lastTime(workoutId: String, exerciseId: String): List<LoggedSet> {
@@ -152,6 +172,9 @@ class WatchStateSource(
     )
 
     companion object {
+        private const val ADDABLE_HISTORY = 30
+        private const val ADDABLE_LIMIT = 8
+
         /**
          * The current set by the phone's rule ([currentSet]), with the watch's
          * selection and touched exercise in place of the screen's.

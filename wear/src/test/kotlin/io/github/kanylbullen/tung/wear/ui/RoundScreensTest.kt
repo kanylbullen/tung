@@ -262,6 +262,7 @@ abstract class RoundScreensTest {
         onSelectSet = {},
         onAdjust = { _, _ -> },
         onFinish = {},
+        onAddExercise = {},
         onSkipRest = {},
         onAddRest = {},
         claimRestBuzz = { false },

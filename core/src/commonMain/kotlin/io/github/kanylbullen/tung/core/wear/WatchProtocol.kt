@@ -77,6 +77,12 @@ data class WatchWorkoutState(
      * an older watch ignores it, an older phone leaves it out.
      */
     val addSetWorkoutExerciseId: String? = null,
+    /**
+     * Exercises the watch may add to the workout, most recently trained
+     * first, none already in it. Additive: an older watch ignores it, an
+     * older phone leaves it out (the watch then offers no "Add exercise").
+     */
+    val addable: List<WatchChoice> = emptyList(),
 ) {
     val isActive: Boolean get() = workoutId != null
 
@@ -100,6 +106,10 @@ data class WatchExercise(
      */
     val targetSets: Int? = null,
 )
+
+/** An exercise the watch can add: its row id and its name in the phone's language. */
+@Serializable
+data class WatchChoice(val exerciseId: String, val name: String)
 
 @Serializable
 data class WatchSet(
@@ -170,6 +180,20 @@ sealed interface WatchCommand {
     @SerialName("add_set")
     data class AddSet(
         val workoutExerciseId: String,
+        override val commandId: String,
+        override val sentAt: Long,
+    ) : WatchCommand
+
+    /**
+     * "Add exercise": [exerciseId] (one of [WatchWorkoutState.addable]) at the
+     * end of the workout in progress, with as many sets as it had last time,
+     * and its first set becomes the current one. An older phone does not know
+     * the type and drops the message.
+     */
+    @Serializable
+    @SerialName("add_exercise")
+    data class AddExercise(
+        val exerciseId: String,
         override val commandId: String,
         override val sentAt: Long,
     ) : WatchCommand

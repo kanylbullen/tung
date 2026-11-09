@@ -104,6 +104,26 @@ class WearCommandHandlerTest {
     }
 
     @Test
+    fun addExerciseAppendsItMakesItCurrentAndRefusesADuplicate() = runBlocking {
+        val (workoutId, _) = benchWorkout()
+        val squat = catalogExerciseId("back_squat")
+
+        assertTrue(handler.handle(json { id, at -> WatchCommand.AddExercise(squat, id, at) }))
+        assertEquals(1, changes)
+
+        val exercises = workouts.observeExercises(workoutId).first().sortedBy { it.workoutExercise.position }
+        assertEquals(listOf(catalogExerciseId("bench_press"), squat), exercises.map { it.exercise.id })
+        // The new exercise's first set is the current one, so the watch's pager turns to it.
+        val state = publisher.snapshot()
+        assertEquals(exercises[1].sortedSets.first().id, state.currentSetId)
+
+        // Already in the workout, and an exercise that does not exist: nothing changes.
+        assertFalse(handler.handle(json { id, at -> WatchCommand.AddExercise(squat, id, at) }))
+        assertFalse(handler.handle(json { id, at -> WatchCommand.AddExercise("nope", id, at) }))
+        assertEquals(1, changes)
+    }
+
+    @Test
     fun logSetOnlyTicksTheSetAndStartsTheRest() = runBlocking {
         val (workoutId, first) = benchWorkout()
 
