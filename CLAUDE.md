@@ -1263,10 +1263,12 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   (issue #199; `ChangeSyncTest`). It goes through
   `SyncScheduler.enqueueSoon`, which adds nothing while a sync is already
   waiting to start (`WorkManagerSyncSchedulerTest`), so a phone offline for
-  a whole workout does not queue a sync per set. A standalone watch, which
-  gets no push, also syncs while it is on screen: every 30 s in a workout,
-  every 2 min otherwise, backing off to 5 min without a network
-  (`nextForegroundSyncDelay`, `ForegroundSyncTest`). Exponential backoff from 30 s; network and 5xx
+  a whole workout does not queue a sync per set. A device that may get no
+  push, a standalone watch and the phone alike, also syncs while its app is
+  on screen: every 30 s in a workout, every 2 min otherwise, backing off to
+  5 min without a network (`runForegroundSync` in data, started by `TungApp`
+  and `TungWearApp`; `nextForegroundSyncDelay`, `ForegroundSyncTest`). A
+  watch's sets reach the phone this way when the watch runs on its own. Exponential backoff from 30 s; network and 5xx
   retry, 401 and other 4xx do not. Sign-out cancels both. "Sync now" in
   Settings calls `syncOnce` directly, so the screen sees the result.
   WorkManager is initialised on demand (`TungApp` and `TungWearApp` are

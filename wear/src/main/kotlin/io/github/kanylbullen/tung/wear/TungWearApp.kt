@@ -7,13 +7,13 @@ import android.os.Bundle
 import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
-import io.github.kanylbullen.tung.sync.runForegroundSync
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.Configuration
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungHost
+import io.github.kanylbullen.tung.sync.runForegroundSync
 import kotlinx.coroutines.launch
 
 /**
