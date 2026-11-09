@@ -1481,15 +1481,20 @@ restarts the process for the next command. The phone's workout screen does
 not see a companion watch's selection or rest. The phone's
 `WearCommandHandler` still writes through the repositories' wrappers rather
 than a `CommandExecutor` of its own (its rules are the same `CommandRules`;
-an executor built with `StartedBy.WATCH` would replace it, a follow-up). **Add exercise** (both modes): the finish page has "Add exercise" when
-`WatchWorkoutState.addable` is not empty (`WatchStateSource`: up to eight exercises
-from the latest 30 finished workouts, most recent first, none already in the
-workout, names in the device's language; additive, an older phone leaves it
-out). A tap on one sends `WatchCommand.AddExercise(exerciseId)` (`add_exercise`),
-which is `AddExercise` on the phone and the watch, appended with last time's
-set count, its first set current. Exercises never trained are not offered:
-add those on the phone and sync. The watch asks for the notification permission once, the first time a
+an executor built with `StartedBy.WATCH` would replace it, a follow-up). The watch asks for the notification permission once, the first time a
 workout is on screen (Wear OS 4+), for its Ongoing Activity and "Rest over".
+
+**Add exercise** (both modes). The finish page, and an empty workout's only
+exercise page, have "Add exercise" when `WatchWorkoutState.addable` is not
+empty (`WatchStateSource`: up to eight exercises from the latest 30 finished
+workouts, most recent first, none already in the workout, names in the
+device's language; the list is kept for the workout in progress and an empty
+one is not kept, so a first sync that brings history is picked up). Additive:
+an older phone leaves the list out and gets no button. A tap sends
+`WatchCommand.AddExercise(exerciseId)` (`add_exercise`), which is `AddExercise`
+on the phone and the watch, appended with last time's set count, its first set
+current. Exercises never trained are not offered: add those on the phone and
+sync.
 
 **Round screens** (issue #84). Every list is a `RoundList`
 (`ui/RoundList.kt`: `TimeText`, vignette, position indicator, and the

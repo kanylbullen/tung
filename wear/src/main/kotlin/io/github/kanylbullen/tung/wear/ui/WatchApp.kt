@@ -68,6 +68,11 @@ fun WatchApp(viewModel: WatchViewModel, accountViewModel: AccountViewModel) {
             }
         }
         composable(ADD_EXERCISE) {
+            if (ui.state?.isActive != true) {
+                // The workout ended (finished here or synced from the phone) while the list was open.
+                LaunchedEffect(Unit) { navController.popBackStack() }
+                return@composable
+            }
             AddExerciseScreen(
                 choices = ui.state?.addable.orEmpty(),
                 onPick = { exerciseId ->

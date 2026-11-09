@@ -66,7 +66,7 @@ class WearSelectionHolder {
  * @param restChanges emits whenever the stored rest timer may have changed
  *   (the settings DataStore's data); the timer itself is read through [restTimer].
  * @param serverUrl the server this device is signed in to, carried in the state.
- * @param exercises where [WatchWorkoutState.addable] comes from; null offers none.
+ * @param exerciseRepository where [WatchWorkoutState.addable] comes from; null offers none.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WatchStateSource(
@@ -78,15 +78,21 @@ class WatchStateSource(
     val selection: WearSelectionHolder = WearSelectionHolder(),
     private val serverUrl: Flow<String?> = flowOf(null),
     private val clock: () -> Long = System::currentTimeMillis,
-    private val exercises: ExerciseRepository? = null,
+    private val exerciseRepository: ExerciseRepository? = null,
 ) {
     private val appContext = context.applicationContext ?: context
 
     /** Last session's sets per (workout, exercise). They cannot change while that workout is in progress. */
     private val lastTimeCache = ConcurrentHashMap<Pair<String, String>, List<LoggedSet>>()
 
-    /** Exercises worth adding, most recently trained first, per workout: history cannot change while it is in progress. */
-    private val addableCache = ConcurrentHashMap<String, List<WatchChoice>>()
+    /**
+     * Exercises worth adding, most recently trained first, for the workout in
+     * progress only (one entry, so nothing piles up). An empty answer is not
+     * kept: a freshly linked watch gets its history from the first sync, after
+     * the workout may have started.
+     */
+    @Volatile
+    private var addableCache: Pair<String, List<WatchChoice>>? = null
 
     fun states(): Flow<WatchWorkoutState> =
         combine(activeParts(), routines.observeRoutines(), selection.state, serverUrl) { parts, routineRows, sel, url ->
@@ -149,11 +155,12 @@ class WatchStateSource(
 
     /** Up to [ADDABLE_LIMIT] exercises from recent workouts that this one does not have yet. */
     private suspend fun addable(workoutId: String, inWorkout: Set<String>): List<WatchChoice> {
-        val repository = exercises ?: return emptyList()
-        val candidates = addableCache.getOrPut(workoutId) {
+        val repository = exerciseRepository ?: return emptyList()
+        val candidates = addableCache?.takeIf { it.first == workoutId }?.second ?: run {
             val byId = repository.observeExercises().first().associateBy { it.id }
             workouts.recentHistory(ADDABLE_HISTORY).flatMap { it.exerciseIdsInOrder }.distinct()
                 .mapNotNull { id -> byId[id]?.let { WatchChoice(id, it.displayName(appContext)) } }
+                .also { found -> addableCache = if (found.isEmpty()) null else workoutId to found }
         }
         return candidates.filter { it.exerciseId !in inWorkout }.take(ADDABLE_LIMIT)
     }

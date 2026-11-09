@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.wear
 
+import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
 import io.github.kanylbullen.tung.core.MAX_REPS
 import io.github.kanylbullen.tung.core.MAX_WEIGHT_KG
@@ -162,7 +163,15 @@ class WearCommandHandler(
     private suspend fun addExercise(exerciseId: String): Boolean {
         val workout = active() ?: return false
         if (exercisesOf(workout).any { it.exercise.id == exerciseId }) return false
-        val added = runCatching { workouts.addExercise(workout.id, exerciseId) }.getOrNull() ?: return false
+        // An exercise that does not exist breaks a foreign key (rolled back), a refused rule is an IllegalStateException;
+        // a cancellation must pass, so runCatching is not used.
+        val added = try {
+            workouts.addExercise(workout.id, exerciseId)
+        } catch (e: IllegalStateException) {
+            return false
+        } catch (e: SQLiteConstraintException) {
+            return false
+        }
         selection.set(WearSelection(workout.id, null, added))
         return true
     }

@@ -146,7 +146,7 @@ fun WorkoutScreen(
                             onAdjust = onAdjust,
                         )
                         page == pageCount - 1 -> FinishPage(phoneUnreachable, onAddExercise, onFinish)
-                        else -> CenteredNote(stringResource(R.string.workout_empty))
+                        else -> EmptyWorkoutPage(onAddExercise)
                     }
                 }
             }
@@ -396,6 +396,23 @@ private fun RestScreen(rest: RestTimer, now: Long, onSkip: () -> Unit, onAdd: ()
                 )
             }
         }
+    }
+}
+
+/** A workout with no exercise yet: add one from here, or on the phone when there is nothing to offer. */
+@Composable
+private fun EmptyWorkoutPage(onAddExercise: (() -> Unit)?) {
+    if (onAddExercise == null) {
+        CenteredNote(stringResource(R.string.workout_empty))
+        return
+    }
+    Box(Modifier.fillMaxSize().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+        Chip(
+            label = { Text(stringResource(R.string.add_exercise)) },
+            onClick = onAddExercise,
+            colors = accentChipColors(),
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

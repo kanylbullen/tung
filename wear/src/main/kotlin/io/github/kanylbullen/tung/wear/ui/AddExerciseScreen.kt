@@ -17,7 +17,7 @@ import io.github.kanylbullen.tung.wear.R
 @Composable
 fun AddExerciseScreen(choices: List<WatchChoice>, onPick: (String) -> Unit) {
     RoundList {
-        item { ListHeader { Text(stringResource(R.string.add_exercise_title), color = TungColors.muted) } }
+        item { ListHeader { Text(stringResource(R.string.add_exercise), color = TungColors.muted) } }
         if (choices.isEmpty()) {
             item { ListText(stringResource(R.string.add_exercise_none), style = MaterialTheme.typography.body2) }
         }
