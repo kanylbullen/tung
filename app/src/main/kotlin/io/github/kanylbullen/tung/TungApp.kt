@@ -4,7 +4,13 @@ import android.app.Activity
 import android.app.Application
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import io.github.kanylbullen.tung.sync.runForegroundSync
+import kotlinx.coroutines.launch
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.Configuration
@@ -78,6 +84,16 @@ open class TungApp : Application(), Configuration.Provider, TungHost {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) = container.syncAccount.requestSync()
         })
+        // A watch that runs on its own syncs through the server, and a phone without push never hears of it:
+        // while the app is on screen with a workout in progress, ask now and then (issue #199).
+        val process = ProcessLifecycleOwner.get()
+        process.lifecycleScope.launch {
+            process.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                runForegroundSync(container.syncAccount, container.workoutRepository, syncWhenIdle = false) { e ->
+                    Log.w("TungApp", "Foreground sync failed", e)
+                }
+            }
+        }
     }
 
     /**
