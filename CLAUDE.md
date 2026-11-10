@@ -2720,8 +2720,11 @@ slower: on the Note9, scrolling the Exercises tab had 34 % janky frames and a
 90th percentile of 150 ms as debug, 11 % and 32 ms as dogfood (2026-10-21).
 Release has R8 on (`isMinifyEnabled`, `isShrinkResources`); the app's own
 rules are in `app/proguard-rules.pro` and should stay empty unless the app
-itself reflects on a class. The flow tests run unminified, so after a change
-to dependencies or reflection, start the dogfood build once and sync.
+itself reflects on a class. The watch's release has R8 on too (`wear/proguard-rules.pro`, empty
+the same way; 13 MB unshrunk, 6 MB with R8, which the Play Console's 10 MB browser upload takes).
+The flow tests run unminified, so after a change
+to dependencies or reflection, start the dogfood build once and sync; for the watch
+sideload `wear-release.apk` once, since it has no dogfood variant.
 
 APKs: `app/build/outputs/apk/debug/app-debug.apk` and
 `wear/build/outputs/apk/debug/wear-debug.apk` (`:wear:assembleDebug`). The first build downloads
