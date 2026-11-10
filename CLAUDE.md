@@ -1498,6 +1498,15 @@ on the phone and the watch, appended with last time's set count, its first set
 current. Exercises never trained are not offered: add those on the phone and
 sync.
 
+**Jumping between exercises** (issue #219): a tap on an exercise's name opens
+`ExerciseListScreen`, the workout's exercises with "done/total sets" (the one
+holding the current set in the accent, Add exercise at the end when there is
+something to add). A tap sends `SelectSet` for its first open set, if any, and
+asks the pager for that page (`jumpToPage` in `WatchApp`, taken and cleared by
+`WorkoutScreen`); the pager's follow-the-current-set effect skips its first
+run so it cannot undo the jump. Swiping between pages still works. The first
+page's left-edge swipe is Wear OS's dismiss and closes the app.
+
 **Round screens** (issue #84). Every list is a `RoundList`
 (`ui/RoundList.kt`: `TimeText`, vignette, position indicator, and the
 responsive padding of `rememberListPadding`, 5.2 % of the width at the sides

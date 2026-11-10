@@ -15,12 +15,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeUp
@@ -182,6 +184,34 @@ abstract class RoundScreensTest {
     }
 
     @Test
+    fun exerciseListShowsProgressAndJumps() {
+        var picked = -1
+        val state = workout().copy(
+            exercises = workout().exercises + WatchExercise(
+                "squat", "Back squat",
+                listOf(WatchSet("s1", 0, 100.0, 5, true), WatchSet("s2", 1, 100.0, 5, false)),
+            ),
+        )
+        show { ExerciseListScreen(state, onPick = { picked = it }, onAddExercise = null) }
+        screenshot("list")
+        assertOnCircle(chip("Incline dumbbell bench press"), chip = true)
+        compose.onNode(hasText(str(R.string.sets_done, 0, 3))).assertIsDisplayed()
+        compose.onNode(hasText(str(R.string.sets_done, 1, 2))).assertIsDisplayed()
+        compose.onNode(chip("Back squat")).performClick()
+        assertTrue(picked == 1)
+    }
+
+    @Test
+    fun aJumpOpensTheRequestedExercise() {
+        val state = workout().copy(
+            exercises = workout().exercises + WatchExercise("squat", "Back squat", listOf(WatchSet("s1", 0, 100.0, 5, false))),
+        )
+        show { Workout(state, jumpToPage = 1) }
+        compose.waitForIdle()
+        compose.onNode(hasText("Back squat")).assertIsDisplayed()
+    }
+
+    @Test
     fun finishPage() {
         show { Workout(workout()) }
         repeat(2) { compose.onRoot().performTouchInput { swipeLeft() } }
@@ -254,8 +284,9 @@ abstract class RoundScreensTest {
     )
 
     @Composable
-    private fun Workout(state: WatchWorkoutState) = WorkoutScreen(
+    private fun Workout(state: WatchWorkoutState, jumpToPage: Int? = null) = WorkoutScreen(
         state = state,
+        jumpToPage = jumpToPage,
         phoneUnreachable = false,
         onLogSet = {},
         onAddSet = {},
