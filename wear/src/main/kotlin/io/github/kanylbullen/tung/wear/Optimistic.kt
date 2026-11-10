@@ -69,16 +69,15 @@ sealed interface WatchLogButton {
 }
 
 /**
- * The log button on [exercise]'s page: Log set on its [focusSet]; with no
- * set open anywhere, Add set on the page of the exercise the state offers it
- * for ([WatchWorkoutState.addSetWorkoutExerciseId], `core.stickyAction`);
- * else none ("All sets logged"). An older phone never offers Add set.
+ * The log button on [exercise]'s page: Log set on its [focusSet]; with every
+ * set of this exercise ticked, Add set, whatever the other exercises hold (a
+ * page that says "All sets logged" always offers one more, which the phone's
+ * button only does once nothing is open anywhere); none for an exercise
+ * without sets.
  */
 fun WatchWorkoutState.logButton(exercise: WatchExercise): WatchLogButton? {
     exercise.focusSet(currentSetId)?.let { return WatchLogButton.LogSet(it.setId, needsReps = it.reps <= 0) }
-    if (currentSetId == null && addSetWorkoutExerciseId == exercise.workoutExerciseId) {
-        return WatchLogButton.AddSet(exercise.workoutExerciseId)
-    }
+    if (exercise.sets.isNotEmpty()) return WatchLogButton.AddSet(exercise.workoutExerciseId)
     return null
 }
 
