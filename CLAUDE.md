@@ -1460,11 +1460,14 @@ ticks (`log_set` without `add_next`). With every set ticked the state carries
 touched exercise, which after a Log set is the one logged, else the exercise
 whose sets changed last, by `core.stickyAction`), and that exercise's page
 shows "Add set" under "All sets logged" (`logButton`, `WatchLogButton`; the
-pager turns to it). A tap sends `WatchCommand.AddSet(workoutExerciseId)`:
+pager turns to it). **Every** exercise page whose sets are all ticked offers
+Add set for itself, even while another exercise still has an open set (the
+state's field only says where the pager goes), so no page says "All sets
+logged" without a way to add one. A tap sends `WatchCommand.AddSet(workoutExerciseId)`:
 `AddSet` on the phone (`WearCommandHandler`) or the watch (`LocalWatchCommands`),
 and the new set becomes the selection. Both are additive: an older watch
-ignores the field, an older phone leaves it out (no button, as before) and
-drops the unknown `add_set` message as one that does not parse. Optimistic:
+ignores the field, an older phone leaves it out and drops the unknown `add_set` message as one
+that does not parse. Optimistic:
 logging the last open set offers Add set at once; Add set waits for the state.
 
 **Phone side** (`app/.../wear/`): `WearSyncService` (a `WearableListenerService`,
