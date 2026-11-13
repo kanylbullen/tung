@@ -18,8 +18,20 @@ import kotlinx.coroutines.flow.map
  * Sync's small state in the app's Preferences DataStore (the `settings`
  * file): the server URL, the account's email, the cursor and the last result.
  * The token is not here; it is in [TokenStore].
+ *
+ * @param installFingerprint what identifies this device to the platform and
+ *   is never carried by a backup (Android's `ANDROID_ID`), or null where there
+ *   is none: [deviceId] starts over when the stored one belongs to another
+ *   device (issue #156).
+ * @param deviceKeys this file's other keys that belong to the device rather
+ *   than the account (the push endpoint and its transport), forgotten with
+ *   the device id.
  */
-class SyncSettings(private val store: DataStore<Preferences>) {
+class SyncSettings(
+    private val store: DataStore<Preferences>,
+    private val installFingerprint: () -> String? = { null },
+    private val deviceKeys: List<Preferences.Key<*>> = emptyList(),
+) {
 
     val serverUrl: Flow<String?> = store.data.map { it[SERVER_URL] }
     val email: Flow<String?> = store.data.map { it[EMAIL] }
@@ -115,11 +127,38 @@ class SyncSettings(private val store: DataStore<Preferences>) {
      * for: sent as `X-Tung-Device` with every sync and as `device_id` of its
      * push endpoint, so the server never pushes a change back to the device
      * that made it. Kept across sign-outs; it identifies the install, not the account.
+     *
+     * The `settings` file is in Android's backup, so a restore onto another
+     * phone, or a device-to-device transfer, brings this id along while the old
+     * phone still uses it (issue #156): both would send the same
+     * `X-Tung-Device`, one would lose push, and each would take the other's
+     * changes for its own. So the id is stored with [installFingerprint]'s
+     * answer, and another device's id is replaced by a new one, with the
+     * cursor and [deviceKeys]. A restore is always signed out (the token is
+     * never backed up), so nothing on the server is lost. An id stored before
+     * fingerprints existed adopts the current one.
      */
     suspend fun deviceId(): String {
-        store.data.first()[DEVICE_ID]?.let { return it }
+        val fingerprint = installFingerprint()
+        val prefs = store.data.first()
+        val stored = prefs[DEVICE_ID]
+        if (stored != null && (fingerprint == null || prefs[DEVICE_FINGERPRINT] == fingerprint)) return stored
         var id = ""
-        store.edit { prefs -> id = prefs[DEVICE_ID] ?: newId().also { prefs[DEVICE_ID] = it } }
+        store.edit { p ->
+            val current = p[DEVICE_ID]
+            val storedFingerprint = p[DEVICE_FINGERPRINT]
+            id = when {
+                current == null -> newId()
+                fingerprint == null || storedFingerprint == null || storedFingerprint == fingerprint -> current
+                else -> {
+                    p.remove(CURSOR)
+                    deviceKeys.forEach { p.remove(it) }
+                    newId()
+                }
+            }
+            p[DEVICE_ID] = id
+            if (fingerprint != null) p[DEVICE_FINGERPRINT] = fingerprint
+        }
         return id
     }
 
@@ -135,6 +174,7 @@ class SyncSettings(private val store: DataStore<Preferences>) {
         val LAST_SYNC_AT = longPreferencesKey("sync_last_at")
         val LAST_ERROR = stringPreferencesKey("sync_last_error")
         val DEVICE_ID = stringPreferencesKey("device_id")
+        val DEVICE_FINGERPRINT = stringPreferencesKey("device_fingerprint")
         val OWNER_SERVER = stringPreferencesKey("sync_owner_server_url")
         val OWNER_USER = stringPreferencesKey("sync_owner_user_id")
     }

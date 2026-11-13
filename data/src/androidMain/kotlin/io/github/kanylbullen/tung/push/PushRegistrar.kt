@@ -176,7 +176,7 @@ class PushRegistrar(
             PushChoice.None -> null
         }
 
-    private companion object {
+    internal companion object {
         const val TAG = "TungPush"
         val TRANSPORT = stringPreferencesKey("push_transport")
         val ENDPOINT = stringPreferencesKey("push_endpoint")
@@ -185,5 +185,8 @@ class PushRegistrar(
 
         /** The distributor [ENDPOINT] came from, while the transport is UnifiedPush. */
         val ENDPOINT_DISTRIBUTOR = stringPreferencesKey("push_endpoint_distributor")
+
+        /** What belongs to the device, not the account: forgotten with the device id after a restore onto another phone (issue #156). */
+        val DEVICE_KEYS: List<Preferences.Key<*>> = listOf(TRANSPORT, ENDPOINT, ENDPOINT_ID, ENDPOINT_DISTRIBUTOR, CHOSEN_DISTRIBUTOR)
     }
 }

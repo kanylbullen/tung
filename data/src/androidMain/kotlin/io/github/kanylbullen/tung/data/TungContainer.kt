@@ -7,6 +7,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import android.provider.Settings
 import io.github.kanylbullen.tung.ai.AiClient
 import io.github.kanylbullen.tung.ai.AiService
 import io.github.kanylbullen.tung.ai.AiSettings
@@ -213,7 +214,14 @@ class TungContainer(
 
     // --- sync with tung-server (sync/, CLAUDE.md "Sync") ---
     private val tokenStore: TokenStore by lazy { createTokenStore(this.context) }
-    val syncSettings: SyncSettings by lazy { SyncSettings(settings) }
+    val syncSettings: SyncSettings by lazy {
+        SyncSettings(
+            settings,
+            // Never in a backup and different on another device, so a restored device id is noticed (issue #156).
+            installFingerprint = { Settings.Secure.getString(this.context.contentResolver, Settings.Secure.ANDROID_ID) },
+            deviceKeys = PushRegistrar.DEVICE_KEYS,
+        )
+    }
     private val syncStore: SyncStore by lazy { SyncStore(database) }
     private val syncScheduler: SyncScheduler by lazy { WorkManagerSyncScheduler(this.context) }
     val syncClient: SyncClient by lazy {

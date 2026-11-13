@@ -1632,7 +1632,13 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
 - **`X-Tung-Device`** (`core.sync.DEVICE_HEADER`): every sync request and
   push registration carries the device's stable random id
   (`SyncSettings.deviceId()`, DataStore, kept across sign-outs), so the server
-  never wakes the device that made a change.
+  never wakes the device that made a change. The `settings` file is in
+  Android's backup, so the id is stored with the device's `ANDROID_ID`
+  (`installFingerprint`, never backed up) and **a restore onto another phone
+  starts a new id** and forgets the cursor and the push keys
+  (`PushRegistrar.DEVICE_KEYS`; issue #156, `DeviceIdTest`); an id from
+  before this adopts the current fingerprint. A restore is signed out anyway
+  (the token is not backed up).
 - **Server trigger** (`server/.../push/`): after a successful write by a
   client (a sync that carried rows, a REST command or MCP tool with a `Done`
   result except `select_current`, the REST writes) `ChangeNotifier.changed(user,
