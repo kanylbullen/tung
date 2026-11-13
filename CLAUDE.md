@@ -1636,7 +1636,8 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   Android's backup, so the id is stored with the device's `ANDROID_ID`
   (`installFingerprint`, never backed up) and **a restore onto another phone
   starts a new id** and forgets the cursor and the push keys
-  (`PushRegistrar.DEVICE_KEYS`; issue #156, `DeviceIdTest`); an id from
+  (`PUSH_DEVICE_KEYS`, checked by `PushDeviceKeysTest`; issue #156,
+  `DeviceIdTest`; on iOS `identifierForVendor`); an id from
   before this adopts the current fingerprint. A restore is signed out anyway
   (the token is not backed up).
 - **Server trigger** (`server/.../push/`): after a successful write by a

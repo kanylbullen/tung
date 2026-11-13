@@ -28,6 +28,7 @@ import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
 import io.github.kanylbullen.tung.ongoing.ongoingWorkouts
 import io.github.kanylbullen.tung.push.AndroidPushEnvironment
 import io.github.kanylbullen.tung.push.PushEnvironment
+import io.github.kanylbullen.tung.push.PUSH_DEVICE_KEYS
 import io.github.kanylbullen.tung.push.PushRegistrar
 import io.github.kanylbullen.tung.sync.EncryptedTokenStore
 import io.github.kanylbullen.tung.sync.SyncAccount
@@ -215,12 +216,10 @@ class TungContainer(
     // --- sync with tung-server (sync/, CLAUDE.md "Sync") ---
     private val tokenStore: TokenStore by lazy { createTokenStore(this.context) }
     val syncSettings: SyncSettings by lazy {
-        SyncSettings(
-            settings,
-            // Never in a backup and different on another device, so a restored device id is noticed (issue #156).
-            installFingerprint = { Settings.Secure.getString(this.context.contentResolver, Settings.Secure.ANDROID_ID) },
-            deviceKeys = PushRegistrar.DEVICE_KEYS,
-        )
+        // Never in a backup and different on another device, so a restored device id is noticed (issue #156).
+        // Read once: it cannot change while the process runs.
+        val androidId: String? by lazy { Settings.Secure.getString(this.context.contentResolver, Settings.Secure.ANDROID_ID) }
+        SyncSettings(settings, installFingerprint = { androidId }, deviceKeys = PUSH_DEVICE_KEYS)
     }
     private val syncStore: SyncStore by lazy { SyncStore(database) }
     private val syncScheduler: SyncScheduler by lazy { WorkManagerSyncScheduler(this.context) }
