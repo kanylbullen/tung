@@ -99,15 +99,16 @@ class SiteScreensFlowTest : FlowTest() {
      * (CI's slower runner, where no screenshot gives the screen time).
      */
     private fun logNextSet() {
-        // The last set's rest: its first tap ends it (issue #201).
-        compose.waitForIdle()
-        if (compose.onAllNodes(restButton()).fetchSemanticsNodes().isNotEmpty()) endRestFromButton()
         waitFor(hasStateDescription(str(Res.string.workout_current_set)) and hasContentDescription(str(Res.string.workout_set_number_description, nextSetNumber())))
         val before = ticked()
         val logSet = hasText("Log set ·", substring = true)
         waitFor(logSet)
         compose.onNode(logSet).performClick()
         waitUntil { ticked() > before }
+        // Every tick here starts a rest, and the button's first tap ends it (issue #201). Waited
+        // for after the tick, not looked for before the next one: the rest may start a moment
+        // after the tick lands, and a look before that finds no rest and then no Log set either.
+        endRestFromButton()
     }
 
     private fun screens() {
@@ -123,8 +124,6 @@ class SiteScreensFlowTest : FlowTest() {
         db.openHelper.writableDatabase.execSQL("UPDATE workout SET startedAt = startedAt - ${38 * 60_000L} WHERE endedAt IS NULL")
         logNextSet()
         logNextSet()
-        // The site shows Log set, not the rest that just started (issue #201).
-        endRestFromButton()
         screenshot("2-workout")
 
         repeat(4) { logNextSet() }
