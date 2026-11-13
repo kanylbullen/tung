@@ -46,6 +46,8 @@ fun AssistantSettings(container: WebContainer) {
     var message by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var testing by remember { mutableStateOf(false) }
+    // The last save removed the key: the provider or address changed (issue #154).
+    var keyDropped by remember { mutableStateOf(false) }
 
     fun save(): Boolean {
         val url = baseUrl.trim()
@@ -63,7 +65,7 @@ fun AssistantSettings(container: WebContainer) {
             return false
         }
         error = null
-        settings.save(AiConfig(provider, normalised, model.trim(), jsonMode), key.takeIf { it.isNotBlank() })
+        keyDropped = settings.save(AiConfig(provider, normalised, model.trim(), jsonMode), key.takeIf { it.isNotBlank() })
         key = ""
         hasKey = settings.hasKey
         return true
@@ -123,21 +125,26 @@ fun AssistantSettings(container: WebContainer) {
         error?.let { P({ classes("error"); attr("role", "alert") }) { Text(it) } }
         message?.let { P({ classes("hint", "accent", "flush"); attr("role", "status") }) { Text(it) } }
         Div({ classes("setting-buttons") }) {
-            Button({ classes("secondary"); onClick { if (save()) message = strings.saved } }) { Text(strings.save) }
+            Button({ classes("secondary"); onClick { if (save()) message = if (keyDropped) strings.keyDropped else strings.saved } }) { Text(strings.save) }
             Button({
                 classes("secondary")
                 if (testing) disabled()
                 onClick {
                     if (save()) {
-                        testing = true
-                        message = null
-                        scope.launch {
-                            val failed = container.ai.test()
-                            testing = false
-                            if (failed == null) {
-                                message = strings.testOk
-                            } else {
-                                error = listOfNotNull(strings.aiFailure(failed.failure), failed.message?.let(strings::providerSays)).joinToString(" ")
+                        // A test without the key would only fail; say why the key went instead.
+                        if (keyDropped) {
+                            message = strings.keyDropped
+                        } else {
+                            testing = true
+                            message = null
+                            scope.launch {
+                                val failed = container.ai.test()
+                                testing = false
+                                if (failed == null) {
+                                    message = strings.testOk
+                                } else {
+                                    error = listOfNotNull(strings.aiFailure(failed.failure), failed.message?.let(strings::providerSays)).joinToString(" ")
+                                }
                             }
                         }
                     }

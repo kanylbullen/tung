@@ -2009,7 +2009,7 @@ tung-server never sees the key or the request.
   ran out of room before answering"), `Declined` to `DECLINED` ("The model
   declined this request") and `Empty` to `NO_ANSWER`, shown like every other
   failure through `aiFailureText`, `confirm` runs the commands, `test` sends a one-token request with
-  no training data). `TungContainer(createAiKeyStore = …)` is the seam;
+  no training data). **A key belongs to the provider and address it was typed for** (issue #154): `AiSettings.save` (and the web's `WebAiSettings.save`) forgets the stored key when either changes and no new key is typed, and the screen says so (`ai_key_dropped`) instead of testing without it; the web's AI requests never follow a redirect (`postJson(followRedirects = false)`, `redirect: "manual"`, an `opaqueredirect` read as 302), as the phone's `AiClient` does not. `TungContainer(createAiKeyStore = …)` is the seam;
   `FlowTestApp.aiKeys` keeps the key in memory.
 - **app**: the Assistant screen (`ui/ai/`), reached from the **last row on
   Home**; Settings → Assistant is `ui/settings/AiSection.kt`, one

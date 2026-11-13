@@ -80,7 +80,11 @@ sealed interface AiHttpResult {
 const val ANTHROPIC_BROWSER_HEADER = "anthropic-dangerous-direct-browser-access"
 
 /** Sends [request] with `fetch`: one call, nothing retried, the statuses read as the phone's `AiClient` reads them. */
-suspend fun sendAi(request: AiHttpRequest, post: suspend (String, String, Map<String, String>) -> HttpReply = ::postJson): AiHttpResult {
+suspend fun sendAi(
+    request: AiHttpRequest,
+    // No redirects: the key is in a header a browser keeps on one (issue #154).
+    post: suspend (String, String, Map<String, String>) -> HttpReply = { url, body, headers -> postJson(url, body, headers, followRedirects = false) },
+): AiHttpResult {
     val reply = try {
         post(request.url, request.body, request.headers)
     } catch (e: CancellationException) {
