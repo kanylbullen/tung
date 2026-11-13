@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.flows
 
 import io.github.kanylbullen.tung.ui.resources.*
+import android.provider.Settings
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.work.Configuration
@@ -16,6 +17,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowAlarmManager
 
 /**
  * Settings as a list of groups (issue #67): each row has a live one-line
@@ -134,4 +137,28 @@ class SettingsFlowTest : FlowTest() {
         clickText(str(Res.string.settings_group_training))
         waitForText("0:30")
     }
+
+    /**
+     * Issue #215: without "Alarms & reminders" a rest can end minutes late in
+     * the background, so Training says so and offers the system's page;
+     * allowed, it says nothing.
+     */
+    @Test
+    fun trainingSaysWhenRestAlertsCanBeLate() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(false)
+        openSettingsGroup(Res.string.settings_group_training)
+        waitForText(str(Res.string.settings_exact_alarms_title))
+        screenshot("1-exact-alarms-off")
+        clickText(str(Res.string.settings_exact_alarms_allow))
+        val opened = shadowOf(app).nextStartedActivity
+        assertEquals(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, opened?.action)
+        assertEquals("package:${app.packageName}", opened?.data?.toString())
+
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        clickDescription(str(Res.string.action_back))
+        clickText(str(Res.string.settings_group_training))
+        waitForText("1:30")
+        assertTrue(compose.onAllNodes(hasText(str(Res.string.settings_exact_alarms_title))).fetchSemanticsNodes().isEmpty())
+    }
 }
+

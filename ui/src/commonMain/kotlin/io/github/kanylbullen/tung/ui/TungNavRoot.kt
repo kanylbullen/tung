@@ -582,7 +582,7 @@ private fun NavGraphBuilder.settingsGraph(
     composable(SettingsGroup.TRAINING.route) {
         val vm = viewModel { TrainingSettingsViewModel(services.restTimer) }
         val equipment = viewModel { EquipmentSectionViewModel(services.equipmentSettings) }
-        TrainingScreen(vm, equipment, onBack = back)
+        TrainingScreen(vm, equipment, exactAlarms = platform.exactAlarms, onBack = back)
     }
     composable(SettingsGroup.ASSISTANT.route) {
         val vm = viewModel { AiSettingsViewModel(services.aiSettings, services.ai) }

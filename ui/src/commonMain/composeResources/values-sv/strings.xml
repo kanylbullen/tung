@@ -626,6 +626,10 @@
     <string name="settings_summary_not_set_up">Inte inställd</string>
     <string name="settings_summary_signed_out">Inte inloggad</string>
     <string name="settings_summary_training">Standardvila %1$s · kg</string>
+    <string name="exact_alarms_not_now">Inte nu</string>
+    <string name="settings_exact_alarms_title">Vilan kan signalera för sent</string>
+    <string name="settings_exact_alarms_hint">Android avslutar vilan i tid när Tung ligger i bakgrunden bara om Tung får ställa alarm och påminnelser. Annars kan vibrationen komma flera minuter för sent.</string>
+    <string name="settings_exact_alarms_allow">Tillåt alarm och påminnelser</string>
     <string name="settings_units">Måttenhet</string>
     <string name="settings_units_kg">Kilogram (pund stöds inte än)</string>
     <string name="sync_confirm_email">Bekräfta din e-post för att börja synka: öppna länken vi skickade till %1$s och tryck sedan på Synka nu.</string>

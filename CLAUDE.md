@@ -566,7 +566,13 @@ started (`TungHost.isInForeground`). With the workout on screen the countdown
 reaching zero calls the same function, so the alert is on time even with an
 inexact alarm; it alerts once per `endsAt`. Tapping the notification opens
 `TungHost.openWorkoutIntent`: on the phone `MainActivity` with `EXTRA_OPEN_WORKOUT`, which `TungAppRoot` navigates to. No
-foreground service. `POST_NOTIFICATIONS` is asked for once, the first time a
+foreground service. **While a rest runs, the ongoing notification counts down
+to its end** (issue #215: title "Rest", `setChronometerCountDown`,
+`OngoingWorkout.restEndsAt` from the stored timer, re-posted with the elapsed
+time when it ends), so it is visible from another app. **Settings → Training
+says when rest alerts can be late** (`AppPlatform.exactAlarms`, Android's
+"Alarms & reminders", denied by default for new installs on Android 14+) and
+opens the system's page (`ACTION_REQUEST_SCHEDULE_EXACT_ALARM`); **the first rest that starts without it asks once** (`ExactAlarmsDialog`, `RestTimerStore.firstTimeAskingForExactAlarms`, `WorkoutPlatform.exactAlarms`). Flow tests allow exact alarms by default (`FlowTest.allowExactAlarms`); a test about the question turns them off. `POST_NOTIFICATIONS` is asked for once, the first time a
 workout is on screen on Android 13+ (flag in DataStore,
 `RestTimerController.firstTimeAskingForNotifications`, shared with the ongoing
 notification); denied, the countdown and the vibration still work.

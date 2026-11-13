@@ -180,6 +180,24 @@ fun ActiveWorkoutScreen(
         }
     }
 
+    // Issue #215: the first rest that starts without exact alarms asks once to allow them,
+    // or the alarm that ends it can come minutes late with the app in the background.
+    var askExactAlarms by rememberSaveable { mutableStateOf(false) }
+    val resting = state.rest != null
+    LaunchedEffect(resting) {
+        val alarms = platform.exactAlarms ?: return@LaunchedEffect
+        if (resting && !alarms.allowed() && vm.firstTimeAskingForExactAlarms()) askExactAlarms = true
+    }
+    if (askExactAlarms) {
+        ExactAlarmsDialog(
+            onAllow = {
+                askExactAlarms = false
+                platform.exactAlarms?.openSettings()
+            },
+            onDismiss = { askExactAlarms = false },
+        )
+    }
+
     var editing by remember { mutableStateOf<EditTarget?>(null) }
     var confirmFinish by remember { mutableStateOf(false) }
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }

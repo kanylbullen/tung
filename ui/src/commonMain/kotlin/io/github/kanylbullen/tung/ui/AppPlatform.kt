@@ -79,4 +79,20 @@ interface AppPlatform {
 
     /** The health settings screen; null where the platform has no health store, and Settings leaves its row out. */
     val healthSettings: (@Composable (onBack: () -> Unit) -> Unit)?
+
+    /**
+     * Whether a rest may end late with the app in the background (Android's
+     * "Alarms & reminders", issue #215); null where the platform has no such
+     * setting, and Settings → Training says nothing.
+     */
+    val exactAlarms: ExactAlarms? get() = null
+}
+
+/** The platform's exact-alarm permission, as Settings → Training shows it. */
+interface ExactAlarms {
+    /** True when the rest's alarm may fire on time in the background. Read again each time the screen resumes. */
+    fun allowed(): Boolean
+
+    /** Opens the system's page where the user allows it. */
+    fun openSettings()
 }

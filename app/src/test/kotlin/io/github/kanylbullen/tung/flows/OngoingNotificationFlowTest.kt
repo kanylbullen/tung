@@ -10,6 +10,7 @@ import androidx.compose.ui.test.isDialog
 import androidx.core.app.NotificationCompat
 import io.github.kanylbullen.tung.MainActivity
 import io.github.kanylbullen.tung.R
+import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandIds
@@ -21,6 +22,7 @@ import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.R as DataR
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutReceiver
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -116,6 +118,46 @@ class OngoingNotificationFlowTest : FlowTest() {
 
         waitUntil { ongoing() == null }
         assertEquals(0, count("SELECT COUNT(*) FROM workout WHERE endedAt IS NULL"))
+    }
+
+    /**
+     * Issue #215: while a rest runs the notification says "Rest" and counts
+     * down to its end, so it is seen from another app; without a rest it is
+     * back to "Workout in progress" and the elapsed time.
+     */
+    @Test
+    fun aRunningRestCountsDownInTheNotification() {
+        val workoutId = runBlocking {
+            val routineId = app.container.commands.execute(
+                Command.SaveRoutinePlan(
+                    RoutinePlan("Push day", listOf(RoutinePlanExercise(ExerciseRef.ByKey("bench_press"), targetSets = 3, targetReps = 8))),
+                ),
+            ).id(CommandIds.ROUTINE_ID)
+            checkNotNull(app.container.commands.execute(Command.StartRoutine(checkNotNull(routineId))).id(CommandIds.WORKOUT_ID))
+        }
+        waitUntil { ongoing() != null }
+
+        val endsAt = System.currentTimeMillis() + 10 * 60_000L
+        runBlocking { app.container.restTimer.set(workoutId, RestTimer(endsAt, 10 * 60_000L)) }
+        waitUntil { ongoing()?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() == str(DataR.string.ongoing_rest_title) }
+        val resting = checkNotNull(ongoing())
+        assertEquals(endsAt, resting.`when`)
+        assertTrue("counts down", resting.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN))
+        assertEquals("the set is still named", str(DataR.string.ongoing_at_set, benchPress, 1, 3), body(resting))
+
+        runBlocking { app.container.restTimer.set(workoutId, null) }
+        waitUntil { ongoing()?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() == str(DataR.string.ongoing_title) }
+        assertFalse(checkNotNull(ongoing()).extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN))
+
+        // A rest that runs out on its own: the notification goes back to the elapsed time by itself.
+        runBlocking { app.container.restTimer.set(workoutId, RestTimer(System.currentTimeMillis() + 1_500L, 1_500L)) }
+        waitUntil { ongoing()?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() == str(DataR.string.ongoing_rest_title) }
+        waitUntil(timeoutMillis = 10_000) { ongoing()?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() == str(DataR.string.ongoing_title) }
+        assertEquals(workoutStartedAt(workoutId), checkNotNull(ongoing()).`when`)
+    }
+
+    private fun workoutStartedAt(workoutId: String): Long = runBlocking {
+        checkNotNull(app.container.workoutRepository.observeWorkout(workoutId).first()).startedAt
     }
 
     /**

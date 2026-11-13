@@ -37,3 +37,26 @@ fun DiscardWorkoutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         },
     )
 }
+
+/** Asked once, the first time a rest starts without exact alarms (issue #215): Allow opens the system's page. */
+@Composable
+fun ExactAlarmsDialog(onAllow: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Tung.colors.raised,
+        tonalElevation = 0.dp,
+        shape = TungCorner,
+        title = { Text(stringResource(Res.string.settings_exact_alarms_title)) },
+        text = { Text(stringResource(Res.string.settings_exact_alarms_hint), color = Tung.colors.muted) },
+        confirmButton = {
+            TextButton(onClick = onAllow) {
+                Text(stringResource(Res.string.settings_exact_alarms_allow), color = Tung.colors.accentText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.exact_alarms_not_now), color = Tung.colors.text)
+            }
+        },
+    )
+}

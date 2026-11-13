@@ -15,6 +15,7 @@
     <!-- The ongoing notification of a workout in progress (ongoing/OngoingWorkoutNotifier.kt), and the watch's Ongoing Activity -->
     <string name="ongoing_channel_name">Workout in progress</string>
     <string name="ongoing_channel_description">Shows the workout in progress, with Log set and Finish.</string>
+    <string name="ongoing_rest_title">Rest</string>
     <string name="ongoing_title">Workout in progress</string>
     <!-- Exercise name, the current set's number, the routine's target sets: "Bench press · set 3 of 5" -->
     <string name="ongoing_at_set">%1$s · set %2$d of %3$d</string>
