@@ -190,7 +190,12 @@ class TungContainer(
      * over the state it shows, without the Live Update.
      */
     val ongoingWorkout: OngoingWorkoutNotifier by lazy {
-        OngoingWorkoutNotifier(this.context, ongoingWorkouts(this.context, workoutRepository, routineRepository), appScope, liveUpdate = true)
+        OngoingWorkoutNotifier(
+            this.context,
+            ongoingWorkouts(this.context, workoutRepository, routineRepository, rest = restTimer::stored, restChanges = settings.data),
+            appScope,
+            liveUpdate = true,
+        )
     }
 
     /**

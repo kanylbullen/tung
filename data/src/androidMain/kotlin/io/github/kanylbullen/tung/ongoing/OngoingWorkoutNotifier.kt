@@ -19,6 +19,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -54,6 +55,10 @@ import kotlinx.coroutines.launch
  * does): a run of −/+ taps is one post, not one per tap, and the last one is
  * never the one the system's rate limit drops.
  *
+ * **While a rest runs** (issue #215) the title is "Rest" and the chronometer
+ * counts down to its end, so the rest is visible after switching to another
+ * app; when it ends the notification is posted again with the elapsed time.
+ *
  * Nothing is posted without the notification permission (Android 13+); the
  * rest timer's one-time request asks for it ([io.github.kanylbullen.tung.timer.RestTimerController.firstTimeAskingForNotifications]).
  */
@@ -67,6 +72,9 @@ class OngoingWorkoutNotifier(
 ) {
     private val context: Context = context.applicationContext ?: context
     private var job: Job? = null
+
+    /** Posts the notification again when the rest on it ends, back to the elapsed time. */
+    private var restEnd: Job? = null
 
     private val promoting: Boolean get() = liveUpdate && Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA
 
@@ -83,13 +91,26 @@ class OngoingWorkoutNotifier(
     fun stop() {
         job?.cancel()
         job = null
+        restEnd?.cancel()
+        restEnd = null
         cancel(context)
     }
 
+    @Synchronized
     private fun show(workout: OngoingWorkout?) {
+        restEnd?.cancel()
+        restEnd = null
         if (workout == null) {
             cancel(context)
             return
+        }
+        val now = System.currentTimeMillis()
+        val restEndsAt = workout.restEndsAt?.takeIf { it > now }
+        if (restEndsAt != null) {
+            restEnd = scope.launch {
+                delay(restEndsAt - now)
+                show(workout)
+            }
         }
         val host = context as? TungHost ?: return
         val manager = NotificationManagerCompat.from(context)
@@ -98,7 +119,7 @@ class OngoingWorkoutNotifier(
         val open = activity(REQUEST_OPEN, host.openWorkoutIntent(workout.workoutId))
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(host.notificationIcon)
-            .setContentTitle(context.getString(R.string.ongoing_title))
+            .setContentTitle(context.getString(if (restEndsAt != null) R.string.ongoing_rest_title else R.string.ongoing_title))
             .setContentText(workout.status.text(context))
             .setSubText(workout.startedByText(context))
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
@@ -108,9 +129,14 @@ class OngoingWorkoutNotifier(
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setShowWhen(true)
-            .setWhen(workout.startedAt)
+        if (restEndsAt != null) {
+            // The rest counts down to its end; the alarm and RestAlerts still say when it is over.
+            builder.setWhen(restEndsAt).setUsesChronometer(true).setChronometerCountDown(true)
+        } else {
             // A workout logged after the fact shows when it started, not a timer running from days ago.
-            .setUsesChronometer(!isPastWorkout(workout.startedAt, System.currentTimeMillis()))
+            builder.setWhen(workout.startedAt).setUsesChronometer(!isPastWorkout(workout.startedAt, now))
+        }
+        builder
             .setContentIntent(open)
         if (actions) {
             val logSetId = workout.logSetId
