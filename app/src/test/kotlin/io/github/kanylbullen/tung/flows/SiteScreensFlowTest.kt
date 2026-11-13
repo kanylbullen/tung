@@ -105,6 +105,10 @@ class SiteScreensFlowTest : FlowTest() {
         waitFor(logSet)
         compose.onNode(logSet).performClick()
         waitUntil { ticked() > before }
+        // Every tick here starts a rest, and the button's first tap ends it (issue #201). Waited
+        // for after the tick, not looked for before the next one: the rest may start a moment
+        // after the tick lands, and a look before that finds no rest and then no Log set either.
+        endRestFromButton()
     }
 
     private fun screens() {

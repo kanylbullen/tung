@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.timer.RestTimerReceiver
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import androidx.compose.ui.test.onFirst
 import org.junit.Test
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAlarmManager
@@ -73,7 +74,8 @@ class LogSetFlowTest : FlowTest() {
         waitForDescription(str(Res.string.workout_mark_undone, 1))
         waitFor(countdown)
         assertTrue(restSecondsLeft() in 85..90)
-        waitForText(addSet("80", "8"))
+        // Issue #201: during the rest the button counts it down, so a second tap cannot log again.
+        waitFor(restButton())
         compose.onNode(hasText(logSet("80", "8"))).assertDoesNotExist()
         compose.onNode(hasContentDescription(str(Res.string.workout_mark_done, 2))).assertDoesNotExist()
         screenshot("2-logged-add-set")
@@ -82,6 +84,11 @@ class LogSetFlowTest : FlowTest() {
         assertEquals(1, activeSets("1"))
         assertTrue(alarmInMillis() in 85_000L..90_000L)
 
+        // Its first tap ends the rest and does nothing else; then it offers Add set.
+        endRestFromButton()
+        waitGone(countdown)
+        assertEquals(1, activeSets("1"))
+        assertEquals(1, activeSets("s.completed = 1"))
         clickText(addSet("80", "8"))
         waitForDescription(str(Res.string.workout_mark_done, 2))
         waitForText(logSet("80", "8"))
@@ -94,8 +101,29 @@ class LogSetFlowTest : FlowTest() {
         // The next tap logs the added set, and the button offers Add set again.
         clickText(logSet("80", "8"))
         waitForDescription(str(Res.string.workout_mark_undone, 2))
+        endRestFromButton()
         waitForText(addSet("80", "8"))
         assertEquals(2, activeSets("s.completed = 1"))
+        assertEquals(2, activeSets("1"))
+    }
+
+    /** Issue #201: two quick taps on Log set log one set and add none. */
+    @Test
+    fun aDoubleTapLogsOneSet() {
+        seedFinishedWorkout(System.currentTimeMillis() - 2 * DAY, bench(), weightKg = 80.0, reps = 8)
+        startWorkoutFromHome()
+        addExercise("bench", benchPress)
+        clickText(str(Res.string.workout_add_set))
+        waitForDescription(str(Res.string.workout_mark_done, 2))
+        waitForText(logSet("80", "8"))
+
+        compose.onNode(hasText(logSet("80", "8"))).performClick()
+        compose.onAllNodes(restButton().or(hasText(logSet("80", "8")))).onFirst().performClick()
+        waitUntil { activeSets("s.completed = 1") == 1 }
+        compose.waitForIdle()
+        // One set, whichever the second tap met: the rest button (it ends the rest) or, before the
+        // screen caught up, the stale Log set of the set just ticked, which the command does not tick twice.
+        assertEquals(1, activeSets("s.completed = 1"))
         assertEquals(2, activeSets("1"))
     }
 
@@ -151,6 +179,7 @@ class LogSetFlowTest : FlowTest() {
         for (n in 1..3) {
             clickText(logSet("80", "8"))
             waitForDescription(str(Res.string.workout_mark_undone, n))
+            endRestFromButton()
         }
         waitForText(addSet("80", "8"))
         compose.onNode(hasText(logSet("80", "8"))).assertDoesNotExist()

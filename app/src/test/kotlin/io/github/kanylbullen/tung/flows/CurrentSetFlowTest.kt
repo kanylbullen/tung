@@ -113,10 +113,12 @@ class CurrentSetFlowTest : FlowTest() {
         screenshot("1-squat-picked")
 
         compose.onNode(logSet(backSquat, "100", "5")).performSemanticsAction(SemanticsActions.OnClick)
+        endRestFromButton()
         waitFor(logSet(deadlift, "120", "3"))
         screenshot("2-moved-to-deadlift")
 
         compose.onNode(logSet(deadlift, "120", "3")).performSemanticsAction(SemanticsActions.OnClick)
+        endRestFromButton()
         waitFor(logSet(benchPress, "80", "8"))
         screenshot("3-wrapped-to-bench")
         assertEquals(2, activeSets("s.completed = 1"))
