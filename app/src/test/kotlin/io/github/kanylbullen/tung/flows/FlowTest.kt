@@ -15,6 +15,7 @@ import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
@@ -133,6 +134,20 @@ abstract class FlowTest {
         waitUntil(timeoutMillis) {
             compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
         }
+    }
+
+    /**
+     * The Log set button while a rest runs (issue #201): "Rest 1:30 · next: …".
+     * Matched by the string's own beginning, so it holds in every language.
+     */
+    protected fun restButton(): SemanticsMatcher =
+        hasText(str(Res.string.workout_rest_next, "\u0001", "").substringBefore("\u0001"), substring = true) and hasClickAction()
+
+    /** Ends the running rest with the button's first tap, as someone between sets would before the next. */
+    protected fun endRestFromButton() {
+        waitFor(restButton())
+        compose.onNode(restButton()).performClick()
+        waitGone(restButton())
     }
 
     protected fun waitGone(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {

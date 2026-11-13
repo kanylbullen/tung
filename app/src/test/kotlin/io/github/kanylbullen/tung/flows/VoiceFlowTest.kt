@@ -81,8 +81,8 @@ class VoiceFlowTest : FlowTest() {
         waitForText(str(Res.string.voice_echo_logged, "80", "8"))
         screenshot("3-logged")
         assertEquals(1, loggedSets())
-        // As the button: no set is added (issue #64), the button offers one, and the rest runs.
-        waitForText(str(Res.string.workout_sticky_add_set, benchPress, "80", "8"))
+        // As the button: no set is added (issue #64), and the rest runs, in the button too (issue #201).
+        waitFor(restButton())
         waitFor(hasContentDescription(str(Res.string.rest_title)))
         assertEquals(2, app.speech.listens)
         assertEquals(1, count("SELECT COUNT(*) FROM set_entry"))

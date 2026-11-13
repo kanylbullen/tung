@@ -399,6 +399,8 @@ fun ActiveWorkoutScreen(
                     ?: if (voiceState.listening && !voiceState.handsFree) stringResource(Res.string.voice_listening) else null
                 LogSetBar(
                     sticky = sticky,
+                    rest = rest,
+                    now = now,
                     voice = voiceState,
                     line = line,
                     lineMuted = voiceState.partial != null || echoText == null,
@@ -415,8 +417,10 @@ fun ActiveWorkoutScreen(
                     onMicLongPress = { onMic(handsFree = true) },
                     onStopHandsFree = voice::stop,
                     onClick = {
-                        when (sticky) {
-                            is StickyButton.LogSet -> {
+                        when {
+                            // Issue #201: the first tap during a rest ends it, so a double tap cannot log two sets.
+                            rest != null -> vm.skipRest()
+                            sticky is StickyButton.LogSet -> {
                                 val c = sticky.current
                                 // Logging a set without reps would just be removed on finish, so ask for reps first.
                                 if (c.set.reps <= 0) {
@@ -425,7 +429,7 @@ fun ActiveWorkoutScreen(
                                     vm.logSet(c.exercise, c.set)
                                 }
                             }
-                            is StickyButton.AddSet -> vm.addSetFromButton(sticky.exercise.workoutExerciseId)
+                            sticky is StickyButton.AddSet -> vm.addSetFromButton(sticky.exercise.workoutExerciseId)
                         }
                     },
                 )
@@ -638,10 +642,17 @@ fun ActiveWorkoutScreen(
  * heard or understood, and the "Listening" chip while hands-free mode is on.
  * With every set logged it reads "Add set · Bench press · 80 × 8" for the
  * exercise just logged (issue #64): logging never adds a set by itself.
+ *
+ * While a [rest] runs the button counts it down and names what comes next,
+ * "Rest 0:56 · next: Bench press 80 × 8" (issue #201), in the secondary
+ * style: a tap ends the rest, and only the next one logs. A double tap can no
+ * longer log two sets. The countdown in the top bar stays, with its +30 s.
  */
 @Composable
 private fun LogSetBar(
     sticky: StickyButton,
+    rest: RestTimer?,
+    now: Long,
     voice: VoiceUiState,
     line: String?,
     lineMuted: Boolean,
@@ -688,16 +699,34 @@ private fun LogSetBar(
                     }
                 }
             }
-            PrimaryButton(text = text, onClick = onClick, modifier = Modifier.weight(1f))
+            if (rest != null) {
+                val left = restLeftText(rest, now)
+                val next = when (sticky) {
+                    is StickyButton.LogSet -> {
+                        val set = sticky.current.set
+                        val reps = if (set.reps > 0) set.reps.toString() else stringResource(Res.string.workout_reps_empty)
+                        val name = exerciseDisplayName(sticky.current.exercise.nameKey, sticky.current.exercise.name)
+                        stringResource(Res.string.workout_rest_next_set, left, name, localWeight(set.weightKg), reps)
+                    }
+                    is StickyButton.AddSet -> stringResource(Res.string.workout_rest_next, left, text)
+                }
+                // The text says it all to a screen reader too: the rest, what is left, and what follows.
+                SecondaryButton(text = next, onClick = onClick, modifier = Modifier.weight(1f))
+            } else {
+                PrimaryButton(text = text, onClick = onClick, modifier = Modifier.weight(1f))
+            }
         }
     }
 }
 
+/** What is left of [timer], rounded up so 89.4 s reads 1:30 and 0:00 never shows, capped at its length. */
+private fun restLeftText(timer: RestTimer, now: Long): String =
+    clockText(minOf(timer.remainingAt(now) + 999, timer.durationMillis))
+
 /** "1:30" counting down next to the elapsed time; a tap shows Skip and +30 s. */
 @Composable
 private fun RestCountdown(timer: RestTimer, now: Long, onClick: () -> Unit) {
-    // Rounded up, so 89.4 s left reads 1:30 and 0:00 never shows; capped, so a clock a tick behind never shows 1:31.
-    val left = clockText(minOf(timer.remainingAt(now) + 999, timer.durationMillis))
+    val left = restLeftText(timer, now)
     val title = stringResource(Res.string.rest_title)
     val remaining = stringResource(Res.string.rest_remaining, left)
     Box(

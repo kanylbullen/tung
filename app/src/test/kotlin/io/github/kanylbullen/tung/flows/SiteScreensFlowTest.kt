@@ -99,6 +99,9 @@ class SiteScreensFlowTest : FlowTest() {
      * (CI's slower runner, where no screenshot gives the screen time).
      */
     private fun logNextSet() {
+        // The last set's rest: its first tap ends it (issue #201).
+        compose.waitForIdle()
+        if (compose.onAllNodes(restButton()).fetchSemanticsNodes().isNotEmpty()) endRestFromButton()
         waitFor(hasStateDescription(str(Res.string.workout_current_set)) and hasContentDescription(str(Res.string.workout_set_number_description, nextSetNumber())))
         val before = ticked()
         val logSet = hasText("Log set ·", substring = true)

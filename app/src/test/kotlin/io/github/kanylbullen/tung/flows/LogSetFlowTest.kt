@@ -73,7 +73,8 @@ class LogSetFlowTest : FlowTest() {
         waitForDescription(str(Res.string.workout_mark_undone, 1))
         waitFor(countdown)
         assertTrue(restSecondsLeft() in 85..90)
-        waitForText(addSet("80", "8"))
+        // Issue #201: during the rest the button counts it down, so a second tap cannot log again.
+        waitFor(restButton())
         compose.onNode(hasText(logSet("80", "8"))).assertDoesNotExist()
         compose.onNode(hasContentDescription(str(Res.string.workout_mark_done, 2))).assertDoesNotExist()
         screenshot("2-logged-add-set")
@@ -82,6 +83,11 @@ class LogSetFlowTest : FlowTest() {
         assertEquals(1, activeSets("1"))
         assertTrue(alarmInMillis() in 85_000L..90_000L)
 
+        // Its first tap ends the rest and does nothing else; then it offers Add set.
+        endRestFromButton()
+        waitGone(countdown)
+        assertEquals(1, activeSets("1"))
+        assertEquals(1, activeSets("s.completed = 1"))
         clickText(addSet("80", "8"))
         waitForDescription(str(Res.string.workout_mark_done, 2))
         waitForText(logSet("80", "8"))
@@ -94,6 +100,7 @@ class LogSetFlowTest : FlowTest() {
         // The next tap logs the added set, and the button offers Add set again.
         clickText(logSet("80", "8"))
         waitForDescription(str(Res.string.workout_mark_undone, 2))
+        endRestFromButton()
         waitForText(addSet("80", "8"))
         assertEquals(2, activeSets("s.completed = 1"))
         assertEquals(2, activeSets("1"))
@@ -151,6 +158,7 @@ class LogSetFlowTest : FlowTest() {
         for (n in 1..3) {
             clickText(logSet("80", "8"))
             waitForDescription(str(Res.string.workout_mark_undone, n))
+            endRestFromButton()
         }
         waitForText(addSet("80", "8"))
         compose.onNode(hasText(logSet("80", "8"))).assertDoesNotExist()

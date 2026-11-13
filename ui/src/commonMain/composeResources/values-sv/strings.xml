@@ -304,6 +304,8 @@
     </plurals>
     <string name="workout_first_sets_label">Set</string>
     <string name="workout_keep_training">Fortsätt träna</string>
+    <string name="workout_rest_next_set">Vila %1$s · nästa: %2$s %3$s × %4$s</string>
+    <string name="workout_rest_next">Vila %1$s · nästa: %2$s</string>
     <string name="workout_log_set">Logga set · %1$s · %2$s × %3$s</string>
     <string name="workout_mark_done">Markera set %1$d som klart</string>
     <string name="workout_mark_undone">Markera set %1$d som inte klart</string>

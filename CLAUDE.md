@@ -551,7 +551,12 @@ and drops one that already ended. The rest per exercise is
 `Exercise.restSeconds` (null = default, 0 = off), set from the exercise's menu
 ("Rest timer…", 0–300 s in 30 s steps) as an ordinary update with
 `updatedAt`. The countdown sits next to the elapsed time; tapping it shows
-Skip and +30 s. The menu's other item, "Remove exercise", asks first when
+Skip and +30 s. **While a rest runs the sticky button counts it down too**
+(issue #201): "Rest 0:56 · next: Bench press 80 × 8" (`workout_rest_next_set`,
+or `workout_rest_next` before Add set's text) in the secondary style, and its
+first tap ends the rest (`skipRest`); only the next tap logs, so a double tap
+cannot log two sets. Voice "done" and the notification's Log set are
+unchanged. Flow tests end a rest with `endRestFromButton()` (`FlowTest`). The menu's other item, "Remove exercise", asks first when
 the exercise has a logged set ("Remove Bench press and its 3 logged sets?")
 and removes at once when it has none.
 
