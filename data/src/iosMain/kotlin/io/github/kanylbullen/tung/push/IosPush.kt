@@ -87,8 +87,10 @@ class IosPush(
         }
     }
 
-    private companion object {
-        val TOKEN = stringPreferencesKey("push_endpoint")
-        val ENDPOINT_ID = stringPreferencesKey("push_endpoint_id")
-    }
 }
+
+private val TOKEN = stringPreferencesKey("push_endpoint")
+private val ENDPOINT_ID = stringPreferencesKey("push_endpoint_id")
+
+/** The iPhone's push keys, forgotten with the device id after a restore onto another iPhone (issue #156). */
+internal val IOS_PUSH_DEVICE_KEYS: List<Preferences.Key<*>> = listOf(TOKEN, ENDPOINT_ID)
