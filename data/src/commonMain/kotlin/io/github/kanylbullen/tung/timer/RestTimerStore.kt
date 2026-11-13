@@ -25,6 +25,13 @@ interface RestTimerStore {
     /** True the first time it is called, so the notification permission is asked for once. */
     suspend fun firstTimeAskingForNotifications(): Boolean
 
+    /**
+     * True the first time it is called, so the workout asks once to allow exact
+     * alarms when a rest starts without them (issue #215); never where the
+     * platform has no such setting.
+     */
+    suspend fun firstTimeAskingForExactAlarms(): Boolean = false
+
     /** The rest is over while the workout is on screen: the same alert as the alarm's. */
     fun restOver(workoutId: String, endsAtMillis: Long)
 }

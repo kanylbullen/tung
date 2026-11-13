@@ -1,6 +1,10 @@
 package io.github.kanylbullen.tung.ui
 
 import android.Manifest
+import android.app.AlarmManager
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.provider.Settings
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -49,6 +53,23 @@ class AndroidPlatform(private val app: TungApp) : AppPlatform {
     override val feedbackVersion: String get() = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
     override val defaultServerUrl: String get() = app.defaultServerUrl
 
+    /** "Alarms & reminders" (`SCHEDULE_EXACT_ALARM`), denied by default for new installs on Android 14+ (issue #215, `RestAlarm`). */
+    override val exactAlarms: ExactAlarms = object : ExactAlarms {
+        override fun allowed(): Boolean =
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.S || app.getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() != false
+
+        override fun openSettings() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${app.packageName}"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                app.startActivity(intent)
+            } catch (_: ActivityNotFoundException) {
+                // A device without the page: nothing to open.
+            }
+        }
+    }
+
     override fun exerciseName(exercise: Exercise): String = exercise.displayName(app)
 
     override fun showMessage(text: String) {
@@ -77,6 +98,7 @@ class AndroidPlatform(private val app: TungApp) : AppPlatform {
         return remember(context, view, notificationPermission, micPermission, micAnswers) {
             object : WorkoutPlatform {
                 override val speech = app.createSpeechInput()
+                override val exactAlarms: ExactAlarms get() = this@AndroidPlatform.exactAlarms
                 override fun showMessage(text: String) {
                     Toast.makeText(context, text, Toast.LENGTH_LONG).show()
                 }

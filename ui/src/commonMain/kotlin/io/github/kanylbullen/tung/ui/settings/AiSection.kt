@@ -121,12 +121,13 @@ class AiSettingsViewModel(private val settings: AiSettings, private val ai: AiSe
         if (f.model.isBlank()) return error(Res.string.ai_error_model)
         form.value = f.copy(busy = true, message = null, detail = null)
         viewModelScope.launch {
-            settings.save(f.provider, baseUrl, f.model, f.jsonMode)
+            val keyDropped = settings.save(f.provider, baseUrl, f.model, f.jsonMode) && f.key.isBlank()
             if (f.key.isNotBlank()) settings.setKey(f.key)
             val hasKey = settings.config().hasKey
             val saved = form.value.copy(busy = false, key = "", hasKey = hasKey, baseUrl = baseUrl.orEmpty(), model = f.model.trim())
-            if (!test) {
-                form.value = saved.copy(message = Res.string.ai_saved, messageIsError = false)
+            if (!test || keyDropped) {
+                // A test without the key would only fail; say why the key went instead.
+                form.value = saved.copy(message = if (keyDropped) Res.string.ai_key_dropped else Res.string.ai_saved, messageIsError = keyDropped)
                 return@launch
             }
             form.value = saved.copy(busy = true)

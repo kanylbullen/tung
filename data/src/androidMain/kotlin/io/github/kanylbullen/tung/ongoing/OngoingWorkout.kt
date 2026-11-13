@@ -4,6 +4,7 @@ import android.content.Context
 import io.github.kanylbullen.tung.core.OngoingExercise
 import io.github.kanylbullen.tung.core.OngoingSet
 import io.github.kanylbullen.tung.core.OngoingStatus
+import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.core.StickyAction
 import io.github.kanylbullen.tung.core.currentSet
@@ -38,6 +39,9 @@ import java.text.DecimalFormatSymbols
  *   tick a set that does not count ([logSetHasReps]).
  * @param addSetWorkoutExerciseId with every set ticked, the workout exercise the
  *   notification's "Add set" adds a set to ([stickyAction]); null otherwise.
+ * @param restEndsAt when the stored rest of this workout ends (epoch millis),
+ *   or null without one; the notification counts down to it while it runs
+ *   (issue #215).
  */
 data class OngoingWorkout(
     val workoutId: String,
@@ -48,6 +52,7 @@ data class OngoingWorkout(
     val logSetWeightKg: Double? = null,
     val logSetReps: Int? = null,
     val addSetWorkoutExerciseId: String? = null,
+    val restEndsAt: Long? = null,
 ) {
     /**
      * False when the current set has 0 reps: logging it would tick a set that
@@ -94,14 +99,27 @@ fun OngoingWorkout.startedByText(context: Context): String? =
  * routine, the routine's target sets read live.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-fun ongoingWorkouts(context: Context, workouts: WorkoutRepository, routines: RoutineRepository): Flow<OngoingWorkout?> {
+fun ongoingWorkouts(
+    context: Context,
+    workouts: WorkoutRepository,
+    routines: RoutineRepository,
+    /** The stored rest of a workout ([io.github.kanylbullen.tung.timer.RestTimerStore.stored]); none by default. */
+    rest: suspend (workoutId: String) -> RestTimer? = { null },
+    /** Emits whenever the stored rest may have changed (the settings DataStore's data). */
+    restChanges: Flow<Any?> = flowOf(Unit),
+): Flow<OngoingWorkout?> {
     val appContext = context.applicationContext ?: context
     return workouts.observeActiveWorkout().flatMapLatest { workout ->
         if (workout == null) {
             flowOf(null)
         } else {
-            combine(workouts.observeExercises(workout.id), routineTargets(routines, workout.routineId)) { exercises, targets ->
+            combine(
+                workouts.observeExercises(workout.id),
+                routineTargets(routines, workout.routineId),
+                restChanges.map { rest(workout.id) },
+            ) { exercises, targets, timer ->
                 ongoingWorkout(workout, exercises.sortedBy { it.workoutExercise.position }, targets) { it.exercise.displayName(appContext) }
+                    .copy(restEndsAt = timer?.endsAtMillis)
             }
         }
     }.distinctUntilChanged()

@@ -91,4 +91,19 @@ class WebAiTest {
             rig.ai.prepare(AiRequest.Program, "en")
         })
     }
+
+    @Test
+    fun theKeyIsForgottenWhenTheProviderOrAddressChanges() {
+        // Issue #154: the key belongs to the provider and address it was typed for.
+        val settings = WebAiSettings()
+        assertFalse(settings.save(AiConfig(AiProviderKind.OPENAI_COMPATIBLE, null, "a-model"), "sk-openai"))
+        assertFalse(settings.save(AiConfig(AiProviderKind.OPENAI_COMPATIBLE, null, "b-model"), null))
+        assertEquals("sk-openai", settings.key())
+        assertTrue(settings.save(AiConfig(AiProviderKind.OPENAI_COMPATIBLE, "https://proxy.example.org/v1", "b-model"), null))
+        assertNull(settings.key())
+        // A key typed with the change is the new destination's.
+        assertFalse(settings.save(AiConfig(AiProviderKind.ANTHROPIC, null, "c-model"), "sk-ant"))
+        assertEquals("sk-ant", settings.key())
+    }
 }
+

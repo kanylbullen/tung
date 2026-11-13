@@ -2,6 +2,7 @@
 
 package io.github.kanylbullen.tung.data
 
+import platform.UIKit.UIDevice
 import io.github.kanylbullen.tung.ai.AiClient
 import io.github.kanylbullen.tung.ai.AiService
 import io.github.kanylbullen.tung.ai.AiSettings
@@ -17,6 +18,7 @@ import io.github.kanylbullen.tung.core.importing.ImportAliases
 import io.github.kanylbullen.tung.importing.ImportHistory
 import io.github.kanylbullen.tung.importing.ImportService
 import io.github.kanylbullen.tung.importing.Importer
+import io.github.kanylbullen.tung.push.IOS_PUSH_DEVICE_KEYS
 import io.github.kanylbullen.tung.push.IosPush
 import io.github.kanylbullen.tung.push.PushControl
 import io.github.kanylbullen.tung.sync.IosSyncScheduler
@@ -143,7 +145,11 @@ class IosContainer(
 
     // --- sync with tung-server, while the app runs ---
     private val tokenStore by lazy { KeychainTokenStore(KEYCHAIN_SERVICE, "sync_token") }
-    private val syncSettings: SyncSettings by lazy { SyncSettings(settings) }
+    private val syncSettings: SyncSettings by lazy {
+        // identifierForVendor is not carried to another iPhone by a backup, so a restored device id is noticed (issue #156).
+        val vendorId: String? by lazy { UIDevice.currentDevice.identifierForVendor?.UUIDString }
+        SyncSettings(settings, installFingerprint = { vendorId }, deviceKeys = IOS_PUSH_DEVICE_KEYS)
+    }
     private val syncStore: SyncStore by lazy { SyncStore(database) }
     private val syncClient: SyncClient by lazy {
         SyncClient(

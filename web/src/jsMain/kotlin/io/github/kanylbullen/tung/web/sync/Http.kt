@@ -74,10 +74,16 @@ private external class AbortController {
  * server at all, or a request that takes longer than [REQUEST_TIMEOUT_MILLIS],
  * is [HttpUnreachable], and any answer is returned as it came.
  */
-suspend fun postJson(url: String, body: String, headers: Map<String, String> = emptyMap()): HttpReply =
-    send("POST", url, body, headers + ("Content-Type" to "application/json"))
+suspend fun postJson(url: String, body: String, headers: Map<String, String> = emptyMap(), followRedirects: Boolean = true): HttpReply =
+    send("POST", url, body, headers + ("Content-Type" to "application/json"), followRedirects)
 
-private suspend fun send(method: String, url: String, body: String?, headers: Map<String, String>): HttpReply {
+/**
+ * With [followRedirects] false a redirect is not followed and comes back as
+ * 302 with no body (`redirect: "manual"`): the AI provider's key, which a
+ * browser keeps on a cross-origin redirect when it is `x-api-key`, never
+ * follows one (issue #154).
+ */
+private suspend fun send(method: String, url: String, body: String?, headers: Map<String, String>, followRedirects: Boolean = true): HttpReply {
     val requestHeaders = Headers().apply { headers.forEach { (name, value) -> append(name, value) } }
     val controller = AbortController()
     val timeout = window.setTimeout({ controller.abort() }, REQUEST_TIMEOUT_MILLIS)
@@ -85,6 +91,7 @@ private suspend fun send(method: String, url: String, body: String?, headers: Ma
         val init = RequestInit(method = method, headers = requestHeaders).also {
             if (body != null) it.body = body
             it.asDynamic().signal = controller.signal
+            if (!followRedirects) it.asDynamic().redirect = "manual"
         }
         val response = try {
             window.fetch(url, init).await()
@@ -93,6 +100,8 @@ private suspend fun send(method: String, url: String, body: String?, headers: Ma
         } catch (e: Throwable) {
             throw HttpUnreachable(e)
         }
+        // "manual" answers a redirect with an opaque response of status 0; read it as the redirect it is.
+        if (!followRedirects && (response.status.toInt() == 0 || response.type.toString() == "opaqueredirect")) return HttpReply(302, "")
         val text = try {
             response.text().await()
         } catch (e: CancellationException) {

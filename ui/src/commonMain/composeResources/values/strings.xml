@@ -548,6 +548,7 @@
     <string name="ai_key">API key</string>
     <string name="ai_key_hint">Stored encrypted on this phone. A local server may need none.</string>
     <string name="ai_key_remove">Remove key</string>
+    <string name="ai_key_dropped">Saved. The key was removed because the provider or address changed: type the key for the new one.</string>
     <string name="ai_key_removed">The key is removed.</string>
     <string name="ai_key_saved">A key is saved. Type a new one to replace it.</string>
     <string name="ai_model">Model</string>
@@ -629,6 +630,10 @@
     <string name="settings_summary_not_set_up">Not set up</string>
     <string name="settings_summary_signed_out">Not signed in</string>
     <string name="settings_summary_training">Default rest %1$s · kg</string>
+    <string name="exact_alarms_not_now">Not now</string>
+    <string name="settings_exact_alarms_title">Rest alerts can come late</string>
+    <string name="settings_exact_alarms_hint">Android ends a rest on time with Tung in the background only when Tung may set alarms and reminders. Without it the vibration can come minutes late.</string>
+    <string name="settings_exact_alarms_allow">Allow alarms and reminders</string>
     <string name="settings_units">Units</string>
     <string name="settings_units_kg">Kilograms (pounds are not supported yet)</string>
     <string name="sync_confirm_email">Confirm your email to start syncing: open the link we sent to %1$s, then tap Sync now.</string>

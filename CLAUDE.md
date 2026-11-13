@@ -571,7 +571,13 @@ started (`TungHost.isInForeground`). With the workout on screen the countdown
 reaching zero calls the same function, so the alert is on time even with an
 inexact alarm; it alerts once per `endsAt`. Tapping the notification opens
 `TungHost.openWorkoutIntent`: on the phone `MainActivity` with `EXTRA_OPEN_WORKOUT`, which `TungAppRoot` navigates to. No
-foreground service. `POST_NOTIFICATIONS` is asked for once, the first time a
+foreground service. **While a rest runs, the ongoing notification counts down
+to its end** (issue #215: title "Rest", `setChronometerCountDown`,
+`OngoingWorkout.restEndsAt` from the stored timer, re-posted with the elapsed
+time when it ends), so it is visible from another app. **Settings → Training
+says when rest alerts can be late** (`AppPlatform.exactAlarms`, Android's
+"Alarms & reminders", denied by default for new installs on Android 14+) and
+opens the system's page (`ACTION_REQUEST_SCHEDULE_EXACT_ALARM`); **the first rest that starts without it asks once** (`ExactAlarmsDialog`, `RestTimerStore.firstTimeAskingForExactAlarms`, `WorkoutPlatform.exactAlarms`). Flow tests allow exact alarms by default (`FlowTest.allowExactAlarms`); a test about the question turns them off. `POST_NOTIFICATIONS` is asked for once, the first time a
 workout is on screen on Android 13+ (flag in DataStore,
 `RestTimerController.firstTimeAskingForNotifications`, shared with the ongoing
 notification); denied, the countdown and the vibration still work.
@@ -1637,7 +1643,14 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
 - **`X-Tung-Device`** (`core.sync.DEVICE_HEADER`): every sync request and
   push registration carries the device's stable random id
   (`SyncSettings.deviceId()`, DataStore, kept across sign-outs), so the server
-  never wakes the device that made a change.
+  never wakes the device that made a change. The `settings` file is in
+  Android's backup, so the id is stored with the device's `ANDROID_ID`
+  (`installFingerprint`, never backed up) and **a restore onto another phone
+  starts a new id** and forgets the cursor and the push keys
+  (`PUSH_DEVICE_KEYS`, checked by `PushDeviceKeysTest`; issue #156,
+  `DeviceIdTest`; on iOS `identifierForVendor`); an id from
+  before this adopts the current fingerprint. A restore is signed out anyway
+  (the token is not backed up).
 - **Server trigger** (`server/.../push/`): after a successful write by a
   client (a sync that carried rows, a REST command or MCP tool with a `Done`
   result except `select_current`, the REST writes) `ChangeNotifier.changed(user,
@@ -2007,7 +2020,7 @@ tung-server never sees the key or the request.
   ran out of room before answering"), `Declined` to `DECLINED` ("The model
   declined this request") and `Empty` to `NO_ANSWER`, shown like every other
   failure through `aiFailureText`, `confirm` runs the commands, `test` sends a one-token request with
-  no training data). `TungContainer(createAiKeyStore = …)` is the seam;
+  no training data). **A key belongs to the provider and address it was typed for** (issue #154): `AiSettings.save` (and the web's `WebAiSettings.save`) forgets the stored key when either changes and no new key is typed, and the screen says so (`ai_key_dropped`) instead of testing without it; the web's AI requests never follow a redirect (`postJson(followRedirects = false)`, `redirect: "manual"`, an `opaqueredirect` read as 302), as the phone's `AiClient` does not. `TungContainer(createAiKeyStore = …)` is the seam;
   `FlowTestApp.aiKeys` keeps the key in memory.
 - **app**: the Assistant screen (`ui/ai/`), reached from the **last row on
   Home**; Settings → Assistant is `ui/settings/AiSection.kt`, one
