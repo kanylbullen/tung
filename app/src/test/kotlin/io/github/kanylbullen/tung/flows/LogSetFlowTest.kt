@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.timer.RestTimerReceiver
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import androidx.compose.ui.test.onFirst
 import org.junit.Test
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAlarmManager
@@ -103,6 +104,26 @@ class LogSetFlowTest : FlowTest() {
         endRestFromButton()
         waitForText(addSet("80", "8"))
         assertEquals(2, activeSets("s.completed = 1"))
+        assertEquals(2, activeSets("1"))
+    }
+
+    /** Issue #201: two quick taps on Log set log one set and add none. */
+    @Test
+    fun aDoubleTapLogsOneSet() {
+        seedFinishedWorkout(System.currentTimeMillis() - 2 * DAY, bench(), weightKg = 80.0, reps = 8)
+        startWorkoutFromHome()
+        addExercise("bench", benchPress)
+        clickText(str(Res.string.workout_add_set))
+        waitForDescription(str(Res.string.workout_mark_done, 2))
+        waitForText(logSet("80", "8"))
+
+        compose.onNode(hasText(logSet("80", "8"))).performClick()
+        compose.onAllNodes(restButton().or(hasText(logSet("80", "8")))).onFirst().performClick()
+        waitUntil { activeSets("s.completed = 1") == 1 }
+        compose.waitForIdle()
+        // One set, whichever the second tap met: the rest button (it ends the rest) or, before the
+        // screen caught up, the stale Log set of the set just ticked, which the command does not tick twice.
+        assertEquals(1, activeSets("s.completed = 1"))
         assertEquals(2, activeSets("1"))
     }
 

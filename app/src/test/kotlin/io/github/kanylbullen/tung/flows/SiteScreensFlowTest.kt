@@ -123,6 +123,8 @@ class SiteScreensFlowTest : FlowTest() {
         db.openHelper.writableDatabase.execSQL("UPDATE workout SET startedAt = startedAt - ${38 * 60_000L} WHERE endedAt IS NULL")
         logNextSet()
         logNextSet()
+        // The site shows Log set, not the rest that just started (issue #201).
+        endRestFromButton()
         screenshot("2-workout")
 
         repeat(4) { logNextSet() }
