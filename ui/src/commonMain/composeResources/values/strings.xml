@@ -546,6 +546,7 @@
     <string name="ai_key">API key</string>
     <string name="ai_key_hint">Stored encrypted on this phone. A local server may need none.</string>
     <string name="ai_key_remove">Remove key</string>
+    <string name="ai_key_dropped">Saved. The key was removed because the provider or address changed: type the key for the new one.</string>
     <string name="ai_key_removed">The key is removed.</string>
     <string name="ai_key_saved">A key is saved. Type a new one to replace it.</string>
     <string name="ai_model">Model</string>

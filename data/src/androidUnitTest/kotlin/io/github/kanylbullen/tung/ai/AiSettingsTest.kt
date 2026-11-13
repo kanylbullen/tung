@@ -82,4 +82,23 @@ class AiSettingsTest {
         assertTrue(settings.payloadShown.first())
         assertTrue(settings.alwaysShowPayload.first())
     }
+
+    @Test
+    fun theKeyIsForgottenWhenTheProviderOrAddressChanges() = runBlocking {
+        // Issue #154: an OpenAI key must not go to whatever address is set next.
+        assertFalse(settings.save(AiProviderKind.OPENAI_COMPATIBLE, null, "gpt-test", jsonMode = true))
+        settings.setKey("sk-openai")
+        assertFalse("the same destination keeps it", settings.save(AiProviderKind.OPENAI_COMPATIBLE, null, "another-model", jsonMode = false))
+        assertEquals("sk-openai", settings.key())
+
+        assertTrue(settings.save(AiProviderKind.OPENAI_COMPATIBLE, "http://192.168.1.20:11434/v1", "llama", jsonMode = true))
+        assertNull(settings.key())
+        assertFalse(settings.config().hasKey)
+
+        // A key typed with the change is stored after save, for the new destination.
+        settings.setKey("ollama-key")
+        assertTrue(settings.save(AiProviderKind.ANTHROPIC, "http://192.168.1.20:11434/v1", "llama", jsonMode = true))
+        assertNull("the provider's header changes too", settings.key())
+        assertFalse("nothing to forget", settings.save(AiProviderKind.OPENAI_COMPATIBLE, null, "gpt-test", jsonMode = true))
+    }
 }

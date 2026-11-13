@@ -333,6 +333,7 @@ interface Strings {
     val keySaved: String
     val removeKey: String
     val keyRemoved: String
+    val keyDropped: String
     val jsonMode: String
     val jsonModeHint: String
     val test: String
@@ -906,6 +907,7 @@ object English : Strings {
     override val keySaved = "A key is saved. Type a new one to replace it."
     override val removeKey = "Remove key"
     override val keyRemoved = "The key is removed."
+    override val keyDropped = "Saved. The key was removed because the provider or address changed: type the key for the new one."
     override val jsonMode = "Ask for JSON mode"
     override val jsonModeHint = "Turn off if your server refuses response_format."
     override val test = "Test"
@@ -1535,6 +1537,7 @@ object Swedish : Strings {
     override val keySaved = "En nyckel är sparad. Skriv en ny för att byta."
     override val removeKey = "Ta bort nyckeln"
     override val keyRemoved = "Nyckeln är borttagen."
+    override val keyDropped = "Sparat. Nyckeln togs bort eftersom leverantören eller adressen ändrades: skriv in nyckeln för den nya."
     override val jsonMode = "Be om JSON-läge"
     override val jsonModeHint = "Stäng av om din server inte godtar response_format."
     override val test = "Testa"

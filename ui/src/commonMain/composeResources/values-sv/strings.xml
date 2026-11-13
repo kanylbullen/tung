@@ -544,6 +544,7 @@
     <string name="ai_key">API-nyckel</string>
     <string name="ai_key_hint">Sparas krypterad på telefonen. En lokal server behöver kanske ingen.</string>
     <string name="ai_key_remove">Ta bort nyckeln</string>
+    <string name="ai_key_dropped">Sparat. Nyckeln togs bort eftersom leverantören eller adressen ändrades: skriv in nyckeln för den nya.</string>
     <string name="ai_key_removed">Nyckeln är borttagen.</string>
     <string name="ai_key_saved">En nyckel är sparad. Skriv en ny för att byta.</string>
     <string name="ai_model">Modell</string>

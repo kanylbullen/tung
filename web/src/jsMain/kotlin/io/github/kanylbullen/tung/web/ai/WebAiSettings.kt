@@ -57,12 +57,23 @@ class WebAiSettings {
 
     val hasKey: Boolean get() = key() != null
 
-    fun save(config: AiConfig, newKey: String?) {
+    /**
+     * Stores [config], and [newKey] when one was typed. A key belongs to the
+     * provider and address it was typed for (issue #154): when either changes
+     * without a new key, the stored one is removed, so it never goes to a host
+     * it was not meant for. True when that happened.
+     */
+    fun save(config: AiConfig, newKey: String?): Boolean {
+        val moved = destination(AiProviderKind.fromKey(stored.provider), stored.baseUrl) != destination(config.provider, config.baseUrl)
         stored = stored.copy(provider = config.provider.key, baseUrl = config.baseUrl, model = config.model.trim(), jsonMode = config.jsonMode)
         write()
-        if (!newKey.isNullOrBlank()) set(KEY_KEY, newKey.trim())
+        val dropped = moved && newKey.isNullOrBlank() && hasKey
+        if (!newKey.isNullOrBlank()) set(KEY_KEY, newKey.trim()) else if (moved) removeKey()
         _config.value = stored.toConfig()
+        return dropped
     }
+
+    private fun destination(provider: AiProviderKind, baseUrl: String?) = provider.key + " " + (baseUrl ?: provider.defaultBaseUrl)
 
     fun removeKey() = remove(KEY_KEY)
 

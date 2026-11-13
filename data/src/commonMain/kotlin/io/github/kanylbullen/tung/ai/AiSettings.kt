@@ -61,14 +61,26 @@ class AiSettings(private val store: DataStore<Preferences>, private val keyStore
 
     suspend fun config(): AiConfig = config.first()
 
-    /** Stores everything but the key; [baseUrl] already checked (`core.ai.checkAiBaseUrl`), null for the provider's own. */
-    suspend fun save(provider: AiProviderKind, baseUrl: String?, model: String, jsonMode: Boolean) {
+    /**
+     * Stores everything but the key; [baseUrl] already checked
+     * (`core.ai.checkAiBaseUrl`), null for the provider's own. A key belongs
+     * to the provider and address it was typed for (issue #154): when either
+     * changes the stored key is forgotten, so it never goes to a host it was
+     * not meant for. True when a key was forgotten; the caller stores the new
+     * one after, if one was typed.
+     */
+    suspend fun save(provider: AiProviderKind, baseUrl: String?, model: String, jsonMode: Boolean): Boolean {
+        var moved = false
         store.edit {
+            moved = keyDestination(AiProviderKind.fromKey(it[PROVIDER]), it[BASE_URL]) != keyDestination(provider, baseUrl)
             it[PROVIDER] = provider.key
             if (baseUrl == null) it.remove(BASE_URL) else it[BASE_URL] = baseUrl
             it[MODEL] = model.trim()
             it[JSON_MODE] = jsonMode
         }
+        if (!moved || key() == null) return false
+        setKey(null)
+        return true
     }
 
     /** Stores [key], or forgets it for null or blank. */
@@ -106,6 +118,10 @@ class AiSettings(private val store: DataStore<Preferences>, private val keyStore
     }
 
     companion object {
+        /** Where a key is sent: the provider (its header) and the address. */
+        internal fun keyDestination(provider: AiProviderKind, baseUrl: String?): String =
+            provider.key + " " + (baseUrl ?: provider.defaultBaseUrl)
+
         /** The EncryptedSharedPreferences file of the key; the app's backup rules exclude `ai_key.xml`. */
         const val KEY_FILE = "ai_key"
         const val KEY_NAME = "api_key"
