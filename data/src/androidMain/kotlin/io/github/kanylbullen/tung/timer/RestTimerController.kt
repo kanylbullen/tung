@@ -42,6 +42,8 @@ class RestTimerController(
      */
     override suspend fun firstTimeAskingForNotifications(): Boolean = stored.firstTimeAskingForNotifications()
 
+    override suspend fun firstTimeAskingForExactAlarms(): Boolean = stored.firstTimeAskingForExactAlarms()
+
     /** The rest is over while the workout is on screen: the same alert as the alarm's. */
     override fun restOver(workoutId: String, endsAtMillis: Long) = RestAlerts.restOver(context, workoutId, endsAtMillis)
 }

@@ -627,6 +627,7 @@
     <string name="settings_summary_not_set_up">Not set up</string>
     <string name="settings_summary_signed_out">Not signed in</string>
     <string name="settings_summary_training">Default rest %1$s · kg</string>
+    <string name="exact_alarms_not_now">Not now</string>
     <string name="settings_exact_alarms_title">Rest alerts can come late</string>
     <string name="settings_exact_alarms_hint">Android ends a rest on time with Tung in the background only when Tung may set alarms and reminders. Without it the vibration can come minutes late.</string>
     <string name="settings_exact_alarms_allow">Allow alarms and reminders</string>

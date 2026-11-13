@@ -34,4 +34,7 @@ interface WorkoutPlatform {
 
     /** One firm haptic, for a spoken intent that changed something. */
     fun confirmHaptic()
+
+    /** Android's "Alarms & reminders", asked about once when a rest starts without it (issue #215); null elsewhere. */
+    val exactAlarms: io.github.kanylbullen.tung.ui.ExactAlarms? get() = null
 }

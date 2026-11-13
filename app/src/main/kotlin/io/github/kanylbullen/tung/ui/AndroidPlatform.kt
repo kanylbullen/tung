@@ -98,6 +98,7 @@ class AndroidPlatform(private val app: TungApp) : AppPlatform {
         return remember(context, view, notificationPermission, micPermission, micAnswers) {
             object : WorkoutPlatform {
                 override val speech = app.createSpeechInput()
+                override val exactAlarms: ExactAlarms get() = this@AndroidPlatform.exactAlarms
                 override fun showMessage(text: String) {
                     Toast.makeText(context, text, Toast.LENGTH_LONG).show()
                 }

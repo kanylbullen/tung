@@ -7,7 +7,13 @@ import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.performTextReplacement
 import io.github.kanylbullen.tung.R
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import org.robolectric.shadows.ShadowAlarmManager
+import org.robolectric.Shadows.shadowOf
+import android.provider.Settings
 import org.robolectric.shadows.ShadowToast
 
 class SessionFlowTest : FlowTest() {
@@ -94,6 +100,32 @@ class SessionFlowTest : FlowTest() {
                     "WHERE w.endedAt IS NULL AND s.weightKg = 80.0 AND s.reps = 8 AND s.completed = 0",
             ),
         )
+    }
+
+    /**
+     * Issue #215: the first rest that starts without exact alarms asks once
+     * to allow them; "Allow" opens the system's page, and the next rest asks
+     * nothing.
+     */
+    @Test
+    fun theFirstRestAsksOnceToAllowExactAlarms() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(false)
+        seedFinishedWorkout(startedAt = System.currentTimeMillis() - 2 * DAY, exerciseId = bench(), weightKg = 80.0, reps = 8)
+        waitForText(str(Res.string.home_recent))
+        startWorkoutFromHome()
+        addExercise("bench", benchPress)
+        waitForDescription(str(Res.string.workout_mark_done, 1))
+
+        clickDescription(str(Res.string.workout_mark_done, 1))
+        waitFor(isDialog())
+        assertShown(hasText(str(Res.string.settings_exact_alarms_title)))
+        screenshot("1-exact-alarms-asked")
+        clickInDialog(str(Res.string.settings_exact_alarms_allow))
+        assertEquals(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, shadowOf(app).nextStartedActivity?.action)
+
+        // Asked once: the flag is spent, so no later rest asks again.
+        waitUntil { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() }
+        assertFalse(runBlocking { app.container.restTimer.firstTimeAskingForExactAlarms() })
     }
 
     /**

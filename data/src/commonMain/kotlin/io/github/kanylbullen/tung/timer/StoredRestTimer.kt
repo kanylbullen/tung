@@ -68,7 +68,18 @@ class StoredRestTimer(private val settings: DataStore<Preferences>) {
         return first
     }
 
+    /** As [firstTimeAskingForNotifications], for Android's "Alarms & reminders" (issue #215). */
+    suspend fun firstTimeAskingForExactAlarms(): Boolean {
+        var first = false
+        settings.edit { prefs ->
+            first = prefs[EXACT_ALARMS_ASKED] != true
+            prefs[EXACT_ALARMS_ASKED] = true
+        }
+        return first
+    }
+
     private companion object {
+        val EXACT_ALARMS_ASKED = booleanPreferencesKey("exact_alarms_asked")
         val DEFAULT_SECONDS = intPreferencesKey("rest_default_seconds")
         val WORKOUT_ID = stringPreferencesKey("rest_workout_id")
         val ENDS_AT = longPreferencesKey("rest_ends_at")

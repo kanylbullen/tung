@@ -180,6 +180,9 @@ class ActiveWorkoutViewModel(
         }
     }
 
+    /** True once ever, the first time a rest starts while exact alarms are not allowed (the screen checks that). */
+    suspend fun firstTimeAskingForExactAlarms(): Boolean = restTimer.firstTimeAskingForExactAlarms()
+
     fun addSet(workoutExerciseId: String) {
         touch(workoutExerciseId)
         launch {

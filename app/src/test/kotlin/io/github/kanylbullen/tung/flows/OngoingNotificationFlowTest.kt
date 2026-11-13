@@ -22,6 +22,7 @@ import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.R as DataR
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutReceiver
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -147,6 +148,16 @@ class OngoingNotificationFlowTest : FlowTest() {
         runBlocking { app.container.restTimer.set(workoutId, null) }
         waitUntil { ongoing()?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() == str(DataR.string.ongoing_title) }
         assertFalse(checkNotNull(ongoing()).extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN))
+
+        // A rest that runs out on its own: the notification goes back to the elapsed time by itself.
+        runBlocking { app.container.restTimer.set(workoutId, RestTimer(System.currentTimeMillis() + 1_500L, 1_500L)) }
+        waitUntil { ongoing()?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() == str(DataR.string.ongoing_rest_title) }
+        waitUntil(timeoutMillis = 10_000) { ongoing()?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() == str(DataR.string.ongoing_title) }
+        assertEquals(workoutStartedAt(workoutId), checkNotNull(ongoing()).`when`)
+    }
+
+    private fun workoutStartedAt(workoutId: String): Long = runBlocking {
+        checkNotNull(app.container.workoutRepository.observeWorkout(workoutId).first()).startedAt
     }
 
     /**

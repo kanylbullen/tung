@@ -39,6 +39,7 @@ import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
+import org.robolectric.shadows.ShadowAlarmManager
 import org.junit.Rule
 import org.junit.rules.TestName
 import org.junit.runner.RunWith
@@ -80,6 +81,16 @@ abstract class FlowTest {
     @Before
     fun defaultLocaleFromQualifiers() {
         Locale.setDefault(Locale.forLanguageTag(app.resources.configuration.locales[0].language))
+    }
+
+    /**
+     * Exact alarms allowed, as on most phones before Android 14: otherwise the
+     * first rest of every flow asks to allow them (issue #215). A test about
+     * that question turns it off itself.
+     */
+    @Before
+    fun allowExactAlarms() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
     }
 
     protected fun str(@StringRes id: Int, vararg args: Any): String = app.getString(id, *args)
