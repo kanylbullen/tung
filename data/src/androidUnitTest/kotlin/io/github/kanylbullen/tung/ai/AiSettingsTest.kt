@@ -89,6 +89,7 @@ class AiSettingsTest {
         assertFalse(settings.save(AiProviderKind.OPENAI_COMPATIBLE, null, "gpt-test", jsonMode = true))
         settings.setKey("sk-openai")
         assertFalse("the same destination keeps it", settings.save(AiProviderKind.OPENAI_COMPATIBLE, null, "another-model", jsonMode = false))
+        assertFalse("the default typed out is the same address", settings.save(AiProviderKind.OPENAI_COMPATIBLE, "https://api.openai.com/v1/", "another-model", jsonMode = false))
         assertEquals("sk-openai", settings.key())
 
         assertTrue(settings.save(AiProviderKind.OPENAI_COMPATIBLE, "http://192.168.1.20:11434/v1", "llama", jsonMode = true))

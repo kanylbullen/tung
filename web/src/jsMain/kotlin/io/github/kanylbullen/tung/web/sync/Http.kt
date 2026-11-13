@@ -100,7 +100,8 @@ private suspend fun send(method: String, url: String, body: String?, headers: Ma
         } catch (e: Throwable) {
             throw HttpUnreachable(e)
         }
-        if (response.type.toString() == "opaqueredirect") return HttpReply(302, "")
+        // "manual" answers a redirect with an opaque response of status 0; read it as the redirect it is.
+        if (!followRedirects && (response.status.toInt() == 0 || response.type.toString() == "opaqueredirect")) return HttpReply(302, "")
         val text = try {
             response.text().await()
         } catch (e: CancellationException) {

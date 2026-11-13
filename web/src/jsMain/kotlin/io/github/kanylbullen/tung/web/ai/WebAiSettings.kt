@@ -73,7 +73,7 @@ class WebAiSettings {
         return dropped
     }
 
-    private fun destination(provider: AiProviderKind, baseUrl: String?) = provider.key + " " + (baseUrl ?: provider.defaultBaseUrl)
+    private fun destination(provider: AiProviderKind, baseUrl: String?) = provider.key + " " + (baseUrl ?: provider.defaultBaseUrl).trimEnd('/')
 
     fun removeKey() = remove(KEY_KEY)
 

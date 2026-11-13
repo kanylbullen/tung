@@ -120,7 +120,7 @@ class AiSettings(private val store: DataStore<Preferences>, private val keyStore
     companion object {
         /** Where a key is sent: the provider (its header) and the address. */
         internal fun keyDestination(provider: AiProviderKind, baseUrl: String?): String =
-            provider.key + " " + (baseUrl ?: provider.defaultBaseUrl)
+            provider.key + " " + (baseUrl ?: provider.defaultBaseUrl).trimEnd('/')
 
         /** The EncryptedSharedPreferences file of the key; the app's backup rules exclude `ai_key.xml`. */
         const val KEY_FILE = "ai_key"

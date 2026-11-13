@@ -131,22 +131,22 @@ fun AssistantSettings(container: WebContainer) {
                 if (testing) disabled()
                 onClick {
                     if (save()) {
-                      // A test without the key would only fail; say why the key went instead.
-                      if (keyDropped) {
-                        message = strings.keyDropped
-                      } else {
-                        testing = true
-                        message = null
-                        scope.launch {
-                            val failed = container.ai.test()
-                            testing = false
-                            if (failed == null) {
-                                message = strings.testOk
-                            } else {
-                                error = listOfNotNull(strings.aiFailure(failed.failure), failed.message?.let(strings::providerSays)).joinToString(" ")
+                        // A test without the key would only fail; say why the key went instead.
+                        if (keyDropped) {
+                            message = strings.keyDropped
+                        } else {
+                            testing = true
+                            message = null
+                            scope.launch {
+                                val failed = container.ai.test()
+                                testing = false
+                                if (failed == null) {
+                                    message = strings.testOk
+                                } else {
+                                    error = listOfNotNull(strings.aiFailure(failed.failure), failed.message?.let(strings::providerSays)).joinToString(" ")
+                                }
                             }
                         }
-                      }
                     }
                 }
             }) { Text(if (testing) strings.testing else strings.test) }
