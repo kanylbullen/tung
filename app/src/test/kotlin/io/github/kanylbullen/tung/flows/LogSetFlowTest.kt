@@ -281,6 +281,44 @@ class LogSetFlowTest : FlowTest() {
     }
 
     /**
+     * "Log set" from the weight sheet (issue #200): with no reps yet it writes
+     * the weight and asks for the reps, logging nothing; with reps it writes
+     * the weight and logs the set with a rest.
+     */
+    @Test
+    fun theWeightSheetLogsOrAsksForReps() {
+        startWorkoutFromHome()
+        addExercise("bench", benchPress)
+        val weightField = hasContentDescription(str(Res.string.input_field_weight))
+        val repsField = hasContentDescription(str(Res.string.input_field_reps))
+        val logButton = compose.onNode(hasText(str(Res.string.input_log_set)))
+
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitFor(weightField)
+        compose.onNode(weightField).performTextReplacement("60")
+        logButton.assertIsEnabled()
+        logButton.performClick()
+        waitFor(repsField)
+        assertEquals(1, activeSets("s.completed = 0 AND s.weightKg = 60.0 AND s.reps = 0"))
+        compose.onNode(countdown).assertDoesNotExist()
+        screenshot("1-asks-for-reps")
+
+        compose.onNode(repsField).performTextReplacement("5")
+        compose.onNode(hasText(str(Res.string.input_save))).performClick()
+        waitGone(repsField)
+        waitUntil { activeSets("s.completed = 0 AND s.reps = 5") == 1 }
+
+        clickDescription(str(Res.string.workout_edit_weight, "60"))
+        waitFor(weightField)
+        compose.onNode(weightField).performTextReplacement("62,5")
+        logButton.performClick()
+        waitGone(weightField)
+        waitUntil { activeSets("s.completed = 1 AND s.weightKg = 62.5 AND s.reps = 5") == 1 }
+        assertShown(countdown)
+        screenshot("2-logged-from-weight")
+    }
+
+    /**
      * The set the button shows lost its reps after the screen last read it (a
      * sync's write landing before the tap; here written behind Room's back, so
      * the screen still says 80 × 8). `log_set` refuses it, and the refusal

@@ -233,6 +233,7 @@ fun NumberInputSheet(
                         onClick = confirm,
                         enabled = valid,
                         modifier = Modifier.weight(1f),
+                        containerColor = Tung.colors.background,
                     )
                     PrimaryButton(
                         text = stringResource(Res.string.input_log_set),
