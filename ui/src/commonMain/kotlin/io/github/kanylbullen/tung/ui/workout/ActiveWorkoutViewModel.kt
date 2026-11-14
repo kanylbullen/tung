@@ -429,7 +429,7 @@ class ActiveWorkoutViewModel(
      * exercise, which is what the touched exercise gives. With no open set
      * left the logged exercise stays touched, so the button's Add set goes to
      * it. When the current set lands in another exercise, or [scrollAlways],
-     * it is scrolled into view.
+     * it is scrolled to the middle of the screen (#202).
      */
     private fun advanceAfterLogging(before: ActiveWorkoutUiState, loggedId: String, scrollAlways: Boolean = false) {
         val logged = before.indexOfSet(loggedId) ?: return
@@ -442,7 +442,7 @@ class ActiveWorkoutViewModel(
         if (next == null) return
         val nextSetId = exercise.sets.getOrNull(next.set)?.id ?: return
         if (scrollAlways || next.exercise != logged.exercise) {
-            requestScroll(ScrollRequest(setId = nextSetId, mode = ScrollMode.IntoView, seq = 0))
+            requestScroll(ScrollRequest(setId = nextSetId, mode = ScrollMode.Centre, seq = 0))
         }
     }
 

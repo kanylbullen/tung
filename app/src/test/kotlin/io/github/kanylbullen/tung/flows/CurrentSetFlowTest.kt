@@ -161,6 +161,40 @@ class CurrentSetFlowTest : FlowTest() {
     }
 
     /**
+     * In the long workout someone logs both squat sets and four bench sets
+     * with the button. The fifth bench set, now current, would sit low on the
+     * screen if the list only scrolled it into view; instead it is scrolled
+     * to the middle of the space between the top bar and the Log set button
+     * (#202).
+     */
+    @Test
+    fun theNextSetIsScrolledToTheMiddle() {
+        seedLongWorkout()
+        clickText(str(Res.string.home_resume_workout))
+        repeat(2) {
+            clickText(str(Res.string.workout_log_set, backSquat, "100", "5"))
+            endRestFromButton()
+        }
+        repeat(4) {
+            clickText(str(Res.string.workout_log_set, benchPress, "80", "8"))
+            endRestFromButton()
+        }
+        val button = logSet(benchPress, "80", "8")
+        waitFor(button)
+        val current = markedCurrent(5)
+        waitFor(current)
+        // The top bar's bottom, near enough: its Finish button.
+        val topBar = compose.onNode(hasText(str(Res.string.workout_finish))).getUnclippedBoundsInRoot().bottom
+        waitUntil(5_000) {
+            val set = compose.onNode(current).getUnclippedBoundsInRoot()
+            val middle = (topBar + compose.onNode(button).getUnclippedBoundsInRoot().top) / 2
+            val centre = (set.top + set.bottom) / 2
+            (centre - middle).value.let { kotlin.math.abs(it) } < (set.bottom - set.top).value
+        }
+        screenshot("1-current-set-in-the-middle")
+    }
+
+    /**
      * In the same long workout someone adds Overhead press at the end. Back on
      * the workout it is the current exercise, and the list has scrolled to it:
      * its header and its first set are on screen, clear of the Log set button.

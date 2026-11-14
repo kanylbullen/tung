@@ -311,6 +311,7 @@ fun ActiveWorkoutScreen(
         when (scrollRequest.mode) {
             ScrollMode.IntoView -> listState.scrollIntoView(scrollIndex)
             ScrollMode.ToTop -> listState.animateScrollToItem(scrollIndex)
+            ScrollMode.Centre -> listState.scrollToCentre(scrollIndex)
         }
         vm.onScrollHandled(scrollRequest)
     }
@@ -822,6 +823,34 @@ private suspend fun LazyListState.scrollIntoView(index: Int) {
         item.offset < top -> animateScrollBy((item.offset - top).toFloat())
         item.offset + item.size > bottom -> animateScrollBy((minOf(item.offset - top, item.offset + item.size - bottom)).toFloat())
     }
+}
+
+/**
+ * Scrolls so the item sits in the middle of the space between the top bar and
+ * the Log set button; the list stops at its ends, so near them it lands as
+ * close as it can (#202). An item out of sight is brought on screen first.
+ */
+private suspend fun LazyListState.scrollToCentre(index: Int) {
+    // Out of sight: an animated scroll by the distance the visible rows suggest, then the exact step below.
+    val visible = layoutInfo.visibleItemsInfo
+    if (visible.isNotEmpty() && visible.none { it.index == index }) {
+        val first = visible.first()
+        val last = visible.last()
+        val rowSize = (last.offset + last.size - first.offset) / visible.size
+        val estimate = if (index > last.index) {
+            last.offset + (index - last.index) * rowSize - layoutInfo.viewportEndOffset / 2
+        } else {
+            first.offset - (first.index - index) * rowSize - layoutInfo.viewportEndOffset / 2
+        }
+        animateScrollBy(estimate.toFloat())
+        if (layoutInfo.visibleItemsInfo.none { it.index == index }) scrollToItem(index)
+    }
+    val info = layoutInfo
+    val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return
+    val top = info.viewportStartOffset + info.beforeContentPadding
+    val bottom = info.viewportEndOffset - info.afterContentPadding
+    val delta = (item.offset + item.size / 2) - (top + bottom) / 2
+    if (delta != 0) animateScrollBy(delta.toFloat())
 }
 
 @Composable
