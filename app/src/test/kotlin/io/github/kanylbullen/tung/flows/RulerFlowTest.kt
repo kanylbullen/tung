@@ -109,6 +109,8 @@ class RulerFlowTest : FlowTest() {
         stepButton(plural(Res.plurals.input_minus_weight, 1, "1")).assert(hasText(str(Res.string.input_step_weight, "1")))
         clickDescription(plural(Res.plurals.input_plus_weight, 2, "2.5"))
         field.assert(hasText("32.5"))
+        // Above 30 the step down is 2.5 too.
+        stepButton(plural(Res.plurals.input_minus_weight, 2, "2.5")).assert(hasText(str(Res.string.input_step_weight, "2.5")))
         assertShown(rulerAt("32.5"))
         screenshot("2-thirty-plus")
 

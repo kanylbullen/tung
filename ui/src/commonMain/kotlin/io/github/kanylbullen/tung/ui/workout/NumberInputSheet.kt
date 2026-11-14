@@ -276,11 +276,16 @@ fun StepButton(
         shape = TungCorner,
         color = Tung.colors.background,
         contentColor = Tung.colors.text,
+        // At least 96 dp, taller when a large font scale needs room for the sign and its step line.
         modifier = modifier
-            .height(96.dp)
+            .heightIn(min = 96.dp)
             .semantics { contentDescription = description },
     ) {
-        Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(vertical = 8.dp),
+        ) {
             Text(symbol, fontSize = fontSize, fontWeight = FontWeight.Bold, style = Tung.numbers.set)
             if (label != null) {
                 Text(label, style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"), color = Tung.colors.muted)
