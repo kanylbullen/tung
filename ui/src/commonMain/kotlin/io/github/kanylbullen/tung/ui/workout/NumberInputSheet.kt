@@ -73,6 +73,10 @@ data class NumberInputSpec(
     val doneText: String,
     val minusText: String,
     val plusText: String,
+    /** Shown small under − for the current text, "1 kg" or "2.5 kg" (#229); null shows nothing. */
+    val minusLabel: @Composable (text: String) -> String? = { null },
+    /** Shown small under + for the current text. */
+    val plusLabel: @Composable (text: String) -> String? = { null },
     /** Is the text a valid value? */
     val isValid: (String) -> Boolean,
     /** Text after one −/+ press (steps = -1 or 1). */
@@ -192,11 +196,11 @@ fun NumberInputSheet(
             )
             Spacer(Modifier.height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StepButton(spec.minusText, spec.minusDescription(field.text), Modifier.weight(1f)) {
+                StepButton(spec.minusText, spec.minusDescription(field.text), Modifier.weight(1f), label = spec.minusLabel(field.text)) {
                     tapped = false
                     field = spec.step(field.text, -1).let { TextFieldValue(it, TextRange(it.length)) }
                 }
-                StepButton(spec.plusText, spec.plusDescription(field.text), Modifier.weight(1f)) {
+                StepButton(spec.plusText, spec.plusDescription(field.text), Modifier.weight(1f), label = spec.plusLabel(field.text)) {
                     tapped = false
                     field = spec.step(field.text, 1).let { TextFieldValue(it, TextRange(it.length)) }
                 }
@@ -263,6 +267,8 @@ fun StepButton(
     description: String,
     modifier: Modifier,
     fontSize: TextUnit = 56.sp,
+    /** A small muted line under the symbol: how much one press changes the value. */
+    label: String? = null,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -276,6 +282,9 @@ fun StepButton(
     ) {
         Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             Text(symbol, fontSize = fontSize, fontWeight = FontWeight.Bold, style = Tung.numbers.set)
+            if (label != null) {
+                Text(label, style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"), color = Tung.colors.muted)
+            }
         }
     }
 }

@@ -28,6 +28,7 @@ class RulerFlowTest : FlowTest() {
     private val field get() = compose.onNode(hasContentDescription(str(Res.string.input_field_weight)))
     private val ruler get() = compose.onNode(hasContentDescription(str(Res.string.input_ruler_weight)))
     private val done get() = compose.onNode(hasText(str(Res.string.input_done)))
+    private fun stepButton(description: String) = compose.onNode(hasContentDescription(description))
     private val applyToAll get() = compose.onNode(hasText(str(Res.string.input_apply_all)))
 
     private fun fieldText(): String =
@@ -85,7 +86,8 @@ class RulerFlowTest : FlowTest() {
 
     /**
      * − and + step by the ruler's local step: 1 kg below 30, 2.5 kg from 30
-     * up, so 20 + gives 21, 30 + gives 32.5 and 30 − gives 29 (#17).
+     * up, so 20 + gives 21, 30 + gives 32.5 and 30 − gives 29 (#17). Each
+     * button shows its step under the sign, "1 kg" or "2.5 kg" (#229).
      */
     @Test
     fun stepsFollowTheLocalStep() {
@@ -95,6 +97,7 @@ class RulerFlowTest : FlowTest() {
         waitForDescription(str(Res.string.input_field_weight))
 
         field.performTextReplacement("20")
+        stepButton(plural(Res.plurals.input_plus_weight, 1, "1")).assert(hasText(str(Res.string.input_step_weight, "1")))
         clickDescription(plural(Res.plurals.input_plus_weight, 1, "1"))
         field.assert(hasText("21"))
         assertShown(rulerAt("21"))
@@ -102,6 +105,8 @@ class RulerFlowTest : FlowTest() {
 
         // At 30 the step up is 2.5 and the step down is 1, and the buttons say so.
         field.performTextReplacement("30")
+        stepButton(plural(Res.plurals.input_plus_weight, 2, "2.5")).assert(hasText(str(Res.string.input_step_weight, "2.5")))
+        stepButton(plural(Res.plurals.input_minus_weight, 1, "1")).assert(hasText(str(Res.string.input_step_weight, "1")))
         clickDescription(plural(Res.plurals.input_plus_weight, 2, "2.5"))
         field.assert(hasText("32.5"))
         assertShown(rulerAt("32.5"))

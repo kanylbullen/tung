@@ -2881,8 +2881,10 @@ the nearest 5 reps, and exactly between two, the one nearer the current value.
 **−/+ follow the local step** (`stepUp`/`stepDown`, via `core.stepWeight`):
 1 kg below 30, 2.5 kg from 30 up, so 29 → 30 → 32.5 and back; an off-grid
 value goes to the next point on the grid, and past 500 the 2.5 kg step carries
-on to 999. Their screen-reader descriptions name the step at the current
-value. **Typing wins:** typing or −/+ moves the ruler to the
+on to 999. Each shows that step in a small muted line under its sign
+("1 kg", "2.5 kg", `input_step_weight`, issue #229; the reps sheet has
+none, its step is always one), and its screen-reader description names it
+too. **Typing wins:** typing or −/+ moves the ruler to the
 value (between ticks if off the grid, pinned at the end if past it), and the
 ruler never writes back what was typed; only a drag or a tap writes, always on
 the grid. "Apply to all sets" is a switch in the sheet, off every time it opens,

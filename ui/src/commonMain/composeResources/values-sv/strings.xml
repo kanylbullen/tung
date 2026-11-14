@@ -27,6 +27,7 @@
     <string name="input_minus_reps">Minska med en rep</string>
     <string name="input_plus">+</string>
     <string name="input_plus_reps">Öka med en rep</string>
+    <string name="input_step_weight">%1$s kg</string>
     <string name="input_reps_title">Reps</string>
     <string name="input_ruler_reps">Repslinjal</string>
     <plurals name="input_ruler_reps_state">
