@@ -2748,7 +2748,11 @@ APKs: `app/build/outputs/apk/debug/app-debug.apk` and
 `wear/build/outputs/apk/debug/wear-debug.apk` (`:wear:assembleDebug`). The first build downloads
 dependencies and takes a few minutes.
 
-**A Play build is `scripts/release.sh`** (the console side: `deploy/play.md`).
+**A Play build is `scripts/release.sh`** (the console side: `deploy/play.md`);
+with `--upload <track> --notes <dir>` it also sends both bundles to Play
+through the Developer API (`scripts/play_upload.py`, the phone to the track,
+the watch to `wear:<track>`, one edit; the service account's key in
+`~/.config/tung/play-publisher.json`, never in the checkout).
 The release inputs live in the root `build.gradle.kts` and reach `app/` and
 `wear/` through `rootProject.extra`: the one release key from
 `TUNG_KEYSTORE`, `TUNG_KEYSTORE_PASSWORD`, `TUNG_KEY_ALIAS` and

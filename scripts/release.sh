@@ -5,7 +5,15 @@
 # fit, and the Play Console side: deploy/play.md.
 #
 #   TUNG_KEYSTORE=~/.config/tung/release.jks TUNG_KEYSTORE_PASSWORD=… \
-#   TUNG_KEY_ALIAS=tung TUNG_KEY_PASSWORD=… scripts/release.sh
+#   TUNG_KEY_ALIAS=tung TUNG_KEY_PASSWORD=… scripts/release.sh [--upload TRACK [--notes DIR] [--draft] [--replace-in-review] [--phone-only]]
+#
+# --upload TRACK then sends both bundles to Play in one edit (scripts/play_upload.py): the
+# phone to TRACK, the watch to wear:TRACK. --notes is a directory of <language>.txt ("What's
+# new", required for production); --draft saves the releases without sending them;
+# --replace-in-review cancels changes already in review and sends them along; --phone-only
+# leaves the watch out (alpha has no wear:alpha). The service
+# account's key is $TUNG_PLAY_KEY or ~/.config/tung/play-publisher.json, checked against Play
+# before the build starts.
 #
 # It refuses rather than builds:
 # - without the key. `assembleDogfood` makes a release-code APK signed with the debug
@@ -26,6 +34,36 @@ export JAVA_HOME ANDROID_HOME ANDROID_SDK_ROOT="$ANDROID_HOME"
 export PATH="$JAVA_HOME/bin:$PATH"
 
 fail() { echo "release: $*" >&2; exit 1; }
+
+# --- Arguments
+UPLOAD_TRACK=""
+UPLOAD_ARGS=()
+NOTES=""
+PHONE_ONLY=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --upload) [ $# -ge 2 ] || fail "--upload needs a track"; UPLOAD_TRACK="$2"; shift 2 ;;
+    --notes) [ $# -ge 2 ] || fail "--notes needs a directory"; NOTES="$2"; shift 2 ;;
+    --draft) UPLOAD_ARGS+=(--status draft); shift ;;
+    --replace-in-review) UPLOAD_ARGS+=(--replace-in-review); shift ;;
+    --phone-only) PHONE_ONLY=1; shift ;;
+    *) fail "unknown argument: $1" ;;
+  esac
+done
+if [ -z "$UPLOAD_TRACK" ]; then
+  { [ -z "$NOTES" ] && [ -z "$PHONE_ONLY" ] && [ ${#UPLOAD_ARGS[@]} -eq 0 ]; } \
+    || fail "--notes, --draft, --replace-in-review and --phone-only go with --upload"
+else
+  if [ -n "$NOTES" ]; then
+    [ -d "$NOTES" ] || fail "--notes is not a directory: $NOTES"
+    UPLOAD_ARGS+=(--notes "$(realpath -- "$NOTES")")
+  elif [ "$UPLOAD_TRACK" = "production" ]; then
+    fail "a production release needs --notes: users read \"What's new\""
+  fi
+  # Before a build of several minutes: the key works and both tracks exist.
+  python3 -I "$REPO/scripts/play_upload.py" --track "$UPLOAD_TRACK" --dry-run ${PHONE_ONLY:+--phone-only} \
+    || fail "Play refused the dry run, so nothing was built"
+fi
 
 # --- Inputs, all at once, so one run shows everything that is missing.
 missing=()
@@ -105,3 +143,15 @@ for module in app wear; do
     || fail "the bundle is signed by '${aab_sha1:-nobody}', not the release key $KEY_SHA1"
   echo "The bundle is signed by the release key."
 done
+
+# --- Play, only when asked, and only with bundles that passed every check above.
+if [ -n "$UPLOAD_TRACK" ]; then
+  echo
+  WATCH_ARGS=()
+  [ -n "$PHONE_ONLY" ] || WATCH_ARGS=(--watch "$REPO/wear/build/outputs/bundle/release/wear-release.aab"
+    --watch-version-code $((TUNG_VERSION_CODE * 10 + 2)))
+  python3 -I "$REPO/scripts/play_upload.py" --track "$UPLOAD_TRACK" \
+    --phone "$REPO/app/build/outputs/bundle/release/app-release.aab" \
+    --phone-version-code $((TUNG_VERSION_CODE * 10 + 1)) \
+    "${WATCH_ARGS[@]}" "${UPLOAD_ARGS[@]}"
+fi

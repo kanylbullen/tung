@@ -106,6 +106,30 @@ file's `releaseGate` before packaging, which refuses without the four key
 inputs or the build number. The release variant's unit tests are untouched,
 so CI, which has no key, is too.
 
+**Upload with the Play Developer API.** `scripts/release.sh --upload production
+--notes <dir>` builds, checks, and then sends both bundles to Play in one edit
+(`scripts/play_upload.py`, standard library and `openssl` only): the phone to
+the track, the watch to `wear:<track>`, each with the versionCode the build
+number gives, checked against what Play reads in the bundle. `<dir>` holds one
+`<language>.txt` per language (`en-GB.txt`, `sv-SE.txt`, at most 500
+characters each), required for production. Committing the edit sends a
+completed release for review, since managed publishing is off; `--draft`
+saves it for the console instead, `--replace-in-review` cancels changes
+already in review and sends them along (without it the commit refuses), and
+`--phone-only` leaves the watch out (there is no `wear:alpha`). Before the
+build a dry run checks the key and both tracks, so a bad key costs seconds,
+not a build. On its own, `scripts/play_upload.py --track production --dry-run`
+signs in, prints the tracks' releases and throws the edit away.
+
+The account is the service account `play-publisher@tung-514709.iam.gserviceaccount.com`
+of Google Cloud project `tung` (tung-514709), with the Google Play Android
+Developer API enabled and no project roles. In Play Console (Users and
+permissions) it has Tung only: view, release to testing tracks, and release to
+production. Its JSON key is `~/.config/tung/play-publisher.json`, mode 600
+(`TUNG_PLAY_KEY` points elsewhere), outside the checkout and never committed:
+whoever holds it can publish Tung to every user. A lost or leaked key is
+deleted in the Cloud console (IAM → Service accounts → Keys) and replaced.
+
 **Dogfood after Play.** `:app:assembleDogfood` with the key in the
 environment is signed with the release key, so it installs over a Play
 install and keeps the data; its versionCode is lower, so `adb install -r -d`.
