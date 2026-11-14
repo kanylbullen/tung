@@ -66,6 +66,13 @@ data class WatchWorkoutState(
      * the wrist. Not a secret: the token is never in the Data Layer.
      */
     val serverUrl: String? = null,
+    /**
+     * The phone's default rest in seconds (Settings → Training), or null. A
+     * standalone watch stores it as its own, since the setting is not synced
+     * and the watch has no screen for it (#228). Additive: an older watch
+     * ignores it, an older phone leaves it out.
+     */
+    val defaultRestSeconds: Int? = null,
     /** Epoch millis on the phone when this state was built. */
     val updatedAt: Long,
     val version: Int = WatchProtocol.VERSION,
