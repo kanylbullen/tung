@@ -494,7 +494,7 @@ of the next exercise with one in list order, wrapping. Adding an exercise
 makes it current, over a manual selection. The selected set id and the
 touched exercise live in the ViewModel's `SavedStateHandle`, so both survive
 rotation and process death. **Auto-scroll:** the ViewModel puts a one-shot
-`ScrollRequest` (a set or an exercise header, mode `IntoView` or `ToTop`) in
+`ScrollRequest` (a set or an exercise header, mode `IntoView`, `ToTop` or `Centre`) in
 the UI state and the screen carries it out with the `LazyListState`, finding
 the index among the list's keys (`listKeys`), then calls `onScrollHandled`.
 `IntoView` scrolls only when the item is not wholly between the top bar and

@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
@@ -183,15 +184,62 @@ class CurrentSetFlowTest : FlowTest() {
         waitFor(button)
         val current = markedCurrent(5)
         waitFor(current)
+        assertCentred(current, button)
+        screenshot("1-current-set-in-the-middle")
+    }
+
+    /**
+     * The next set is off screen when Log set is tapped: in a workout with
+     * twelve bench sets someone scrolled down to "Add exercise" with bench
+     * press set 5 current. Logging it brings set
+     * 6 back from out of sight to the middle (#202).
+     */
+    @Test
+    fun aNextSetOutOfSightIsBroughtToTheMiddle() {
+        // Twelve bench sets, so the end of the list is far below set 6.
+        seedActiveWorkout(
+            squat() to List(2) { 100.0 to 5 },
+            bench() to List(12) { 80.0 to 8 },
+            catalogExerciseId("deadlift") to List(3) { 120.0 to 3 },
+        )
+        clickText(str(Res.string.home_resume_workout))
+        repeat(2) {
+            clickText(str(Res.string.workout_log_set, backSquat, "100", "5"))
+            endRestFromButton()
+        }
+        repeat(4) {
+            clickText(str(Res.string.workout_log_set, benchPress, "80", "8"))
+            endRestFromButton()
+        }
+        waitFor(markedCurrent(5))
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(str(Res.string.workout_add_exercise)))
+        // The premise: bench press's set 6 is off screen before the log (not composed, or composed out of view).
+        val sixth = hasContentDescription(str(Res.string.workout_set_number_description, 6))
+        assertTrue(
+            "set 6 is on screen, so this test would prove nothing",
+            compose.onAllNodes(sixth).fetchSemanticsNodes().isEmpty() ||
+                runCatching { compose.onNode(sixth).assertIsNotDisplayed() }.isSuccess,
+        )
+        screenshot("1-scrolled-away")
+        clickText(str(Res.string.workout_log_set, benchPress, "80", "8"))
+        // The rest takes the button's text; ending it scrolls nothing.
+        endRestFromButton()
+        val current = markedCurrent(6)
+        waitFor(current)
+        assertCentred(current, logSet(benchPress, "80", "8"))
+        screenshot("2-brought-to-the-middle")
+    }
+
+    /** The centre of [node] is within one row of the middle between the top bar and [button]. */
+    private fun assertCentred(node: SemanticsMatcher, button: SemanticsMatcher) {
         // The top bar's bottom, near enough: its Finish button.
         val topBar = compose.onNode(hasText(str(Res.string.workout_finish))).getUnclippedBoundsInRoot().bottom
         waitUntil(5_000) {
-            val set = compose.onNode(current).getUnclippedBoundsInRoot()
+            val set = compose.onNode(node).getUnclippedBoundsInRoot()
             val middle = (topBar + compose.onNode(button).getUnclippedBoundsInRoot().top) / 2
             val centre = (set.top + set.bottom) / 2
-            (centre - middle).value.let { kotlin.math.abs(it) } < (set.bottom - set.top).value
+            kotlin.math.abs((centre - middle).value) < (set.bottom - set.top).value
         }
-        screenshot("1-current-set-in-the-middle")
     }
 
     /**
