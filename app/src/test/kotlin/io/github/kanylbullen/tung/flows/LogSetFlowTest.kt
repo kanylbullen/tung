@@ -278,6 +278,9 @@ class LogSetFlowTest : FlowTest() {
         compose.onNode(hasText(str(Res.string.input_done))).assertIsEnabled()
         compose.onNode(hasText(str(Res.string.input_log_set))).assertDoesNotExist()
         screenshot("2-ticked-set")
+        // End the rest before the test ends: its notification would otherwise fire during a later test.
+        dismissSheet(str(Res.string.input_field_reps))
+        endRestFromButton()
     }
 
     /**
@@ -316,6 +319,7 @@ class LogSetFlowTest : FlowTest() {
         waitUntil { activeSets("s.completed = 1 AND s.weightKg = 62.5 AND s.reps = 5") == 1 }
         assertShown(countdown)
         screenshot("2-logged-from-weight")
+        endRestFromButton()
     }
 
     /**
