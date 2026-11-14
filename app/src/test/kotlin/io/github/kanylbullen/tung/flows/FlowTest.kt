@@ -39,6 +39,7 @@ import io.github.kanylbullen.tung.core.catalogExerciseId
 import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Before
 import org.robolectric.shadows.ShadowAlarmManager
 import org.junit.Rule
@@ -92,6 +93,19 @@ abstract class FlowTest {
     @Before
     fun allowExactAlarms() {
         ShadowAlarmManager.setCanScheduleExactAlarms(true)
+    }
+
+    /**
+     * Stops the ongoing notification's notifier when the test ends. Its scope
+     * outlives the test's application: a rest still running when a test ended
+     * posted its notification ([io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier]'s
+     * delayed re-post, issue #215) during a later test, after Robolectric had
+     * torn the old application down, and that test failed with
+     * UncaughtExceptionsBeforeTest (an NPE in `checkSelfPermission`).
+     */
+    @After
+    fun stopOngoingNotifier() {
+        app.container.ongoingWorkout.stop()
     }
 
     protected fun str(@StringRes id: Int, vararg args: Any): String = app.getString(id, *args)
