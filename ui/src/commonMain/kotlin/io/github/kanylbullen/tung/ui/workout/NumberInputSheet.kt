@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import io.github.kanylbullen.tung.ui.resources.*
 import io.github.kanylbullen.tung.core.RulerScale
 import io.github.kanylbullen.tung.ui.common.PrimaryButton
+import io.github.kanylbullen.tung.ui.common.SecondaryButton
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
@@ -102,6 +103,11 @@ data class NumberInputSpec(
  * [showApplyToAll] adds the "Apply to all sets" switch; it starts off every
  * time the sheet opens, and its state is handed to [onConfirm]. [aboveDone]
  * is a row of the caller's above Done (the first-time flow's set count).
+ *
+ * [onLog] (issue #200): during a workout "Done" read as if it logged the set,
+ * so a sheet for an un-ticked set has two buttons instead, a secondary
+ * "Save" that only writes the value ([onConfirm]) and a primary "Log set"
+ * that writes it and logs the set ([onLog]), enabled while [canLog] says so.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,6 +117,8 @@ fun NumberInputSheet(
     onConfirm: (text: String, applyToAll: Boolean) -> Unit,
     showApplyToAll: Boolean = false,
     aboveDone: (@Composable () -> Unit)? = null,
+    onLog: ((text: String, applyToAll: Boolean) -> Unit)? = null,
+    canLog: (text: String) -> Boolean = { true },
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var field by remember {
@@ -216,7 +224,24 @@ fun NumberInputSheet(
                 aboveDone()
                 Spacer(Modifier.height(16.dp))
             }
-            PrimaryButton(text = spec.doneText, onClick = confirm, enabled = valid)
+            if (onLog == null) {
+                PrimaryButton(text = spec.doneText, onClick = confirm, enabled = valid)
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SecondaryButton(
+                        text = stringResource(Res.string.input_save),
+                        onClick = confirm,
+                        enabled = valid,
+                        modifier = Modifier.weight(1f),
+                    )
+                    PrimaryButton(
+                        text = stringResource(Res.string.input_log_set),
+                        onClick = { if (valid && canLog(field.text)) onLog(field.text, applyToAll) },
+                        enabled = valid && canLog(field.text),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
         }
     }
 }

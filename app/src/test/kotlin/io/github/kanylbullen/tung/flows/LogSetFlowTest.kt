@@ -7,6 +7,9 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.performTextReplacement
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.WorkoutRepository
@@ -243,6 +246,38 @@ class LogSetFlowTest : FlowTest() {
         compose.onNode(countdown).assertDoesNotExist()
         assertEquals(0, activeSets("s.completed = 1"))
         assertTrue(alarms.scheduledAlarms.isEmpty())
+    }
+
+    /**
+     * The sheet of an un-ticked set has "Save" and "Log set" (issue #200):
+     * "Log set" is off while the reps are 0, writes the reps and logs the set
+     * with a rest; the sheet of a ticked set has only "Done".
+     */
+    @Test
+    fun theSheetCanLogTheSet() {
+        startWorkoutFromHome()
+        addExercise("bench", benchPress)
+        clickText(logSet("0", str(Res.string.workout_reps_empty)))
+        waitForDescription(str(Res.string.input_field_reps))
+        val logButton = compose.onNode(hasText(str(Res.string.input_log_set)))
+        logButton.assertIsNotEnabled()
+        compose.onNode(hasText(str(Res.string.input_save))).assertIsEnabled()
+        compose.onNode(hasText(str(Res.string.input_done))).assertDoesNotExist()
+
+        compose.onNode(hasContentDescription(str(Res.string.input_field_reps))).performTextReplacement("8")
+        logButton.assertIsEnabled()
+        screenshot("1-save-and-log")
+        logButton.performClick()
+        waitGone(hasContentDescription(str(Res.string.input_field_reps)))
+        waitUntil { activeSets("s.completed = 1 AND s.reps = 8") == 1 }
+        assertShown(countdown)
+
+        // A ticked set's sheet only writes: "Done", no "Log set".
+        clickDescription(str(Res.string.workout_edit_reps, "8"))
+        waitForDescription(str(Res.string.input_field_reps))
+        compose.onNode(hasText(str(Res.string.input_done))).assertIsEnabled()
+        compose.onNode(hasText(str(Res.string.input_log_set))).assertDoesNotExist()
+        screenshot("2-ticked-set")
     }
 
     /**

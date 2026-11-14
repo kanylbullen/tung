@@ -314,6 +314,28 @@ class ActiveWorkoutViewModel(
         }
     }
 
+    /**
+     * The sheet's "Log set" (issue #200): writes [weightKg] or [reps] to [set]
+     * (and to the exercise's other un-ticked sets with [applyToOpenSets]),
+     * then logs [set] as [logSet] does. One coroutine, so the set is logged
+     * with the value just written.
+     */
+    fun saveAndLog(
+        exercise: ActiveExerciseUi,
+        set: ActiveSetUi,
+        weightKg: Double? = null,
+        reps: Int? = null,
+        applyToOpenSets: Boolean = false,
+    ) {
+        val before = state.value
+        touch(exercise.workoutExerciseId)
+        launch {
+            weightKg?.let { commands.execute(Command.SetWeight(set.id, it, applyToOpenSets = applyToOpenSets)) }
+            reps?.let { commands.execute(Command.SetReps(set.id, it, applyToOpenSets = applyToOpenSets)) }
+            log(before, exercise, set)
+        }
+    }
+
     /** Voice's "next": [setId] becomes the current set, as a tap on its number would make it, and is scrolled into view. */
     fun selectFromVoice(workoutExerciseId: String, setId: String) {
         selectSet(workoutExerciseId, setId)

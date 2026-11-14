@@ -17,7 +17,7 @@ import org.junit.Test
 class NumberSheetFlowTest : FlowTest() {
 
     private val field get() = compose.onNode(hasContentDescription(str(Res.string.input_field_weight)))
-    private val done get() = compose.onNode(hasText(str(Res.string.input_done)))
+    private val done get() = compose.onNode(sheetConfirm)
 
     private fun savedWeight(): Double =
         db.openHelper.readableDatabase.query("SELECT weightKg FROM set_entry").use { c ->

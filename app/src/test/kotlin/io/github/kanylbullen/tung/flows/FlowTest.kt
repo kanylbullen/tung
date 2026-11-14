@@ -320,7 +320,14 @@ abstract class FlowTest {
         waitGone(hasContentDescription(fieldDescription))
     }
 
-    /** Opens the number sheet from the cell described as [cellDescription], types [text] and taps Done. */
+    /**
+     * The number sheet's button that writes the value without logging: "Save"
+     * for an un-ticked workout set (beside "Log set", issue #200), "Done"
+     * everywhere else.
+     */
+    protected val sheetConfirm: SemanticsMatcher
+        get() = hasText(str(Res.string.input_save)) or hasText(str(Res.string.input_done))
+
     /**
      * Opens the cell's input sheet, types [text], confirms, and waits until the
      * cell reads [cellAfter]. The sheet closes before the command behind Done
@@ -332,7 +339,7 @@ abstract class FlowTest {
         clickDescription(cellDescription)
         waitForDescription(fieldDescription)
         compose.onNode(hasContentDescription(fieldDescription)).performTextReplacement(text)
-        compose.onNode(hasText(str(Res.string.input_done))).performClick()
+        compose.onNode(sheetConfirm).performClick()
         waitGone(hasContentDescription(fieldDescription))
         waitForDescription(cellAfter)
     }
