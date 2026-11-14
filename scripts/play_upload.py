@@ -107,6 +107,8 @@ def request(method: str, url: str, token: str | None, body: bytes | None = None,
             pass
         # The path only, never the query or a header: nothing secret is in either, but keep it short.
         raise PlayError(f"{method} {urllib.parse.urlsplit(url).path} answered {e.code}: {detail}") from None
+    except (urllib.error.URLError, OSError) as e:  # no answer at all: DNS, a reset, a timeout
+        raise PlayError(f"{method} {urllib.parse.urlsplit(url).path} got no answer: {e}") from None
     return json.loads(text) if text.strip() else {}
 
 
@@ -115,7 +117,7 @@ def read_notes(directory: Path) -> list[dict]:
     notes = []
     for path in sorted(directory.glob("*.txt")):
         language = path.stem
-        if not re.fullmatch(r"[a-z]{2,3}(-[A-Z]{2})?", language):
+        if not re.fullmatch(r"[a-z]{2,3}(-[A-Za-z0-9]{2,4})?", language):
             fail(f"{path.name}: the file name is not a language tag such as en-GB or sv-SE")
         text = path.read_text(encoding="utf-8").strip()
         if not text:

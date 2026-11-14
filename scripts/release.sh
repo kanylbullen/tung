@@ -42,8 +42,8 @@ NOTES=""
 PHONE_ONLY=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --upload) [ $# -ge 2 ] || fail "--upload needs a track"; UPLOAD_TRACK="$2"; shift 2 ;;
-    --notes) [ $# -ge 2 ] || fail "--notes needs a directory"; NOTES="$2"; shift 2 ;;
+    --upload) [ -n "${2:-}" ] || fail "--upload needs a track"; UPLOAD_TRACK="$2"; shift 2 ;;
+    --notes) [ -n "${2:-}" ] || fail "--notes needs a directory"; NOTES="$2"; shift 2 ;;
     --draft) UPLOAD_ARGS+=(--status draft); shift ;;
     --replace-in-review) UPLOAD_ARGS+=(--replace-in-review); shift ;;
     --phone-only) PHONE_ONLY=1; shift ;;
@@ -60,9 +60,6 @@ else
   elif [ "$UPLOAD_TRACK" = "production" ]; then
     fail "a production release needs --notes: users read \"What's new\""
   fi
-  # Before a build of several minutes: the key works and both tracks exist.
-  python3 -I "$REPO/scripts/play_upload.py" --track "$UPLOAD_TRACK" --dry-run ${PHONE_ONLY:+--phone-only} \
-    || fail "Play refused the dry run, so nothing was built"
 fi
 
 # --- Inputs, all at once, so one run shows everything that is missing.
@@ -85,6 +82,14 @@ fi
 KS="$(realpath -e -- "$TUNG_KEYSTORE" 2>/dev/null)" && [ -f "$KS" ] \
   || fail "TUNG_KEYSTORE is not a file: $TUNG_KEYSTORE"
 export TUNG_KEYSTORE="$KS"
+
+# Before a build of several minutes: the Play key works, both tracks exist and the notes
+# are notes Play takes.
+if [ -n "$UPLOAD_TRACK" ]; then
+  python3 -I "$REPO/scripts/play_upload.py" --track "$UPLOAD_TRACK" --dry-run \
+    ${PHONE_ONLY:+--phone-only} "${UPLOAD_ARGS[@]}" \
+    || fail "Play refused the dry run, so nothing was built"
+fi
 
 # --- The build number
 if [ -n "${TUNG_VERSION_CODE:-}" ]; then
