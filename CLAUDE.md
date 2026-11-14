@@ -2173,7 +2173,12 @@ fallback, and only on a tap.
   updated_at < incoming`). `PUT /api/v1/workouts/{id}` applies it to the
   workout, each exercise and each set separately, and tombstones stored
   children missing from the body only when they are older than the body's
-  workout `updated_at`. Deletes are tombstones, never `DELETE`. Server-made
+  workout `updated_at`. Deletes are tombstones, never `DELETE`. A tombstone
+  keeps no content (V17, issue #148): a trigger on workouts, sets, routines
+  and programs clears a row's values whenever it is written with
+  `deleted_at` set (nullable columns to NULL, others to `''`, 0 or false),
+  keeping the keys, so no delete path can forget it. Exercises keep their
+  name: history names deleted own ones. Server-made
   changes (finish, delete, PATCH) stamp `max(now, stored + 1)`. Sync uses
   exactly this rule; do not add a write path that bypasses it.
 - **Routines and programs over REST** (`routes/RoutineRoutes.kt`,
