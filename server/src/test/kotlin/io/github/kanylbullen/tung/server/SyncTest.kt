@@ -138,11 +138,12 @@ class SyncTest {
         client.synced(token, 0, graph.changes)
         val (deleted, kept) = graph.sets
 
-        // A tombstone newer than the stored row deletes it and keeps the row, with its last values.
+        // A tombstone newer than the stored row deletes it and keeps the row, with its keys but not
+        // its values (issue #148).
         val tomb = client.synced(token, 0, SyncChanges(sets = listOf(SyncSet(deleted.id, updatedAt = 2_000, deletedAt = 2_000))))
         val stored = tomb.changes.sets.single { it.id == deleted.id }
         assertEquals(2_000L, stored.deletedAt)
-        assertEquals(deleted.copy(updatedAt = 2_000, deletedAt = 2_000), stored)
+        assertEquals(deleted.copy(weightKg = 0.0, reps = 0, completed = false, updatedAt = 2_000, deletedAt = 2_000), stored)
 
         // An older update does not bring it back.
         val stale = client.synced(token, 0, SyncChanges(sets = listOf(deleted.copy(reps = 12, updatedAt = 1_500))))
