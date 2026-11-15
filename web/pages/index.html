@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Tung has moved</title>
+<style>
+  :root { color-scheme: dark light; }
+  body { margin: 0; padding: 48px 16px; font: 17px/1.5 system-ui, sans-serif; background: #1A1D21; color: #ECE7DD; }
+  main { max-width: 32rem; margin: 0 auto; }
+  a { color: #F2C230; }
+  @media (prefers-color-scheme: light) { body { background: #F6F6F4; color: #1A1D21; } a { color: #8A6500; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tung has moved</h1>
+  <p>The web app now lives at <a id="to" href="https://tung.xuper.fun/app/">tung.xuper.fun/app</a>. Sign in there with the same account; your synced workouts are waiting.</p>
+  <p>This address shares its storage with every other site under kanylbullen.github.io, so it no longer keeps a sign-in or an AI key here.</p>
+</main>
+<script>
+// Issue #153: kanylbullen.github.io is one browser origin for every Pages
+// site of the account, so a session token or an AI key stored by the old copy
+// of the app is readable by all of them. This page revokes and forgets both,
+// retires the old service worker, then sends the person to the app's own
+// origin. The workout log in IndexedDB is left as it was.
+(function () {
+  var TARGET = 'https://tung.xuper.fun/app/';
+  var to = document.getElementById('to');
+  to.href = TARGET + location.hash;
+
+  function go() { location.replace(TARGET + location.hash); }
+
+  try { localStorage.removeItem('tung-ai-key'); } catch (e) {}
+
+  // The origin is shared: only this site's worker and caches are touched.
+  var scope = new URL('./', location.href).href;
+  var cleanup = [];
+  if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+    cleanup.push(navigator.serviceWorker.getRegistrations()
+      .then(function (rs) {
+        return Promise.all(rs.filter(function (r) { return r.scope === scope; })
+          .map(function (r) { return r.unregister(); }));
+      })
+      .catch(function () {}));
+  }
+  if (window.caches && caches.keys) {
+    cleanup.push(caches.keys()
+      .then(function (keys) {
+        return Promise.all(keys.filter(function (k) { return k.indexOf('tung-') === 0; })
+          .map(function (k) { return caches.delete(k); }));
+      })
+      .catch(function () {}));
+  }
+
+  // The token is in the database "tung", object store "meta", key "token";
+  // the server it belongs to under "server_url". Open without a version so a
+  // browser that never had the database does not get an empty one.
+  var done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    Promise.all(cleanup).then(go, go);
+  }
+  setTimeout(finish, 8000);
+
+  if (!window.indexedDB) { finish(); return; }
+  var open;
+  try { open = indexedDB.open('tung'); } catch (e) { finish(); return; }
+  open.onupgradeneeded = function () {
+    // No database here before: drop the empty one just created.
+    open.transaction.abort();
+  };
+  open.onerror = finish;
+  open.onsuccess = function () {
+    var db = open.result;
+    if (!db.objectStoreNames.contains('meta')) { db.close(); finish(); return; }
+    var tx = db.transaction('meta', 'readonly');
+    var store = tx.objectStore('meta');
+    var token = store.get('token');
+    var server = store.get('server_url');
+    tx.oncomplete = function () {
+      var t = token.result, s = server.result;
+      var forget = db.transaction('meta', 'readwrite');
+      forget.objectStore('meta').delete('token');
+      forget.oncomplete = function () {
+        db.close();
+        if (typeof t === 'string' && typeof s === 'string' && /^https:\/\//.test(s)) {
+          fetch(s.replace(/\/+$/, '') + '/api/v1/auth/logout', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + t },
+            keepalive: true,
+            redirect: 'manual',
+            referrerPolicy: 'no-referrer',
+          }).then(finish, finish);
+        } else {
+          finish();
+        }
+      };
+      forget.onerror = function () { db.close(); finish(); };
+    };
+    tx.onerror = function () { db.close(); finish(); };
+  };
+})();
+</script>
+</body>
+</html>
