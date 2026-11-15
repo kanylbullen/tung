@@ -2713,9 +2713,14 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   `processResources`). The service worker is served from `/app/`, so it
   controls `/app/` only, never the API, `/docs` or the OAuth pages. Served
   by a tung-server, the app offers that server at sign-in
-  (`defaultServerUrl()`); elsewhere `DEFAULT_SERVER_URL`. GitHub Pages
-  (`.github/workflows/web-pages.yml`, `https://kanylbullen.github.io/tung/`)
-  publishes the same site from `main` as well. `OpenApiCoverageTest` leaves
+  (`defaultServerUrl()`); elsewhere `DEFAULT_SERVER_URL`. **The app is
+  never published on GitHub Pages** (issue #153): `kanylbullen.github.io` is
+  one origin for every Pages site of the account, so a token or an AI key
+  stored there is theirs too. `.github/workflows/web-pages.yml` publishes
+  only `web/pages/` at `https://kanylbullen.github.io/tung/`: a "moved" page
+  that revokes and forgets the old copy's token and AI key (the log stays)
+  and goes to `tung.xuper.fun/app/`, and a `sw.js` that retires the old
+  service worker's cache. Give the app its own origin wherever it is served. `OpenApiCoverageTest` leaves
   `/`, `/privacy`, `/delete-account`, `/site` and `/app` out: pages, not API. The site has no server of its
   own: everything relative, so it works under any path.
 

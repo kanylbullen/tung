@@ -43,12 +43,19 @@ the path):
 
 ## Where it runs
 
-`main` is published to **https://kanylbullen.github.io/tung/** by
-`.github/workflows/web-pages.yml` (on a push that touches the web, core or
-the catalogue, or by hand from the Actions tab). Open it on a phone and
-"Add to Home Screen" / "Install app"; it signs in to `https://tung.xuper.fun`
-by default. The server must be a version that allows `X-Tung-Device` in CORS,
-or sign-in works and every sync says the server cannot be reached.
+The app is served by tung-server at **https://tung.xuper.fun/app/**. Open it
+on a phone and "Add to Home Screen" / "Install app"; it signs in to
+`https://tung.xuper.fun` by default. The server must be a version that allows
+`X-Tung-Device` in CORS, or sign-in works and every sync says the server
+cannot be reached.
+
+It is not published on GitHub Pages any more (issue #153):
+`kanylbullen.github.io` is one origin shared by every Pages site of the
+account, and the app keeps its session token and AI key in that origin's
+storage. `.github/workflows/web-pages.yml` publishes `web/pages/` there
+instead: a page that revokes and forgets what the old copy stored and sends
+the person to the app, and a service worker that retires the old cache.
+Wherever the app is served, give it an origin of its own.
 
 ## Try it against a server
 
