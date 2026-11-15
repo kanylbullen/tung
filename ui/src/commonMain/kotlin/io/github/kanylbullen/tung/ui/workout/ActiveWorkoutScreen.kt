@@ -424,6 +424,7 @@ fun ActiveWorkoutScreen(
                     rest = rest,
                     now = now,
                     voice = voiceState,
+                    canListen = platform.canListen,
                     line = line,
                     lineMuted = voiceState.partial != null || echoText == null,
                     askAssistant = if (askable && echoText != null && line == echoText) {
@@ -698,6 +699,7 @@ private fun LogSetBar(
     rest: RestTimer?,
     now: Long,
     voice: VoiceUiState,
+    canListen: Boolean,
     line: String?,
     lineMuted: Boolean,
     askAssistant: (() -> Unit)?,
@@ -724,7 +726,9 @@ private fun LogSetBar(
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MicButton(active = voice.listening || voice.handsFree, onTap = onMic, onLongPress = onMicLongPress)
+            if (canListen) {
+                MicButton(active = voice.listening || voice.handsFree, onTap = onMic, onLongPress = onMicLongPress)
+            }
             val text = when (sticky) {
                 is StickyButton.LogSet -> {
                     val set = sticky.current.set

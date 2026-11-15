@@ -54,7 +54,7 @@ import io.github.kanylbullen.tung.ui.theme.TungCorner
 fun AccountScreen(
     vm: AccountViewModel,
     onBack: () -> Unit,
-    googleIdToken: suspend (clientId: String) -> GoogleSignInResult,
+    googleIdToken: (suspend (clientId: String) -> GoogleSignInResult)?,
     appleIdToken: (suspend () -> AppleSignInResult)? = null,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -85,7 +85,7 @@ fun AccountScreen(
                 onSignIn = { vm.signIn(create = false) },
                 onCreate = { vm.signIn(create = true) },
                 onForgot = vm::forgotPassword,
-                onGoogle = { vm.signInWithGoogle(googleIdToken) },
+                onGoogle = googleIdToken?.let { obtain -> { vm.signInWithGoogle(obtain) } },
                 onApple = appleIdToken?.let { obtain -> { vm.signInWithApple(obtain) } },
             )
         }
@@ -389,7 +389,7 @@ private fun SignInForm(
     onSignIn: () -> Unit,
     onCreate: () -> Unit,
     onForgot: () -> Unit,
-    onGoogle: () -> Unit,
+    onGoogle: (() -> Unit)?,
     onApple: (() -> Unit)?,
 ) {
     Text(stringResource(Res.string.sync_intro), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.muted)
@@ -401,10 +401,11 @@ private fun SignInForm(
         Text(stringResource(Res.string.sync_error_signed_out), style = MaterialTheme.typography.bodyMedium, color = Tung.colors.accentText)
     }
     // Only when this server offers it (`/auth/methods`, asked as the screen opens); the client id comes from there.
-    val google = form.googleClientId != null
+    // And a platform that can ask Google: not an iPhone yet.
+    val google = form.googleClientId != null && onGoogle != null
     // Apple also needs a platform that can ask it: an iPhone, not Android.
     val apple = form.appleOffered && onApple != null
-    if (google) {
+    if (google && onGoogle != null) {
         ProviderButton(stringResource(Res.string.sync_google_sign_in), onClick = onGoogle, enabled = !form.busy)
     }
     if (apple && onApple != null) {

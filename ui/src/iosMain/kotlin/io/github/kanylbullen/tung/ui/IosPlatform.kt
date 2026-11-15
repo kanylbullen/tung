@@ -51,9 +51,9 @@ import platform.darwin.NSObject
  * The iPhone's [AppPlatform]: the bundle's version, catalogue names from
  * [catalogueName] (the container's `core.json` names in the app's language),
  * a short message over the screen instead of a toast, haptics, the notification permission, Sign in
- * with Apple, and the document picker for an import. Not there yet, each
- * saying so where it shows: speech (the mic answers "unavailable"), Google
- * sign-in, feedback screenshots and a health store (Settings leaves its row out).
+ * with Apple, and the document picker for an import. Not there yet, and not
+ * shown: speech (no mic in the workout), Google sign-in (no button), feedback
+ * screenshots and a health store (Settings leaves its row out).
  */
 class IosPlatform(private val catalogueName: (key: String) -> String?) : AppPlatform {
     private val bundle get() = NSBundle.mainBundle
@@ -90,6 +90,7 @@ class IosPlatform(private val catalogueName: (key: String) -> String?) : AppPlat
     override fun rememberWorkoutPlatform(): WorkoutPlatform = remember {
         object : WorkoutPlatform {
             override val speech: SpeechInput = NoSpeech
+            override val canListen: Boolean = false
             override fun showMessage(text: String) = this@IosPlatform.showMessage(text)
             override fun askForNotifications() {
                 UNUserNotificationCenter.currentNotificationCenter()
@@ -106,8 +107,7 @@ class IosPlatform(private val catalogueName: (key: String) -> String?) : AppPlat
     }
 
     @Composable
-    override fun rememberGoogleIdToken(): suspend (clientId: String) -> GoogleSignInResult =
-        remember { { _ -> GoogleSignInResult.Unavailable } }
+    override fun rememberGoogleIdToken(): (suspend (clientId: String) -> GoogleSignInResult)? = null
 
     @Composable
     override fun rememberAppleIdToken(): (suspend () -> AppleSignInResult)? = remember { { appleIdToken() } }

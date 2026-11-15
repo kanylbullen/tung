@@ -13,6 +13,9 @@ interface WorkoutPlatform {
     /** The recogniser the mic listens with. */
     val speech: SpeechInput
 
+    /** Whether there is a recogniser at all; without one (iOS, for now) the workout shows no mic. */
+    val canListen: Boolean get() = true
+
     /** Shows a short message that outlives the screen, such as "Workout not saved": a toast on Android. */
     fun showMessage(text: String)
 

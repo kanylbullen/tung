@@ -47,9 +47,9 @@ interface AppPlatform {
     @Composable
     fun rememberWorkoutPlatform(): WorkoutPlatform
 
-    /** Google's account sheet for an ID token for a client id; a platform without it answers [GoogleSignInResult.Unavailable]. */
+    /** Google's account sheet for an ID token for a client id; null where it does not exist (iOS, for now), and no button shows. */
     @Composable
-    fun rememberGoogleIdToken(): suspend (clientId: String) -> GoogleSignInResult
+    fun rememberGoogleIdToken(): (suspend (clientId: String) -> GoogleSignInResult)?
 
     /** Sign in with Apple's sheet; null where it does not exist (Android). */
     @Composable
