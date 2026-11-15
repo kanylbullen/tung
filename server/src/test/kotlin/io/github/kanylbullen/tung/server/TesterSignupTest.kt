@@ -1,6 +1,5 @@
 package io.github.kanylbullen.tung.server
 
-import io.github.kanylbullen.tung.server.routes.PLAY_OPT_IN_URL
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.request.get

@@ -162,9 +162,9 @@ internal fun keepBlocks(html: String, keep: String, drop: String): String {
 private fun sitePage(file: String): String? =
     SiteRoutes::class.java.getResource("/site/$file")?.readText()?.replace("@assets@", assetVersion)
 
-/** One page of the site at [path], read from the classpath's `site/[file]`, with `@assets@` as [assetVersion] and then [transform]. */
-private fun Route.page(path: String, file: String, transform: (String) -> String = { it }) {
-    val page by lazy { sitePage(file)?.let(transform) }
+/** One page of the site at [path], read from the classpath's `site/[file]`, with `@assets@` as [assetVersion]. */
+private fun Route.page(path: String, file: String) {
+    val page by lazy { sitePage(file) }
     get(path) {
         val html = page ?: return@get call.respond(HttpStatusCode.NotFound)
         call.respondText(html, ContentType.Text.Html)
