@@ -114,9 +114,8 @@ instance at [tung.xuper.fun](https://tung.xuper.fun/) and your own.
 
 - **On the web:** [tung.xuper.fun/app](https://tung.xuper.fun/app/), with
   an account on the server.
-- **On Android and Wear OS:** in internal testing on Google Play. Sign up on
-  [tung.xuper.fun](https://tung.xuper.fun/) with the email of your Google
-  account.
+- **On Android and Wear OS:** [Tung on Google Play](https://play.google.com/store/apps/details?id=io.github.kanylbullen.tung).
+  The watch app installs from the same listing.
 - **From source:** see [Building](#building).
 
 An iPhone app is in progress: `core` and `data` are Kotlin Multiplatform,

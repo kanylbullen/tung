@@ -59,6 +59,7 @@
           <p data-sv="Tung visar vad du lyfte förra gången och fyller i nästa set åt dig. Du rättar en siffra, trycker på Logga set och vilar. Allt annat väntar till efter passet.">Tung shows what you lifted last time and fills in the next set for you. You change a number, tap Log set and rest. Everything else waits until after the workout.</p>
           <div class="actions">
             <a class="button primary" href="/app/" data-sv="Öppna webbappen">Open the web app</a>
+            <a class="button secondary" href="https://play.google.com/store/apps/details?id=io.github.kanylbullen.tung" data-sv="Hämta på Google Play">Get it on Google Play</a>
             <a class="button secondary" href="https://github.com/kanylbullen/tung" data-sv="Källkoden på GitHub">Source on GitHub</a>
           </div>
         </div>
@@ -123,13 +124,8 @@
       <section class="platforms" aria-labelledby="platforms">
         <h2 id="platforms" data-sv="Var den finns">Where it runs</h2>
         <ul>
-          <!-- testers:begin -->
-          <li><span class="name">Android</span><span class="state" data-sv="I test på Google Play. Anmäl dig nedan.">In a test on Google Play. Sign up below.</span></li>
-          <!-- testers:end -->
-          <!-- no-testers:begin -->
-          <li><span class="name">Android</span><span class="state" data-sv="I test på Google Play.">In a test on Google Play.</span></li>
-          <!-- no-testers:end -->
-          <li><span class="name">Wear OS</span><span class="state" data-sv="I test på Google Play, tillsammans med Android-appen.">In a test on Google Play, with the Android app.</span></li>
+          <li><span class="name">Android</span><span class="state"><a href="https://play.google.com/store/apps/details?id=io.github.kanylbullen.tung" data-sv="På Google Play">On Google Play</a></span></li>
+          <li><span class="name">Wear OS</span><span class="state"><a href="https://play.google.com/store/apps/details?id=io.github.kanylbullen.tung" data-sv="På Google Play, med Android-appen">On Google Play, with the Android app</a></span></li>
           <li><span class="name" data-sv="Webb">Web</span><span class="state"><a href="/app/" data-sv="Öppen nu">Open now</a></span></li>
           <li><span class="name">iPhone</span><span class="state" data-sv="På gång.">In the works.</span></li>
         </ul>
@@ -139,39 +135,6 @@
         <h2 id="beta">Beta</h2>
         <p data-sv="Tung är i beta. Apparna och servern kan ha fel och störningar. Den här servern är gratis och drivs på bästa förmåga, utan garantier under testperioden om att den finns kvar eller fungerar. Din träning finns alltid kvar på din enhet också.">Tung is in beta. The apps and the server can have bugs and outages. This server is free and run on a best-effort basis, with no guarantee during the test period that it stays available or keeps working. Your training always stays on your device as well.</p>
       </section>
-
-      <!-- testers:begin -->
-      <section class="test" aria-labelledby="test">
-        <h2 id="test" data-sv="Testa Android-appen">Test the Android app</h2>
-        <!-- no-group:begin -->
-        <p data-sv="Android-appen är i ett test på Google Play. Lämna adressen till Google-kontot du använder i telefonen, så får du en inbjudan när nästa testomgång öppnar.">The Android app is in a test on Google Play. Leave the address of the Google account you use on your phone, and you get an invitation when the next test round opens.</p>
-        <!-- no-group:end -->
-        <!-- group:begin -->
-        <p data-sv="Android-appen är i ett test på Google Play. Du kommer in direkt, med Google-kontot du använder i telefonen:">The Android app is in a test on Google Play. You can get in right away, with the Google account you use on your phone:</p>
-        <ol id="tester-group" class="steps">
-          <li><a href="@group@" data-sv="Gå med i Google-gruppen tung-testers">Join the Google group tung-testers</a></li>
-          <li><a href="@opt-in@" data-sv="Öppna testet på Google Play och välj Bli testare">Open the test on Google Play and choose Become a tester</a></li>
-        </ol>
-        <p data-sv="Det kan dröja några minuter innan Google Play låter dig installera. Vill du hellre bli inbjuden, lämna adressen här.">It can take a few minutes before Google Play lets you install. Rather be invited? Leave your address here.</p>
-        <!-- group:end -->
-        <form id="signup" novalidate>
-          <label class="field">
-            <span data-sv="E-post till ditt Google-konto">Email of your Google account</span>
-            <input id="signup-email" type="email" name="email" autocomplete="email" required maxlength="254">
-          </label>
-          <label class="consent">
-            <input id="signup-consent" type="checkbox" name="consent" required>
-            <span data-sv="Använd adressen bara för testet: en bekräftelse nu och inbjudan sedan. Ta bort den efteråt.">Use my address only for the test: a confirmation now and the invitation later. Delete it afterwards.</span>
-          </label>
-          <div class="trap" aria-hidden="true">
-            <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
-          </div>
-          <button id="signup-button" type="submit" data-sv="Anmäl mig">Sign me up</button>
-          <p id="signup-result" class="result" role="status" aria-live="polite"></p>
-          <p class="hint"><a href="/privacy" data-sv="Så hanterar vi adressen">How we handle the address</a></p>
-        </form>
-      </section>
-      <!-- testers:end -->
 
       <section class="assistant" aria-labelledby="assistant">
         <h2 id="assistant" data-sv="Koppla din assistent">Connect your assistant</h2>
@@ -340,55 +303,6 @@ docker compose up -d</code></pre>
       area.addEventListener("click", function () { input.focus({ preventScroll: true }); });
       window.addEventListener("resize", render);
       render();
-
-      // Sign up to test the Android app: POST /api/v1/testers on this server.
-      var messages = swedish ? {
-        ok: "Tack. Du får en inbjudan från Google Play när nästa testomgång öppnar.",
-        okGroup: "Tack. Du får ett mejl med länkarna. Gå med i gruppen ovan så kommer du in direkt.",
-        invalid_email: "Det där är ingen e-postadress. Kontrollera den och försök igen.",
-        consent_required: "Kryssa i rutan, så att vi får skicka inbjudan till dig.",
-        rate_limited: "För många försök. Vänta en minut och försök igen.",
-        list_full: "Testet är fullt just nu. Försök igen senare.",
-        failed: "Det gick inte att skicka. Kontrollera din uppkoppling och försök igen.",
-        sending: "Skickar…"
-      } : {
-        ok: "Thanks. You get an invitation from Google Play when the next test round opens.",
-        okGroup: "Thanks. An email with the links is on its way. Join the group above to get in right away.",
-        invalid_email: "That is not an email address. Check it and try again.",
-        consent_required: "Tick the box, so we may send you the invitation.",
-        rate_limited: "Too many attempts. Wait a minute and try again.",
-        list_full: "The test is full for now. Try again later.",
-        failed: "Could not send it. Check your connection and try again.",
-        sending: "Sending…"
-      };
-      var form = document.getElementById("signup");
-      var result = document.getElementById("signup-result");
-      var button = document.getElementById("signup-button");
-      function say(text, kind) { result.textContent = text; result.className = "result " + (kind || ""); }
-      // No form where the server runs no Play test (TUNG_TESTER_SIGNUPS off).
-      if (form) form.addEventListener("submit", function (event) {
-        event.preventDefault();
-        var email = document.getElementById("signup-email").value.trim();
-        var consent = document.getElementById("signup-consent").checked;
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say(messages.invalid_email, "error"); return; }
-        if (!consent) { say(messages.consent_required, "error"); return; }
-        button.disabled = true;
-        say(messages.sending);
-        fetch("/api/v1/testers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email, consent: true, language: swedish ? "sv" : "en", website: form.website.value || null })
-        }).then(function (response) {
-          if (response.ok) { say(document.getElementById("tester-group") ? messages.okGroup : messages.ok, "ok"); form.reset(); return; }
-          if (response.status === 429) { say(messages.rate_limited, "error"); return; }
-          return response.json().then(function (body) {
-            var code = body && body.error && body.error.code;
-            say(messages[code] || messages.failed, "error");
-          }, function () { say(messages.failed, "error"); });
-        }, function () {
-          say(messages.failed, "error");
-        }).then(function () { button.disabled = false; });
-      });
     })();
   </script>
 </body>
