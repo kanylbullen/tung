@@ -98,6 +98,9 @@ class OngoingWorkoutNotifier(
 
     @Synchronized
     private fun show(workout: OngoingWorkout?) {
+        // A show that was already on its way when [stop] ran (the source's emission, or the
+        // rest's re-post) posts nothing: stop means no notification until the next start.
+        if (job?.isActive != true) return
         restEnd?.cancel()
         restEnd = null
         if (workout == null) {
