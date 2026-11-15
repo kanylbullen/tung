@@ -34,23 +34,36 @@
 
   try { localStorage.removeItem('tung-ai-key'); } catch (e) {}
 
+  // The origin is shared: only this site's worker and caches are touched.
+  var scope = new URL('./', location.href).href;
+  var cleanup = [];
   if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
-    navigator.serviceWorker.getRegistrations()
-      .then(function (rs) { rs.forEach(function (r) { r.unregister(); }); })
-      .catch(function () {});
+    cleanup.push(navigator.serviceWorker.getRegistrations()
+      .then(function (rs) {
+        return Promise.all(rs.filter(function (r) { return r.scope === scope; })
+          .map(function (r) { return r.unregister(); }));
+      })
+      .catch(function () {}));
   }
   if (window.caches && caches.keys) {
-    caches.keys()
-      .then(function (keys) { keys.filter(function (k) { return k.indexOf('tung-') === 0; }).forEach(function (k) { caches.delete(k); }); })
-      .catch(function () {});
+    cleanup.push(caches.keys()
+      .then(function (keys) {
+        return Promise.all(keys.filter(function (k) { return k.indexOf('tung-') === 0; })
+          .map(function (k) { return caches.delete(k); }));
+      })
+      .catch(function () {}));
   }
 
   // The token is in the database "tung", object store "meta", key "token";
   // the server it belongs to under "server_url". Open without a version so a
   // browser that never had the database does not get an empty one.
   var done = false;
-  function finish() { if (!done) { done = true; go(); } }
-  setTimeout(finish, 4000);
+  function finish() {
+    if (done) return;
+    done = true;
+    Promise.all(cleanup).then(go, go);
+  }
+  setTimeout(finish, 8000);
 
   if (!window.indexedDB) { finish(); return; }
   var open;

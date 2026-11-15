@@ -13,6 +13,8 @@ self.addEventListener('activate', (event) => {
     await Promise.all(keys.filter((key) => key.startsWith('tung-')).map((key) => caches.delete(key)));
     await self.registration.unregister();
     const clients = await self.clients.matchAll({ type: 'window' });
-    clients.forEach((client) => client.navigate(client.url));
+    // A browser without navigate() loads the moved page on the next start,
+    // since the cached shell is gone.
+    await Promise.all(clients.map((client) => client.navigate(client.url).catch(() => {})));
   })());
 });
