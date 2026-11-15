@@ -521,6 +521,15 @@ Dismissing either sheet leaves the one set (with the weight, if the first
 sheet was confirmed). The sheet is keyed on its `EditTarget`, so the second
 sheet starts fresh. + Set is unchanged. A plan (`ApplyPlan`) that adds
 several exercises at once never opens it.
+**The weight and reps sheet of an un-ticked set** (issue #200) has two
+buttons where it had "Done", which read as if it logged the set: **Save**
+(secondary, only writes) and **Log set** (primary: writes, then logs the set
+as the button does, `ActiveWorkoutViewModel.saveAndLog`, in one coroutine,
+rest timer included). Log set is off while the reps sheet says 0, and from
+the weight sheet of a set without reps it writes the weight and opens the
+reps sheet. A ticked set's sheet, the first-time flow and the routine's
+target reps keep the one "Done". Flow tests confirm with `sheetConfirm`
+(`FlowTest`: Save or Done). `LogSetFlowTest.theSheetCanLogTheSet`.
 Tapping the button executes `Command.LogSet(workoutId, setId)` with the set
 the screen shows as current, which runs `CommandRules.logSet`: **it ticks
 the set and nothing more** (issue #64; before, logging an exercise's last set

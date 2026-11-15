@@ -9,6 +9,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
@@ -33,18 +34,28 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
     }
 }
 
-/** A quieter full-width button on the raised surface. */
+/**
+ * A quieter full-width button on the raised surface. On a raised sheet, where
+ * its own fill would vanish, pass [containerColor] `Tung.colors.background`,
+ * as the sheet's − and + have.
+ */
 @Composable
-fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun SecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    containerColor: Color = Tung.colors.raised,
+) {
     Button(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.fillMaxWidth().heightIn(min = 56.dp),
         shape = TungCorner,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Tung.colors.raised,
+            containerColor = containerColor,
             contentColor = Tung.colors.text,
-            disabledContainerColor = Tung.colors.raised,
+            disabledContainerColor = containerColor,
             disabledContentColor = Tung.colors.muted,
         ),
         elevation = null,

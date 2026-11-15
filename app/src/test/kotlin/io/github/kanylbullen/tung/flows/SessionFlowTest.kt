@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.ui.resources.*
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import io.github.kanylbullen.tung.R
 import org.junit.Assert.assertEquals
@@ -45,7 +46,7 @@ class SessionFlowTest : FlowTest() {
         screenshot("4-weight-sheet")
         compose.onNode(hasContentDescription(str(Res.string.input_field_weight)))
             .performTextReplacement("80")
-        clickText(str(Res.string.input_done))
+        compose.onNode(sheetConfirm).performClick()
         waitForDescription(str(Res.string.workout_edit_weight, "80"))
 
         enterInSheet(str(Res.string.workout_edit_reps, str(Res.string.workout_reps_empty)), str(Res.string.input_field_reps), "8", str(Res.string.workout_edit_reps, "8"))

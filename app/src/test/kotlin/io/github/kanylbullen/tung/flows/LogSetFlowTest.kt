@@ -7,6 +7,9 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.performTextReplacement
 import io.github.kanylbullen.tung.R
 import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.WorkoutRepository
@@ -243,6 +246,80 @@ class LogSetFlowTest : FlowTest() {
         compose.onNode(countdown).assertDoesNotExist()
         assertEquals(0, activeSets("s.completed = 1"))
         assertTrue(alarms.scheduledAlarms.isEmpty())
+    }
+
+    /**
+     * The sheet of an un-ticked set has "Save" and "Log set" (issue #200):
+     * "Log set" is off while the reps are 0, writes the reps and logs the set
+     * with a rest; the sheet of a ticked set has only "Done".
+     */
+    @Test
+    fun theSheetCanLogTheSet() {
+        startWorkoutFromHome()
+        addExercise("bench", benchPress)
+        clickText(logSet("0", str(Res.string.workout_reps_empty)))
+        waitForDescription(str(Res.string.input_field_reps))
+        val logButton = compose.onNode(hasText(str(Res.string.input_log_set)))
+        logButton.assertIsNotEnabled()
+        compose.onNode(hasText(str(Res.string.input_save))).assertIsEnabled()
+        compose.onNode(hasText(str(Res.string.input_done))).assertDoesNotExist()
+
+        compose.onNode(hasContentDescription(str(Res.string.input_field_reps))).performTextReplacement("8")
+        logButton.assertIsEnabled()
+        screenshot("1-save-and-log")
+        logButton.performClick()
+        waitGone(hasContentDescription(str(Res.string.input_field_reps)))
+        waitUntil { activeSets("s.completed = 1 AND s.reps = 8") == 1 }
+        assertShown(countdown)
+
+        // A ticked set's sheet only writes: "Done", no "Log set".
+        clickDescription(str(Res.string.workout_edit_reps, "8"))
+        waitForDescription(str(Res.string.input_field_reps))
+        compose.onNode(hasText(str(Res.string.input_done))).assertIsEnabled()
+        compose.onNode(hasText(str(Res.string.input_log_set))).assertDoesNotExist()
+        screenshot("2-ticked-set")
+        // End the rest before the test ends: its notification would otherwise fire during a later test.
+        dismissSheet(str(Res.string.input_field_reps))
+        endRestFromButton()
+    }
+
+    /**
+     * "Log set" from the weight sheet (issue #200): with no reps yet it writes
+     * the weight and asks for the reps, logging nothing; with reps it writes
+     * the weight and logs the set with a rest.
+     */
+    @Test
+    fun theWeightSheetLogsOrAsksForReps() {
+        startWorkoutFromHome()
+        addExercise("bench", benchPress)
+        val weightField = hasContentDescription(str(Res.string.input_field_weight))
+        val repsField = hasContentDescription(str(Res.string.input_field_reps))
+        val logButton = compose.onNode(hasText(str(Res.string.input_log_set)))
+
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitFor(weightField)
+        compose.onNode(weightField).performTextReplacement("60")
+        logButton.assertIsEnabled()
+        logButton.performClick()
+        waitFor(repsField)
+        assertEquals(1, activeSets("s.completed = 0 AND s.weightKg = 60.0 AND s.reps = 0"))
+        compose.onNode(countdown).assertDoesNotExist()
+        screenshot("1-asks-for-reps")
+
+        compose.onNode(repsField).performTextReplacement("5")
+        compose.onNode(hasText(str(Res.string.input_save))).performClick()
+        waitGone(repsField)
+        waitUntil { activeSets("s.completed = 0 AND s.reps = 5") == 1 }
+
+        clickDescription(str(Res.string.workout_edit_weight, "60"))
+        waitFor(weightField)
+        compose.onNode(weightField).performTextReplacement("62,5")
+        logButton.performClick()
+        waitGone(weightField)
+        waitUntil { activeSets("s.completed = 1 AND s.weightKg = 62.5 AND s.reps = 5") == 1 }
+        assertShown(countdown)
+        screenshot("2-logged-from-weight")
+        endRestFromButton()
     }
 
     /**

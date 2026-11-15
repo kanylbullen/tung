@@ -535,6 +535,28 @@ fun ActiveWorkoutScreen(
                     } else {
                         null
                     },
+                    // Issue #200: an un-ticked set gets "Save" and "Log set". Not in the
+                    // first-time flow, whose Done leads on to the reps and the set count.
+                    onLog = if (set.completed || target.firstTime) null else { text, applyToAll ->
+                        editing = null
+                        when (target.field) {
+                            Field.WEIGHT -> parseWeight(text)?.let {
+                                if (set.reps > 0) {
+                                    vm.saveAndLog(exercise, set, weightKg = it, applyToOpenSets = applyToAll)
+                                } else {
+                                    // Nothing to log without reps: write the weight and ask for them, as the tick does.
+                                    if (applyToAll) vm.setWeightForOpenSets(exercise.workoutExerciseId, set.id, it)
+                                    else vm.setWeight(exercise.workoutExerciseId, set.id, it)
+                                    editing = EditTarget(set.id, Field.REPS)
+                                }
+                            }
+                            Field.REPS -> parseReps(text)?.let {
+                                vm.saveAndLog(exercise, set, reps = it, applyToOpenSets = applyToAll)
+                            }
+                        }
+                    },
+                    // A set with 0 reps is not a logged set, so the reps sheet cannot log 0.
+                    canLog = { text -> target.field == Field.WEIGHT || (parseReps(text) ?: 0) > 0 },
                 )
             }
         }
