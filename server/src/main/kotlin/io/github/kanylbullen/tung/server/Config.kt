@@ -33,16 +33,17 @@ data class ServerConfig(
     /** Accounts (by email, lower case) that are the server's admins (`TUNG_ADMIN_EMAILS`): they see every account, and the test sign-ups when those are on. */
     val adminEmails: Set<String> = emptySet(),
     /**
-     * `TUNG_TESTER_SIGNUPS`: the landing page asks for addresses to invite to
+     * `TUNG_TESTER_SIGNUPS`: `/api/v1/testers` takes addresses to invite to
      * the Android app's test on Google Play, and the admins list them. Only
-     * the instance that runs the Play test wants it (tung.xuper.fun); off, the
-     * form is not on the page and `/api/v1/testers` is 404 `not_configured`.
+     * the instance that runs a Play test wants it; off, `/api/v1/testers` is
+     * 404 `not_configured`. The landing page has no form since the app is
+     * public on Google Play.
      */
     val testerSignups: Boolean = false,
     /**
      * `TUNG_TESTER_GROUP_URL`: the Google group whose members are the Play
-     * test's testers. With [testerSignups] the landing page and the sign-up
-     * email point there and to Play's opt-in page, so a tester gets in at
+     * test's testers. With [testerSignups] the sign-up email points there
+     * and to Play's opt-in page, so a tester gets in at
      * once instead of waiting to be added by hand. https only.
      */
     val testerGroupUrl: String? = null,

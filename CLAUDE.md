@@ -2363,9 +2363,10 @@ fallback, and only on a tap.
   (`web/.../ui/AdminScreen.kt`). `AdminTest`.
 - **Play test sign-ups** (`routes/TesterRoutes.kt`, `V12__tester_signups.sql`),
   only with `TUNG_TESTER_SIGNUPS=true` (tung.xuper.fun; a self-hosted server
-  runs no Play test, so off by default: every route 404 `not_configured`, and
-  the landing page drops its `<!-- testers:begin -->` blocks, `keepBlocks` in
-  `SiteRoutes.kt`): the landing page's form posts `POST /api/v1/testers {email, consent,
+  runs no Play test, so off by default: every route 404 `not_configured`).
+  Since the app is public on Google Play (2026-11-15) the landing page has no
+  sign-up form and links to the store instead; the API stays for a later
+  test. `POST /api/v1/testers {email, consent,
   language, website}` (public, under the auth rate limit; no consent is 400
   `consent_required`; `website` is a honeypot people never see, answered
   like anyone and stored as nothing; the answer is the same for a new and a
@@ -2375,10 +2376,10 @@ fallback, and only on a tap.
   `DELETE /api/v1/testers/{email}` (once invited); anyone else gets 403
   `not_admin`. The table holds the address, when and the page's language,
   nothing else, linked to no account. With `TUNG_TESTER_GROUP_URL` (the
-  Google group the Play Console's closed test lists as testers) the page's
-  `<!-- group:begin -->` block and the sign-up email give the way in at once:
+  Google group the Play Console's closed test lists as testers) the sign-up
+  email gives the way in at once:
   join the group, then Play's opt-in page (`PLAY_OPT_IN_URL` in
-  `TesterRoutes.kt`); unset, they say an invitation comes later.
+  `TesterRoutes.kt`); unset, it says an invitation comes later.
   `TesterSignupTest`, `WelcomeMailTest`.
 - **Feedback** (`Feedback.kt`, `V13__feedback.sql`): any signed-in user
   (a write token) sends `POST /api/v1/feedback {kind: bug|idea, message,

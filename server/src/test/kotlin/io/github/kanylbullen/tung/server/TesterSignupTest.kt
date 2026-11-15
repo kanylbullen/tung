@@ -1,6 +1,5 @@
 package io.github.kanylbullen.tung.server
 
-import io.github.kanylbullen.tung.server.routes.PLAY_OPT_IN_URL
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -72,29 +71,13 @@ class TesterSignupTest {
         assertTrue(bot !in listed(client.register(owner)), "and stored as no one")
     }
 
+    /** The app is public on Google Play: the landing page links there and has no sign-up form, test or no test. */
     @Test
-    fun theFormIsOnTheLandingPage() = testersTest {
+    fun theLandingPageLinksToGooglePlayInsteadOfASignUp() = testersTest {
         val html = client.get("/").bodyAsText()
-        assertTrue("""id="signup"""" in html)
-        assertTrue("Sign up below." in html)
-        assertFalse("testers:" in html, "no marker is left in the page")
-        assertFalse("""id="tester-group"""" in html, "no group steps without TUNG_TESTER_GROUP_URL")
-        assertFalse("group:" in html || "@group@" in html || "@opt-in@" in html)
-    }
-
-    @Test
-    fun withATesterGroupThePageSaysHowToGetInAtOnce() = testApplication {
-        environment { config = MapApplicationConfig() }
-        application {
-            module(TestDatabase.config().copy(testerSignups = true, testerGroupUrl = "https://groups.google.com/g/tung-testers?x=1&y=2"))
-        }
-        val html = client.get("/").bodyAsText()
-        assertTrue("""id="tester-group"""" in html)
-        assertTrue("""href="https://groups.google.com/g/tung-testers?x=1&amp;y=2"""" in html, "the URL escaped as an attribute")
-        assertTrue("""href="$PLAY_OPT_IN_URL"""" in html)
-        assertTrue("""id="signup"""" in html, "the form stays for those who rather be invited")
-        assertFalse("When the next test round opens" in html, "the waiting text is replaced")
-        assertFalse("group:" in html || "@group@" in html || "@opt-in@" in html, "no marker or token is left")
+        assertTrue("play.google.com/store/apps/details?id=io.github.kanylbullen.tung" in html)
+        assertFalse("""id="signup"""" in html)
+        assertFalse("testers:" in html || "group:" in html || "@group@" in html || "@opt-in@" in html, "no marker or token is left")
     }
 
     @Test
@@ -111,8 +94,7 @@ class TesterSignupTest {
 
         val html = client.get("/").bodyAsText()
         assertFalse("""id="signup"""" in html, "no form")
-        assertFalse("Sign up below." in html)
-        assertTrue("In a test on Google Play." in html, "Android is still listed")
+        assertTrue("play.google.com/store/apps/details?id=io.github.kanylbullen.tung" in html, "Android links to Google Play")
         assertFalse("testers:" in html, "no marker is left in the page")
     }
 

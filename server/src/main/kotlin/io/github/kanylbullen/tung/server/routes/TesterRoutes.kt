@@ -62,7 +62,8 @@ data class TesterDto(
 data class TesterList(val testers: List<TesterDto>)
 
 /**
- * Sign-ups to test the Android app on Google Play, from the landing page.
+ * Sign-ups to test the Android app on Google Play (the API; the landing page
+ * has no form since the app is public on Google Play).
  * Anyone may sign up ([signUp]); an admin (`TUNG_ADMIN_EMAILS`) lists them
  * to copy into the Play Console and deletes them once invited. Only while
  * [enabled] (`TUNG_TESTER_SIGNUPS`): a self-hosted server runs no Play test,

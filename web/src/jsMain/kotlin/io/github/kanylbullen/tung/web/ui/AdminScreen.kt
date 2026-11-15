@@ -42,7 +42,7 @@ private sealed interface AdminView {
  * `TUNG_ADMIN_EMAILS`: the feedback users sent ([FeedbackSection]), every account on the server, newest first, with how
  * it signs in, when it was last seen and how many workouts it has, and, on
  * a server that takes them (`TUNG_TESTER_SIGNUPS`, tung.xuper.fun), the
- * addresses left on the front page for the Play test, to copy into the Play
+ * addresses signed up for a Play test, to copy into the Play
  * Console and remove once invited. A self-hosted server has no such list,
  * so the section is not there.
  */
