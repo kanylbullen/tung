@@ -61,7 +61,7 @@ tags:
     description: All of the user's data in one document.
   - name: testers
     description: >-
-      Sign-ups to test the Android app on Google Play, from the landing page; listed for the server's admins. Only on a
+      Sign-ups to a test of the Android app on Google Play (POST /api/v1/testers); listed for the server's admins. Only on a
       server with `TUNG_TESTER_SIGNUPS=true`; elsewhere every operation is 404 `not_configured`.
   - name: admin
     description: For the server's admins (`TUNG_ADMIN_EMAILS`) only.
