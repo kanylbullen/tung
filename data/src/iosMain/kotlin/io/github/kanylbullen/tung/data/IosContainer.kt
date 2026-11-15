@@ -94,6 +94,12 @@ class IosContainer(
     private val namesByKey: Map<String, Map<String, String>> by lazy { coreCatalog.associate { it.key to it.name } }
 
     init {
+        // First, before anything reads the Keychain: a reinstall must not find the old sign-in (#238).
+        // Stores of their own, since the lazy ones further down are not initialised yet.
+        forgetKeychainOnFreshInstall(
+            "$directory/tung.db",
+            listOf(KeychainTokenStore(KEYCHAIN_SERVICE, SYNC_TOKEN), KeychainTokenStore(KEYCHAIN_SERVICE, AI_KEY)),
+        )
         appScope.launch { coreCatalog }
     }
 
@@ -144,7 +150,7 @@ class IosContainer(
     override val pastWorkouts: PastWorkoutSettings by lazy { PastWorkoutSettings(settings) }
 
     // --- sync with tung-server, while the app runs ---
-    private val tokenStore by lazy { KeychainTokenStore(KEYCHAIN_SERVICE, "sync_token") }
+    private val tokenStore by lazy { KeychainTokenStore(KEYCHAIN_SERVICE, SYNC_TOKEN) }
     private val syncSettings: SyncSettings by lazy {
         // identifierForVendor is not carried to another iPhone by a backup, so a restored device id is noticed (issue #156).
         val vendorId: String? by lazy { UIDevice.currentDevice.identifierForVendor?.UUIDString }
@@ -193,7 +199,7 @@ class IosContainer(
     suspend fun syncInBackground(): Boolean = syncClient.syncOnce() is SyncResult.Success
 
     // --- the in-app assistant with the user's own key ---
-    private val aiKeyStore by lazy { KeychainTokenStore(KEYCHAIN_SERVICE, "ai_key") }
+    private val aiKeyStore by lazy { KeychainTokenStore(KEYCHAIN_SERVICE, AI_KEY) }
     override val aiSettings: AiSettings by lazy { AiSettings(settings, aiKeyStore) }
     override val ai: AiService by lazy {
         AiService(
@@ -222,6 +228,8 @@ class IosContainer(
     private companion object {
         /** The Keychain service of the app's secrets: its bundle id. */
         const val KEYCHAIN_SERVICE = "io.github.kanylbullen.tung"
+        private const val SYNC_TOKEN = "sync_token"
+        private const val AI_KEY = "ai_key"
     }
 
     /**

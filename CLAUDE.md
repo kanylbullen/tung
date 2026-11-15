@@ -181,7 +181,9 @@ WorkManager's `SyncWorker`, `EncryptedTokenStore`, the rest timer's alarm and
 alerts, the ongoing notification, push, Health Connect, the Wear state and
 `ExerciseNames`. **`src/iosMain`** holds the iOS actuals (below) and the
 iPhone's own parts: `KeychainTokenStore` (the session token and the AI key,
-after first unlock, this device only), `IosRestTimer` (over common
+after first unlock, this device only; the Keychain outlives an uninstall, so
+`IosContainer` forgets both on a fresh install, one with no `tung.db` yet:
+`forgetKeychainOnFreshInstall`, issue #238), `IosRestTimer` (over common
 `StoredRestTimer`, which the phone's `RestTimerController` shares, with a local
 notification for "Rest over"), `IosSyncScheduler` (sync while the app runs),
 `IosPush` (the APNs device token registered as an `apns` endpoint while

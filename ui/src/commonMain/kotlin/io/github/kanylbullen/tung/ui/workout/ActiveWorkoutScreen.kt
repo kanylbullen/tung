@@ -359,10 +359,15 @@ fun ActiveWorkoutScreen(
                             } else {
                                 val clock = clockText(now - state.startedAt)
                                 val description = stringResource(Res.string.workout_elapsed_description, clock)
+                                // One line, and the first to give way on a narrow phone: the rest countdown
+                                // beside it stays whole (#239: on an iPhone SE it wrapped a character per line).
                                 Text(
                                     clock,
                                     style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.8f),
-                                    modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Clip,
+                                    modifier = Modifier.weight(1f, fill = false).clearAndSetSemantics { contentDescription = description },
                                 )
                             }
                             if (rest != null) {
@@ -794,6 +799,8 @@ private fun RestCountdown(timer: RestTimer, now: Long, onClick: () -> Unit) {
             left,
             style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.8f),
             color = Tung.colors.accentText,
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }
