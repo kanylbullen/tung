@@ -57,7 +57,7 @@ fun playAddresses(testers: List<TesterSignup>, users: List<AdminUser>): String =
         .distinct()
         .joinToString(", ")
 
-/** One address left on the landing page to be invited to the Play test. */
+/** One address signed up to be invited to the Play test. */
 @Serializable
 data class TesterSignup(
     val email: String,
