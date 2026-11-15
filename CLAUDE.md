@@ -1451,7 +1451,13 @@ and WorkManager `Configuration.Provider`). Install and pairing: `wear/README.md`
   phone over the Data Layer (`PhoneLink`) and sends it commands. Without a
   paired phone it shows the hint to open the phone or link the watch.
 - **Both available:** standalone wins and the Data Layer state is ignored;
-  the watch and the phone then meet through the server.
+  the watch and the phone then meet through the server. Two exceptions read
+  the phone's DataItem anyway: the server to link to (below), and **the
+  default rest** (#228): the phone publishes its Settings → Training value
+  as `WatchWorkoutState.defaultRestSeconds`, and while the watch app is on
+  screen `followPhoneDefaultRest` (`TungWearApp`) stores it as the watch's
+  own, since the setting is not synced and the watch has no screen for it.
+  A watch with no paired phone keeps its own value (90 s).
 
 **Linking** (no password on the wrist): Settings, from the start screen
 (`ui/SettingsScreen.kt`, `AccountViewModel`), shows the account, "Sync now"

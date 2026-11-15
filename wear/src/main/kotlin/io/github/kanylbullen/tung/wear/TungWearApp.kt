@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.core.StartedBy
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.data.TungHost
 import io.github.kanylbullen.tung.sync.runForegroundSync
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /**
@@ -66,6 +67,18 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
                 container.syncAccount.requestSync()
                 runForegroundSync(container.syncAccount, container.workoutRepository, syncWhenIdle = true) { e ->
                     Log.w(TAG, "Foreground sync failed", e)
+                }
+            }
+        }
+        // The phone's default rest, from its Data Layer state, while the app is on screen (#228).
+        process.lifecycleScope.launch {
+            process.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                try {
+                    followPhoneDefaultRest(PhoneLink(this@TungWearApp).states(), container.restTimer::setDefaultSeconds)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not follow the phone's default rest", e)
                 }
             }
         }

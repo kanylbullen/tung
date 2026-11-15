@@ -95,8 +95,14 @@ class WatchStateSource(
     private var addableCache: Pair<String, List<WatchChoice>>? = null
 
     fun states(): Flow<WatchWorkoutState> =
-        combine(activeParts(), routines.observeRoutines(), selection.state, serverUrl) { parts, routineRows, sel, url ->
-            build(parts, routineRows, sel).copy(serverUrl = url)
+        combine(
+            activeParts(),
+            routines.observeRoutines(),
+            selection.state,
+            serverUrl,
+            restTimer.defaultSeconds,
+        ) { parts, routineRows, sel, url, defaultRest ->
+            build(parts, routineRows, sel).copy(serverUrl = url, defaultRestSeconds = defaultRest)
         }
 
     private fun activeParts(): Flow<ActiveParts?> =

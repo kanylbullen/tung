@@ -242,6 +242,14 @@ class WearCommandHandlerTest {
         assertEquals(80.0, state.exercises.single().lastTime.single().weightKg, 0.0)
     }
 
+    /** The state carries the phone's default rest, so a standalone watch can use it (#228). */
+    @Test
+    fun theStateCarriesTheDefaultRest() = runBlocking {
+        assertEquals(90, publisher.snapshot().defaultRestSeconds)
+        restTimer.setDefaultSeconds(150)
+        assertEquals(150, publisher.snapshot().defaultRestSeconds)
+    }
+
     @Test
     fun garbageIsIgnored() = runBlocking {
         assertFalse(handler.handle("not json"))
