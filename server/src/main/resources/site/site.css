@@ -181,6 +181,10 @@
     .button.primary { background: var(--accent); color: var(--on-accent); }
     .button.secondary { border: 1px solid var(--border); background: var(--raised); }
     .button:hover { filter: brightness(1.06); }
+    /* Google's own badge, as their brand guidelines ask: never redrawn, only scaled to the buttons' height. */
+    .play-badge { display: inline-flex; align-items: center; }
+    .play-badge img { display: block; height: 52px; width: auto; }
+    .play-badge img[hidden] { display: none; }
 
     /* --- What it does: a plain list, term and sentence --- */
     .what { margin: 14vh 0 0; }

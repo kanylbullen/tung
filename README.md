@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+  <a href="https://play.google.com/store/apps/details?id=io.github.kanylbullen.tung"><img src="server/src/main/resources/site/badges/google-play-en.png" alt="Get it on Google Play" height="60"></a>
+</p>
+
+<p align="center">
   <a href="https://tung.xuper.fun/"><b>Website</b></a> ·
   <a href="https://tung.xuper.fun/app/"><b>Web app</b></a> ·
   <a href="https://tung.xuper.fun/docs"><b>API docs</b></a> ·
