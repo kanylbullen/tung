@@ -494,14 +494,16 @@ of the next exercise with one in list order, wrapping. Adding an exercise
 makes it current, over a manual selection. The selected set id and the
 touched exercise live in the ViewModel's `SavedStateHandle`, so both survive
 rotation and process death. **Auto-scroll:** the ViewModel puts a one-shot
-`ScrollRequest` (a set or an exercise header, mode `IntoView` or `ToTop`) in
+`ScrollRequest` (a set or an exercise header, mode `IntoView`, `ToTop` or `Centre`) in
 the UI state and the screen carries it out with the `LazyListState`, finding
 the index among the list's keys (`listKeys`), then calls `onScrollHandled`.
 `IntoView` scrolls only when the item is not wholly between the top bar and
 the button: just enough when it is partly visible, else to it with the row
-above in view. Requests: the new set after + Set or Add set, the new current set after
-Log set, the new current set when a tick moves it to another exercise, and the
-new exercise's header to the top after Add exercise.
+above in view. `Centre` (issue #202) puts the item in the middle of the space
+between the top bar and the button, as far as the list can scroll. Requests:
+the new set after + Set or Add set (`IntoView`), the new current set after Log
+set and when a tick moves it to another exercise (`Centre`), and the new
+exercise's header to the top after Add exercise (`ToTop`).
 
 **Adding an exercise** (issue #55) gives it as many sets as it had last
 session, pre-filled position by position (`add_exercise` without `sets`, see

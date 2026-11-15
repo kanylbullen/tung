@@ -67,6 +67,12 @@ enum class ScrollMode {
 
     /** The item at the top of the list. */
     ToTop,
+
+    /**
+     * The item in the middle of the space between the top bar and the Log set
+     * button, as far as the list can scroll: the next set after a log (#202).
+     */
+    Centre,
 }
 
 data class ActiveWorkoutUiState(
