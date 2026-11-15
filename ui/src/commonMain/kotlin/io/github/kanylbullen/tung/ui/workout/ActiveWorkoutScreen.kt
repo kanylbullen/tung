@@ -204,9 +204,12 @@ fun ActiveWorkoutScreen(
     /** The workout exercise "Remove exercise" asks about, because it has logged sets; null when not asking. */
     var confirmRemoveId by rememberSaveable { mutableStateOf<String?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(askToFinish) {
-        if (askToFinish) {
-            confirmFinish = true
+    // The notification's Finish (#235): only once the workout has loaded. Before, the dialog could
+    // open on the empty state, take the start as 0, read the workout as logged after the fact and
+    // finish it at 1970-01-01 01:00, which the rule refuses; the screen then left with it unfinished.
+    LaunchedEffect(askToFinish, state.loading) {
+        if (askToFinish && !state.loading) {
+            if (!state.missing) confirmFinish = true
             onFinishAsked()
         }
     }
