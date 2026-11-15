@@ -1254,6 +1254,10 @@ private fun stepDescription(id: PluralStringResource, stepKg: Double): String {
     return pluralStringResource(id, quantity, localWeight(stepKg))
 }
 
+/** "2.5 kg": the step one press of − or + makes, shown under the button (#229). */
+@Composable
+private fun stepLabel(stepKg: Double): String = stringResource(Res.string.input_step_weight, localWeight(stepKg))
+
 @Composable
 private fun weightSpec(initial: String): NumberInputSpec {
     return NumberInputSpec(
@@ -1273,6 +1277,8 @@ private fun weightSpec(initial: String): NumberInputSpec {
         doneText = stringResource(Res.string.input_done),
         minusText = stringResource(Res.string.input_minus),
         plusText = stringResource(Res.string.input_plus),
+        minusLabel = { text -> stepLabel(WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0)) },
+        plusLabel = { text -> stepLabel(WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0)) },
         isValid = { parseWeight(it) != null },
         step = { text, steps -> localWeight(stepWeight(parseWeight(text) ?: 0.0, steps)) },
         sanitize = { text -> text.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
