@@ -116,11 +116,12 @@ fun splitSections(text: String): Map<String, ExportSection> {
 }
 
 /**
- * The records of a CSV text: fields separated by commas, a field in double
- * quotes may hold commas, newlines and `""` for a quote. Each line ending
- * outside quotes ends a record; an empty line is a record of one empty field.
+ * The records of a CSV text: fields separated by [delimiter] (`,` by default),
+ * a field in double quotes may hold delimiters, newlines and `""` for a quote.
+ * Each line ending outside quotes ends a record; an empty line is a record of
+ * one empty field.
  */
-fun csvRecords(text: String): List<List<String>> {
+fun csvRecords(text: String, delimiter: Char = ','): List<List<String>> {
     val records = mutableListOf<List<String>>()
     var fields = mutableListOf<String>()
     val field = StringBuilder()
@@ -142,7 +143,7 @@ fun csvRecords(text: String): List<List<String>> {
         } else {
             when (c) {
                 '"' -> quoted = true
-                ',' -> {
+                delimiter -> {
                     fields += field.toString()
                     field.clear()
                 }
