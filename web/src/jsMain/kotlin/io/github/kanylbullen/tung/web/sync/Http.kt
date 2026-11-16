@@ -33,9 +33,11 @@ suspend fun patchJson(url: String, body: String, headers: Map<String, String> = 
 /**
  * A `GET` of a file the page shows but cannot link (the request needs the
  * token), as an object URL (`blob:`) for an `<img>`; null when the server
- * answered no file. The caller revokes it with `URL.revokeObjectURL`.
+ * answered no file, or one whose type is not in [types]. The caller revokes
+ * it with `URL.revokeObjectURL`. The blob keeps the answer's type, so the
+ * check makes the URL an image whatever the server or a proxy sniffed.
  */
-suspend fun fetchObjectUrl(url: String, headers: Map<String, String>): String? {
+suspend fun fetchObjectUrl(url: String, headers: Map<String, String>, types: Set<String>): String? {
     val requestHeaders = Headers().apply { headers.forEach { (name, value) -> append(name, value) } }
     val response = try {
         window.fetch(url, RequestInit(method = "GET", headers = requestHeaders)).await()
@@ -52,6 +54,7 @@ suspend fun fetchObjectUrl(url: String, headers: Map<String, String>): String? {
     } catch (e: Throwable) {
         throw HttpUnreachable(e)
     }
+    if (blob.type.substringBefore(';').trim().lowercase() !in types) return null
     return org.w3c.dom.url.URL.createObjectURL(blob)
 }
 

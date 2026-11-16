@@ -181,6 +181,8 @@ fun Application.module(config: ServerConfig, db: Db = Db.connect(config)) {
         allowMethod(HttpMethod.Patch)
         allowMethod(HttpMethod.Delete)
     }
+    // The CSP and the other browser headers, by page group (issue #157).
+    install(SecurityHeaders) { publicUrl = config.publicUrl }
     install(RateLimit) {
         register(AUTH_RATE_LIMIT) {
             rateLimiter(limit = config.authRequestsPerMinute, refillPeriod = 1.minutes)

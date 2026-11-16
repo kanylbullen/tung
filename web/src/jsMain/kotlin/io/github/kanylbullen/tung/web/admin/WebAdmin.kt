@@ -178,6 +178,7 @@ class WebAdmin(
         fetchObjectUrl(
             baseUrl + ADMIN_FEEDBACK_PATH + "/" + encodeURIComponent(feedbackId) + "/images/" + encodeURIComponent(imageId),
             bearer(token),
+            SCREENSHOT_TYPES,
         )
     } catch (e: HttpUnreachable) {
         null
@@ -207,3 +208,6 @@ class WebAdmin(
 }
 
 private external fun encodeURIComponent(value: String): String
+
+/** What the server stores a screenshot as (its `imageType`, checked by the bytes). */
+private val SCREENSHOT_TYPES = setOf("image/png", "image/jpeg", "image/webp")
