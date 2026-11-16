@@ -22,7 +22,7 @@ import io.ktor.server.request.path
  * as strict as it can be, not only the app.
  */
 val SecurityHeaders = createApplicationPlugin("SecurityHeaders", ::SecurityHeadersConfig) {
-    val httpsPublicUrl = pluginConfig.publicUrl?.startsWith("https://") == true
+    val httpsPublicUrl = pluginConfig.publicUrl?.startsWith("https://", ignoreCase = true) == true
     onCallRespond { call, _ -> call.applySecurityHeaders(httpsPublicUrl) }
 }
 
