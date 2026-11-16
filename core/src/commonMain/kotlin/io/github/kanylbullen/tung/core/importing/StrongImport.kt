@@ -2,7 +2,9 @@
 
 package io.github.kanylbullen.tung.core.importing
 
+import io.github.kanylbullen.tung.core.MAX_REPS
 import io.github.kanylbullen.tung.core.MAX_WEIGHT_KG
+import io.github.kanylbullen.tung.core.MAX_WORKOUT_DURATION_MILLIS
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
@@ -222,18 +224,20 @@ object StrongImport : ImportAdapter {
                     val parsedSets = parseExerciseSets(exerciseRows)
                     if (parsedSets.isEmpty()) continue
 
-                    val exerciseIndex = exercises.size
+                    // The name is unique within a workout (rows are grouped by it), so it
+                    // identifies the exercise without a position that shifts when an earlier
+                    // exercise has no usable sets.
                     val sets = parsedSets.mapIndexed { setIndex, set ->
                         set.setType?.let { type -> setTypes[type] = (setTypes[type] ?: 0) + 1 }
                         ImportedSet(
-                            id = importId(SOURCE, "set", *keyParts, exerciseName, exerciseIndex.toString(), setIndex.toString()),
+                            id = importId(SOURCE, "set", *keyParts, exerciseName, setIndex.toString()),
                             weightKg = set.weightKg,
                             reps = set.reps,
                         )
                     }
                     setRowsUsed += sets.size
                     exercises += ImportedExercise(
-                        id = importId(SOURCE, "workout_exercise", *keyParts, exerciseName, exerciseIndex.toString()),
+                        id = importId(SOURCE, "workout_exercise", *keyParts, exerciseName),
                         name = exerciseName,
                         sets = sets,
                     )
@@ -280,7 +284,10 @@ object StrongImport : ImportAdapter {
                 }
 
                 val repsRaw = row["Reps"].trim()
-                val reps = repsRaw.replace(',', '.').toDoubleOrNull()?.toInt()
+                // NaN, infinities and counts past MAX_REPS are unreadable, never clamped.
+                val reps = repsRaw.replace(',', '.').toDoubleOrNull()
+                    ?.takeIf { it.isFinite() && it >= 0.0 && it <= MAX_REPS }
+                    ?.toInt()
                 val distance = row[distanceColumn].trim().replace(',', '.').toDoubleOrNull() ?: 0.0
                 val seconds = row["Seconds"].trim().replace(',', '.').toDoubleOrNull() ?: 0.0
                 if ((reps == null || reps <= 0) && (distance > 0.0 || seconds > 0.0)) {
@@ -301,7 +308,8 @@ object StrongImport : ImportAdapter {
                 }
 
                 val weightRaw = row[weightColumn].trim().replace(',', '.')
-                val weight = if (weightRaw.isEmpty()) 0.0 else weightRaw.toDoubleOrNull()
+                // Checked before rounding: NaN cannot be rounded, and -0.1 would round to 0.
+                val weight = if (weightRaw.isEmpty()) 0.0 else weightRaw.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 }
                 val kg = weight?.let { if (weightInLbs) roundToHalf(it * LBS_TO_KG) else roundToHundredth(it) }
                 if (kg == null || kg < 0.0 || kg > MAX_WEIGHT_KG) {
                     skip(SkipReason.SET_UNREADABLE)
@@ -320,23 +328,29 @@ object StrongImport : ImportAdapter {
             return runCatching { LocalDateTime.parse(iso).toInstant(zone).toEpochMilliseconds() }.getOrNull()
         }
 
+        /** The duration, or null when missing, not positive, unreadable or over a day (the caller falls back). */
         private fun parseDurationMillis(raw: String): Long? {
             val trimmed = raw.trim()
-            if (trimmed.isEmpty()) return null
-            if (durationInSeconds) {
-                val secs = trimmed.toDoubleOrNull()?.toLong() ?: return null
-                return if (secs > 0L) secs * 1000L else null
-            }
-            val matches = durationPart.findAll(trimmed).toList()
-            if (matches.isEmpty()) return null
-            var totalSeconds = 0L
-            for (match in matches) {
-                val value = match.groupValues[1].toLongOrNull() ?: return null
-                when (match.groupValues[2].lowercase()) {
-                    "h" -> totalSeconds += value * 3600L
-                    "m" -> totalSeconds += value * 60L
-                    "s" -> totalSeconds += value
+            if (trimmed.isEmpty() || trimmed.startsWith('-')) return null
+            val maxSeconds = MAX_WORKOUT_DURATION_MILLIS / 1000L
+            val totalSeconds: Long = if (durationInSeconds) {
+                val secs = trimmed.replace(',', '.').toDoubleOrNull() ?: return null
+                if (!secs.isFinite() || secs > maxSeconds) return null
+                secs.toLong()
+            } else {
+                val matches = durationPart.findAll(trimmed).toList()
+                if (matches.isEmpty()) return null
+                var sum = 0L
+                for (match in matches) {
+                    val value = match.groupValues[1].toLongOrNull()?.takeIf { it <= maxSeconds } ?: return null
+                    sum += when (match.groupValues[2].lowercase()) {
+                        "h" -> value * 3600L
+                        "m" -> value * 60L
+                        else -> value
+                    }
+                    if (sum > maxSeconds) return null
                 }
+                sum
             }
             return if (totalSeconds > 0L) totalSeconds * 1000L else null
         }

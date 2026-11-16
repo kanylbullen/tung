@@ -154,6 +154,24 @@ class StrongImportTest {
     }
 
     @Test
+    fun outOfRangeNumbersAreSkippedNotCrashedOrClamped() {
+        val header = "Workout #,Date,Workout Name,Duration (sec),Exercise Name,Set Order,Weight (kg),Reps,Distance (meters),Seconds,Notes,Workout Notes,RPE"
+        val rows = listOf(
+            "1,2024-06-01 10:00:00,A,1e20,Squat,1,NaN,5,0,0,,,",
+            "1,2024-06-01 10:00:00,A,1e20,Squat,2,-0.1,5,0,0,,,",
+            "1,2024-06-01 10:00:00,A,1e20,Squat,3,100,Infinity,0,0,,,",
+            "1,2024-06-01 10:00:00,A,1e20,Squat,4,100,1000,0,0,,,",
+            "1,2024-06-01 10:00:00,A,1e20,Squat,5,100,5,0,0,,,",
+        )
+        val parsed = StrongImport.parse((listOf(header) + rows).joinToString("\n"), zone)
+        val workout = parsed.workouts.single()
+        assertEquals(listOf(100.0 to 5), workout.exercises.single().sets.map { it.weightKg to it.reps })
+        assertEquals(mapOf(SkipReason.SET_UNREADABLE to 4), parsed.skipped)
+        // A duration past a day is not trusted: one hour instead.
+        assertEquals(workout.startedAt + 3_600_000L, workout.endedAt)
+    }
+
+    @Test
     fun idsSurviveRenumberedWorkouts() {
         // Deleting an earlier workout in Strong renumbers "Workout #"; a later
         // export of the same workouts must give the same ids.
