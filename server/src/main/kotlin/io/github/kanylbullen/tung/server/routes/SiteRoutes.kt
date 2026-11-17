@@ -57,8 +57,6 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
             html ?: return respond(HttpStatusCode.NotFound)
             response.header("Referrer-Policy", "no-referrer")
             response.header(HttpHeaders.CacheControl, "no-store")
-            response.header("X-Frame-Options", "DENY")
-            response.header("Content-Security-Policy", "frame-ancestors 'none'; form-action 'self'; base-uri 'none'")
             respondText(html, ContentType.Text.Html, status)
         }
         rateLimit(AUTH_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES) {
@@ -95,8 +93,6 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
             html ?: return respond(HttpStatusCode.NotFound)
             response.header("Referrer-Policy", "no-referrer")
             response.header(HttpHeaders.CacheControl, "no-store")
-            response.header("X-Frame-Options", "DENY")
-            response.header("Content-Security-Policy", "frame-ancestors 'none'; form-action 'self'; base-uri 'none'")
             respondText(html, ContentType.Text.Html, status)
         }
         rateLimit(AUTH_RATE_LIMIT) { bodyLimit(PUBLIC_MAX_BODY_BYTES) {
@@ -142,7 +138,7 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
  */
 private val assetVersion: String by lazy {
     val digest = MessageDigest.getInstance("SHA-256")
-    listOf("site.css", "site.js", "theme.js").forEach { name ->
+    listOf("site.css", "site.js", "theme.js", "home.js").forEach { name ->
         SiteRoutes::class.java.getResourceAsStream("/site/$name")?.use { digest.update(it.readBytes()) }
     }
     digest.digest().joinToString("") { "%02x".format(it) }.take(12)

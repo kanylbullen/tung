@@ -76,10 +76,11 @@ fun tungTest(
     clientIpHeader: String? = null,
     pushAllowPrivate: Boolean = false,
     tokenRequestsPerMinute: Int = 10_000,
+    webDir: java.io.File? = null,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     environment { config = MapApplicationConfig() }
-    application { module(TestDatabase.config(authRequestsPerMinute, trustProxy, tokenRequestsPerMinute, clientIpHeader).copy(pushAllowPrivate = pushAllowPrivate)) }
+    application { module(TestDatabase.config(authRequestsPerMinute, trustProxy, tokenRequestsPerMinute, clientIpHeader).copy(pushAllowPrivate = pushAllowPrivate, webDir = webDir)) }
     block()
 }
 

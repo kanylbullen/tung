@@ -2275,6 +2275,20 @@ fallback, and only on a tap.
   (60 a minute: hosted MCP clients call from a few shared addresses). Its
   429 and 413, and those of `/oauth/register`, are RFC 6749-shaped
   (`slow_down`, `invalid_request`), since OAuth clients read `error`.
+- **Security headers** (`SecurityHeaders.kt`, issue #157): every answer gets a
+  `Content-Security-Policy` chosen by path (`contentSecurityPolicy`):
+  `APP_CSP` for `/app/`, `SITE_CSP` for the site's pages and `/site/`,
+  `DOCS_CSP` for Swagger UI and `API_CSP` (`default-src 'none'`) for the rest;
+  plus `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` and, when
+  `TUNG_PUBLIC_URL` or the request is https, HSTS. A route that sets one of
+  them itself keeps its own (the OAuth consent page's CSP), never two. The
+  app shares its origin, and so its token and AI key, with every page, so
+  every group is strict. **No inline script on the site** (`script-src
+  'self'`; the landing page's is `site/home.js`, `SecurityHeadersTest`
+  fails on one), and a new third-party script, frame or style in the web app
+  goes into `APP_CSP` in the same change, or it is blocked. Swagger UI's
+  unpkg path is pinned in `DOCS_CSP`; the test fails when a Ktor upgrade
+  moves it.
 - **Tokens:** `tung_` + 32 random bytes, SHA-256 in `api_tokens`; sessions
   are tokens named `session`. A `read` token gets 403 on anything but GET.
   `api_tokens.expires_at` (V5) is null except on OAuth tokens; `authenticate`

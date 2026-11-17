@@ -155,6 +155,9 @@ class OAuthTest {
         assertTrue(page.bodyAsText().contains("Connect Test client to Tung"))
         assertTrue(page.bodyAsText().contains("read and change your training log"))
         assertEquals("DENY", page.headers["X-Frame-Options"])
+        // The consent page's own CSP, not the server-wide one as well: two would both be enforced.
+        assertEquals(1, page.headers.getAll("Content-Security-Policy")?.size)
+        assertEquals(listOf("no-referrer"), page.headers.getAll("Referrer-Policy"))
 
         val pkce = Pkce()
         val code = oauth.code(clientId, pkce)
