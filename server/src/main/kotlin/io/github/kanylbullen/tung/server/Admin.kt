@@ -1,7 +1,10 @@
 package io.github.kanylbullen.tung.server
 
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import kotlinx.serialization.Serializable
@@ -160,9 +163,14 @@ class AdminStore(private val db: Db, private val admins: Admins, private val tes
     }
 }
 
-/** `GET /api/v1/admin/users`, behind the bearer token; admins only. */
-fun Route.adminRoutes(store: AdminStore) {
+/** `GET /api/v1/admin/users` and `DELETE /api/v1/admin/users/{id}`, behind the bearer token; admins only. */
+fun Route.adminRoutes(store: AdminStore, accounts: Accounts, admins: Admins) {
     route("/admin") {
         get("/users") { call.respond(store.users(call.user())) }
+        delete("/users/{id}") {
+            val userId = call.parameters["id"] ?: throw notFound("Account")
+            accounts.deleteAccountAsAdmin(call.user(), admins, userId, call.receive<DeleteAccountInput>().email)
+            call.respond(HttpStatusCode.NoContent)
+        }
     }
 }

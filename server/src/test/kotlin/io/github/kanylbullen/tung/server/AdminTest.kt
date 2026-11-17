@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.server
 
 import io.github.kanylbullen.tung.server.routes.keepBlocks
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
@@ -96,6 +97,61 @@ class AdminTest {
         assertEquals(HttpStatusCode.Forbidden, users.status)
         assertEquals("insufficient_scope", users.errorCode())
         assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/testers") { bearerAuth(readToken) }.status)
+    }
+
+    @Test
+    fun anAdminDeletesSomeonesAccountAndEverythingInIt() = adminTest {
+        val adminToken = client.register(admin)
+        val member = uniqueEmail()
+        val memberToken = client.register(member)
+        client.putWorkout(memberToken, id(), """{"started_at": 1000, "ended_at": 2000}""")
+        val memberId = client.authedGet("/api/v1/me", memberToken).json()["id"]!!.str
+
+        suspend fun delete(userId: String, email: String, token: String = adminToken) =
+            client.delete("/api/v1/admin/users/$userId") {
+                bearerAuth(token)
+                jsonBody("""{"email": "$email"}""")
+            }
+
+        val mismatch = delete(memberId, "someone@else.example")
+        assertEquals(HttpStatusCode.BadRequest, mismatch.status)
+        assertEquals("email_mismatch", mismatch.errorCode())
+        assertEquals(HttpStatusCode.OK, client.authedGet("/api/v1/me", memberToken).status, "still there after a mismatch")
+
+        val notAdmin = delete(memberId, member, token = client.register())
+        assertEquals(HttpStatusCode.Forbidden, notAdmin.status)
+        assertEquals("not_admin", notAdmin.errorCode())
+
+        assertEquals(HttpStatusCode.NoContent, delete(memberId, " ${member.uppercase()} ").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.authedGet("/api/v1/me", memberToken).status, "its tokens went with it")
+        val emails = client.get("/api/v1/admin/users") { bearerAuth(adminToken) }.json()["users"]!!.jsonArray.map { it.jsonObject["email"]!!.str }
+        assertFalse(member in emails)
+        assertEquals(HttpStatusCode.NotFound, delete(memberId, member).status)
+    }
+
+    @Test
+    fun noAdminAccountIsDeletedFromServerAdminAndOnlyASessionMay() = adminTest {
+        val adminToken = client.register(admin)
+        val adminId = client.authedGet("/api/v1/me", adminToken).json()["id"]!!.str
+        val self = client.delete("/api/v1/admin/users/$adminId") {
+            bearerAuth(adminToken)
+            jsonBody("""{"email": "$admin"}""")
+        }
+        assertEquals(HttpStatusCode.Conflict, self.status)
+        assertEquals("cannot_delete_admin", self.errorCode())
+
+        val member = uniqueEmail()
+        val memberId = client.authedGet("/api/v1/me", client.register(member)).json()["id"]!!.str
+        val apiToken = client.post("/api/v1/tokens") {
+            bearerAuth(adminToken)
+            jsonBody("""{"name": "script", "scope": "write"}""")
+        }.json()["token"]!!.str
+        val refused = client.delete("/api/v1/admin/users/$memberId") {
+            bearerAuth(apiToken)
+            jsonBody("""{"email": "$member"}""")
+        }
+        assertEquals(HttpStatusCode.Forbidden, refused.status)
+        assertEquals("session_required", refused.errorCode())
     }
 
     @Test

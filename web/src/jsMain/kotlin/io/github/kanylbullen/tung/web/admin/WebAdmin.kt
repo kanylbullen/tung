@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.web.admin
 import io.github.kanylbullen.tung.web.sync.HttpReply
 import io.github.kanylbullen.tung.web.sync.HttpUnreachable
 import io.github.kanylbullen.tung.web.sync.PostJson
+import io.github.kanylbullen.tung.web.sync.deleteJson
 import io.github.kanylbullen.tung.web.sync.deleteRequest
 import io.github.kanylbullen.tung.web.sync.fetchObjectUrl
 import io.github.kanylbullen.tung.web.sync.patchJson
@@ -100,6 +101,41 @@ data class AccountFlags(
     @SerialName("has_password") val hasPassword: Boolean = true,
 )
 
+/** What `DELETE /api/v1/admin/users/{id}` answered. */
+enum class AdminDeleteResult {
+    DELETED,
+
+    /** 400 `email_mismatch`: the typed email is not the account's. */
+    EMAIL_MISMATCH,
+
+    /** 409 `cannot_delete_admin`: an admin's account, the caller's own included. */
+    ADMIN_ACCOUNT,
+
+    /** 403 `session_required`: only a sign-in session may. */
+    SESSION_REQUIRED,
+
+    /** 403 otherwise: not an admin (any more). */
+    NOT_ADMIN,
+
+    /** 404: deleted already, from another tab or another admin. */
+    GONE,
+
+    /** 401: the session has ended. */
+    SIGNED_OUT,
+
+    /** No connection, or an answer the API does not give. */
+    FAILED,
+}
+
+@Serializable
+private data class ConfirmEmail(val email: String)
+
+@Serializable
+private data class ErrorBody(val error: ErrorDetail? = null)
+
+@Serializable
+private data class ErrorDetail(val code: String? = null)
+
 /** What an admin read gave: the value, or why not. */
 sealed interface AdminResult<out T> {
     data class Ok<T>(val value: T) : AdminResult<T>
@@ -124,6 +160,7 @@ class WebAdmin(
     private val get: AuthedRequest = { url, headers -> getJson(url, headers) },
     private val delete: AuthedRequest = { url, headers -> deleteRequest(url, headers) },
     private val patch: PostJson = { url, body, headers -> patchJson(url, body, headers) },
+    private val deleteWithBody: PostJson = { url, body, headers -> deleteJson(url, body, headers) },
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
 
@@ -150,6 +187,39 @@ class WebAdmin(
         delete(baseUrl + TESTERS_PATH + "/" + encodeURIComponent(email), bearer(token)).isSuccess
     } catch (e: HttpUnreachable) {
         false
+    }
+
+    /**
+     * `DELETE /api/v1/admin/users/{id}` with [email] typed to confirm: the
+     * account and everything in it, as its owner deleting it would.
+     */
+    suspend fun deleteUser(baseUrl: String, token: String, userId: String, email: String): AdminDeleteResult {
+        val reply = try {
+            deleteWithBody(
+                baseUrl + ADMIN_USERS_PATH + "/" + encodeURIComponent(userId),
+                json.encodeToString(ConfirmEmail.serializer(), ConfirmEmail(email.trim())),
+                bearer(token),
+            )
+        } catch (e: HttpUnreachable) {
+            return AdminDeleteResult.FAILED
+        }
+        if (reply.isSuccess) return AdminDeleteResult.DELETED
+        val code = try {
+            json.decodeFromString(ErrorBody.serializer(), reply.body).error?.code
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        return when {
+            reply.status == 401 -> AdminDeleteResult.SIGNED_OUT
+            code == "email_mismatch" -> AdminDeleteResult.EMAIL_MISMATCH
+            code == "cannot_delete_admin" -> AdminDeleteResult.ADMIN_ACCOUNT
+            code == "session_required" -> AdminDeleteResult.SESSION_REQUIRED
+            reply.status == 403 -> AdminDeleteResult.NOT_ADMIN
+            reply.status == 404 -> AdminDeleteResult.GONE
+            else -> AdminDeleteResult.FAILED
+        }
     }
 
     suspend fun feedback(baseUrl: String, token: String): AdminResult<FeedbackList> =

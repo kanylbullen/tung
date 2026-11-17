@@ -602,10 +602,40 @@ class Accounts(
             if (!email.equals(confirmEmail.trim(), ignoreCase = true)) {
                 throw badRequest("Type the account's email to confirm.", code = "email_mismatch")
             }
-            Users.deleteWhere { Users.id eq principal.userId }
-            // The Play test sign-up is linked to no account, only to the address: it goes with the account too.
-            TesterSignups.deleteWhere { TesterSignups.email eq email.lowercase() }
+            deleteUserRows(principal.userId, email)
         }
+    }
+
+    /**
+     * `DELETE /admin/users/{id}`: an admin deletes someone else's account,
+     * exactly as [deleteAccount] deletes one's own (everything goes by
+     * `ON DELETE CASCADE`). Only from an admin's sign-in session, never an
+     * API or OAuth token, and [confirmEmail] must be the target's email, so a
+     * wrong row in the list is not one tap away. An admin's account, the
+     * caller's own included, is never deleted this way (409 `cannot_delete_admin`):
+     * an admin leaves through Settings like anyone else.
+     */
+    suspend fun deleteAccountAsAdmin(principal: TokenPrincipal, admins: Admins, userId: String, confirmEmail: String) {
+        admins.require(principal)
+        db.tx {
+            requireSession(principal, "Delete accounts from Server admin, signed in with your password, Google or Apple.")
+            lockUser(userId)
+            val row = Users.selectAll().where { Users.id eq userId }.singleOrNull() ?: throw notFound("Account")
+            val email = row[Users.email]
+            if (!email.equals(confirmEmail.trim(), ignoreCase = true)) {
+                throw badRequest("Type the account's email to confirm.", code = "email_mismatch")
+            }
+            if (userId == principal.userId || admins.isAdmin(email, row.providerLinked(), row[Users.emailVerifiedAt])) {
+                throw conflict("cannot_delete_admin", "An admin's account is not deleted from Server admin.")
+            }
+            deleteUserRows(userId, email)
+        }
+    }
+
+    private fun deleteUserRows(userId: String, email: String) {
+        Users.deleteWhere { Users.id eq userId }
+        // The Play test sign-up is linked to no account, only to the address: it goes with the account too.
+        TesterSignups.deleteWhere { TesterSignups.email eq email.lowercase() }
     }
 
     /**

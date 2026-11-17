@@ -203,7 +203,7 @@ fun Route.apiRoutes(
             }
 
             testerAdminRoutes(testers)
-            adminRoutes(adminStore)
+            adminRoutes(adminStore, accounts, admins)
             feedbackRoutes(feedback)
             adminFeedbackRoutes(feedback)
 

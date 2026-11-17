@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web.i18n
 
+import io.github.kanylbullen.tung.web.admin.AdminDeleteResult
 import io.github.kanylbullen.tung.web.sync.ChangePasswordResult
 import io.github.kanylbullen.tung.web.sync.SignOutOthersResult
 import io.github.kanylbullen.tung.web.sync.DeleteAccountResult
@@ -411,6 +412,12 @@ interface Strings {
     val copied: String
     fun removeTester(email: String): String
     val removeTesterBody: String
+    val deleteUser: String
+    fun deleteUserTitle(email: String): String
+    val deleteUserBody: String
+    val deleteUserEmail: String
+    val deleteUserConfirm: String
+    fun deleteUserFailure(result: AdminDeleteResult): String
     val adminFailed: String
     val adminNotAdmin: String
     val tryAgain: String
@@ -1006,6 +1013,19 @@ object English : Strings {
     override val copied = "Copied"
     override fun removeTester(email: String): String = "Remove $email"
     override val removeTesterBody = "Do it once the address is invited in the Play Console."
+    override val deleteUser = "Delete…"
+    override fun deleteUserTitle(email: String): String = "Delete $email?"
+    override val deleteUserBody = "The account and everything in it go: workouts, routines, programs, devices, tokens and feedback. This cannot be undone."
+    override val deleteUserEmail = "Type the account's email to confirm"
+    override val deleteUserConfirm = "Delete account"
+    override fun deleteUserFailure(result: AdminDeleteResult): String = when (result) {
+        AdminDeleteResult.EMAIL_MISMATCH -> "That is not the account's email."
+        AdminDeleteResult.ADMIN_ACCOUNT -> "An admin's account cannot be deleted here."
+        AdminDeleteResult.SESSION_REQUIRED -> "Sign in again to delete accounts."
+        AdminDeleteResult.NOT_ADMIN -> adminNotAdmin
+        AdminDeleteResult.GONE -> "The account is already gone."
+        else -> adminFailed
+    }
     override val adminFailed = "Could not reach the server. Check your connection and try again."
     override val adminNotAdmin = "This account is not an admin of the server."
     override val tryAgain = "Try again"
@@ -1636,6 +1656,19 @@ object Swedish : Strings {
     override val copied = "Kopierat"
     override fun removeTester(email: String): String = "Ta bort $email"
     override val removeTesterBody = "Gör det när adressen är inbjuden i Play Console."
+    override val deleteUser = "Radera…"
+    override fun deleteUserTitle(email: String): String = "Radera $email?"
+    override val deleteUserBody = "Kontot och allt i det försvinner: pass, rutiner, program, enheter, nycklar och feedback. Det går inte att ångra."
+    override val deleteUserEmail = "Skriv kontots e-post för att bekräfta"
+    override val deleteUserConfirm = "Radera kontot"
+    override fun deleteUserFailure(result: AdminDeleteResult): String = when (result) {
+        AdminDeleteResult.EMAIL_MISMATCH -> "Det är inte kontots e-post."
+        AdminDeleteResult.ADMIN_ACCOUNT -> "En admins konto kan inte raderas här."
+        AdminDeleteResult.SESSION_REQUIRED -> "Logga in igen för att radera konton."
+        AdminDeleteResult.NOT_ADMIN -> adminNotAdmin
+        AdminDeleteResult.GONE -> "Kontot är redan borta."
+        else -> adminFailed
+    }
     override val adminFailed = "Det gick inte att nå servern. Kontrollera uppkopplingen och försök igen."
     override val adminNotAdmin = "Det här kontot är inte admin på servern."
     override val tryAgain = "Försök igen"

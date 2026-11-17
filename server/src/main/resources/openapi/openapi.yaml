@@ -625,6 +625,36 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /api/v1/admin/users/{id}:
+    delete:
+      tags: [admin]
+      summary: Delete someone's account
+      description: >-
+        Deletes the account and everything that is theirs, as `DELETE /api/v1/me` does for one's own: training data,
+        tokens, link codes, push endpoints, OAuth grants, feedback and a test sign-up for the address. Admins only
+        (403 `not_admin`), and only from a sign-in session (403 `session_required`). The body repeats the account's
+        email, compared without case; another is 400 `email_mismatch`. An admin's account, the caller's own
+        included, is 409 `cannot_delete_admin`. An id that does not exist is 404.
+      operationId: adminDeleteUser
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /api/v1/feedback:
     post:
       tags: [feedback]
