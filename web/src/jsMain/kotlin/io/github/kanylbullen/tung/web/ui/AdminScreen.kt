@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import io.github.kanylbullen.tung.web.WebContainer
+import io.github.kanylbullen.tung.web.admin.AdminDeleteResult
 import io.github.kanylbullen.tung.web.admin.AdminResult
 import io.github.kanylbullen.tung.web.admin.AdminUser
 import io.github.kanylbullen.tung.web.admin.AdminUsers
@@ -18,11 +19,17 @@ import io.github.kanylbullen.tung.web.sync.Account
 import kotlinx.browser.window
 import kotlinx.coroutines.await
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.web.attributes.AutoComplete
+import org.jetbrains.compose.web.attributes.InputType
+import org.jetbrains.compose.web.attributes.autoComplete
+import org.jetbrains.compose.web.attributes.disabled
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.H2
+import org.jetbrains.compose.web.dom.Input
+import org.jetbrains.compose.web.dom.Label
 import org.jetbrains.compose.web.dom.Li
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
@@ -56,6 +63,7 @@ fun AdminScreen(container: WebContainer, account: Account) {
     var copied by remember { mutableStateOf(false) }
     var copiedAll by remember { mutableStateOf(false) }
     var removeFailed by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf<AdminUser?>(null) }
     val now = Date.now().toLong()
 
     LaunchedEffect(account, reload) {
@@ -162,11 +170,27 @@ fun AdminScreen(container: WebContainer, account: Account) {
                 }
                 Ul({ classes("rows") }) {
                     current.users.users.forEach { user ->
-                        key(user.id) { Li({ classes("row") }) { UserRow(user, container, now) } }
+                        key(user.id) {
+                            Li({ classes("row") }) {
+                                UserRow(user, container, now)
+                                // An admin's account is never deleted from here; the server refuses it too.
+                                if (!user.isAdmin) {
+                                    Button({
+                                        classes("text-button", "danger-text")
+                                        attr("aria-label", strings.deleteUserTitle(user.email))
+                                        onClick { deleting = user }
+                                    }) { Text(strings.deleteUser) }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    deleting?.let { user ->
+        DeleteUserDialog(container, account, user, onClose = { deleting = null }, onDeleted = { deleting = null; reload++ })
     }
 
     val email = removing
@@ -216,6 +240,59 @@ private fun UserRow(user: AdminUser, container: WebContainer, now: Long) {
             val workouts = strings.weekWorkouts(user.workouts) +
                 (user.lastWorkoutAt?.let { ", " + strings.lastWorkout(shortDate(it, container.locale, now)) } ?: "")
             Text(listOf(seen, workouts).joinToString(strings.separator))
+        }
+    }
+}
+
+/**
+ * "Delete <email>?": the account's email typed to confirm, as the account's
+ * own deletion asks, then `DELETE /api/v1/admin/users/{id}`. Stays open with
+ * the server's reason when it refuses.
+ */
+@Composable
+private fun DeleteUserDialog(container: WebContainer, account: Account, user: AdminUser, onClose: () -> Unit, onDeleted: () -> Unit) {
+    val strings = container.strings
+    val scope = rememberCoroutineScope()
+    var typed by remember(user.id) { mutableStateOf("") }
+    var busy by remember(user.id) { mutableStateOf(false) }
+    var error by remember(user.id) { mutableStateOf<String?>(null) }
+    fun close() {
+        if (!busy) onClose()
+    }
+    Div({ classes("sheet-backdrop"); onClick { close() } })
+    Div({ classes("dialog"); attr("role", "dialog"); attr("aria-modal", "true"); attr("aria-label", strings.deleteUserTitle(user.email)) }) {
+        H2 { Text(strings.deleteUserTitle(user.email)) }
+        P { Text(strings.deleteUserBody) }
+        Label(attrs = { classes("field", "dialog-field") }) {
+            Span { Text(strings.deleteUserEmail) }
+            Input(InputType.Email) {
+                value(typed)
+                autoComplete(AutoComplete.off)
+                onInput { typed = it.value; error = null }
+                if (busy) disabled()
+            }
+        }
+        error?.let { message -> P({ classes("error"); attr("role", "alert") }) { Text(message) } }
+        Div({ classes("dialog-actions") }) {
+            Button({ classes("secondary"); if (busy) disabled(); onClick { close() } }) { Text(strings.cancel) }
+            Button({
+                classes("accent-button")
+                if (busy || typed.isBlank()) disabled()
+                onClick {
+                    busy = true
+                    scope.launch {
+                        val token = container.settings.token
+                        val result = if (token == null) AdminDeleteResult.SIGNED_OUT else {
+                            container.admin.deleteUser(account.serverUrl, token, user.id, typed)
+                        }
+                        busy = false
+                        when (result) {
+                            AdminDeleteResult.DELETED, AdminDeleteResult.GONE -> onDeleted()
+                            else -> error = strings.deleteUserFailure(result)
+                        }
+                    }
+                }
+            }) { Text(strings.deleteUserConfirm) }
         }
     }
 }

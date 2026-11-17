@@ -1,6 +1,7 @@
 package io.github.kanylbullen.tung.web
 
 import io.github.kanylbullen.tung.web.admin.AccountFlags
+import io.github.kanylbullen.tung.web.admin.AdminDeleteResult
 import io.github.kanylbullen.tung.web.admin.AdminResult
 import io.github.kanylbullen.tung.web.admin.AdminUser
 import io.github.kanylbullen.tung.web.admin.TesterSignup
@@ -84,6 +85,32 @@ class WebAdminTest {
         }).removeTester("https://s", "t", "a+b@x.org")
         assertTrue(removed)
         assertEquals("https://s/api/v1/testers/a%2Bb%40x.org", asked)
+    }
+
+    @Test
+    fun deletingAnAccountSendsTheTypedEmailAndReadsTheRefusals() = runTest {
+        var asked = ""
+        var sent = ""
+        fun deleter(reply: HttpReply) = WebAdmin(get = { _, _ -> HttpReply(500, "") }, deleteWithBody = { url, body, headers ->
+            assertEquals("Bearer t", headers["Authorization"])
+            asked = url
+            sent = body
+            reply
+        })
+        assertEquals(AdminDeleteResult.DELETED, deleter(HttpReply(204, "")).deleteUser("https://s", "t", "u/1", " a@x.org "))
+        assertEquals("https://s/api/v1/admin/users/u%2F1", asked)
+        assertEquals("""{"email":"a@x.org"}""", sent)
+
+        fun error(status: Int, code: String) = HttpReply(status, """{"error":{"code":"$code","message":"x"}}""")
+        assertEquals(AdminDeleteResult.EMAIL_MISMATCH, deleter(error(400, "email_mismatch")).deleteUser("https://s", "t", "1", "b"))
+        assertEquals(AdminDeleteResult.ADMIN_ACCOUNT, deleter(error(409, "cannot_delete_admin")).deleteUser("https://s", "t", "1", "b"))
+        assertEquals(AdminDeleteResult.SESSION_REQUIRED, deleter(error(403, "session_required")).deleteUser("https://s", "t", "1", "b"))
+        assertEquals(AdminDeleteResult.NOT_ADMIN, deleter(error(403, "not_admin")).deleteUser("https://s", "t", "1", "b"))
+        assertEquals(AdminDeleteResult.GONE, deleter(error(404, "not_found")).deleteUser("https://s", "t", "1", "b"))
+        assertEquals(AdminDeleteResult.SIGNED_OUT, deleter(HttpReply(401, "")).deleteUser("https://s", "t", "1", "b"))
+        assertEquals(AdminDeleteResult.FAILED, deleter(HttpReply(500, "oops")).deleteUser("https://s", "t", "1", "b"))
+        val unreachable = WebAdmin(deleteWithBody = { _, _, _ -> throw HttpUnreachable(null) })
+        assertEquals(AdminDeleteResult.FAILED, unreachable.deleteUser("https://s", "t", "1", "b"))
     }
 
     @Test

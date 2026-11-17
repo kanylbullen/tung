@@ -2376,7 +2376,13 @@ fallback, and only on a tap.
   `GET /api/v1/admin/users` lists every account with how it signs in, when
   it was last seen, its working tokens and its finished workouts, never
   training content. The web app's Settings → Server admin shows it
-  (`web/.../ui/AdminScreen.kt`). `AdminTest`.
+  (`web/.../ui/AdminScreen.kt`). `DELETE /api/v1/admin/users/{id} {email}`
+  (`Accounts.deleteAccountAsAdmin`) deletes someone else's account the way
+  `DELETE /me` deletes one's own: only from an admin's sign-in session
+  (403 `session_required`), the account's email typed to confirm (400
+  `email_mismatch`), and never an admin's account, the caller's own
+  included (409 `cannot_delete_admin`); Server admin has "Delete…" on every
+  other row. `AdminTest`.
 - **Play test sign-ups** (`routes/TesterRoutes.kt`, `V12__tester_signups.sql`),
   only with `TUNG_TESTER_SIGNUPS=true` (tung.xuper.fun; a self-hosted server
   runs no Play test, so off by default: every route 404 `not_configured`).
