@@ -226,8 +226,8 @@ fun TungNavRoot(
     val routineSaved: (String) -> Unit = { name ->
         scope.launch { platform.showMessage(getString(Res.string.routine_saved, name)) }
     }
-    val routineUpdated: (String) -> Unit = { name ->
-        scope.launch { platform.showMessage(getString(Res.string.routine_updated, name)) }
+    val routineUpdated: (String, Boolean) -> Unit = { name, updated ->
+        scope.launch { platform.showMessage(getString(if (updated) Res.string.routine_updated else Res.string.routine_update_failed, name)) }
     }
 
     Scaffold(

@@ -57,7 +57,7 @@ fun WorkoutDetailScreen(
     vm: WorkoutDetailViewModel,
     onBack: () -> Unit,
     onRoutineSaved: (name: String) -> Unit,
-    onRoutineUpdated: (name: String) -> Unit,
+    onRoutineUpdated: (name: String, updated: Boolean) -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var savingRoutine by rememberSaveable { mutableStateOf(false) }
@@ -195,7 +195,7 @@ fun WorkoutDetailScreen(
             onDismiss = { updatingRoutine = false },
             onConfirm = {
                 updatingRoutine = false
-                vm.updateRoutine(differs.routineId) { updated -> if (updated) onRoutineUpdated(differs.routineName) }
+                vm.updateRoutine(differs.routineId) { updated -> onRoutineUpdated(differs.routineName, updated) }
             },
         )
     }

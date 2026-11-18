@@ -85,8 +85,8 @@ const val SUMMARY_LIST_TAG = "summary-list"
  * started from a routine, nothing for one that did what its routine asks,
  * and "Update “Push day”" with "Save as new routine" for one that differs.
  * A chart's exercise opens its progress ([onOpenProgress]); a saved or
- * updated routine is reported to [onRoutineSaved] or [onRoutineUpdated]
- * (the phone shows a toast).
+ * updated routine is reported to [onRoutineSaved] or [onRoutineUpdated],
+ * which also hears of a refused update (the phone shows a toast).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +95,7 @@ fun SummaryScreen(
     onDone: () -> Unit,
     onOpenProgress: (String) -> Unit,
     onRoutineSaved: (name: String) -> Unit,
-    onRoutineUpdated: (name: String) -> Unit,
+    onRoutineUpdated: (name: String, updated: Boolean) -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var savingRoutine by rememberSaveable { mutableStateOf(false) }
@@ -234,7 +234,7 @@ fun SummaryScreen(
             onDismiss = { updatingRoutine = false },
             onConfirm = {
                 updatingRoutine = false
-                vm.updateRoutine(differs.routineId) { updated -> if (updated) onRoutineUpdated(differs.routineName) }
+                vm.updateRoutine(differs.routineId) { updated -> onRoutineUpdated(differs.routineName, updated) }
             },
         )
     }

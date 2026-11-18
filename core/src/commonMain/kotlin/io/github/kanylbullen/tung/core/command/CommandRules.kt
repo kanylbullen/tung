@@ -334,8 +334,8 @@ class CommandRules(private val ids: () -> String = { newId() }) {
      * [workoutId] did, with the targets [saveRoutine] would give it: the
      * workout's exercises in workout order, one target set per logged set
      * (kept within range) and the most common rep count as target reps;
-     * exercises without a logged set are left out, and a workout without one
-     * is refused. The routine keeps its id, name and last use, so program
+     * exercises without a logged set are left out, and a workout without one,
+     * or one still in progress, is refused. The routine keeps its id, name and last use, so program
      * days that start it and workouts started from it stay as they are. An
      * exercise that stays keeps its row (the first of the routine's rows with
      * that exercise, in order), written only where its position or targets
@@ -343,8 +343,9 @@ class CommandRules(private val ids: () -> String = { newId() }) {
      * deleted with a tombstone. Answers [ROUTINE_ID].
      */
     suspend fun updateRoutineFromWorkout(tx: CommandTx, workoutId: String, routineId: String): CommandResult {
-        tx.workout(workoutId) ?: return noSuch("workout", workoutId)
+        val workout = tx.workout(workoutId) ?: return noSuch("workout", workoutId)
         tx.routine(routineId) ?: return noSuch("routine", routineId)
+        if (workout.endedAt == null) return Rejected(listOf("the workout is still in progress: finish it first"))
         val targets = loggedTargets(tx, workoutId)
         if (targets.isEmpty()) return Rejected(listOf(NOTHING_LOGGED))
         val unused = tx.routineExercises(routineId).sortedBy { it.position }.toMutableList()

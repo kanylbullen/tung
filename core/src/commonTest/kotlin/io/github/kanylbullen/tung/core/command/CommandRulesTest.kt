@@ -505,7 +505,7 @@ class CommandRulesTest {
         val flyRow = tx.addRoutineExercise(routineId, "fly", targetSets = 3, targetReps = 12)
         val dipRow = tx.addRoutineExercise(routineId, "dip", targetSets = 2)
         val dayId = tx.addProgramDay(routineId)
-        val workoutId = tx.addWorkout(routineId = routineId)
+        val workoutId = tx.addWorkout(routineId = routineId, endedAt = 1L)
         val dip = tx.addExercise(workoutId, "dip")
         tx.addSet(dip, 0.0, 10, completed = true)
         tx.addSet(dip, 0.0, 10, completed = true)
@@ -543,9 +543,15 @@ class CommandRulesTest {
     fun updateRoutineFromWorkoutRefusesWhatIsGoneOrEmptyAndWritesNothing() {
         val routineId = tx.addRoutine()
         tx.addRoutineExercise(routineId, "bench", targetSets = 3)
-        val workoutId = tx.addWorkout(routineId = routineId)
+        val workoutId = tx.addWorkout(routineId = routineId, endedAt = 1L)
         tx.addSet(tx.addExercise(workoutId, "bench"), 80.0, 8, completed = false)
+        val inProgress = tx.addWorkout(routineId = routineId)
+        tx.addSet(tx.addExercise(inProgress, "bench"), 80.0, 8, completed = true)
         tx.writes.clear()
+        assertEquals(
+            listOf("the workout is still in progress: finish it first"),
+            rejected { executor.updateRoutineFromWorkout(tx, inProgress, routineId) }.reasons,
+        )
         assertEquals(listOf("the workout has no logged set to save"), rejected { executor.updateRoutineFromWorkout(tx, workoutId, routineId) }.reasons)
         assertEquals(listOf("no workout nope"), rejected { executor.updateRoutineFromWorkout(tx, "nope", routineId) }.reasons)
         assertEquals(listOf("no routine nope"), rejected { executor.updateRoutineFromWorkout(tx, workoutId, "nope") }.reasons)

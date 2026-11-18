@@ -141,7 +141,7 @@ fun SummaryScreen(container: WebContainer, id: String) {
             }
         }
         saved?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(strings.savedAsRoutine(it)) } }
-        updated?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(strings.routineUpdated(it)) } }
+        updated?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(it) } }
     }
 
     if (summary != null) {
@@ -169,7 +169,11 @@ fun SummaryScreen(container: WebContainer, id: String) {
         Dialog(strings.updateRoutineTitle(save.routineName), strings.updateRoutineBody, strings.update, strings.cancel, onCancel = { updating = false }) {
             updating = false
             scope.launch {
-                if (container.commands.execute(Command.UpdateRoutineFromWorkout(id, save.routineId)) is CommandResult.Done) updated = save.routineName
+                if (container.commands.execute(Command.UpdateRoutineFromWorkout(id, save.routineId)) is CommandResult.Done) {
+                    updated = strings.routineUpdated(save.routineName)
+                } else {
+                    updated = strings.routineUpdateFailed(save.routineName)
+                }
             }
         }
     }

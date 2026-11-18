@@ -82,7 +82,8 @@ object McpDescriptions {
             "Makes an existing routine what a workout did, with the targets save_routine would give: the workout's exercises in " +
             "workout order, as many target sets as were logged and the most common rep count as target reps; exercises the workout " +
             "left out are removed from the routine. The routine keeps its id and name, so program days that start it keep working. " +
-            "Use it when the user wants to keep the changes they made to a routine during a workout (the workout's routine_id). " +
+            "Use it when the user wants to keep the changes they made to a routine during a workout (the workout's routine_id); " +
+            "the workout must be finished. " +
             "Only call this after the user has confirmed. Returns ids.routineId.",
         "save_routine_plan" to
             "Saves a new routine (a workout template) from a plan, such as a programme designed with the user. Plan: " +

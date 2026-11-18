@@ -1422,7 +1422,7 @@ paths:
         | `set_rest` | `exercise_id`, `seconds` (0–3600 or null) |
         | `create_exercise` | `name`, `muscle_group`, `equipment` |
         | `save_routine` | `workout_id`, `name` |
-        | `update_routine_from_workout` | `workout_id`, `routine_id` (the routine becomes the workout's logged exercises in order, with `save_routine`'s targets; it keeps its id and name) |
+        | `update_routine_from_workout` | `workout_id`, `routine_id` (a finished workout; the routine becomes its logged exercises in order, with `save_routine`'s targets; it keeps its id and name) |
         | `save_routine_plan` | `name`, `exercises`: [{`exercise`, `target_sets` (1–20), `target_reps`?}] |
         | `create_routine` | `name` (an empty routine; fill it with `add_routine_exercise`) |
         | `rename_routine` | `routine_id`, `name` |
