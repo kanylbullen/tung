@@ -1274,7 +1274,11 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   with the next sync. The cursor is stored after each chunk; while a response
   comes back with `SYNC_MAX_ROWS` rows it pulls again. A 401 clears the token
   and shows "signed out".
-- **Triggers** (`SyncAccount`, `SyncWorker`): unique periodic work every 15
+- **Triggers** (`SyncAccount`, `SyncWorker`; `enqueueNow`'s one-time work is
+  expedited since #253, falling back to an ordinary job out of quota, so a
+  push or a watch's nudge is not held back by Doze; below Android 12 that
+  shows a silent "Syncing your workouts" notification for the moment it
+  runs, `SyncWorker.getForegroundInfo`, channel `sync`, id 3): unique periodic work every 15
   min with a network constraint while signed in (scheduled at sign-in and
   re-asserted at app start), and `enqueueNow` (unique, `APPEND_OR_REPLACE`)
   after `FinishWorkout` from `AppCommandHandler`'s result path

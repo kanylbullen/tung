@@ -302,7 +302,8 @@ enum class DeleteAccountOutcome {
  * @param onPushed called after a sync that carried this device's changes up,
  *   and awaited before [syncOnce] returns, so a WorkManager job keeps the
  *   process until it is done: a standalone watch nudges the paired phone
- *   there (issue #249). It must not throw, and should bound its own time.
+ *   there (issue #249). It should bound its own time; what it throws is
+ *   dropped, since the sync itself has succeeded.
  */
 class SyncClient(
     private val store: SyncStore,
@@ -375,7 +376,17 @@ class SyncClient(
      * recorded in [SyncSettings]; a 401 signs the device out.
      */
     suspend fun syncOnce(): SyncResult = withContext(ioDispatcher) {
-        loop.syncOnce().also { if (it is SyncResult.Success && it.pushed > 0) onPushed() }
+        loop.syncOnce().also { if (it is SyncResult.Success && it.pushed > 0) afterPush() }
+    }
+
+    private suspend fun afterPush() {
+        try {
+            onPushed()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The rows went up and came back applied; a failed follow-up must not report the sync as failed.
+        }
     }
 
     /**
