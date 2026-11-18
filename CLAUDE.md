@@ -1650,9 +1650,11 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   standalone mode never shows the phone's workout, and when the phone's
   workout id is not the watch's own active one it enqueues
   `PhoneWorkoutSyncWorker` (5 s after, since the phone pushes ~3 s after a
-  change; a newer change replaces it), which syncs, posts from the watch's
-  own database (`WatchOngoingActivity.refresh`) and retries every 10 s while
-  the ids still differ, at most `PHONE_SYNC_ATTEMPTS` (4). A set logged on
+  change; one for another workout replaces it, one for the same is kept),
+  which syncs, posts from the watch's own database
+  (`WatchOngoingActivity.refresh`) and retries with linear backoff from 10 s
+  while the ids still differ, at most `PHONE_SYNC_ATTEMPTS` (4: about 5, 15,
+  35 and 65 s). A set logged on
   the phone within the same workout asks for no sync. `PhoneStateListenerTest`.
 - **Push transports** (`data/.../push/`). The server only ever sends an empty
   "sync now"; receiving one on either transport calls

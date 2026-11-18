@@ -43,7 +43,7 @@ class PhoneStateHandler(
     private val hasToken: suspend () -> Boolean,
     private val localWorkoutId: suspend () -> String?,
     private val show: (OngoingWorkout?) -> Unit,
-    private val syncSoon: (phoneWorkoutId: String?) -> Unit,
+    private val syncSoon: suspend (phoneWorkoutId: String?) -> Unit,
 ) {
     /** [state] is the phone's latest, null when its DataItem is gone. */
     suspend fun handle(state: WatchWorkoutState?) {
@@ -76,15 +76,14 @@ class PhoneStateHandler(
  */
 class PhoneStateListenerService : WearableListenerService() {
     override fun onDataChanged(events: DataEventBuffer) {
-        // The buffer is released when this returns; the states are decoded before that.
-        val latest = events.mapNotNull { event ->
-            if (event.dataItem.uri.path != WatchProtocol.STATE_PATH) return@mapNotNull null
-            when (event.type) {
-                DataEvent.TYPE_CHANGED -> decodePhoneState(event.dataItem)?.let { Seen(it) }
-                DataEvent.TYPE_DELETED -> Seen(null)
-                else -> null
-            }
-        }.lastOrNull() ?: return
+        // The buffer is released when this returns; the state is decoded before that. Only the last
+        // event for the state counts: when it cannot be read (a newer phone), nothing changes here.
+        val last = events.lastOrNull { it.dataItem.uri.path == WatchProtocol.STATE_PATH } ?: return
+        val latest = when (last.type) {
+            DataEvent.TYPE_CHANGED -> Seen(decodePhoneState(last.dataItem) ?: return)
+            DataEvent.TYPE_DELETED -> Seen(null)
+            else -> return
+        }
         val app = application as? TungWearApp ?: return
         // Called on a background thread; bounded, so a stuck read never holds the next event back long.
         runBlocking {
@@ -126,7 +125,7 @@ fun phoneSyncNext(result: SyncResult, phoneWorkoutId: String?, localWorkoutId: S
     return if (again && attempt + 1 < PHONE_SYNC_ATTEMPTS) PhoneSyncNext.RETRY else PhoneSyncNext.DONE
 }
 
-/** Syncs per phone change at most: about 5, 15, 25 and 35 s after it. */
+/** Syncs per phone change at most: about 5, 15, 35 and 65 s after it (linear backoff from 10 s). */
 const val PHONE_SYNC_ATTEMPTS = 4
 
 /**
@@ -135,7 +134,7 @@ const val PHONE_SYNC_ATTEMPTS = 4
  * then the Ongoing Activity posted from the watch's own database at once
  * ([WatchOngoingActivity.refresh]), then again while the phone's workout has
  * not arrived ([phoneSyncNext]). Waits [FIRST_DELAY_SECONDS] first, since the
- * phone pushes a moment after its change; a newer change replaces it.
+ * phone pushes a moment after its change; a change to another workout replaces it.
  */
 class PhoneWorkoutSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
@@ -154,16 +153,27 @@ class PhoneWorkoutSyncWorker(context: Context, params: WorkerParameters) : Corou
         const val KEY_PHONE_WORKOUT_ID = "phone_workout_id"
         const val FIRST_DELAY_SECONDS = 5L
         const val RETRY_SECONDS = 10L
+        private const val TAG_PREFIX = "phone-workout:"
 
-        fun enqueue(context: Context, phoneWorkoutId: String?) {
+        /**
+         * Asks for the sync. One already waiting or running for the same phone workout is kept, so
+         * sets logged on the phone meanwhile do not keep pushing it back; a different one replaces it.
+         */
+        suspend fun enqueue(context: Context, phoneWorkoutId: String?) {
+            val workManager = WorkManager.getInstance(context)
+            val tag = TAG_PREFIX + (phoneWorkoutId ?: "none")
+            val pending = workManager.getWorkInfosForUniqueWorkFlow(WORK_NAME).first()
+                .any { !it.state.isFinished && tag in it.tags }
+            if (pending) return
             val request = OneTimeWorkRequestBuilder<PhoneWorkoutSyncWorker>()
                 .setInitialDelay(FIRST_DELAY_SECONDS, TimeUnit.SECONDS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.LINEAR, RETRY_SECONDS, TimeUnit.SECONDS)
                 .setInputData(workDataOf(KEY_PHONE_WORKOUT_ID to phoneWorkoutId))
+                .addTag(tag)
                 .build()
-            // The newest change wins: it carries the phone's workout as it is now.
-            WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
+            // A change to another workout wins: it carries the phone's workout as it is now.
+            workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
         }
     }
 }

@@ -34,23 +34,43 @@ class PhoneLink(context: Context) : WatchBackend {
      * the phone has never published), then every change while collected.
      */
     override fun states(): Flow<WatchWorkoutState?> = callbackFlow {
+        // The listener and the stored read can finish in either order: only a state newer than the
+        // last one sent goes out, so an older stored snapshot never overwrites a newer change.
+        val lock = Any()
+        var newest: Long? = null
+        fun offer(state: WatchWorkoutState?) = synchronized(lock) {
+            val last = newest
+            when {
+                state == null -> if (last == null) trySend(null)
+                last == null || state.updatedAt > last -> {
+                    newest = state.updatedAt
+                    trySend(state)
+                }
+            }
+        }
         val listener = DataClient.OnDataChangedListener { events ->
-            val states = events.filter { it.type == DataEvent.TYPE_CHANGED && it.dataItem.uri.path == WatchProtocol.STATE_PATH }
-                .mapNotNull { decodePhoneState(it.dataItem) }
-            events.release()
-            states.maxByOrNull { it.updatedAt }?.let { trySend(it) }
+            val states = try {
+                events.filter { it.type == DataEvent.TYPE_CHANGED && it.dataItem.uri.path == WatchProtocol.STATE_PATH }
+                    .mapNotNull { decodePhoneState(it.dataItem) }
+            } finally {
+                events.release()
+            }
+            states.maxByOrNull { it.updatedAt }?.let { offer(it) }
         }
         dataClient.addListener(listener)
         try {
             val items = dataClient.dataItems.awaitResult()
-            val stored = items.filter { it.uri.path == WatchProtocol.STATE_PATH }.mapNotNull { decodePhoneState(it) }
-            items.release()
-            send(stored.maxByOrNull { it.updatedAt })
+            val stored = try {
+                items.filter { it.uri.path == WatchProtocol.STATE_PATH }.mapNotNull { decodePhoneState(it) }
+            } finally {
+                items.release()
+            }
+            offer(stored.maxByOrNull { it.updatedAt })
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "Could not read the stored state", e)
-            send(null)
+            offer(null)
         }
         awaitClose { dataClient.removeListener(listener) }
     }
@@ -87,12 +107,16 @@ class PhoneLink(context: Context) : WatchBackend {
 
 /** The phone's [WatchWorkoutState] in a state DataItem, or null when this watch cannot read it (a newer protocol). */
 fun decodePhoneState(item: DataItem): WatchWorkoutState? {
-    val text = DataMapItem.fromDataItem(item).dataMap.getString(WatchProtocol.STATE_KEY) ?: return null
     return try {
+        val text = DataMapItem.fromDataItem(item).dataMap.getString(WatchProtocol.STATE_KEY) ?: return null
         WatchProtocol.decodeState(text)
     } catch (e: IllegalArgumentException) {
         // SerializationException is an IllegalArgumentException; a state this watch cannot read is skipped.
         Log.w("PhoneLink", "Could not read the phone's state", e)
+        null
+    } catch (e: IllegalStateException) {
+        // A payload that is not a DataMap.
+        Log.w("PhoneLink", "Could not read the phone's DataItem", e)
         null
     }
 }
