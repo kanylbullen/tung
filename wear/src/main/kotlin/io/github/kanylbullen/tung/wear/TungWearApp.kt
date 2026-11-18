@@ -82,6 +82,11 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
                 }
             }
         }
+        // For the whole process, screen or not (a finish's sync runs in WorkManager): once a sync has
+        // carried this watch's changes up, the phone is told to sync now (#249). Signed out, nothing pushes.
+        process.lifecycleScope.launch {
+            nudgePhoneAfterPushes(container.syncClient.pushes, DataLayerPhoneNudger(this@TungWearApp))
+        }
     }
 
     /** WorkManager is initialised on demand (the default initializer is removed in the manifest). */

@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -177,6 +178,17 @@ class ActiveWorkoutViewModel(
             // Asked once, the first time a workout is on screen: both the ongoing notification
             // ("Workout in progress") and the rest timer's "Rest over" need it.
             if (restTimer.firstTimeAskingForNotifications()) eventChannel.send(ActiveWorkoutEvent.AskForNotifications)
+        }
+        viewModelScope.launch {
+            // Finished on another device (a standalone watch, the web) and brought here by a sync
+            // (issue #249): the screen leaves for the summary, as after Finish here, instead of showing
+            // a workout that is over as if it ran. Finish and Discard here set [finishing] first.
+            repo.observeWorkout(workoutId).first { it != null && it.endedAt != null }
+            if (finishing.value) return@launch
+            finishing.value = true
+            setRest(null)
+            restTimer.set(workoutId, null)
+            eventChannel.send(ActiveWorkoutEvent.Finished(workoutId, saved = true))
         }
     }
 

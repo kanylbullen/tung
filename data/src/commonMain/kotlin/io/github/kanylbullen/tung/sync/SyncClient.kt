@@ -27,7 +27,11 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.serialization.SerialName
@@ -369,7 +373,19 @@ class SyncClient(
      * cursor, pull again while a response is full. Success and failure are
      * recorded in [SyncSettings]; a 401 signs the device out.
      */
-    suspend fun syncOnce(): SyncResult = withContext(ioDispatcher) { loop.syncOnce() }
+    suspend fun syncOnce(): SyncResult = withContext(ioDispatcher) {
+        loop.syncOnce().also { if (it is SyncResult.Success && it.pushed > 0) pushedFlow.tryEmit(Unit) }
+    }
+
+    private val pushedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    /**
+     * One element after each sync that carried this device's changes up to the
+     * server, whoever started it (WorkManager, the foreground loop, "Sync now").
+     * Conflated: a collector that is busy sees one, not one per sync. A
+     * standalone watch follows it to nudge the paired phone (issue #249).
+     */
+    val pushes: SharedFlow<Unit> = pushedFlow.asSharedFlow()
 
     /**
      * `POST /api/v1/auth/password/forgot` at [baseUrl]: a link to choose a
