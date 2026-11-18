@@ -30,7 +30,7 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
     val localBackend: LocalWatchBackend by lazy { LocalWatchBackend(container, this) }
 
     /** The Ongoing Activity of the workout in progress, in both modes ([WatchOngoingActivity]). */
-    private val ongoing: WatchOngoingActivity by lazy {
+    internal val ongoing: WatchOngoingActivity by lazy {
         WatchOngoingActivity(this, container, local = { localBackend }, phone = { PhoneLink(this) })
     }
 
@@ -54,6 +54,8 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
+        // Here, not in an activity: the process may be started by the Data Layer listener
+        // (PhoneStateListenerService) with no screen at all, and the chip must follow then too (#247).
         ongoing.start()
         // The phone's triggers: periodic work while signed in, and a sync whenever the app comes to the
         // foreground. A watch gets no push, so while it is on screen it also syncs now and then, to see
