@@ -96,6 +96,15 @@ class OngoingWorkoutNotifier(
         cancel(context)
     }
 
+    /**
+     * Posts [workout] (or cancels, for null) at once, as if [source] had just
+     * emitted it; nothing when not started. For a caller woken in the
+     * background that must not leave the post to the collector: a process
+     * with no component running may be frozen before the collector gets there
+     * (the watch's Data Layer listener and its sync worker).
+     */
+    fun showNow(workout: OngoingWorkout?) = show(workout)
+
     @Synchronized
     private fun show(workout: OngoingWorkout?) {
         // A show that was already on its way when [stop] ran (the source's emission, or the

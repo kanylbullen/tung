@@ -36,14 +36,14 @@ class PhoneLink(context: Context) : WatchBackend {
     override fun states(): Flow<WatchWorkoutState?> = callbackFlow {
         val listener = DataClient.OnDataChangedListener { events ->
             val states = events.filter { it.type == DataEvent.TYPE_CHANGED && it.dataItem.uri.path == WatchProtocol.STATE_PATH }
-                .mapNotNull { decode(it.dataItem) }
+                .mapNotNull { decodePhoneState(it.dataItem) }
             events.release()
             states.maxByOrNull { it.updatedAt }?.let { trySend(it) }
         }
         dataClient.addListener(listener)
         try {
             val items = dataClient.dataItems.awaitResult()
-            val stored = items.filter { it.uri.path == WatchProtocol.STATE_PATH }.mapNotNull { decode(it) }
+            val stored = items.filter { it.uri.path == WatchProtocol.STATE_PATH }.mapNotNull { decodePhoneState(it) }
             items.release()
             send(stored.maxByOrNull { it.updatedAt })
         } catch (e: CancellationException) {
@@ -80,19 +80,20 @@ class PhoneLink(context: Context) : WatchBackend {
         }
     }
 
-    private fun decode(item: DataItem): WatchWorkoutState? {
-        val text = DataMapItem.fromDataItem(item).dataMap.getString(WatchProtocol.STATE_KEY) ?: return null
-        return try {
-            WatchProtocol.decodeState(text)
-        } catch (e: IllegalArgumentException) {
-            // SerializationException is an IllegalArgumentException; a state this watch cannot read is skipped.
-            Log.w(TAG, "Could not read the phone's state", e)
-            null
-        }
-    }
-
     private companion object {
         const val TAG = "PhoneLink"
+    }
+}
+
+/** The phone's [WatchWorkoutState] in a state DataItem, or null when this watch cannot read it (a newer protocol). */
+fun decodePhoneState(item: DataItem): WatchWorkoutState? {
+    val text = DataMapItem.fromDataItem(item).dataMap.getString(WatchProtocol.STATE_KEY) ?: return null
+    return try {
+        WatchProtocol.decodeState(text)
+    } catch (e: IllegalArgumentException) {
+        // SerializationException is an IllegalArgumentException; a state this watch cannot read is skipped.
+        Log.w("PhoneLink", "Could not read the phone's state", e)
+        null
     }
 }
 

@@ -1639,6 +1639,21 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   attaches an androidx.wear `OngoingActivity` in `decorate`. No actions there.
   `WatchExercise.targetSets`, `WatchWorkoutState.startedBy` and
   `addSetWorkoutExerciseId` (for "all sets logged") carry what it needs.
+  **With the watch app closed** (issue #247; Wear OS never bridges a phone's
+  ongoing notification): `PhoneStateListenerService`
+  (`wear/.../PhoneStateListener.kt`, a `WearableListenerService` on
+  `DATA_CHANGED` for `/tung/active_workout`) is started by the system on the
+  phone's state change, which runs `TungWearApp.onCreate` and so the
+  notifier. `PhoneStateHandler` decides: companion mode posts the phone's
+  state at once (`OngoingWorkoutNotifier.showNow`, synchronously, since a
+  process with nothing running may be frozen before the collector posts);
+  standalone mode never shows the phone's workout, and when the phone's
+  workout id is not the watch's own active one it enqueues
+  `PhoneWorkoutSyncWorker` (5 s after, since the phone pushes ~3 s after a
+  change; a newer change replaces it), which syncs, posts from the watch's
+  own database (`WatchOngoingActivity.refresh`) and retries every 10 s while
+  the ids still differ, at most `PHONE_SYNC_ATTEMPTS` (4). A set logged on
+  the phone within the same workout asks for no sync. `PhoneStateListenerTest`.
 - **Push transports** (`data/.../push/`). The server only ever sends an empty
   "sync now"; receiving one on either transport calls
   `SyncAccount.requestSync()`. `core.selectPushTransport` (pure) picks: FCM

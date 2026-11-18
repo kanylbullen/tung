@@ -42,6 +42,22 @@
             </intent-filter>
         </activity>
 
+        <!--
+          The phone's state DataItem changed: the system starts this even when the app is not
+          running, so the watch's Ongoing Activity follows a workout started on the phone (#247).
+        -->
+        <service
+            android:name=".PhoneStateListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:host="*"
+                    android:path="/tung/active_workout"
+                    android:scheme="wear" />
+            </intent-filter>
+        </service>
+
         <!-- WorkManager starts on demand with TungWearApp's configuration (Configuration.Provider). -->
         <provider
             android:name="androidx.startup.InitializationProvider"
