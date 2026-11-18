@@ -1,9 +1,8 @@
 # Branch protection for `main`
 
 Applied 2026-11-18 by the agent after the owner's approval (a repository setting, not
-part of any PR). Today `main` has no protection and no rulesets, and auto-merge is off
-in the repository settings, so `gh pr merge --auto` is refused or (once
-enabled) merges at once. After this:
+part of any PR). Before it, `main` had no protection and
+no rulesets, so `gh pr merge --auto` merged at once. Now:
 
 - the one required status check is **`CI passed`** (`ci.yml`, see CLAUDE.md,
   "Required checks and smoke tests");
