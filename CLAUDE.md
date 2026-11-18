@@ -2834,8 +2834,7 @@ one of them did not). Require the aggregate and not the jobs: a job that
 changes name or is skipped would otherwise block every pull request for ever.
 The exact branch protection (no reviews required, admins may bypass, so
 `gh pr merge --auto` waits for CI and the owner can still merge with
-`--admin`) is in `deploy/branch-protection.md`. Until it is applied, `main`
-has no protection and `gh pr merge --auto` merges at once.
+`--admin`) is in `deploy/branch-protection.md`. Applied 2026-11-18 (with auto-merge allowed in the repository settings): `gh pr merge --auto` waits for `CI passed`; the owner can still merge with `--admin`.
 
 - **Robolectric's jar comes from a cache.** The android job restores
   `~/.m2/repository/org/robolectric` and runs `scripts/prefetch-robolectric.sh`

@@ -1,7 +1,7 @@
 # Branch protection for `main`
 
-Not applied by CI or by a PR: it is a repository setting the owner approves and
-applies. Today `main` has no protection and no rulesets, and auto-merge is off
+Applied 2026-11-18 by the agent after the owner's approval (a repository setting, not
+part of any PR). Today `main` has no protection and no rulesets, and auto-merge is off
 in the repository settings, so `gh pr merge --auto` is refused or (once
 enabled) merges at once. After this:
 
