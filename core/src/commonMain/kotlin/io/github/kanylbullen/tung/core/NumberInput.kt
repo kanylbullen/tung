@@ -27,13 +27,15 @@ fun parseReps(input: String): Int? {
 }
 
 /**
- * [steps] presses of −/+ on the weight, along the weight ruler's grid: 1 kg
- * below 30 kg, 2.5 kg from 30 up (29 → 30 → 32.5 and back). An off-grid value
- * goes to the next point on the grid. Never below zero or above [MAX_WEIGHT_KG].
+ * [steps] presses of −/+ on the weight, along [scale]'s grid. The default,
+ * [WEIGHT_RULER]: 1 kg below 30 kg, 2.5 kg from 30 up (29 → 30 → 32.5 and
+ * back); a dumbbell's ([weightRulerFor]) has 0.5 kg below 20 kg first. An
+ * off-grid value goes to the next point on the grid. Never below zero or
+ * above [MAX_WEIGHT_KG].
  */
-fun stepWeight(current: Double, steps: Int): Double {
+fun stepWeight(current: Double, steps: Int, scale: RulerScale = WEIGHT_RULER): Double {
     var value = current
-    repeat(abs(steps)) { value = if (steps > 0) WEIGHT_RULER.stepUp(value) else WEIGHT_RULER.stepDown(value) }
+    repeat(abs(steps)) { value = if (steps > 0) scale.stepUp(value) else scale.stepDown(value) }
     return roundToHundredths(value.coerceIn(0.0, MAX_WEIGHT_KG))
 }
 

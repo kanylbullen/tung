@@ -126,6 +126,39 @@ class RulerFlowTest : FlowTest() {
     }
 
     /**
+     * A dumbbell exercise steps by 0.5 kg below 20 kg and says so under the
+     * buttons, then goes on as any other: 20 + gives 21 (#250).
+     */
+    @Test
+    fun aDumbbellStepsInHalfKilos() {
+        startWorkoutFromHome()
+        addExercise("dumbbell curl", str(R.string.ex_dumbbell_curl))
+        clickDescription(str(Res.string.workout_edit_weight, "0"))
+        waitForDescription(str(Res.string.input_field_weight))
+
+        field.performTextReplacement("7")
+        stepButton(plural(Res.plurals.input_plus_weight, 2, "0.5")).assert(hasText(str(Res.string.input_step_weight, "0.5")))
+        stepButton(plural(Res.plurals.input_minus_weight, 2, "0.5")).assert(hasText(str(Res.string.input_step_weight, "0.5")))
+        clickDescription(plural(Res.plurals.input_plus_weight, 2, "0.5"))
+        field.assert(hasText("7.5"))
+        assertShown(rulerAt("7.5"))
+        screenshot("1-seven-and-a-half")
+
+        // At 20 the step down is still a half kilo and the step up a whole one.
+        field.performTextReplacement("20")
+        stepButton(plural(Res.plurals.input_minus_weight, 2, "0.5")).assert(hasText(str(Res.string.input_step_weight, "0.5")))
+        stepButton(plural(Res.plurals.input_plus_weight, 1, "1")).assert(hasText(str(Res.string.input_step_weight, "1")))
+        clickDescription(plural(Res.plurals.input_minus_weight, 2, "0.5"))
+        field.assert(hasText("19.5"))
+        assertShown(rulerAt("19.5"))
+        screenshot("2-nineteen-and-a-half")
+
+        done.performClick()
+        waitForDescription(str(Res.string.workout_edit_weight, "19.5"))
+        assertEquals(listOf(19.5), activeSets().map { it.first })
+    }
+
+    /**
      * A tap on the ruler, away from the centre line, jumps the number to the
      * nearest multiple of 10 kg under the finger, and Done saves it.
      */

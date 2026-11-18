@@ -3,6 +3,7 @@ package io.github.kanylbullen.tung.ui.workout
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.DEFAULT_REST_SECONDS
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.RestTimer
@@ -137,6 +138,7 @@ class ActiveWorkoutViewModel(
                             )
                         },
                         restSeconds = restSecondsFor(e.exercise.restSeconds, defaultSeconds),
+                        equipment = Equipment.fromKey(e.exercise.equipment),
                     )
                 },
             )

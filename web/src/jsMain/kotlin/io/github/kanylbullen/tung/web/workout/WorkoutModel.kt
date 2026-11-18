@@ -20,6 +20,8 @@ data class ExerciseView(
     val last: List<LoggedSet>,
     /** The exercise's own rest between sets in seconds, 0 for none, null to follow the default. */
     val restSeconds: Int? = null,
+    /** Picks the sheet's weight scale (core's `weightRulerFor`): half kilos for a dumbbell. */
+    val equipment: Equipment = Equipment.OTHER,
 )
 
 /** The workout in progress, wherever it was started. */
@@ -69,6 +71,7 @@ fun activeWorkout(store: TungStore, displayName: (SyncExercise) -> String): Work
                 },
                 last = store.previousSession(exerciseId, excludeWorkoutId = workout.id),
                 restSeconds = exercise?.restSeconds,
+                equipment = Equipment.fromKey(exercise?.equipment),
             )
         }
     return WorkoutView(workout.id, workout.startedAt ?: 0L, workout.routineId?.let { store.routines.get(it)?.name }, exercises)

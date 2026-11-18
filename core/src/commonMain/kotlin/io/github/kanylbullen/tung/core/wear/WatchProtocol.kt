@@ -1,7 +1,10 @@
 package io.github.kanylbullen.tung.core.wear
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.RestTimer
+import io.github.kanylbullen.tung.core.RulerScale
+import io.github.kanylbullen.tung.core.weightRulerFor
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -112,7 +115,17 @@ data class WatchExercise(
      * the Ongoing Activity's "set n of m". Additive: an older peer leaves it out.
      */
     val targetSets: Int? = null,
-)
+    /**
+     * The exercise's [io.github.kanylbullen.tung.core.Equipment] key, which
+     * picks the adjust screen's weight steps ([io.github.kanylbullen.tung.core.weightRulerFor]):
+     * half kilos for a dumbbell. Additive: an older phone leaves it out and
+     * the watch steps as before.
+     */
+    val equipment: String? = null,
+) {
+    /** The weight ruler of this exercise's equipment. */
+    val weightScale: RulerScale get() = weightRulerFor(equipment?.let(Equipment::fromKey))
+}
 
 /** An exercise the watch can add: its row id and its name in the phone's language. */
 @Serializable

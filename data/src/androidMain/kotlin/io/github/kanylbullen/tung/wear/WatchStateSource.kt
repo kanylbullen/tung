@@ -137,6 +137,7 @@ class WatchStateSource(
                 sets = e.sortedSets.map { WatchSet(it.id, it.position, it.weightKg, it.reps, it.completed) },
                 lastTime = lastTime(workoutId, e.exercise.id).map { it.toWatch() },
                 targetSets = parts.targets[e.exercise.id],
+                equipment = e.exercise.equipment,
             )
         }
         val mine = sel.takeIf { it.workoutId == workoutId }

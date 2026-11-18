@@ -181,4 +181,57 @@ class RulerTest {
         assertEquals(10.0, REPS_RULER.jumpTarget(7.5, toward = 12.0), 0.0)
         assertEquals(100.0, REPS_RULER.jumpTarget(99.0, toward = 0.0), 0.0)
     }
+
+    @Test
+    fun dumbbellRuler_halfKilosToTwentyThenAsTheWeightRuler() {
+        // 40 ticks of 0.5 kg, 10 of 1 kg, then 188 of 2.5 kg.
+        assertEquals(238, DUMBBELL_WEIGHT_RULER.lastTick)
+        assertEquals(7.5, DUMBBELL_WEIGHT_RULER.valueAt(15.0), 0.0)
+        assertEquals(12.5, DUMBBELL_WEIGHT_RULER.valueAt(25.0), 0.0)
+        assertEquals(20.0, DUMBBELL_WEIGHT_RULER.valueAt(40.0), 0.0)
+        assertEquals(21.0, DUMBBELL_WEIGHT_RULER.valueAt(41.0), 0.0)
+        assertEquals(30.0, DUMBBELL_WEIGHT_RULER.valueAt(50.0), 0.0)
+        assertEquals(32.5, DUMBBELL_WEIGHT_RULER.valueAt(51.0), 0.0)
+        assertEquals(500.0, DUMBBELL_WEIGHT_RULER.valueAt(238.0), 0.0)
+        assertEquals(12.5, DUMBBELL_WEIGHT_RULER.snap(12.4), 0.0)
+        assertEquals(20.0, DUMBBELL_WEIGHT_RULER.snap(20.4), 0.0)
+    }
+
+    @Test
+    fun dumbbellRuler_stepsHalfKilosBelowTwenty() {
+        assertEquals(0.5, DUMBBELL_WEIGHT_RULER.stepUp(0.0), 0.0)
+        assertEquals(8.0, DUMBBELL_WEIGHT_RULER.stepUp(7.5), 0.0)
+        assertEquals(7.0, DUMBBELL_WEIGHT_RULER.stepDown(7.5), 0.0)
+        assertEquals(20.0, DUMBBELL_WEIGHT_RULER.stepUp(19.5), 0.0)
+        assertEquals(21.0, DUMBBELL_WEIGHT_RULER.stepUp(20.0), 0.0)
+        assertEquals(19.5, DUMBBELL_WEIGHT_RULER.stepDown(20.0), 0.0)
+        assertEquals(20.0, DUMBBELL_WEIGHT_RULER.stepDown(21.0), 0.0)
+        assertEquals(32.5, DUMBBELL_WEIGHT_RULER.stepUp(30.0), 0.0)
+        assertEquals(29.0, DUMBBELL_WEIGHT_RULER.stepDown(30.0), 0.0)
+        // Off the grid: a typed 7.25 goes to the half kilo above or below.
+        assertEquals(7.5, DUMBBELL_WEIGHT_RULER.stepUp(7.25), 0.0)
+        assertEquals(7.0, DUMBBELL_WEIGHT_RULER.stepDown(7.25), 0.0)
+        // The step label under −/+ (#229).
+        assertEquals(0.5, DUMBBELL_WEIGHT_RULER.stepAt(12.5), 0.0)
+        assertEquals(0.5, DUMBBELL_WEIGHT_RULER.stepBelow(20.0), 0.0)
+        assertEquals(1.0, DUMBBELL_WEIGHT_RULER.stepAt(20.0), 0.0)
+        assertEquals(1.0, DUMBBELL_WEIGHT_RULER.stepBelow(30.0), 0.0)
+        assertEquals(2.5, DUMBBELL_WEIGHT_RULER.stepAt(30.0), 0.0)
+    }
+
+    @Test
+    fun dumbbellRuler_labelsEveryFiveAndJumpsToTheNearestTen() {
+        val labelled = (0..DUMBBELL_WEIGHT_RULER.lastTick).filter { DUMBBELL_WEIGHT_RULER.isMajor(it) }
+            .map { DUMBBELL_WEIGHT_RULER.valueAt(it.toDouble()) }
+        assertEquals(listOf(0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 40.0, 50.0), labelled.take(9))
+        assertEquals(10.0, DUMBBELL_WEIGHT_RULER.jumpTarget(12.5, toward = 7.5), 0.0)
+        assertEquals(20.0, DUMBBELL_WEIGHT_RULER.jumpTarget(17.0, toward = 7.5), 0.0)
+    }
+
+    @Test
+    fun weightRulerFor_onlyDumbbellsGetHalfKilos() {
+        assertEquals(DUMBBELL_WEIGHT_RULER, weightRulerFor(Equipment.DUMBBELL))
+        Equipment.entries.filter { it != Equipment.DUMBBELL }.forEach { assertEquals(WEIGHT_RULER, weightRulerFor(it), it.key) }
+        assertEquals(WEIGHT_RULER, weightRulerFor(null))
+    }
 }
