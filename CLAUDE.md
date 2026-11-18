@@ -351,6 +351,17 @@ order, each with `targetSets` and a nullable `targetReps`. "Save as routine"
 (summary, and the workout detail's menu) takes the logged sets per exercise:
 `targetSets` is how many there were, `targetReps` the most common rep count
 (`core.routineTarget`). Saving the same workout twice makes two routines.
+**Nothing a workout does writes to its routine** (issue #217), so a workout
+started from one offers what fits: core's `workoutMatchesRoutine` over
+`workoutSlots` (the logged exercises in order with their set counts, kept
+1–20) and the routine's exercises with their target sets; weights and reps
+do not count. A match offers nothing to save; a workout that differs offers
+**Update “Push day”** (asks first, `UpdateRoutineFromWorkout`, see
+"Commands") and **Save as new routine**; a workout not started from a
+routine, or whose routine is gone, keeps "Save as routine". The summary, the
+workout detail's menu (ui's `RoutineSaveChoice`, `observeWorkoutRoutine`)
+and the web's summary and workout page (`web/routines/RoutinesModel.kt`,
+`routineSave`) decide it the same way. `RoutineUpdateFlowTest`.
 **Starting** a routine (`StartRoutine`, core's `CommandRules.startRoutine`) creates a workout with
 `routineId` set, the routine's exercises in order and `targetSets` unticked
 sets each, filled by `core.routineStartSets`: the existing pre-fill rule at
@@ -1025,8 +1036,9 @@ from 98 to 112 kg", "Weekly volume, 12 months: from 360 to 930 kg";
 The screen after Finish (`ui/summary/` in the `ui/` module, route `summary/{id}`,
 `SummaryScreen` + `SummaryViewModel`, which takes today and the zone as
 functions; `TungNavRoot` builds it), one `LazyColumn` (`SUMMARY_LIST_TAG`)
-under the top bar, with **Save as routine** and **Done** side by side in a
-bottom bar that stays put whatever is scrolled:
+under the top bar, with **Done** and what there is to save (see "Routines":
+**Save as routine**, nothing, or **Update “Push day”** above **Save as new
+routine**) in a bottom bar that stays put whatever is scrolled:
 
 - **Stats**: duration, sets, volume, as before.
 - **Exercises**: each row "2 sets · 960 kg · Est. 1RM 112 kg" (logged sets,
@@ -1207,6 +1219,16 @@ its signal to commands, never a new path into the database
   clearing is explicit), and for programs `SetProgramMode` next to the day
   commands. Wire names: `add_routine_exercise`, `remove_routine_exercise`,
   `set_target_reps`, `set_program_mode`.
+- **`UpdateRoutineFromWorkout(workoutId, routineId)`**, wire
+  `update_routine_from_workout` (issue #217): the routine becomes what the
+  workout logged, with `save_routine`'s targets (`CommandRules.updateRoutineFromWorkout`):
+  the exercises in workout order, one target set per logged set, the most
+  common reps. It keeps its id, name and `lastUsedAt`, so program days and
+  past workouts still point at it; an exercise that stays keeps its row
+  (the first of that exercise, written only where position or targets
+  change), a new one gets a row, one left out is deleted with a tombstone,
+  all in one transaction over the existing `CommandTx` (no store change).
+  Refuses a workout without a logged set; returns `routineId`.
 - **`DeleteRoutines(ids)`**, wire `delete_routines` with `routine_ids`
   (issue #79): 1–500 non-blank ids (`MAX_DELETE_ROUTINES`), a duplicate
   counts once. Each routine goes as `delete_routine` takes it (its exercises

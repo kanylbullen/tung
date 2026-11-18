@@ -324,13 +324,53 @@ class CommandRules(private val ids: () -> String = { newId() }) {
      */
     suspend fun saveRoutine(tx: CommandTx, workoutId: String, name: String): CommandResult {
         tx.workout(workoutId) ?: return noSuch("workout", workoutId)
-        val exercises = tx.workoutExercises(workoutId)
+        val exercises = loggedTargets(tx, workoutId)
+        if (exercises.isEmpty()) return Rejected(listOf(NOTHING_LOGGED))
+        return Done(mapOf(ROUTINE_ID to insertRoutine(tx, name, exercises, routineId = ids(), routineExerciseIds = null)))
+    }
+
+    /**
+     * `update_routine_from_workout`: the routine [routineId] becomes what
+     * [workoutId] did, with the targets [saveRoutine] would give it: the
+     * workout's exercises in workout order, one target set per logged set
+     * (kept within range) and the most common rep count as target reps;
+     * exercises without a logged set are left out, and a workout without one,
+     * or one still in progress, is refused. The routine keeps its id, name and last use, so program
+     * days that start it and workouts started from it stay as they are. An
+     * exercise that stays keeps its row (the first of the routine's rows with
+     * that exercise, in order), written only where its position or targets
+     * change; one the workout added gets a new row; one it left out is
+     * deleted with a tombstone. Answers [ROUTINE_ID].
+     */
+    suspend fun updateRoutineFromWorkout(tx: CommandTx, workoutId: String, routineId: String): CommandResult {
+        val workout = tx.workout(workoutId) ?: return noSuch("workout", workoutId)
+        tx.routine(routineId) ?: return noSuch("routine", routineId)
+        if (workout.endedAt == null) return Rejected(listOf("the workout is still in progress: finish it first"))
+        val targets = loggedTargets(tx, workoutId)
+        if (targets.isEmpty()) return Rejected(listOf(NOTHING_LOGGED))
+        val unused = tx.routineExercises(routineId).sortedBy { it.position }.toMutableList()
+        val kept = targets.map { plan -> unused.firstOrNull { it.exerciseId == plan.exerciseId }?.also { unused.remove(it) } }
+        unused.forEach { tx.deleteRoutineExercise(it.id) }
+        targets.forEachIndexed { position, plan ->
+            val sets = clampTargetSets(plan.targetSets)
+            val row = kept[position]
+            if (row == null) {
+                tx.insertRoutineExercise(RoutineExerciseRow(ids(), routineId, plan.exerciseId, position, sets, plan.targetReps))
+            } else {
+                if (row.position != position) tx.setRoutineExercisePosition(row.id, position)
+                if (row.targetSets != sets) tx.setTargetSets(row.id, sets)
+                if (row.targetReps != plan.targetReps) tx.setTargetReps(row.id, plan.targetReps)
+            }
+        }
+        return Done(mapOf(ROUTINE_ID to routineId))
+    }
+
+    /** A workout's exercises in order with the targets their logged sets give ([routineTarget]), leaving out those without one. */
+    private suspend fun loggedTargets(tx: CommandTx, workoutId: String): List<RoutineExercisePlan> =
+        tx.workoutExercises(workoutId)
             .map { we -> we.exerciseId to routineTarget(tx.sets(we.id).filter { isLogged(it.completed, it.reps) }.map { it.values }) }
             .filter { (_, target) -> target.sets > 0 }
             .map { (exerciseId, target) -> RoutineExercisePlan(exerciseId, target.sets, target.reps) }
-        if (exercises.isEmpty()) return Rejected(listOf("the workout has no logged set to save"))
-        return Done(mapOf(ROUTINE_ID to insertRoutine(tx, name, exercises, routineId = ids(), routineExerciseIds = null)))
-    }
 
     /**
      * `save_routine_plan` once every exercise is a row: a routine called
@@ -568,4 +608,8 @@ class CommandRules(private val ids: () -> String = { newId() }) {
     }
 
     private fun noSuch(what: String, id: String): Rejected = Rejected(listOf("no $what $id"))
+
+    private companion object {
+        const val NOTHING_LOGGED = "the workout has no logged set to save"
+    }
 }

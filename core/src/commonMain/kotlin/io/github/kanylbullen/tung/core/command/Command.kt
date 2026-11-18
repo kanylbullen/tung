@@ -123,6 +123,15 @@ sealed interface Command {
     /** Saves a finished workout's logged sets as a new routine. */
     data class SaveRoutine(val workoutId: String, val name: String) : Command
 
+    /**
+     * Makes the routine [routineId] what the workout [workoutId] did: its
+     * exercises in workout order, each with one target set per logged set and
+     * the most common rep count as target reps, as [SaveRoutine] would make
+     * them, but in the existing routine (its id, name and the rows of the
+     * exercises that stay), so program days that start it keep working.
+     */
+    data class UpdateRoutineFromWorkout(val workoutId: String, val routineId: String) : Command
+
     /** Creates a routine from a plan (a dictated programme), not from a workout. */
     data class SaveRoutinePlan(val plan: RoutinePlan) : Command
 

@@ -273,6 +273,48 @@ class CommandTest {
     }
 
     @Test
+    fun aRoutineIsUpdatedFromAWorkoutStartedFromIt() = tungTest {
+        val token = client.register()
+        suspend fun export() = ApiJson.decodeFromString(ExportDocument.serializer(), client.authedGet("/api/v1/export", token).bodyAsText())
+        val routineId = client.done(
+            token,
+            "save_routine_plan",
+            """{"name": "Push", "exercises": [{"exercise": {"key": "bench_press"}, "target_sets": 3, "target_reps": 8},
+                                               {"exercise": {"key": "overhead_press"}, "target_sets": 3}]}""",
+        )["routineId"]!!.str
+        val before = export().routines.single().exercises.sortedBy { it.position }
+        val program = client.done(token, "create_program", """{"name": "P", "mode": "rotating"}""")["programId"]!!.str
+        val day = client.done(token, "add_program_day", """{"program_id": "$program", "routine_id": "$routineId"}""")["programDayId"]!!.str
+
+        // The workout drops the press, logs two of bench's three sets and adds one set of squats.
+        val workoutId = client.done(token, "start_routine", """{"routine_id": "$routineId"}""")["workoutId"]!!.str
+        val started = client.authedGet("/api/v1/workouts/$workoutId", token).workout().exercises
+        client.done(token, "remove_exercise", """{"workout_exercise_id": "${started.single { it.exerciseId != BENCH }.id}"}""")
+        started.single { it.exerciseId == BENCH }.sets.take(2).forEach { client.done(token, "tick_set", """{"set_id": "${it.id}", "done": true}""") }
+        val squat = client.done(token, "add_exercise", """{"workout_id": "$workoutId", "exercise": {"key": "back_squat"}, "sets": 1}""")["workoutExerciseId"]!!.str
+        val squatSet = client.authedGet("/api/v1/workouts/$workoutId", token).workout().exercises.single { it.id == squat }.sets.single()
+        client.done(token, "set_reps", """{"set_id": "${squatSet.id}", "reps": 5}""")
+        client.done(token, "tick_set", """{"set_id": "${squatSet.id}", "done": true}""")
+        client.done(token, "finish_workout", """{"workout_id": "$workoutId"}""")
+
+        val ids = client.done(token, "update_routine_from_workout", """{"workout_id": "$workoutId", "routine_id": "$routineId"}""")
+        assertEquals(routineId, ids["routineId"]!!.str)
+        val after = export()
+        val routine = after.routines.single()
+        assertEquals("Push", routine.name)
+        val exercises = routine.exercises.sortedBy { it.position }
+        assertEquals(listOf(BENCH, SQUAT), exercises.map { it.exerciseId })
+        assertEquals(listOf(2 to 8, 1 to 5), exercises.map { it.targetSets to it.targetReps })
+        assertEquals(before[0].id, exercises[0].id, "bench keeps its row")
+        assertEquals(listOf(day), after.programs.single().days.map { it.id }, "the program day still starts the routine")
+        val tombstoned = client.synced(token).changes.routineExercises.filter { it.deletedAt != null }.map { it.id }
+        assertEquals(listOf(before[1].id), tombstoned, "the press is deleted with a tombstone")
+
+        val gone = client.command(token, "update_routine_from_workout", """{"workout_id": "$workoutId", "routine_id": "${id()}"}""")
+        assertEquals(HttpStatusCode.UnprocessableEntity, gone.status)
+    }
+
+    @Test
     fun aSavedRoutineCanBeEdited() = tungTest {
         val token = client.register()
         suspend fun export() = ApiJson.decodeFromString(ExportDocument.serializer(), client.authedGet("/api/v1/export", token).bodyAsText())

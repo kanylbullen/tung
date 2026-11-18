@@ -71,6 +71,7 @@ class CommandExecutor(
         is Command.SetRest -> rules.setRest(tx, command.exerciseId, command.seconds)
         is Command.CreateExercise -> rules.createExercise(tx, command.name, command.muscleGroup, command.equipment)
         is Command.SaveRoutine -> rules.saveRoutine(tx, command.workoutId, command.name)
+        is Command.UpdateRoutineFromWorkout -> rules.updateRoutineFromWorkout(tx, command.workoutId, command.routineId)
         is Command.SaveRoutinePlan -> saveRoutinePlan(tx, command)
         is Command.CreateRoutine -> rules.createRoutine(tx, command.name)
         is Command.RenameRoutine -> rules.renameRoutine(tx, command.routineId, command.name)

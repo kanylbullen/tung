@@ -15,6 +15,8 @@ import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.history.DetailExercise
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.history.workoutDetail
+import io.github.kanylbullen.tung.web.routines.RoutineSave
+import io.github.kanylbullen.tung.web.routines.routineSave
 import kotlin.js.Date
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.InputType
@@ -39,7 +41,9 @@ fun workoutDetailHash(id: String): String = "#/history/$id"
  * A finished workout, the phone's workout detail: the date, duration, sets
  * and volume, Health Connect's heart rate and calories when synced, each
  * exercise's logged sets with its best set and estimated 1RM, Save as
- * routine, Change date and time, and Delete. Every change is a command.
+ * routine (for a routine's workout, Update and Save as new routine when it
+ * differs, nothing when it matches: issue #217), Change date and time, and
+ * Delete. Every change is a command.
  */
 @Composable
 fun WorkoutDetailScreen(container: WebContainer, id: String) {
@@ -51,6 +55,9 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
     var deleting by remember { mutableStateOf(false) }
     var naming by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf<String?>(null) }
+    var updating by remember { mutableStateOf(false) }
+    var updated by remember { mutableStateOf<String?>(null) }
+    val save = remember(version, detail) { detail?.let { routineSave(container.store, it) } }
     var changingTime by remember { mutableStateOf(false) }
     var timeError by remember { mutableStateOf<String?>(null) }
 
@@ -82,7 +89,15 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
         }
 
         saved?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(strings.savedAsRoutine(it)) } }
-        Button({ classes("secondary", "wide"); onClick { naming = true } }) { Text(strings.saveAsRoutine) }
+        updated?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(it) } }
+        when (save) {
+            RoutineSave.New -> Button({ classes("secondary", "wide"); onClick { naming = true } }) { Text(strings.saveAsRoutine) }
+            is RoutineSave.Differs -> {
+                Button({ classes("secondary", "wide"); onClick { updating = true } }) { Text(strings.updateRoutine(save.routineName)) }
+                Button({ classes("secondary", "wide"); onClick { naming = true } }) { Text(strings.saveAsNewRoutine) }
+            }
+            RoutineSave.Matches, null -> Unit
+        }
         Button({ classes("secondary", "wide"); onClick { changingTime = true } }) { Text(strings.changeDateTime) }
         Button({ classes("text-button", "danger-text"); onClick { deleting = true } }) { Text(strings.deleteWorkout) }
     }
@@ -120,10 +135,22 @@ fun WorkoutDetailScreen(container: WebContainer, id: String) {
         }
     }
     if (detail != null && naming) {
-        NameDialog(strings.saveAsRoutine, strings.routineName, detail.title ?: "", strings.save, strings.cancel, onCancel = { naming = false }) { name ->
+        NameDialog(if (save is RoutineSave.Differs) strings.saveAsNewRoutine else strings.saveAsRoutine, strings.routineName, detail.title ?: "", strings.save, strings.cancel, onCancel = { naming = false }) { name ->
             naming = false
             scope.launch {
                 if (container.commands.execute(Command.SaveRoutine(detail.id, name)) is CommandResult.Done) saved = name
+            }
+        }
+    }
+    if (save is RoutineSave.Differs && updating) {
+        Dialog(strings.updateRoutineTitle(save.routineName), strings.updateRoutineBody, strings.update, strings.cancel, onCancel = { updating = false }) {
+            updating = false
+            scope.launch {
+                if (container.commands.execute(Command.UpdateRoutineFromWorkout(id, save.routineId)) is CommandResult.Done) {
+                    updated = strings.routineUpdated(save.routineName)
+                } else {
+                    updated = strings.routineUpdateFailed(save.routineName)
+                }
             }
         }
     }
