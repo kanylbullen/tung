@@ -42,6 +42,17 @@ jobs:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ hashFiles('build.gradle.kts') }}
 
+      # Robolectric's android-all jar (~150 MB) is downloaded from Maven Central
+      # on first use, without a retry: one hiccup failed every flow test on
+      # 2026-11-18. Keep it between runs, and fetch it with retries and a checksum
+      # if the cache has none. Nothing else in the build downloads at test time.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('scripts/prefetch-robolectric.sh') }}
+      - name: Fetch Robolectric's android-all jar
+        run: scripts/prefetch-robolectric.sh
+
       # FCM: the Firebase config is a repository secret, written into both app
       # modules before the build so the CI APKs can register for push. Forks
       # without the secret build with push off, exactly like a local checkout.
@@ -243,6 +254,24 @@ jobs:
       - name: Build the Docker image
         run: docker build -f server/Dockerfile -t tung-server:ci .
 
+      # The image as it is deployed, against a real Postgres: starts, migrates,
+      # answers /healthz and serves the OpenAPI document, the landing page and
+      # the web app (scripts/smoke-server.sh, the same script the owner runs
+      # after a deploy).
+      - name: Smoke test the image
+        run: |
+          docker network create smoke
+          docker run -d --name pg --network smoke -e POSTGRES_PASSWORD=smoke -e POSTGRES_DB=tung -e POSTGRES_USER=tung postgres:17-alpine
+          for i in $(seq 1 30); do docker exec pg pg_isready -U tung -d tung && break; sleep 2; done
+          docker run -d --name server --network smoke -p 8080:8080 \
+            -e DATABASE_URL=jdbc:postgresql://pg:5432/tung -e DATABASE_USER=tung -e DATABASE_PASSWORD=smoke \
+            -e PORT=8080 tung-server:ci
+          for i in $(seq 1 60); do curl -fs http://localhost:8080/healthz >/dev/null && break; sleep 2; done
+          scripts/smoke-server.sh http://localhost:8080
+      - name: Server log
+        if: failure()
+        run: docker logs server || true
+
   # The review fleet's PR selection decides silently: it runs on a schedule,
   # and a broken gate in resolve-pr.sh fails nothing — the fleet just stops
   # reviewing, and the only trace is a notice in a green job log nobody reads.
@@ -257,3 +286,74 @@ jobs:
       - uses: actions/checkout@v4
       - run: bash .github/review-team/scripts/test-resolve-pr.sh
       - run: bash .github/review-team/scripts/test-build-comment.sh
+
+  # Release code, as Play gets it. The flow tests run unminified, so a missing
+  # R8 keep rule or a manifest problem shows nowhere else until a phone has
+  # the build. dogfood is the release type signed with the debug key; the
+  # watch has no dogfood variant, so its R8 step is run on its own
+  # (minifyReleaseWithR8 sits before the release gate, which only guards packaging).
+  r8:
+    name: Release build (R8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Build the phone's dogfood APK and shrink the watch's release with R8
+        run: ./gradlew :app:assembleDogfood :wear:minifyReleaseWithR8 --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tung-dogfood-apk
+          path: app/build/outputs/apk/dogfood/app-dogfood.apk
+          retention-days: 14
+
+  # Starts the minified phone app on an emulator and checks that it stays up.
+  # Not part of "CI passed": emulators flake, and a required flaky check blocks
+  # merges. It reports; look at it when it is red. Make it required once it has
+  # been green for a few weeks (CLAUDE.md, "Required checks").
+  launch:
+    name: Release build starts (emulator)
+    needs: r8
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: tung-dogfood-apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: scripts/smoke-launch.sh app-dogfood.apk
+
+  # The one check `main` requires (CLAUDE.md, "Required checks"). A required
+  # check that never runs blocks a pull request for ever, so the rule names this
+  # job, which always runs and fails if any job it needs did not succeed
+  # (failed, cancelled or skipped), and the jobs behind it can change freely.
+  ci-passed:
+    name: CI passed
+    if: always()
+    needs: [android, ios, web, server, fleet-selection, r8]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every required job succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' >/dev/null

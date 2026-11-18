@@ -2825,6 +2825,45 @@ short, edge-to-edge was already on and predictive back needs nothing. **The
 flow tests run under Robolectric SDK 34 and see neither**, so a change to
 insets or to back handling is checked on a phone.
 
+## Required checks and smoke tests
+
+**`main` requires one check, `CI passed`** (the last job of
+`.github/workflows/ci.yml`, with `needs` on `android`, `ios`, `web`, `server`,
+`fleet-selection` and `r8`, and `if: always()` so it also runs, and fails, when
+one of them did not). Require the aggregate and not the jobs: a job that
+changes name or is skipped would otherwise block every pull request for ever.
+The exact branch protection (no reviews required, admins may bypass, so
+`gh pr merge --auto` waits for CI and the owner can still merge with
+`--admin`) is in `deploy/branch-protection.md`. Until it is applied, `main`
+has no protection and `gh pr merge --auto` merges at once.
+
+- **Robolectric's jar comes from a cache.** The android job restores
+  `~/.m2/repository/org/robolectric` and runs `scripts/prefetch-robolectric.sh`
+  (retries, checksum) before the tests: Robolectric's own download has no
+  retry, and a Maven hiccup failed the flow tests on 2026-11-18. When
+  Robolectric or the SDK in `robolectric.properties` changes, change
+  `VERSION` in that script (the cache key follows the script).
+- **`r8` (required, ~4 min):** `:app:assembleDogfood :wear:minifyReleaseWithR8`.
+  Release code as Play gets it; the flow tests run unminified and see none of
+  R8's problems.
+- **`launch` (advisory, ~8 min, not in `CI passed`):** installs the dogfood APK
+  on an API 34 emulator and runs `scripts/smoke-launch.sh`: the app starts,
+  stays alive for 12 s, has no crash in the log and is in front. Emulators
+  flake, so it reports and does not block; make it required once it has been
+  green for a few weeks. By hand on a test phone:
+  `scripts/smoke-launch.sh app/build/outputs/apk/dogfood/app-dogfood.apk`
+  (replaces the installed build).
+- **Server image smoke (in `server`, ~1 min):** CI starts the Docker image
+  against Postgres and runs `scripts/smoke-server.sh`. **After a deploy, run it
+  against production:** `scripts/smoke-server.sh` (default
+  `https://tung.xuper.fun`; pass another base URL for a local server). It is
+  read-only and checks `/healthz` (the database), `/openapi.yaml`, auth on
+  (sync without a token is 401), the CORS preflight with `X-Tung-Device`, the
+  landing page, `/privacy`, and `/app/` with `tung.js` and `sw.js`.
+- The `ios` job runs on the owner's Mac mini; if that runner is offline the
+  check stays pending. Merge with `--admin` then, or take `ios` out of
+  `CI passed`'s `needs` on purpose.
+
 ## Flow tests
 
 `app/src/test/kotlin/io/github/kanylbullen/tung/flows/` drives the real
