@@ -1296,7 +1296,11 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   with the next sync. The cursor is stored after each chunk; while a response
   comes back with `SYNC_MAX_ROWS` rows it pulls again. A 401 clears the token
   and shows "signed out".
-- **Triggers** (`SyncAccount`, `SyncWorker`): unique periodic work every 15
+- **Triggers** (`SyncAccount`, `SyncWorker`; `enqueueNow`'s one-time work is
+  expedited since #253, falling back to an ordinary job out of quota, so a
+  push or a watch's nudge is not held back by Doze; below Android 12 that
+  shows a silent "Syncing your workouts" notification for the moment it
+  runs, `SyncWorker.getForegroundInfo`, channel `sync`, id 3): unique periodic work every 15
   min with a network constraint while signed in (scheduled at sign-in and
   re-asserted at app start), and `enqueueNow` (unique, `APPEND_OR_REPLACE`)
   after `FinishWorkout` from `AppCommandHandler`'s result path
@@ -1314,7 +1318,14 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   on screen: every 30 s in a workout, every 2 min otherwise, backing off to
   5 min without a network (`runForegroundSync` in data, started by `TungApp`
   and `TungWearApp`; `nextForegroundSyncDelay`, `ForegroundSyncTest`). A
-  watch's sets reach the phone this way when the watch runs on its own. Exponential backoff from 30 s; network and 5xx
+  watch's sets reach the phone this way when the watch runs on its own, and
+  sooner through the watch's nudge (issue #249): after every sync that carried
+  its changes up (`SyncClient`'s `onPushed`, awaited inside the sync so a
+  WorkManager job keeps the process, 5 s at most), a standalone watch sends
+  the paired phone an empty `/tung/sync` message (`nudgePhone`,
+  `PhoneSyncNudge.kt`), and the phone's `WearSyncService` syncs at once inside
+  the callback, signed in only, handing a failure to WorkManager
+  (`syncForWatch`; `PhoneSyncNudgeTest`, `WatchSyncNudgeTest`). Exponential backoff from 30 s; network and 5xx
   retry, 401 and other 4xx do not. Sign-out cancels both. "Sync now" in
   Settings calls `syncOnce` directly, so the screen sees the result.
   WorkManager is initialised on demand (`TungApp` and `TungWearApp` are
@@ -1471,6 +1482,13 @@ and WorkManager `Configuration.Provider`). Install and pairing: `wear/README.md`
   moment after any other change, and when the app comes to the foreground,
   plus every 30 s in a workout while it is on screen (no push reaches a
   watch; see "Sync", "Triggers"), over whatever network the watch has.
+  Each sync that carried a change up also tells the paired phone to sync
+  (`/tung/sync`, issue #249), so a finish on the watch ends the workout on
+  the phone without waiting for push or the phone's periodic sync; an open
+  workout screen there sees the workout's `endedAt` and leaves for the
+  summary (`ActiveWorkoutViewModel`, `FinishedElsewhereFlowTest`), or, when
+  the workout is gone (finished there with no logged set, or discarded),
+  leaves as an unsaved finish does.
 - **Companion** when it has no token: v0, unchanged. The watch mirrors the
   phone over the Data Layer (`PhoneLink`) and sends it commands. Without a
   paired phone it shows the hint to open the phone or link the watch.
@@ -1523,7 +1541,8 @@ that does not parse. Optimistic:
 logging the last open set offers Add set at once; Add set waits for the state.
 
 **Phone side** (`app/.../wear/`): `WearSyncService` (a `WearableListenerService`,
-started by the system on a message) hands the JSON to `WearCommandHandler`,
+started by the system on a message) syncs on a standalone watch's
+`/tung/sync` (above), and hands a command's JSON to `WearCommandHandler`,
 which applies it through `WorkoutRepository`/`RoutineRepository` and
 `RestTimerController`, checks every set id against the workout in progress and
 drops repeated `commandId`s, then publishes once. `WearStatePublisher` (on

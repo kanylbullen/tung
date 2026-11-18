@@ -16,6 +16,9 @@ import kotlinx.serialization.json.Json
  * - Watch → phone: a message at [WatchProtocol.COMMAND_PATH] holding one
  *   [WatchCommand]. Messages are not queued; a send fails when the phone is
  *   out of reach.
+ * - Watch → phone: an empty message at [WatchProtocol.SYNC_PATH] from a
+ *   standalone (signed-in) watch whose sync has just carried changes up, so
+ *   the phone syncs now instead of at its next periodic sync (issue #249).
  */
 object WatchProtocol {
     /** DataItem path of the phone's state. */
@@ -26,6 +29,13 @@ object WatchProtocol {
 
     /** Message path of the watch's commands. */
     const val COMMAND_PATH = "/tung/cmd"
+
+    /**
+     * Message path of a standalone watch's "sync now": no body. A phone that is
+     * signed in syncs; one that is not, or an older one, ignores it. It never
+     * carries data: what changed travels through the server, as always.
+     */
+    const val SYNC_PATH = "/tung/sync"
 
     /** Bumped when a change would make an older watch misread the state. */
     const val VERSION = 1

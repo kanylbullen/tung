@@ -26,4 +26,7 @@
 
     <!-- The title of a session written to Health Connect when the workout has no routine (health/HealthConnectRecorder.kt) -->
     <string name="health_session_title">Träningspass</string>
+    <string name="sync_channel_name">Synk</string>
+    <string name="sync_channel_description">Visas en kort stund medan dina pass synkas med servern.</string>
+    <string name="sync_notification_title">Synkar dina pass</string>
 </resources>

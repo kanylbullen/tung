@@ -82,6 +82,8 @@ class TungContainer(
     createHealthConnect: (Context) -> HealthConnectGateway? = { null },
     /** The in-app assistant's API key (`ai_key`); the flow tests keep it in memory, like the sync token. */
     createAiKeyStore: (Context) -> TokenStore = { EncryptedTokenStore(it, AiSettings.KEY_FILE, AiSettings.KEY_NAME) },
+    /** After a sync that carried this device's changes up (`SyncClient`'s `onPushed`): a standalone watch nudges the phone (#249). */
+    private val onSyncPushed: suspend () -> Unit = {},
 ) : TungServices {
     private val context: Context = context.applicationContext ?: context
 
@@ -234,6 +236,7 @@ class TungContainer(
             onSignedOut = { syncAccount.signedOutByServer() },
             // The apps ship English and Swedish, and show Swedish exactly when the locale's language is.
             language = { if (context.resources.configuration.locales[0].language == "sv") "sv" else "en" },
+            onPushed = onSyncPushed,
         )
     }
     override val syncAccount: SyncAccount by lazy {

@@ -78,7 +78,10 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Commands from the watch app (wear/); the system starts it when a message arrives. -->
+        <!--
+          Commands from the watch app (wear/), and a standalone watch's "sync now" (#249); the system
+          starts it when a message arrives.
+        -->
         <service
             android:name=".wear.WearSyncService"
             android:exported="true">
@@ -87,6 +90,10 @@
                 <data
                     android:host="*"
                     android:pathPrefix="/tung/cmd"
+                    android:scheme="wear" />
+                <data
+                    android:host="*"
+                    android:path="/tung/sync"
                     android:scheme="wear" />
             </intent-filter>
         </service>

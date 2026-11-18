@@ -33,6 +33,11 @@
          No spaces: the chip is 96 dp wide and shows a text whole only under seven characters ("100×10" fits, "22,5×12" is cut). -->
     <string name="ongoing_chip_set">%1$s×%2$d</string>
 
+    <!-- Below Android 12 only: the minimal notification of a sync run at once (sync/SyncWorker.kt) -->
+    <string name="sync_channel_name">Sync</string>
+    <string name="sync_channel_description">Shown for a moment while your workouts sync with the server.</string>
+    <string name="sync_notification_title">Syncing your workouts</string>
+
     <!-- The title of a session written to Health Connect when the workout has no routine (health/HealthConnectRecorder.kt) -->
     <string name="health_session_title">Workout</string>
 </resources>
