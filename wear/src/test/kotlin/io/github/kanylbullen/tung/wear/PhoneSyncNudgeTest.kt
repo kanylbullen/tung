@@ -15,13 +15,7 @@ import io.github.kanylbullen.tung.data.TungDatabase
 import io.github.kanylbullen.tung.data.buildInMemory
 import io.github.kanylbullen.tung.sync.FakeSyncServer
 import io.github.kanylbullen.tung.sync.MemoryTokenStore
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -43,45 +37,30 @@ class PhoneSyncNudgeTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val fake = FakeSyncServer()
     private val db = TungDatabase.buildInMemory(context)
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val nudges = AtomicInteger()
     private val nudger = PhoneNudger { nudges.incrementAndGet(); true }
 
-    private fun watch(token: String?): TungContainer =
-        TungContainer(context, createDatabase = { db }, createTokenStore = { MemoryTokenStore(token) })
+    /** The watch's container, wired as `TungWearApp` wires it, with [nudger] for the Data Layer. */
+    private fun watch(token: String?): TungContainer = TungContainer(
+        context,
+        createDatabase = { db },
+        createTokenStore = { MemoryTokenStore(token) },
+        onSyncPushed = { nudgePhone(nudger) },
+    )
 
     @Before
     fun start() = fake.start()
 
     @After
     fun stop() {
-        scope.cancel()
         fake.stop()
         db.close()
-    }
-
-    /** The app's collector, as `TungWearApp` starts it, subscribed before anything syncs. */
-    private fun follow(watch: TungContainer) = runBlocking {
-        val started = AtomicInteger()
-        scope.launch {
-            started.set(1)
-            nudgePhoneAfterPushes(watch.syncClient.pushes, nudger)
-        }
-        while (started.get() == 0) yield()
-        // The SharedFlow has no replay: give the collector a moment to subscribe.
-        Thread.sleep(100)
-    }
-
-    private fun waitForNudges(count: Int) {
-        val until = System.currentTimeMillis() + 5_000
-        while (nudges.get() < count && System.currentTimeMillis() < until) Thread.sleep(20)
     }
 
     @Test
     fun aFinishedWorkoutThatSyncedUpNudgesThePhone() = runBlocking {
         val watch = watch(fake.token)
         watch.syncSettings.signedIn(fake.baseUrl, "lifter@example.org")
-        follow(watch)
 
         val started = watch.commands.execute(Command.StartWorkout())
         val workoutId = checkNotNull(started.id(CommandIds.WORKOUT_ID))
@@ -97,33 +76,37 @@ class PhoneSyncNudgeTest {
         assertTrue("$result", result is SyncResult.Success && result.pushed > 0)
         // The finish is on the server before the phone is told.
         assertNotNull((fake.stored(SyncTable.WORKOUTS, workoutId)?.row as? SyncWorkout)?.endedAt)
-        waitForNudges(1)
+        // Awaited inside the sync, so it has happened by the time syncOnce returns.
         assertEquals(1, nudges.get())
+    }
+
+    @Test
+    fun aStuckOrFailingNudgeNeverHoldsUpOrFailsTheSync() = runBlocking {
+        assertEquals(false, nudgePhone({ kotlinx.coroutines.awaitCancellation() }, timeoutMillis = 50))
+        assertEquals(false, nudgePhone({ error("no Play services") }))
+        // A Play services task cancelled under a live caller is a failed send, not the caller's cancellation.
+        assertEquals(false, nudgePhone({ throw kotlinx.coroutines.CancellationException("task cancelled") }))
     }
 
     @Test
     fun aSyncThatCarriedNothingUpDoesNotNudge() = runBlocking {
         val watch = watch(fake.token)
         watch.syncSettings.signedIn(fake.baseUrl, "lifter@example.org")
-        follow(watch)
 
         val result = watch.syncClient.syncOnce()
         assertEquals(SyncResult.Success(pushed = 0, applied = 0), result)
-        Thread.sleep(200)
         assertEquals(0, nudges.get())
     }
 
     @Test
     fun aSignedOutWatchNeverNudges() = runBlocking {
         val watch = watch(token = null)
-        follow(watch)
 
         val started = watch.commands.execute(Command.StartWorkout())
         val workoutId = checkNotNull(started.id(CommandIds.WORKOUT_ID))
         watch.commands.execute(Command.FinishWorkout(workoutId))
 
         assertEquals(SyncResult.NotSignedIn, watch.syncClient.syncOnce())
-        Thread.sleep(200)
         assertEquals(0, nudges.get())
         assertTrue(fake.syncRequests.isEmpty())
     }

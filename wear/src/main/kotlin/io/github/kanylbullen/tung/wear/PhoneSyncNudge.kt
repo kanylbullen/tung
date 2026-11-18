@@ -5,8 +5,9 @@ import android.util.Log
 import com.google.android.gms.wearable.Wearable
 import io.github.kanylbullen.tung.core.wear.WatchProtocol
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Tells the paired phone to sync now; the Data Layer in the app, a counter in tests. */
 fun interface PhoneNudger {
@@ -15,25 +16,31 @@ fun interface PhoneNudger {
 }
 
 /**
- * Follows [pushes] (the watch's `SyncClient.pushes`: a sync that carried the
- * watch's changes up) and nudges the phone after each, so a workout finished
+ * Nudges the phone after a sync that carried the watch's changes up
+ * (`SyncClient`'s `onPushed`, wired in `TungWearApp`), so a workout finished
  * or changed on a standalone watch reaches the phone at once, push or no
  * push (issue #249). Only a signed-in watch pushes anything, so a watch in
- * companion mode never sends it. Conflated: syncs that finish while a nudge
- * is on its way share the next one. Runs until cancelled; a failed send is
- * logged and the next sync tries again.
+ * companion mode never sends it. The sync awaits it, so a WorkManager job
+ * keeps the process until the message is out; [timeoutMillis] bounds that,
+ * and a failure is logged and never fails the sync: the next one tries again.
+ *
+ * @return true if a phone took the message.
  */
-suspend fun nudgePhoneAfterPushes(pushes: Flow<Unit>, nudger: PhoneNudger) {
-    pushes.conflate().collect {
-        try {
-            nudger.nudge()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w(TAG, "Could not nudge the phone", e)
-        }
+suspend fun nudgePhone(nudger: PhoneNudger, timeoutMillis: Long = NUDGE_TIMEOUT_MILLIS): Boolean =
+    try {
+        withTimeoutOrNull(timeoutMillis) { nudger.nudge() } ?: false.also { Log.w(TAG, "Nudging the phone timed out") }
+    } catch (e: CancellationException) {
+        // A Play services task that was cancelled surfaces as one too: only the caller's cancellation goes on.
+        currentCoroutineContext().ensureActive()
+        Log.w(TAG, "Nudging the phone was cancelled", e)
+        false
+    } catch (e: Exception) {
+        Log.w(TAG, "Could not nudge the phone", e)
+        false
     }
-}
+
+/** Enough for the Data Layer over Bluetooth; a sync is not held up longer. */
+const val NUDGE_TIMEOUT_MILLIS = 5_000L
 
 /**
  * Sends the empty [WatchProtocol.SYNC_PATH] message to every connected node

@@ -68,6 +68,6 @@ class WearSyncService : WearableListenerService() {
 internal suspend fun syncForWatch(account: SyncAccount, timeoutMillis: Long): SyncResult? {
     if (!account.isSignedIn()) return null
     val result = withTimeoutOrNull(timeoutMillis) { account.syncNow() }
-    if (result !is SyncResult.Success && result != SyncResult.NotSignedIn) account.requestSync()
+    if (result !is SyncResult.Success && result != SyncResult.NotSignedIn) account.enqueueSync()
     return result
 }

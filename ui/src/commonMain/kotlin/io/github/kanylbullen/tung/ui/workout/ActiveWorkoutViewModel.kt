@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -182,13 +183,15 @@ class ActiveWorkoutViewModel(
         viewModelScope.launch {
             // Finished on another device (a standalone watch, the web) and brought here by a sync
             // (issue #249): the screen leaves for the summary, as after Finish here, instead of showing
-            // a workout that is over as if it ran. Finish and Discard here set [finishing] first.
-            repo.observeWorkout(workoutId).first { it != null && it.endedAt != null }
+            // a workout that is over as if it ran. Gone once it was here (finished there with no logged
+            // set, or discarded) leaves as an unsaved finish does. A workout never found keeps the
+            // "no longer exists" text. Finish and Discard here set [finishing] first.
+            val over = repo.observeWorkout(workoutId).dropWhile { it == null }.first { it == null || it.endedAt != null }
             if (finishing.value) return@launch
             finishing.value = true
             setRest(null)
             restTimer.set(workoutId, null)
-            eventChannel.send(ActiveWorkoutEvent.Finished(workoutId, saved = true))
+            eventChannel.send(ActiveWorkoutEvent.Finished(workoutId, saved = over != null))
         }
     }
 

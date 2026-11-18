@@ -1294,8 +1294,9 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   and `TungWearApp`; `nextForegroundSyncDelay`, `ForegroundSyncTest`). A
   watch's sets reach the phone this way when the watch runs on its own, and
   sooner through the watch's nudge (issue #249): after every sync that carried
-  its changes up (`SyncClient.pushes`), a standalone watch sends the paired
-  phone an empty `/tung/sync` message (`nudgePhoneAfterPushes`,
+  its changes up (`SyncClient`'s `onPushed`, awaited inside the sync so a
+  WorkManager job keeps the process, 5 s at most), a standalone watch sends
+  the paired phone an empty `/tung/sync` message (`nudgePhone`,
   `PhoneSyncNudge.kt`), and the phone's `WearSyncService` syncs at once inside
   the callback, signed in only, handing a failure to WorkManager
   (`syncForWatch`; `PhoneSyncNudgeTest`, `WatchSyncNudgeTest`). Exponential backoff from 30 s; network and 5xx
@@ -1459,7 +1460,9 @@ and WorkManager `Configuration.Provider`). Install and pairing: `wear/README.md`
   (`/tung/sync`, issue #249), so a finish on the watch ends the workout on
   the phone without waiting for push or the phone's periodic sync; an open
   workout screen there sees the workout's `endedAt` and leaves for the
-  summary (`ActiveWorkoutViewModel`, `FinishedElsewhereFlowTest`).
+  summary (`ActiveWorkoutViewModel`, `FinishedElsewhereFlowTest`), or, when
+  the workout is gone (finished there with no logged set, or discarded),
+  leaves as an unsaved finish does.
 - **Companion** when it has no token: v0, unchanged. The watch mirrors the
   phone over the Data Layer (`PhoneLink`) and sends it commands. Without a
   paired phone it shows the hint to open the phone or link the watch.

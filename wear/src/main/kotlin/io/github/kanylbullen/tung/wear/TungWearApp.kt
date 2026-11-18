@@ -24,7 +24,10 @@ import kotlinx.coroutines.launch
  * apart from the settings, and the phone's database is the one that counts.
  */
 class TungWearApp : Application(), Configuration.Provider, TungHost {
-    override val container: TungContainer by lazy { TungContainer(this, startedBy = StartedBy.WATCH) }
+    override val container: TungContainer by lazy {
+        // A sync that carried this watch's changes up tells the phone to sync now (#249).
+        TungContainer(this, startedBy = StartedBy.WATCH, onSyncPushed = { nudgePhone(DataLayerPhoneNudger(this)) })
+    }
 
     /** Standalone mode's backend, one per process: the screens and the Ongoing Activity share its current-set selection. */
     val localBackend: LocalWatchBackend by lazy { LocalWatchBackend(container, this) }
@@ -81,11 +84,6 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
                     Log.w(TAG, "Could not follow the phone's default rest", e)
                 }
             }
-        }
-        // For the whole process, screen or not (a finish's sync runs in WorkManager): once a sync has
-        // carried this watch's changes up, the phone is told to sync now (#249). Signed out, nothing pushes.
-        process.lifecycleScope.launch {
-            nudgePhoneAfterPushes(container.syncClient.pushes, DataLayerPhoneNudger(this@TungWearApp))
         }
     }
 

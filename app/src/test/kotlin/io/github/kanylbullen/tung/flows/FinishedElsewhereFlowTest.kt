@@ -10,6 +10,9 @@ import io.github.kanylbullen.tung.core.sync.SyncResult
 import io.github.kanylbullen.tung.core.sync.SyncTable
 import io.github.kanylbullen.tung.core.sync.SyncWorkout
 import io.github.kanylbullen.tung.core.sync.entries
+import io.github.kanylbullen.tung.core.sync.tombstoneEntry
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import io.github.kanylbullen.tung.core.wear.WatchProtocol
 import io.github.kanylbullen.tung.sync.AuthResult
 import io.github.kanylbullen.tung.sync.FakeSyncServer
@@ -52,8 +55,7 @@ class FinishedElsewhereFlowTest : FlowTest() {
         Robolectric.buildService(WearSyncService::class.java).create().get().onMessageReceived(event)
     }
 
-    @Test
-    fun aWorkoutFinishedOnTheWatchLeavesTheWorkoutScreen() {
+    private fun signInAndStart(): String {
         val signedIn = runBlocking {
             app.container.syncAccount.signIn(fake.baseUrl, "lifter@example.org", "correct horse battery", create = false)
         }
@@ -61,6 +63,26 @@ class FinishedElsewhereFlowTest : FlowTest() {
         startWorkoutFromHome()
         val workoutId = runBlocking { checkNotNull(app.container.workoutRepository.observeActiveWorkout().first()).id }
         assertTrue(runBlocking { app.container.syncAccount.syncNow() } is SyncResult.Success)
+        return workoutId
+    }
+
+    @Test
+    fun aWorkoutFinishedOnTheWatchWithNoLoggedSetLeavesForHome() {
+        val workoutId = signInAndStart()
+
+        // Finishing with no logged set deletes the workout: the server gets a tombstone.
+        val stored = fake.stored(SyncTable.WORKOUTS, workoutId)?.row as SyncWorkout
+        fake.put(tombstoneEntry(SyncTable.WORKOUTS, workoutId, stored.updatedAt + 60_000))
+
+        nudgeFromWatch()
+
+        waitFor(hasText(str(Res.string.home_start_workout)) and isEnabled())
+        screenshot("home")
+    }
+
+    @Test
+    fun aWorkoutFinishedOnTheWatchLeavesTheWorkoutScreen() {
+        val workoutId = signInAndStart()
         screenshot("1-workout-open")
 
         // The watch finishes the workout, and its sync carries the finish up.
