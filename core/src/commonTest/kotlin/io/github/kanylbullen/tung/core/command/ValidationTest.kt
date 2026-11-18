@@ -94,6 +94,9 @@ class ValidationTest {
         invalid(SaveRoutine("w", ""))
         invalid(SaveRoutine("w", "   "))
         valid(SaveRoutine("w", "Push day"))
+        valid(Command.UpdateRoutineFromWorkout("w", "r"))
+        invalid(Command.UpdateRoutineFromWorkout("w", " "))
+        invalid(Command.UpdateRoutineFromWorkout("", "r"))
         invalid(CreateProgram(" ", ProgramMode.FIXED))
     }
 

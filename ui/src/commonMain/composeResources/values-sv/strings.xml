@@ -216,6 +216,12 @@
     <string name="routine_default_name">%1$s: %2$s</string>
     <string name="routine_save">Spara</string>
     <string name="routine_save_as">Spara som rutin</string>
+    <string name="routine_save_as_new">Spara som ny rutin</string>
+    <string name="routine_update">Uppdatera ”%1$s”</string>
+    <string name="routine_update_title">Uppdatera ”%1$s”?</string>
+    <string name="routine_update_body">Rutinen får passets övningar i den här ordningen, med ett målset per loggat set. Övningar du hoppade över tas bort ur den.</string>
+    <string name="routine_update_confirm">Uppdatera</string>
+    <string name="routine_updated">Uppdaterade rutinen: %1$s</string>
     <string name="stat_duration">Varaktighet</string>
     <string name="stat_volume">Volym, kg</string>
     <!-- Active workout -->

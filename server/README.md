@@ -357,7 +357,7 @@ There is nothing to configure.
 `remove_exercise`, `add_set`, `remove_set`, `set_weight`, `set_reps`,
 `tick_set`, `log_set`, `select_current`, `finish_workout`, `delete_workout`,
 `apply_plan`, `set_rest`, `create_exercise`, `save_routine`,
-`save_routine_plan`, `rename_routine`, `delete_routine`,
+`update_routine_from_workout`, `save_routine_plan`, `rename_routine`, `delete_routine`,
 `move_routine_exercise`, `adjust_target_sets`, `create_program`,
 `rename_program`, `activate_program`, `deactivate_program`, `delete_program`,
 `add_program_day`, `remove_program_day`, `move_program_day`,

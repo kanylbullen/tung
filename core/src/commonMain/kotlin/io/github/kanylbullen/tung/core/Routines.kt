@@ -40,6 +40,28 @@ fun routineTarget(sets: List<LoggedSet>): RoutineTarget {
 /** A target set count kept inside [MIN_TARGET_SETS]..[MAX_TARGET_SETS]. */
 fun clampTargetSets(sets: Int): Int = sets.coerceIn(MIN_TARGET_SETS, MAX_TARGET_SETS)
 
+/** One exercise of a routine or of a finished workout, as [workoutMatchesRoutine] compares them: the exercise and its number of sets. */
+data class RoutineSlot(val exerciseId: String, val sets: Int)
+
+/**
+ * The shape a finished workout would give a routine: its exercises in
+ * workout order, each with its logged set count kept within the target
+ * range, leaving out exercises without a logged set, as `save_routine` and
+ * `update_routine_from_workout` do. [exercises] are the workout's exercises
+ * in order, each with its logged set count.
+ */
+fun workoutSlots(exercises: List<Pair<String, Int>>): List<RoutineSlot> =
+    exercises.filter { (_, logged) -> logged > 0 }.map { (exerciseId, logged) -> RoutineSlot(exerciseId, clampTargetSets(logged)) }
+
+/**
+ * Whether a workout did what its routine asks: the same exercises in the
+ * same order with the same number of sets. Weights and reps do not count,
+ * so a workout that only lifted more matches. [workout] is [workoutSlots];
+ * [routine] the routine's exercises in position order with their target
+ * sets. After `update_routine_from_workout` the two always match.
+ */
+fun workoutMatchesRoutine(workout: List<RoutineSlot>, routine: List<RoutineSlot>): Boolean = workout == routine
+
 /**
  * The [targetSets] sets an exercise starts with when a routine is started.
  *

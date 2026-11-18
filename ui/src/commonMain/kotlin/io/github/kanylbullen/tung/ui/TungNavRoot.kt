@@ -226,6 +226,9 @@ fun TungNavRoot(
     val routineSaved: (String) -> Unit = { name ->
         scope.launch { platform.showMessage(getString(Res.string.routine_saved, name)) }
     }
+    val routineUpdated: (String) -> Unit = { name ->
+        scope.launch { platform.showMessage(getString(Res.string.routine_updated, name)) }
+    }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -512,8 +515,8 @@ fun TungNavRoot(
             }
             composable(Routes.DETAIL, arguments = idArgument) { entry ->
                 val id = entry.argument(Routes.ARG_ID) ?: return@composable
-                val vm = viewModel { WorkoutDetailViewModel(id, services.workoutRepository, services.commands) }
-                WorkoutDetailScreen(vm, onBack = { nav.popBackStack() }, onRoutineSaved = routineSaved)
+                val vm = viewModel { WorkoutDetailViewModel(id, services.workoutRepository, services.routineRepository, services.commands) }
+                WorkoutDetailScreen(vm, onBack = { nav.popBackStack() }, onRoutineSaved = routineSaved, onRoutineUpdated = routineUpdated)
             }
             composable(Routes.SUMMARY, arguments = idArgument) { entry ->
                 val id = entry.argument(Routes.ARG_ID) ?: return@composable
@@ -521,6 +524,7 @@ fun TungNavRoot(
                     SummaryViewModel(
                         id,
                         services.workoutRepository,
+                        services.routineRepository,
                         services.commands,
                         services.catalogueMuscles,
                         services.progressSettings,
@@ -533,6 +537,7 @@ fun TungNavRoot(
                     onDone = { nav.popBackStack(Routes.HOME, inclusive = false) },
                     onOpenProgress = { exerciseId -> nav.navigate(Routes.exerciseProgress(exerciseId)) },
                     onRoutineSaved = routineSaved,
+                    onRoutineUpdated = routineUpdated,
                 )
             }
         }

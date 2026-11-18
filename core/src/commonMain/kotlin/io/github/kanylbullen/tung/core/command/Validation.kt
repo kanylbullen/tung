@@ -32,6 +32,7 @@ import io.github.kanylbullen.tung.core.command.Command.RemoveSet
 import io.github.kanylbullen.tung.core.command.Command.RenameProgram
 import io.github.kanylbullen.tung.core.command.Command.RenameRoutine
 import io.github.kanylbullen.tung.core.command.Command.SaveRoutine
+import io.github.kanylbullen.tung.core.command.Command.UpdateRoutineFromWorkout
 import io.github.kanylbullen.tung.core.command.Command.SaveRoutinePlan
 import io.github.kanylbullen.tung.core.command.Command.SelectCurrent
 import io.github.kanylbullen.tung.core.command.Command.SetProgramMode
@@ -184,6 +185,10 @@ fun validate(command: Command): Validation {
         is SaveRoutine -> {
             id(command.workoutId, "workoutId")
             name(command.name)
+        }
+        is UpdateRoutineFromWorkout -> {
+            id(command.workoutId, "workoutId")
+            id(command.routineId, "routineId")
         }
         is SaveRoutinePlan -> {
             name(command.plan.name)

@@ -216,6 +216,12 @@
     <string name="routine_default_name">%1$s: %2$s</string>
     <string name="routine_save">Save</string>
     <string name="routine_save_as">Save as routine</string>
+    <string name="routine_save_as_new">Save as new routine</string>
+    <string name="routine_update">Update “%1$s”</string>
+    <string name="routine_update_title">Update “%1$s”?</string>
+    <string name="routine_update_body">The routine gets this workout's exercises in this order, with one target set per logged set. Exercises you skipped are removed from it.</string>
+    <string name="routine_update_confirm">Update</string>
+    <string name="routine_updated">Updated routine: %1$s</string>
     <string name="stat_duration">Duration</string>
     <string name="stat_volume">Volume, kg</string>
     <!-- Active workout -->

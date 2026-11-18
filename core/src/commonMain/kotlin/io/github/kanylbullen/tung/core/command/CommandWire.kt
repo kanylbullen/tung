@@ -229,6 +229,9 @@ object CommandWire {
             ),
         ) { Command.CreateExercise(it.text("name"), MuscleGroup.fromKey(it.text("muscle_group")), Equipment.fromKey(it.text("equipment"))) },
         "save_routine" to Spec(listOf(workoutId, name)) { Command.SaveRoutine(it.id("workout_id"), it.text("name")) },
+        "update_routine_from_workout" to Spec(listOf(workoutId, routineId)) {
+            Command.UpdateRoutineFromWorkout(it.id("workout_id"), it.id("routine_id"))
+        },
         "save_routine_plan" to Spec(
             listOf(name, req("exercises", Kind.ROUTINE_EXERCISES, "The routine's exercises in order.")),
         ) { Command.SaveRoutinePlan(RoutinePlan(it.text("name"), it.routineExercises("exercises"))) },

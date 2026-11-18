@@ -5,7 +5,11 @@ import io.github.kanylbullen.tung.core.sync.SyncExercise
 import io.github.kanylbullen.tung.core.sync.SyncSet
 import io.github.kanylbullen.tung.core.sync.SyncWorkout
 import io.github.kanylbullen.tung.core.sync.SyncWorkoutExercise
+import io.github.kanylbullen.tung.core.sync.SyncRoutine
+import io.github.kanylbullen.tung.core.sync.SyncRoutineExercise
 import io.github.kanylbullen.tung.web.history.workoutDetail
+import io.github.kanylbullen.tung.web.routines.RoutineSave
+import io.github.kanylbullen.tung.web.routines.routineSave
 import io.github.kanylbullen.tung.web.store.TungStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -42,5 +46,23 @@ class WorkoutDetailTest {
         assertEquals(128, detail.avgHeartRate)
         assertNull(workoutDetail(store(), "w2") { "" }, "a workout in progress has no page")
         assertNull(workoutDetail(store(), "nope") { "" })
+    }
+
+    /** Issue #217: "w1" logged 2 sets of bench (curl had none); what it offers to save against its routine. */
+    @Test
+    fun whatAWorkoutOffersToSaveDependsOnItsRoutine() {
+        val store = store()
+        fun save() = routineSave(store, assertNotNull(workoutDetail(store, "w1") { it.name ?: "" }))
+        assertEquals(RoutineSave.New, save(), "not started from a routine")
+
+        store.workouts.put(SyncWorkout("w1", startedAt = 0, endedAt = 3_000_000, updatedAt = 2, routineId = "r1"), dirty = false)
+        assertEquals(RoutineSave.New, save(), "its routine is gone")
+
+        store.routines.put(SyncRoutine("r1", "Push", lastUsedAt = 0, updatedAt = 1), dirty = false)
+        store.routineExercises.put(SyncRoutineExercise("re1", "r1", "ex-bench", 0, 2, 8, 1), dirty = false)
+        assertEquals(RoutineSave.Matches, save(), "same exercises and set counts, whatever the weights")
+
+        store.routineExercises.put(SyncRoutineExercise("re1", "r1", "ex-bench", 0, 3, 8, 2), dirty = false)
+        assertEquals(RoutineSave.Differs("r1", "Push"), save(), "a set fewer than the routine asks")
     }
 }
