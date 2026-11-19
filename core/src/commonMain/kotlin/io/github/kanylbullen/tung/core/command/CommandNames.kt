@@ -26,6 +26,7 @@ import io.github.kanylbullen.tung.core.command.Command.RemoveSet
 import io.github.kanylbullen.tung.core.command.Command.RenameProgram
 import io.github.kanylbullen.tung.core.command.Command.RenameRoutine
 import io.github.kanylbullen.tung.core.command.Command.SaveRoutine
+import io.github.kanylbullen.tung.core.command.Command.UpdateRoutineFromWorkout
 import io.github.kanylbullen.tung.core.command.Command.SaveRoutinePlan
 import io.github.kanylbullen.tung.core.command.Command.SelectCurrent
 import io.github.kanylbullen.tung.core.command.Command.SetProgramMode
@@ -69,6 +70,7 @@ object CommandNames {
         SetRest::class to "set_rest",
         CreateExercise::class to "create_exercise",
         SaveRoutine::class to "save_routine",
+        UpdateRoutineFromWorkout::class to "update_routine_from_workout",
         SaveRoutinePlan::class to "save_routine_plan",
         CreateRoutine::class to "create_routine",
         RenameRoutine::class to "rename_routine",

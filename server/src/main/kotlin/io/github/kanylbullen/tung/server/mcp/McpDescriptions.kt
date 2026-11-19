@@ -78,6 +78,13 @@ object McpDescriptions {
         "save_routine" to
             "Saves a workout's logged sets as a new routine (a workout template): its exercises in order, with as many target sets " +
             "as were logged and the most common rep count as target reps. Returns ids.routineId. Ask the user for the name.",
+        "update_routine_from_workout" to
+            "Makes an existing routine what a workout did, with the targets save_routine would give: the workout's exercises in " +
+            "workout order, as many target sets as were logged and the most common rep count as target reps; exercises the workout " +
+            "left out are removed from the routine. The routine keeps its id and name, so program days that start it keep working. " +
+            "Use it when the user wants to keep the changes they made to a routine during a workout (the workout's routine_id); " +
+            "the workout must be finished. " +
+            "Only call this after the user has confirmed. Returns ids.routineId.",
         "save_routine_plan" to
             "Saves a new routine (a workout template) from a plan, such as a programme designed with the user. Plan: " +
             "{\"name\": \"Push A\", \"exercises\": [{\"exercise\": {\"key\": \"bench_press\"}, \"target_sets\": 4, \"target_reps\": 8}, " +

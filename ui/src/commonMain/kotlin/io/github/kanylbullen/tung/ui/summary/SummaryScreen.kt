@@ -67,6 +67,8 @@ import io.github.kanylbullen.tung.ui.progress.metricText
 import io.github.kanylbullen.tung.ui.progress.trendRangeLabel
 import io.github.kanylbullen.tung.ui.progress.trendRangeLongLabel
 import io.github.kanylbullen.tung.ui.routines.RoutineNameDialog
+import io.github.kanylbullen.tung.ui.routines.RoutineSaveChoice
+import io.github.kanylbullen.tung.ui.routines.UpdateRoutineDialog
 import io.github.kanylbullen.tung.ui.routines.defaultRoutineName
 import io.github.kanylbullen.tung.ui.theme.Tung
 
@@ -78,15 +80,26 @@ const val SUMMARY_LIST_TAG = "summary-list"
  * its sets, volume, best estimated 1RM and best set; the muscles the workout
  * worked, on the body and as percentages of its sets; and each exercise's
  * progress chart, this workout the last point, with the Progress tab's
- * metric and span. Done and Save as routine stay at the bottom. A chart's
- * exercise opens its progress ([onOpenProgress]); a saved routine is
- * reported to [onRoutineSaved] (the phone shows a toast).
+ * metric and span. Done stays at the bottom, with what there is to save
+ * ([RoutineSaveChoice], issue #217): "Save as routine" for a workout not
+ * started from a routine, nothing for one that did what its routine asks,
+ * and "Update “Push day”" with "Save as new routine" for one that differs.
+ * A chart's exercise opens its progress ([onOpenProgress]); a saved or
+ * updated routine is reported to [onRoutineSaved] or [onRoutineUpdated],
+ * which also hears of a refused update (the phone shows a toast).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SummaryScreen(vm: SummaryViewModel, onDone: () -> Unit, onOpenProgress: (String) -> Unit, onRoutineSaved: (name: String) -> Unit) {
+fun SummaryScreen(
+    vm: SummaryViewModel,
+    onDone: () -> Unit,
+    onOpenProgress: (String) -> Unit,
+    onRoutineSaved: (name: String) -> Unit,
+    onRoutineUpdated: (name: String, updated: Boolean) -> Unit,
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     var savingRoutine by rememberSaveable { mutableStateOf(false) }
+    var updatingRoutine by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Tung.colors.background,
@@ -106,16 +119,28 @@ fun SummaryScreen(vm: SummaryViewModel, onDone: () -> Unit, onOpenProgress: (Str
         },
         bottomBar = {
             if (state.report != null) {
-                Row(
+                val choice = state.routineSave
+                Column(
                     Modifier
                         .fillMaxWidth()
                         .background(Tung.colors.background)
                         .navigationBarsPadding()
                         .padding(horizontal = 20.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    SecondaryButton(stringResource(Res.string.routine_save_as), onClick = { savingRoutine = true }, modifier = Modifier.weight(1f))
-                    PrimaryButton(stringResource(Res.string.summary_done), onClick = onDone, modifier = Modifier.weight(1f))
+                    if (choice is RoutineSaveChoice.Differs) {
+                        SecondaryButton(stringResource(Res.string.routine_update, choice.routineName), onClick = { updatingRoutine = true })
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        when (choice) {
+                            RoutineSaveChoice.New ->
+                                SecondaryButton(stringResource(Res.string.routine_save_as), onClick = { savingRoutine = true }, modifier = Modifier.weight(1f))
+                            is RoutineSaveChoice.Differs ->
+                                SecondaryButton(stringResource(Res.string.routine_save_as_new), onClick = { savingRoutine = true }, modifier = Modifier.weight(1f))
+                            RoutineSaveChoice.Loading, is RoutineSaveChoice.Matches -> Unit
+                        }
+                        PrimaryButton(stringResource(Res.string.summary_done), onClick = onDone, modifier = Modifier.weight(1f))
+                    }
                 }
             }
         },
@@ -192,13 +217,24 @@ fun SummaryScreen(vm: SummaryViewModel, onDone: () -> Unit, onOpenProgress: (Str
     val report = state.report
     if (savingRoutine && report != null) {
         RoutineNameDialog(
-            title = stringResource(Res.string.routine_save_as),
+            title = stringResource(if (state.routineSave is RoutineSaveChoice.Differs) Res.string.routine_save_as_new else Res.string.routine_save_as),
             initialName = defaultRoutineName(report),
             confirmLabel = stringResource(Res.string.routine_save),
             onDismiss = { savingRoutine = false },
             onConfirm = { name ->
                 savingRoutine = false
                 vm.saveAsRoutine(name) { saved -> if (saved) onRoutineSaved(name) }
+            },
+        )
+    }
+    val differs = state.routineSave as? RoutineSaveChoice.Differs
+    if (updatingRoutine && differs != null) {
+        UpdateRoutineDialog(
+            routineName = differs.routineName,
+            onDismiss = { updatingRoutine = false },
+            onConfirm = {
+                updatingRoutine = false
+                vm.updateRoutine(differs.routineId) { updated -> onRoutineUpdated(differs.routineName, updated) }
             },
         )
     }

@@ -4,6 +4,7 @@ import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
 import io.github.kanylbullen.tung.core.ProgramMode
+import io.github.kanylbullen.tung.core.RoutineSlot
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.DELETED_COUNT
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
@@ -15,6 +16,8 @@ import io.github.kanylbullen.tung.core.command.CommandIds.SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_EXERCISE_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.WORKOUT_ID
 import io.github.kanylbullen.tung.core.runNow
+import io.github.kanylbullen.tung.core.workoutMatchesRoutine
+import io.github.kanylbullen.tung.core.workoutSlots
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -492,6 +495,66 @@ class CommandRulesTest {
         tx.addSet(tx.addExercise(workoutId, "bench"), 80.0, 8, completed = false)
         assertEquals(listOf("the workout has no logged set to save"), rejected { executor.saveRoutine(tx, workoutId, "Push") }.reasons)
         assertEquals(listOf("no workout nope"), rejected { executor.saveRoutine(tx, "nope", "Push") }.reasons)
+        assertEquals(emptyList<String>(), tx.writes)
+    }
+
+    @Test
+    fun updateRoutineFromWorkoutMakesTheRoutineTheWorkoutKeepingItsRowsAndDays() {
+        val routineId = tx.addRoutine(name = "Push")
+        val benchRow = tx.addRoutineExercise(routineId, "bench", targetSets = 3, targetReps = 8)
+        val flyRow = tx.addRoutineExercise(routineId, "fly", targetSets = 3, targetReps = 12)
+        val dipRow = tx.addRoutineExercise(routineId, "dip", targetSets = 2)
+        val dayId = tx.addProgramDay(routineId)
+        val workoutId = tx.addWorkout(routineId = routineId, endedAt = 1L)
+        val dip = tx.addExercise(workoutId, "dip")
+        tx.addSet(dip, 0.0, 10, completed = true)
+        tx.addSet(dip, 0.0, 10, completed = true)
+        val bench = tx.addExercise(workoutId, "bench")
+        repeat(4) { tx.addSet(bench, 80.0, 6, completed = true) }
+        tx.addSet(bench, 80.0, 6, completed = false)
+        val curl = tx.addExercise(workoutId, "curl")
+        tx.addSet(curl, 20.0, 10, completed = true)
+        tx.writes.clear()
+
+        assertEquals(routineId, done { executor.updateRoutineFromWorkout(tx, workoutId, routineId) }.ids[ROUTINE_ID])
+        val rows = runNow { tx.routineExercises(routineId) }.sortedBy { it.position }
+        assertEquals(
+            listOf(Triple("dip", 2, 10), Triple("bench", 4, 6), Triple("curl", 1, 10)),
+            rows.map { Triple(it.exerciseId, it.targetSets, it.targetReps) },
+            "the workout's order, one target set per logged set, the most common reps",
+        )
+        assertEquals(listOf(0, 1, 2), rows.map { it.position })
+        assertEquals(listOf(dipRow, benchRow), rows.take(2).map { it.id }, "exercises that stay keep their rows")
+        assertNull(runNow { tx.routineExercise(flyRow) }, "the one the workout left out goes")
+        assertEquals(RoutineRow(routineId, "Push", lastUsedAt = null), runNow { tx.routine(routineId) }, "name and last use kept")
+        assertEquals(routineId, runNow { tx.programDay(dayId) }?.routineId, "the program day still starts it")
+        assertTrue("delete routine exercise $flyRow" in tx.writes)
+
+        val matched = rows.map { RoutineSlot(it.exerciseId, it.targetSets) }
+        val workout = workoutSlots(listOf("dip" to 2, "bench" to 4, "curl" to 1))
+        assertTrue(workoutMatchesRoutine(workout, matched), "after the update the workout matches")
+
+        tx.writes.clear()
+        done { executor.updateRoutineFromWorkout(tx, workoutId, routineId) }
+        assertEquals(emptyList<String>(), tx.writes, "updating again writes nothing")
+    }
+
+    @Test
+    fun updateRoutineFromWorkoutRefusesWhatIsGoneOrEmptyAndWritesNothing() {
+        val routineId = tx.addRoutine()
+        tx.addRoutineExercise(routineId, "bench", targetSets = 3)
+        val workoutId = tx.addWorkout(routineId = routineId, endedAt = 1L)
+        tx.addSet(tx.addExercise(workoutId, "bench"), 80.0, 8, completed = false)
+        val inProgress = tx.addWorkout(routineId = routineId)
+        tx.addSet(tx.addExercise(inProgress, "bench"), 80.0, 8, completed = true)
+        tx.writes.clear()
+        assertEquals(
+            listOf("the workout is still in progress: finish it first"),
+            rejected { executor.updateRoutineFromWorkout(tx, inProgress, routineId) }.reasons,
+        )
+        assertEquals(listOf("the workout has no logged set to save"), rejected { executor.updateRoutineFromWorkout(tx, workoutId, routineId) }.reasons)
+        assertEquals(listOf("no workout nope"), rejected { executor.updateRoutineFromWorkout(tx, "nope", routineId) }.reasons)
+        assertEquals(listOf("no routine nope"), rejected { executor.updateRoutineFromWorkout(tx, workoutId, "nope") }.reasons)
         assertEquals(emptyList<String>(), tx.writes)
     }
 

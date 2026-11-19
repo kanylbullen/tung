@@ -4,7 +4,9 @@ package io.github.kanylbullen.tung.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
@@ -101,5 +103,33 @@ class RoutinesTest {
         )
         assertEquals(listOf(LoggedSet(0.0, 0)), addedExerciseSets(requested = null, previousSession = emptyList()), "no history: one set of 0 × 0")
         assertEquals(List(4) { LoggedSet(0.0, 0) }, addedExerciseSets(requested = 4, previousSession = emptyList()))
+    }
+
+    private val pushDay = listOf(RoutineSlot("bench", 3), RoutineSlot("fly", 3), RoutineSlot("dip", 2))
+
+    @Test
+    fun aWorkoutMatchesItsRoutineWhenOnlyWeightsAndRepsDiffer() {
+        assertTrue(workoutMatchesRoutine(workoutSlots(listOf("bench" to 3, "fly" to 3, "dip" to 2)), pushDay))
+    }
+
+    @Test
+    fun anExerciseWithoutALoggedSetIsNotPartOfTheWorkout() {
+        assertTrue(workoutMatchesRoutine(workoutSlots(listOf("bench" to 3, "curl" to 0, "fly" to 3, "dip" to 2)), pushDay))
+        assertEquals(listOf(RoutineSlot("bench", 3)), workoutSlots(listOf("bench" to 3, "curl" to 0)))
+    }
+
+    @Test
+    fun aDifferentSetCountOrderOrExerciseDiffers() {
+        assertFalse(workoutMatchesRoutine(workoutSlots(listOf("bench" to 4, "fly" to 3, "dip" to 2)), pushDay), "a set more")
+        assertFalse(workoutMatchesRoutine(workoutSlots(listOf("bench" to 3, "fly" to 2, "dip" to 2)), pushDay), "a set less")
+        assertFalse(workoutMatchesRoutine(workoutSlots(listOf("fly" to 3, "bench" to 3, "dip" to 2)), pushDay), "another order")
+        assertFalse(workoutMatchesRoutine(workoutSlots(listOf("bench" to 3, "fly" to 3)), pushDay), "an exercise left out")
+        assertFalse(workoutMatchesRoutine(workoutSlots(listOf("bench" to 3, "fly" to 3, "dip" to 2, "curl" to 1)), pushDay), "one added")
+        assertFalse(workoutMatchesRoutine(workoutSlots(listOf("bench" to 3, "row" to 3, "dip" to 2)), pushDay), "one swapped")
+    }
+
+    @Test
+    fun aSetCountPastTheTargetRangeCountsAsItsLargestTarget() {
+        assertTrue(workoutMatchesRoutine(workoutSlots(listOf("bench" to 25)), listOf(RoutineSlot("bench", MAX_TARGET_SETS))))
     }
 }

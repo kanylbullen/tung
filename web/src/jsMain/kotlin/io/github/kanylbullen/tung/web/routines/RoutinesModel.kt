@@ -1,10 +1,14 @@
 package io.github.kanylbullen.tung.web.routines
 
 import io.github.kanylbullen.tung.core.MuscleIndex
+import io.github.kanylbullen.tung.core.RoutineSlot
+import io.github.kanylbullen.tung.core.workoutMatchesRoutine
+import io.github.kanylbullen.tung.core.workoutSlots
 import io.github.kanylbullen.tung.core.muscles.ExerciseWork
 import io.github.kanylbullen.tung.core.muscles.MuscleBreakdown
 import io.github.kanylbullen.tung.core.muscles.muscleBreakdown
 import io.github.kanylbullen.tung.core.sync.SyncExercise
+import io.github.kanylbullen.tung.web.history.WorkoutDetail
 import io.github.kanylbullen.tung.web.store.TungStore
 
 /** One routine on the Routines tab: most recently used first, as on the phone. */
@@ -54,3 +58,27 @@ fun routineMuscles(store: TungStore, index: MuscleIndex): Map<String, MuscleBrea
         .filter { it.routineId != null }
         .groupBy { it.routineId ?: "" }
         .mapValues { (_, rows) -> muscleBreakdown(rows.map { ExerciseWork(it.exerciseId?.let(index::musclesOf), it.targetSets ?: 0) }) }
+
+/** What a finished workout offers to save as a routine (issue #217), the phone's `RoutineSaveChoice`. */
+sealed interface RoutineSave {
+    /** Not started from a routine, or it is gone: "Save as routine". */
+    data object New : RoutineSave
+
+    /** Did what its routine asks (same exercises, order and set counts): nothing to save. */
+    data object Matches : RoutineSave
+
+    /** Differs from its routine: "Update “Push day”" or "Save as new routine". */
+    data class Differs(val routineId: String, val routineName: String) : RoutineSave
+}
+
+/** The choice for [detail] (its logged sets only) against the routine it was started from, as it is in [store] now. */
+fun routineSave(store: TungStore, detail: WorkoutDetail): RoutineSave {
+    val routineId = store.workouts.get(detail.id)?.routineId ?: return RoutineSave.New
+    val routine = store.routines.get(routineId) ?: return RoutineSave.New
+    val workout = workoutSlots(detail.exercises.map { (it.exerciseId ?: "") to it.sets.size })
+    val target = store.routineExercises.rows.values.map { it.row }
+        .filter { it.routineId == routineId }
+        .sortedBy { it.position ?: 0 }
+        .map { RoutineSlot(it.exerciseId ?: "", it.targetSets ?: 0) }
+    return if (workoutMatchesRoutine(workout, target)) RoutineSave.Matches else RoutineSave.Differs(routineId, routine.name ?: "")
+}

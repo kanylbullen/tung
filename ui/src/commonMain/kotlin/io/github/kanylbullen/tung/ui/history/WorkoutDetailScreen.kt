@@ -45,15 +45,23 @@ import io.github.kanylbullen.tung.ui.common.localDate
 import io.github.kanylbullen.tung.ui.common.localVolume
 import io.github.kanylbullen.tung.ui.common.localWeight
 import io.github.kanylbullen.tung.ui.routines.RoutineNameDialog
+import io.github.kanylbullen.tung.ui.routines.RoutineSaveChoice
+import io.github.kanylbullen.tung.ui.routines.UpdateRoutineDialog
 import io.github.kanylbullen.tung.ui.routines.defaultRoutineName
 import io.github.kanylbullen.tung.ui.theme.Tung
 import io.github.kanylbullen.tung.ui.theme.TungCorner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutineSaved: (name: String) -> Unit) {
+fun WorkoutDetailScreen(
+    vm: WorkoutDetailViewModel,
+    onBack: () -> Unit,
+    onRoutineSaved: (name: String) -> Unit,
+    onRoutineUpdated: (name: String, updated: Boolean) -> Unit,
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     var savingRoutine by rememberSaveable { mutableStateOf(false) }
+    var updatingRoutine by rememberSaveable { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
@@ -85,10 +93,23 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
                             containerColor = Tung.colors.raised,
                             shape = TungCorner,
                         ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.routine_save_as)) },
-                                onClick = { menuOpen = false; savingRoutine = true },
-                            )
+                            when (val choice = state.routineSave) {
+                                RoutineSaveChoice.New -> DropdownMenuItem(
+                                    text = { Text(stringResource(Res.string.routine_save_as)) },
+                                    onClick = { menuOpen = false; savingRoutine = true },
+                                )
+                                is RoutineSaveChoice.Differs -> {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.routine_update, choice.routineName)) },
+                                        onClick = { menuOpen = false; updatingRoutine = true },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.routine_save_as_new)) },
+                                        onClick = { menuOpen = false; savingRoutine = true },
+                                    )
+                                }
+                                RoutineSaveChoice.Loading, is RoutineSaveChoice.Matches -> Unit
+                            }
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.detail_change_time)) },
                                 onClick = { menuOpen = false; changingTime = true },
@@ -155,7 +176,7 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
     val report = state.report
     if (savingRoutine && report != null) {
         RoutineNameDialog(
-            title = stringResource(Res.string.routine_save_as),
+            title = stringResource(if (state.routineSave is RoutineSaveChoice.Differs) Res.string.routine_save_as_new else Res.string.routine_save_as),
             initialName = defaultRoutineName(report),
             confirmLabel = stringResource(Res.string.routine_save),
             onDismiss = { savingRoutine = false },
@@ -164,6 +185,17 @@ fun WorkoutDetailScreen(vm: WorkoutDetailViewModel, onBack: () -> Unit, onRoutin
                 vm.saveAsRoutine(name) { saved ->
                     if (saved) onRoutineSaved(name)
                 }
+            },
+        )
+    }
+    val differs = state.routineSave as? RoutineSaveChoice.Differs
+    if (updatingRoutine && differs != null) {
+        UpdateRoutineDialog(
+            routineName = differs.routineName,
+            onDismiss = { updatingRoutine = false },
+            onConfirm = {
+                updatingRoutine = false
+                vm.updateRoutine(differs.routineId) { updated -> onRoutineUpdated(differs.routineName, updated) }
             },
         )
     }

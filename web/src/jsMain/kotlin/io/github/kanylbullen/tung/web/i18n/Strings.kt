@@ -125,6 +125,13 @@ interface Strings {
     val save: String
     val cancel: String
     fun savedAsRoutine(name: String): String
+    val saveAsNewRoutine: String
+    fun updateRoutine(name: String): String
+    fun updateRoutineTitle(name: String): String
+    val updateRoutineBody: String
+    val update: String
+    fun routineUpdated(name: String): String
+    fun routineUpdateFailed(name: String): String
     val deleteWorkout: String
     val deleteWorkoutTitle: String
     val deleteWorkoutBody: String
@@ -631,6 +638,13 @@ object English : Strings {
     override val save = "Save"
     override val cancel = "Cancel"
     override fun savedAsRoutine(name: String): String = "Saved as $name"
+    override val saveAsNewRoutine = "Save as new routine"
+    override fun updateRoutine(name: String): String = "Update “$name”"
+    override fun updateRoutineTitle(name: String): String = "Update “$name”?"
+    override val updateRoutineBody = "The routine gets this workout's exercises in this order, with one target set per logged set and the reps you did most often as target reps. Exercises you skipped are removed from it."
+    override val update = "Update"
+    override fun routineUpdated(name: String): String = "Updated $name"
+    override fun routineUpdateFailed(name: String): String = "Could not update $name. It may have been deleted on another device."
     override val deleteWorkout = "Delete workout"
     override val deleteWorkoutTitle = "Delete workout?"
     override val deleteWorkoutBody = "The workout and all its sets will be deleted. This cannot be undone."
@@ -1274,6 +1288,13 @@ object Swedish : Strings {
     override val save = "Spara"
     override val cancel = "Avbryt"
     override fun savedAsRoutine(name: String): String = "Sparad som $name"
+    override val saveAsNewRoutine = "Spara som ny rutin"
+    override fun updateRoutine(name: String): String = "Uppdatera ”$name”"
+    override fun updateRoutineTitle(name: String): String = "Uppdatera ”$name”?"
+    override val updateRoutineBody = "Rutinen får passets övningar i den här ordningen, med ett målset per loggat set och det antal reps du gjorde oftast som målreps. Övningar du hoppade över tas bort ur den."
+    override val update = "Uppdatera"
+    override fun routineUpdated(name: String): String = "Uppdaterade $name"
+    override fun routineUpdateFailed(name: String): String = "Kunde inte uppdatera $name. Den kan ha raderats på en annan enhet."
     override val deleteWorkout = "Radera pass"
     override val deleteWorkoutTitle = "Radera pass?"
     override val deleteWorkoutBody = "Passet och alla dess set raderas. Det går inte att ångra."

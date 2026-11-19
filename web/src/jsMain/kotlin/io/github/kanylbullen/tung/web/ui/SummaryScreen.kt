@@ -20,6 +20,8 @@ import io.github.kanylbullen.tung.core.progress.trendPoints
 import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.history.exerciseDisplayName
 import io.github.kanylbullen.tung.web.progress.exerciseHistory
+import io.github.kanylbullen.tung.web.routines.RoutineSave
+import io.github.kanylbullen.tung.web.routines.routineSave
 import io.github.kanylbullen.tung.web.summary.workoutSummary
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -44,7 +46,10 @@ fun summaryHash(id: String): String = "#/summary/$id"
  * "New record", the muscles worked (core's sets per muscle on the body,
  * from 30 % of the accent for the least worked to full for the most, and a
  * row per muscle), and a chart per exercise with the compact trends'
- * choices. Save as routine and Done stay at the bottom.
+ * choices. Done stays at the bottom with what there is to save (issue
+ * #217): "Save as routine" for a workout not started from a routine,
+ * nothing for one that did what its routine asks, and "Update “Push day”"
+ * with "Save as new routine" for one that differs.
  */
 @Composable
 fun SummaryScreen(container: WebContainer, id: String) {
@@ -61,6 +66,9 @@ fun SummaryScreen(container: WebContainer, id: String) {
     val scope = rememberCoroutineScope()
     var naming by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf<String?>(null) }
+    var updating by remember { mutableStateOf(false) }
+    var updated by remember { mutableStateOf<String?>(null) }
+    val save = remember(version, summary) { summary?.let { routineSave(container.store, it.detail) } }
 
     Div({ classes("screen", "with-actions") }) {
         Div({ classes("topbar") }) { H1 { Text(strings.summaryTitle) } }
@@ -133,19 +141,39 @@ fun SummaryScreen(container: WebContainer, id: String) {
             }
         }
         saved?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(strings.savedAsRoutine(it)) } }
+        updated?.let { P({ classes("hint", "accent"); attr("role", "status") }) { Text(it) } }
     }
 
     if (summary != null) {
         Div({ classes("bottom-actions") }) {
-            Button({ classes("secondary"); onClick { naming = true } }) { Text(strings.saveAsRoutine) }
+            when (save) {
+                RoutineSave.New -> Button({ classes("secondary"); onClick { naming = true } }) { Text(strings.saveAsRoutine) }
+                is RoutineSave.Differs -> {
+                    Button({ classes("secondary"); onClick { updating = true } }) { Text(strings.updateRoutine(save.routineName)) }
+                    Button({ classes("secondary"); onClick { naming = true } }) { Text(strings.saveAsNewRoutine) }
+                }
+                RoutineSave.Matches, null -> Unit
+            }
             Button({ classes("accent-button"); onClick { go(Route.HOME) } }) { Text(strings.done) }
         }
     }
     if (summary != null && naming) {
-        NameDialog(strings.saveAsRoutine, strings.routineName, summary.detail.title ?: "", strings.save, strings.cancel, onCancel = { naming = false }) { name ->
+        NameDialog(if (save is RoutineSave.Differs) strings.saveAsNewRoutine else strings.saveAsRoutine, strings.routineName, summary.detail.title ?: "", strings.save, strings.cancel, onCancel = { naming = false }) { name ->
             naming = false
             scope.launch {
                 if (container.commands.execute(Command.SaveRoutine(summary.detail.id, name)) is CommandResult.Done) saved = name
+            }
+        }
+    }
+    if (save is RoutineSave.Differs && updating) {
+        Dialog(strings.updateRoutineTitle(save.routineName), strings.updateRoutineBody, strings.update, strings.cancel, onCancel = { updating = false }) {
+            updating = false
+            scope.launch {
+                if (container.commands.execute(Command.UpdateRoutineFromWorkout(id, save.routineId)) is CommandResult.Done) {
+                    updated = strings.routineUpdated(save.routineName)
+                } else {
+                    updated = strings.routineUpdateFailed(save.routineName)
+                }
             }
         }
     }

@@ -24,13 +24,16 @@ import kotlinx.coroutines.launch
  * apart from the settings, and the phone's database is the one that counts.
  */
 class TungWearApp : Application(), Configuration.Provider, TungHost {
-    override val container: TungContainer by lazy { TungContainer(this, startedBy = StartedBy.WATCH) }
+    override val container: TungContainer by lazy {
+        // A sync that carried this watch's changes up tells the phone to sync now (#249).
+        TungContainer(this, startedBy = StartedBy.WATCH, onSyncPushed = { nudgePhone(DataLayerPhoneNudger(this)) })
+    }
 
     /** Standalone mode's backend, one per process: the screens and the Ongoing Activity share its current-set selection. */
     val localBackend: LocalWatchBackend by lazy { LocalWatchBackend(container, this) }
 
     /** The Ongoing Activity of the workout in progress, in both modes ([WatchOngoingActivity]). */
-    private val ongoing: WatchOngoingActivity by lazy {
+    internal val ongoing: WatchOngoingActivity by lazy {
         WatchOngoingActivity(this, container, local = { localBackend }, phone = { PhoneLink(this) })
     }
 
@@ -54,6 +57,8 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
+        // Here, not in an activity: the process may be started by the Data Layer listener
+        // (PhoneStateListenerService) with no screen at all, and the chip must follow then too (#247).
         ongoing.start()
         // The phone's triggers: periodic work while signed in, and a sync whenever the app comes to the
         // foreground. A watch gets no push, so while it is on screen it also syncs now and then, to see

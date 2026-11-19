@@ -299,6 +299,11 @@ enum class DeleteAccountOutcome {
  * @param retryDelaysMillis the waits between attempts of one sync request
  *   that failed with a 5xx or an I/O error; a 4xx is never retried.
  * @param onSignedOut called after a 401 has cleared the token.
+ * @param onPushed called after a sync that carried this device's changes up,
+ *   and awaited before [syncOnce] returns, so a WorkManager job keeps the
+ *   process until it is done: a standalone watch nudges the paired phone
+ *   there (issue #249). It should bound its own time; what it throws is
+ *   dropped, since the sync itself has succeeded.
  */
 class SyncClient(
     private val store: SyncStore,
@@ -310,6 +315,7 @@ class SyncClient(
     private val onSignedOut: suspend () -> Unit = {},
     /** The language the app shows (`en`, `sv`), sent when an account is made, for the server's welcome email. */
     private val language: () -> String? = { null },
+    private val onPushed: suspend () -> Unit = {},
 ) {
     /** Sync itself is core's [SyncLoop]; this class gives it Room, the settings and Ktor. */
     private val loop = SyncLoop(
@@ -369,7 +375,19 @@ class SyncClient(
      * cursor, pull again while a response is full. Success and failure are
      * recorded in [SyncSettings]; a 401 signs the device out.
      */
-    suspend fun syncOnce(): SyncResult = withContext(ioDispatcher) { loop.syncOnce() }
+    suspend fun syncOnce(): SyncResult = withContext(ioDispatcher) {
+        loop.syncOnce().also { if (it is SyncResult.Success && it.pushed > 0) afterPush() }
+    }
+
+    private suspend fun afterPush() {
+        try {
+            onPushed()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The rows went up and came back applied; a failed follow-up must not report the sync as failed.
+        }
+    }
 
     /**
      * `POST /api/v1/auth/password/forgot` at [baseUrl]: a link to choose a

@@ -364,7 +364,12 @@ class SyncAccount(
 
     /** A sync soon, if signed in: after a finished workout and when the app comes to the foreground. */
     fun requestSync() {
-        scope.launch { if (isSignedIn()) scheduler.enqueueNow() }
+        scope.launch { enqueueSync() }
+    }
+
+    /** [requestSync], awaited: for a caller whose process may stop once it returns (a listener service). */
+    suspend fun enqueueSync() {
+        if (isSignedIn()) scheduler.enqueueNow()
     }
 
     /**

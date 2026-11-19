@@ -39,6 +39,7 @@ class CommandWireTest {
         "set_rest" to """{"exercise_id": "$id", "seconds": 120}""",
         "create_exercise" to """{"name": "Zercher squat", "muscle_group": "legs", "equipment": "barbell"}""",
         "save_routine" to """{"workout_id": "$id", "name": "Push"}""",
+        "update_routine_from_workout" to """{"workout_id": "$id", "routine_id": "$id"}""",
         "save_routine_plan" to """{"name": "Push", "exercises": [{"exercise": $ex, "target_sets": 3, "target_reps": 8}]}""",
         "create_routine" to """{"name": "Legs"}""",
         "rename_routine" to """{"routine_id": "$id", "name": "Pull"}""",

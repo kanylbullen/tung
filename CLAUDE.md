@@ -351,6 +351,17 @@ order, each with `targetSets` and a nullable `targetReps`. "Save as routine"
 (summary, and the workout detail's menu) takes the logged sets per exercise:
 `targetSets` is how many there were, `targetReps` the most common rep count
 (`core.routineTarget`). Saving the same workout twice makes two routines.
+**Nothing a workout does writes to its routine** (issue #217), so a workout
+started from one offers what fits: core's `workoutMatchesRoutine` over
+`workoutSlots` (the logged exercises in order with their set counts, kept
+1–20) and the routine's exercises with their target sets; weights and reps
+do not count. A match offers nothing to save; a workout that differs offers
+**Update “Push day”** (asks first, `UpdateRoutineFromWorkout`, see
+"Commands") and **Save as new routine**; a workout not started from a
+routine, or whose routine is gone, keeps "Save as routine". The summary, the
+workout detail's menu (ui's `RoutineSaveChoice`, `observeWorkoutRoutine`)
+and the web's summary and workout page (`web/routines/RoutinesModel.kt`,
+`routineSave`) decide it the same way. `RoutineUpdateFlowTest`.
 **Starting** a routine (`StartRoutine`, core's `CommandRules.startRoutine`) creates a workout with
 `routineId` set, the routine's exercises in order and `targetSets` unticked
 sets each, filled by `core.routineStartSets`: the existing pre-fill rule at
@@ -1025,8 +1036,9 @@ from 98 to 112 kg", "Weekly volume, 12 months: from 360 to 930 kg";
 The screen after Finish (`ui/summary/` in the `ui/` module, route `summary/{id}`,
 `SummaryScreen` + `SummaryViewModel`, which takes today and the zone as
 functions; `TungNavRoot` builds it), one `LazyColumn` (`SUMMARY_LIST_TAG`)
-under the top bar, with **Save as routine** and **Done** side by side in a
-bottom bar that stays put whatever is scrolled:
+under the top bar, with **Done** and what there is to save (see "Routines":
+**Save as routine**, nothing, or **Update “Push day”** above **Save as new
+routine**) in a bottom bar that stays put whatever is scrolled:
 
 - **Stats**: duration, sets, volume, as before.
 - **Exercises**: each row "2 sets · 960 kg · Est. 1RM 112 kg" (logged sets,
@@ -1207,6 +1219,16 @@ its signal to commands, never a new path into the database
   clearing is explicit), and for programs `SetProgramMode` next to the day
   commands. Wire names: `add_routine_exercise`, `remove_routine_exercise`,
   `set_target_reps`, `set_program_mode`.
+- **`UpdateRoutineFromWorkout(workoutId, routineId)`**, wire
+  `update_routine_from_workout` (issue #217): the routine becomes what the
+  workout logged, with `save_routine`'s targets (`CommandRules.updateRoutineFromWorkout`):
+  the exercises in workout order, one target set per logged set, the most
+  common reps. It keeps its id, name and `lastUsedAt`, so program days and
+  past workouts still point at it; an exercise that stays keeps its row
+  (the first of that exercise, written only where position or targets
+  change), a new one gets a row, one left out is deleted with a tombstone,
+  all in one transaction over the existing `CommandTx` (no store change).
+  Refuses a workout without a logged set; returns `routineId`.
 - **`DeleteRoutines(ids)`**, wire `delete_routines` with `routine_ids`
   (issue #79): 1–500 non-blank ids (`MAX_DELETE_ROUTINES`), a duplicate
   counts once. Each routine goes as `delete_routine` takes it (its exercises
@@ -1274,7 +1296,11 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   with the next sync. The cursor is stored after each chunk; while a response
   comes back with `SYNC_MAX_ROWS` rows it pulls again. A 401 clears the token
   and shows "signed out".
-- **Triggers** (`SyncAccount`, `SyncWorker`): unique periodic work every 15
+- **Triggers** (`SyncAccount`, `SyncWorker`; `enqueueNow`'s one-time work is
+  expedited since #253, falling back to an ordinary job out of quota, so a
+  push or a watch's nudge is not held back by Doze; below Android 12 that
+  shows a silent "Syncing your workouts" notification for the moment it
+  runs, `SyncWorker.getForegroundInfo`, channel `sync`, id 3): unique periodic work every 15
   min with a network constraint while signed in (scheduled at sign-in and
   re-asserted at app start), and `enqueueNow` (unique, `APPEND_OR_REPLACE`)
   after `FinishWorkout` from `AppCommandHandler`'s result path
@@ -1292,7 +1318,14 @@ http only to localhost and private IP literals), `SyncState`, `SyncFailure`.
   on screen: every 30 s in a workout, every 2 min otherwise, backing off to
   5 min without a network (`runForegroundSync` in data, started by `TungApp`
   and `TungWearApp`; `nextForegroundSyncDelay`, `ForegroundSyncTest`). A
-  watch's sets reach the phone this way when the watch runs on its own. Exponential backoff from 30 s; network and 5xx
+  watch's sets reach the phone this way when the watch runs on its own, and
+  sooner through the watch's nudge (issue #249): after every sync that carried
+  its changes up (`SyncClient`'s `onPushed`, awaited inside the sync so a
+  WorkManager job keeps the process, 5 s at most), a standalone watch sends
+  the paired phone an empty `/tung/sync` message (`nudgePhone`,
+  `PhoneSyncNudge.kt`), and the phone's `WearSyncService` syncs at once inside
+  the callback, signed in only, handing a failure to WorkManager
+  (`syncForWatch`; `PhoneSyncNudgeTest`, `WatchSyncNudgeTest`). Exponential backoff from 30 s; network and 5xx
   retry, 401 and other 4xx do not. Sign-out cancels both. "Sync now" in
   Settings calls `syncOnce` directly, so the screen sees the result.
   WorkManager is initialised on demand (`TungApp` and `TungWearApp` are
@@ -1449,6 +1482,13 @@ and WorkManager `Configuration.Provider`). Install and pairing: `wear/README.md`
   moment after any other change, and when the app comes to the foreground,
   plus every 30 s in a workout while it is on screen (no push reaches a
   watch; see "Sync", "Triggers"), over whatever network the watch has.
+  Each sync that carried a change up also tells the paired phone to sync
+  (`/tung/sync`, issue #249), so a finish on the watch ends the workout on
+  the phone without waiting for push or the phone's periodic sync; an open
+  workout screen there sees the workout's `endedAt` and leaves for the
+  summary (`ActiveWorkoutViewModel`, `FinishedElsewhereFlowTest`), or, when
+  the workout is gone (finished there with no logged set, or discarded),
+  leaves as an unsaved finish does.
 - **Companion** when it has no token: v0, unchanged. The watch mirrors the
   phone over the Data Layer (`PhoneLink`) and sends it commands. Without a
   paired phone it shows the hint to open the phone or link the watch.
@@ -1501,7 +1541,8 @@ that does not parse. Optimistic:
 logging the last open set offers Add set at once; Add set waits for the state.
 
 **Phone side** (`app/.../wear/`): `WearSyncService` (a `WearableListenerService`,
-started by the system on a message) hands the JSON to `WearCommandHandler`,
+started by the system on a message) syncs on a standalone watch's
+`/tung/sync` (above), and hands a command's JSON to `WearCommandHandler`,
 which applies it through `WorkoutRepository`/`RoutineRepository` and
 `RestTimerController`, checks every set id against the workout in progress and
 drops repeated `commandId`s, then publishes once. `WearStatePublisher` (on
@@ -1639,6 +1680,23 @@ Issue #34; the design is `docs/architecture.md`, "The ongoing workout and push".
   attaches an androidx.wear `OngoingActivity` in `decorate`. No actions there.
   `WatchExercise.targetSets`, `WatchWorkoutState.startedBy` and
   `addSetWorkoutExerciseId` (for "all sets logged") carry what it needs.
+  **With the watch app closed** (issue #247; Wear OS never bridges a phone's
+  ongoing notification): `PhoneStateListenerService`
+  (`wear/.../PhoneStateListener.kt`, a `WearableListenerService` on
+  `DATA_CHANGED` for `/tung/active_workout`) is started by the system on the
+  phone's state change, which runs `TungWearApp.onCreate` and so the
+  notifier. `PhoneStateHandler` decides: companion mode posts the phone's
+  state at once (`OngoingWorkoutNotifier.showNow`, synchronously, since a
+  process with nothing running may be frozen before the collector posts);
+  standalone mode never shows the phone's workout, and when the phone's
+  workout id is not the watch's own active one it enqueues
+  `PhoneWorkoutSyncWorker` (5 s after, since the phone pushes ~3 s after a
+  change; one for another workout replaces it, one for the same is kept),
+  which syncs, posts from the watch's own database
+  (`WatchOngoingActivity.refresh`) and retries with linear backoff from 10 s
+  while the ids still differ, at most `PHONE_SYNC_ATTEMPTS` (4: about 5, 15,
+  35 and 65 s). A set logged on
+  the phone within the same workout asks for no sync. `PhoneStateListenerTest`.
 - **Push transports** (`data/.../push/`). The server only ever sends an empty
   "sync now"; receiving one on either transport calls
   `SyncAccount.requestSync()`. `core.selectPushTransport` (pure) picks: FCM
@@ -2824,6 +2882,44 @@ item was checked against this app, is in `deploy/play.md`, "targetSdk": in
 short, edge-to-edge was already on and predictive back needs nothing. **The
 flow tests run under Robolectric SDK 34 and see neither**, so a change to
 insets or to back handling is checked on a phone.
+
+## Required checks and smoke tests
+
+**`main` requires one check, `CI passed`** (the last job of
+`.github/workflows/ci.yml`, with `needs` on `android`, `ios`, `web`, `server`,
+`fleet-selection` and `r8`, and `if: always()` so it also runs, and fails, when
+one of them did not). Require the aggregate and not the jobs: a job that
+changes name or is skipped would otherwise block every pull request for ever.
+The exact branch protection (no reviews required, admins may bypass, so
+`gh pr merge --auto` waits for CI and the owner can still merge with
+`--admin`) is in `deploy/branch-protection.md`. Applied 2026-11-18 (with auto-merge allowed in the repository settings): `gh pr merge --auto` waits for `CI passed`; the owner can still merge with `--admin`.
+
+- **Robolectric's jar comes from a cache.** The android job restores
+  `~/.m2/repository/org/robolectric` and runs `scripts/prefetch-robolectric.sh`
+  (retries, checksum) before the tests: Robolectric's own download has no
+  retry, and a Maven hiccup failed the flow tests on 2026-11-18. When
+  Robolectric or the SDK in `robolectric.properties` changes, change
+  `VERSION` in that script (the cache key follows the script).
+- **`r8` (required, ~4 min):** `:app:assembleDogfood :wear:minifyReleaseWithR8`.
+  Release code as Play gets it; the flow tests run unminified and see none of
+  R8's problems.
+- **`launch` (advisory, ~8 min, not in `CI passed`):** installs the dogfood APK
+  on an API 34 emulator and runs `scripts/smoke-launch.sh`: the app starts,
+  stays alive for 12 s, has no crash in the log and is in front. Emulators
+  flake, so it reports and does not block; make it required once it has been
+  green for a few weeks. By hand on a test phone:
+  `scripts/smoke-launch.sh app/build/outputs/apk/dogfood/app-dogfood.apk`
+  (replaces the installed build).
+- **Server image smoke (in `server`, ~1 min):** CI starts the Docker image
+  against Postgres and runs `scripts/smoke-server.sh`. **After a deploy, run it
+  against production:** `scripts/smoke-server.sh` (default
+  `https://tung.xuper.fun`; pass another base URL for a local server). It is
+  read-only and checks `/healthz` (the database), `/openapi.yaml`, auth on
+  (sync without a token is 401), the CORS preflight with `X-Tung-Device`, the
+  landing page, `/privacy`, and `/app/` with `tung.js` and `sw.js`.
+- The `ios` job runs on the owner's Mac mini; if that runner is offline the
+  check stays pending. Merge with `--admin` then, or take `ios` out of
+  `CI passed`'s `needs` on purpose.
 
 ## Flow tests
 

@@ -16,9 +16,13 @@ import io.github.kanylbullen.tung.core.progress.SessionPoint
 import io.github.kanylbullen.tung.core.progress.sessionPoints
 import io.github.kanylbullen.tung.data.CatalogueMuscles
 import io.github.kanylbullen.tung.data.ProgressSettings
+import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.WorkoutRepository
 import io.github.kanylbullen.tung.ui.common.WorkoutReport
 import io.github.kanylbullen.tung.ui.common.buildWorkoutReport
+import io.github.kanylbullen.tung.ui.routines.RoutineSaveChoice
+import io.github.kanylbullen.tung.ui.routines.observeWorkoutRoutine
+import io.github.kanylbullen.tung.ui.routines.routineSaveChoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -52,6 +57,8 @@ data class SummaryUiState(
     /** The charts' metric and span: the Progress tab's remembered choice ([ProgressSettings]). */
     val trendMetric: ProgressMetric = ProgressSettings.DEFAULT_METRIC,
     val trendRange: ProgressRange = ProgressSettings.DEFAULT_RANGE,
+    /** What the bottom bar offers to save: a new routine, an update of the workout's routine, or nothing (issue #217). */
+    val routineSave: RoutineSaveChoice = RoutineSaveChoice.Loading,
 )
 
 /**
@@ -67,6 +74,7 @@ data class SummaryUiState(
 class SummaryViewModel(
     private val workoutId: String,
     repo: WorkoutRepository,
+    routines: RoutineRepository,
     private val commands: CommandHandler,
     catalogueMuscles: CatalogueMuscles,
     private val settings: ProgressSettings,
@@ -78,7 +86,12 @@ class SummaryViewModel(
             .mapLatest { (workout, exercises) -> workout?.let { buildWorkoutReport(it, exercises, repo, withRecords = true) } }
 
     private val data =
-        combine(report, flow<MuscleIndex> { emit(catalogueMuscles.index()) }, repo.observeProgressSets()) { report, index, sets ->
+        combine(
+            report,
+            flow<MuscleIndex> { emit(catalogueMuscles.index()) },
+            repo.observeProgressSets(),
+            routines.observeWorkoutRoutine(repo.observeWorkout(workoutId).map { it?.routineId }),
+        ) { report, index, sets, routine ->
             val exercises = report?.exercises.orEmpty()
             val byExercise = sets.groupBy { it.exerciseId }
             SummaryUiState(
@@ -89,6 +102,7 @@ class SummaryViewModel(
                 progress = exercises.distinctBy { it.exerciseId }.map { e ->
                     ExerciseSessions(e.exerciseId, e.name, e.nameKey, sessionPoints(byExercise[e.exerciseId].orEmpty(), currentZone()))
                 },
+                routineSave = report?.let { routineSaveChoice(it, routine) } ?: RoutineSaveChoice.Loading,
             )
         }.flowOn(Dispatchers.Default)
 
@@ -107,5 +121,12 @@ class SummaryViewModel(
     /** Saves this workout as a new routine; [onSaved] gets false if there was nothing to save. */
     fun saveAsRoutine(name: String, onSaved: (Boolean) -> Unit) {
         viewModelScope.launch { onSaved(commands.execute(Command.SaveRoutine(workoutId, name)).id(CommandIds.ROUTINE_ID) != null) }
+    }
+
+    /** Makes [routineId] what this workout did (`update_routine_from_workout`); [onUpdated] gets false if it was refused. */
+    fun updateRoutine(routineId: String, onUpdated: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            onUpdated(commands.execute(Command.UpdateRoutineFromWorkout(workoutId, routineId)).id(CommandIds.ROUTINE_ID) != null)
+        }
     }
 }

@@ -18,6 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -89,6 +90,12 @@ class WatchOngoingActivity(
     }
 
     fun start() = notifier.start()
+
+    /** Posts [workout] now (null cancels), not waiting for the source: see [OngoingWorkoutNotifier.showNow]. */
+    fun showNow(workout: OngoingWorkout?) = notifier.showNow(workout)
+
+    /** Reads the source once and posts what it says now, e.g. right after a sync brought a workout in. */
+    suspend fun refresh() = notifier.showNow(source.first())
 
     private fun playServicesAvailable(context: Context): Boolean = runCatching {
         GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
