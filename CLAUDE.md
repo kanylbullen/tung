@@ -3011,7 +3011,16 @@ the same gesture as a slider with usable precision. Its scale is piecewise
 (`RulerScale` = a list of `RulerSegment(from, step, labelEvery)`): weight has
 a tick every 1 kg from 0 to 30 kg (labelled every 5), then every 2.5 kg up to
 500 kg (labelled every 10); reps a tick every rep from 0 to 100 (labelled
-every 5). Every tick has the same width on screen, so the ruler's position is
+every 5). **A dumbbell exercise has half kilos** (issue #250): its scale,
+`DUMBBELL_WEIGHT_RULER`, has a tick every 0.5 kg up to
+`DUMBBELL_HALF_KILOS_UP_TO` (20 kg), then goes on as the weight ruler (1 kg
+to 30, 2.5 kg to 500), with the same labels and the same 10 kg tap. Core's
+`weightRulerFor(equipment)` picks the scale from `Exercise.equipment`, and
+the phone's sheet (`ActiveExerciseUi.equipment`), the watch's adjust screen
+(`WatchExercise.equipment`, additive: an older phone leaves it out and the
+watch steps as before) and the web's sheet (`ExerciseView.equipment`) all
+pass it to the ruler and to `stepWeight(value, steps, scale)`. Kettlebells
+(2 or 4 kg apart) and cable stacks keep the ordinary scale. Every tick has the same width on screen, so the ruler's position is
 in ticks and maps linearly to the value within a segment. A fixed accent line
 sits in the centre; horizontal drag only, so vertical swipes still reach the
 sheet. Dragging moves the big number live, one `CLOCK_TICK` haptic per step;
@@ -3020,10 +3029,11 @@ runs in tick space). A **tap** (press and lift within the touch slop) jumps to
 `RulerScale.jumpTarget` for the value under the finger: the nearest 10 kg, or
 the nearest 5 reps, and exactly between two, the one nearer the current value.
 **−/+ follow the local step** (`stepUp`/`stepDown`, via `core.stepWeight`):
-1 kg below 30, 2.5 kg from 30 up, so 29 → 30 → 32.5 and back; an off-grid
+1 kg below 30, 2.5 kg from 30 up, so 29 → 30 → 32.5 and back (a dumbbell's
+0.5 kg below 20, 19.5 → 20 → 21); an off-grid
 value goes to the next point on the grid, and past 500 the 2.5 kg step carries
 on to 999. Each shows that step in a small muted line under its sign
-("1 kg", "2.5 kg", `input_step_weight`, issue #229; the reps sheet has
+("0.5 kg", "1 kg", "2.5 kg", `input_step_weight`, issue #229; the reps sheet has
 none, its step is always one), and its screen-reader description names it
 too. **Typing wins:** typing or −/+ moves the ruler to the
 value (between ticks if off the grid, pinned at the end if past it), and the

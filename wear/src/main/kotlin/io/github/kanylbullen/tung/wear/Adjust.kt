@@ -2,6 +2,7 @@ package io.github.kanylbullen.tung.wear
 
 import io.github.kanylbullen.tung.core.MAX_REPS
 import io.github.kanylbullen.tung.core.MAX_WEIGHT_KG
+import io.github.kanylbullen.tung.core.RulerScale
 import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.core.stepReps
 import io.github.kanylbullen.tung.core.stepWeight
@@ -15,24 +16,25 @@ enum class AdjustField {
     Reps;
 
     /**
-     * [steps] presses of −/+ (or bezel clicks) from [value]: the weight
-     * ruler's local step for weight (1 kg below 30, 2.5 kg from 30 up), one
-     * rep for reps; kept within the phone's limits.
+     * [steps] presses of −/+ (or bezel clicks) from [value]: the local step of
+     * the exercise's weight ruler [scale] for weight (1 kg below 30, 2.5 kg
+     * from 30 up; a dumbbell's 0.5 kg below 20), one rep for reps; kept
+     * within the phone's limits.
      */
-    fun step(value: Double, steps: Int): Double = when (this) {
-        Weight -> stepWeight(value, steps)
+    fun step(value: Double, steps: Int, scale: RulerScale = WEIGHT_RULER): Double = when (this) {
+        Weight -> stepWeight(value, steps, scale)
         Reps -> stepReps(value.roundToInt(), steps).toDouble()
     }
 
     /** The step a press of − would take from [value], for its screen-reader label. */
-    fun stepBelow(value: Double): Double = when (this) {
-        Weight -> WEIGHT_RULER.stepBelow(value)
+    fun stepBelow(value: Double, scale: RulerScale = WEIGHT_RULER): Double = when (this) {
+        Weight -> scale.stepBelow(value)
         Reps -> 1.0
     }
 
     /** The step a press of + would take from [value]. */
-    fun stepAbove(value: Double): Double = when (this) {
-        Weight -> WEIGHT_RULER.stepAt(value)
+    fun stepAbove(value: Double, scale: RulerScale = WEIGHT_RULER): Double = when (this) {
+        Weight -> scale.stepAt(value)
         Reps -> 1.0
     }
 

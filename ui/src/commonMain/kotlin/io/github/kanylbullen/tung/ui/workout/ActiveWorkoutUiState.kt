@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.ui.workout
 
+import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.SetIndex
@@ -27,6 +28,8 @@ data class ActiveExerciseUi(
     val sets: List<ActiveSetUi>,
     /** The rest after a set of this exercise, in seconds: its own setting or the default. 0 = no timer. */
     val restSeconds: Int,
+    /** Picks the weight sheet's scale ([io.github.kanylbullen.tung.core.weightRulerFor]): half kilos for a dumbbell. */
+    val equipment: Equipment = Equipment.OTHER,
 )
 
 /** The set "Log set" acts on, with its exercise. */

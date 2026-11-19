@@ -70,6 +70,19 @@ class NumberInputTest {
     }
 
     @Test
+    fun stepWeight_movesInHalfKilosForADumbbellBelowTwenty() {
+        val dumbbell = weightRulerFor(Equipment.DUMBBELL)
+        assertEquals(8.0, stepWeight(7.5, 1, dumbbell), 0.0)
+        assertEquals(12.5, stepWeight(12.0, 1, dumbbell), 0.0)
+        assertEquals(21.0, stepWeight(19.5, 2, dumbbell), 0.0)
+        assertEquals(19.5, stepWeight(21.0, -2, dumbbell), 0.0)
+        assertEquals(0.0, stepWeight(0.5, -3, dumbbell), 0.0)
+        assertEquals(MAX_WEIGHT_KG, stepWeight(998.0, 1, dumbbell), 0.0)
+        // Every other exercise keeps whole kilos there.
+        assertEquals(13.0, stepWeight(12.0, 1), 0.0)
+    }
+
+    @Test
     fun stepWeight_neverGoesAboveTheMaximum() {
         assertEquals(MAX_WEIGHT_KG, stepWeight(998.0, 1), 0.0)
         assertEquals(MAX_WEIGHT_KG, stepWeight(MAX_WEIGHT_KG, 1), 0.0)

@@ -150,6 +150,35 @@ val WEIGHT_RULER = RulerScale(
     jumpEvery = 10.0,
 )
 
+/**
+ * Weight for a dumbbell exercise (issue #250): 0.5 kg steps up to 20 kg,
+ * where gyms keep dumbbells in half or quarter kilos, then the ordinary
+ * weight ruler (1 kg up to 30, 2.5 kg up to 500). Labelled every 5 kg below
+ * 30 as on [WEIGHT_RULER]; a tap still jumps to the nearest 10 kg.
+ */
+val DUMBBELL_WEIGHT_RULER = RulerScale(
+    segments = listOf(
+        RulerSegment(from = 0.0, step = 0.5, labelEvery = 5.0),
+        RulerSegment(from = DUMBBELL_HALF_KILOS_UP_TO, step = 1.0, labelEvery = 5.0),
+        RulerSegment(from = 30.0, step = 2.5, labelEvery = 10.0),
+    ),
+    max = 500.0,
+    jumpEvery = 10.0,
+)
+
+/** Where a dumbbell's 0.5 kg steps end (issue #250). */
+const val DUMBBELL_HALF_KILOS_UP_TO = 20.0
+
+/**
+ * The weight ruler for an exercise with [equipment]: [DUMBBELL_WEIGHT_RULER]
+ * for dumbbells, [WEIGHT_RULER] for everything else (kettlebells come in 2 or
+ * 4 kg steps and cable stacks in whole plates, so they keep it) and for an
+ * exercise whose equipment is unknown. The sheet's ruler and −/+
+ * ([stepWeight]) take the same scale, on every client.
+ */
+fun weightRulerFor(equipment: Equipment?): RulerScale =
+    if (equipment == Equipment.DUMBBELL) DUMBBELL_WEIGHT_RULER else WEIGHT_RULER
+
 /** Reps: one rep per step up to 100, labelled every 5. A tap jumps to the nearest 5. */
 val REPS_RULER = RulerScale(
     segments = listOf(RulerSegment(from = 0.0, step = 1.0, labelEvery = 5.0)),

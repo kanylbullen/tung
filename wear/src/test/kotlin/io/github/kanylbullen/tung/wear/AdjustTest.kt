@@ -1,5 +1,9 @@
 package io.github.kanylbullen.tung.wear
 
+import io.github.kanylbullen.tung.core.Equipment
+import io.github.kanylbullen.tung.core.WEIGHT_RULER
+import io.github.kanylbullen.tung.core.weightRulerFor
+import io.github.kanylbullen.tung.core.wear.WatchExercise
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -18,6 +22,18 @@ class AdjustTest {
         assertEquals(85.0, AdjustField.Weight.step(80.0, 2), 0.0)
         assertEquals(0.0, AdjustField.Weight.step(0.0, -1), 0.0)
         assertEquals(999.0, AdjustField.Weight.step(999.0, 1), 0.0)
+    }
+
+    @Test
+    fun aDumbbellStepsHalfKilosBelowTwenty() {
+        val dumbbell = weightRulerFor(Equipment.DUMBBELL)
+        assertEquals(8.0, AdjustField.Weight.step(7.5, 1, dumbbell), 0.0)
+        assertEquals(19.5, AdjustField.Weight.step(20.0, -1, dumbbell), 0.0)
+        assertEquals(21.0, AdjustField.Weight.step(20.0, 1, dumbbell), 0.0)
+        assertEquals(0.5, AdjustField.Weight.stepAbove(12.5, dumbbell), 0.0)
+        assertEquals(0.5, AdjustField.Weight.stepBelow(20.0, dumbbell), 0.0)
+        assertEquals(dumbbell, WatchExercise("we", "Curl", emptyList(), equipment = "dumbbell").weightScale)
+        assertEquals(WEIGHT_RULER, WatchExercise("we", "Curl", emptyList()).weightScale)
     }
 
     @Test

@@ -16,6 +16,7 @@ import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import androidx.navigation.NavHostController
+import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.wear.AccountUi
 import io.github.kanylbullen.tung.wear.AccountViewModel
 import io.github.kanylbullen.tung.wear.AdjustField
@@ -146,6 +147,7 @@ fun WatchApp(viewModel: WatchViewModel, accountViewModel: AccountViewModel) {
             AdjustScreen(
                 field = field,
                 initial = if (field == AdjustField.Weight) set.weightKg else set.reps.toDouble(),
+                weightScale = ui.state?.exerciseOf(set.setId)?.weightScale ?: WEIGHT_RULER,
                 onDone = { value ->
                     when (field) {
                         AdjustField.Weight -> if (value != set.weightKg) viewModel.setWeight(set.setId, value)

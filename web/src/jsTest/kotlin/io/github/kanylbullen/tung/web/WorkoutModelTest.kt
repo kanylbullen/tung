@@ -46,6 +46,7 @@ class WorkoutModelTest {
         assertEquals(listOf("s1", "s2"), bench.sets.map { it.id }, "in position order")
         assertEquals(listOf(1, 2), bench.sets.map { it.number })
         assertEquals(listOf(LoggedSet(80.0, 8)), bench.last, "last session's ticked sets only")
+        assertEquals(Equipment.BARBELL, bench.equipment, "picks the sheet's weight scale")
         assertEquals(1, workout.loggedSets)
         assertEquals(1, workout.openSets)
         assertNull(activeWorkout(TungStore(), ::display))

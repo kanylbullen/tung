@@ -13,7 +13,7 @@ import io.github.kanylbullen.tung.core.REPS_RULER
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.RulerScale
 import io.github.kanylbullen.tung.core.StickyAction
-import io.github.kanylbullen.tung.core.WEIGHT_RULER
+import io.github.kanylbullen.tung.core.weightRulerFor
 import io.github.kanylbullen.tung.core.catalog.browseNameOrder
 import io.github.kanylbullen.tung.core.command.Command
 import io.github.kanylbullen.tung.core.command.CommandIds
@@ -373,6 +373,7 @@ fun WorkoutScreen(container: WebContainer) {
                 container = container,
                 field = target.field,
                 initial = if (target.field == Field.WEIGHT) set.weightKg else set.reps.toDouble(),
+                weightScale = weightRulerFor(exercise.equipment),
                 othersOpen = exercise.sets.any { it.id != set.id && !it.completed },
                 onClose = { editing = null },
             ) { value, toAll ->
@@ -572,7 +573,8 @@ enum class Field { WEIGHT, REPS }
 
 /**
  * The input sheet, the app's one bold move: the number huge (type it, or),
- * the ruler under it, −/+ by the local step (core's [RulerScale.stepUp]),
+ * the ruler under it, −/+ by the local step (core's [RulerScale.stepUp]) of
+ * [weightScale] for a weight (the exercise's: half kilos for a dumbbell),
  * "Apply to all sets not ticked" when there are others, and Done.
  */
 @Composable
@@ -580,12 +582,13 @@ private fun InputSheet(
     container: WebContainer,
     field: Field,
     initial: Double,
+    weightScale: RulerScale,
     othersOpen: Boolean,
     onClose: () -> Unit,
     onDone: (Double, Boolean) -> Unit,
 ) {
     val strings = container.strings
-    val scale = if (field == Field.WEIGHT) WEIGHT_RULER else REPS_RULER
+    val scale = if (field == Field.WEIGHT) weightScale else REPS_RULER
     var value by remember { mutableStateOf(initial) }
     var typed by remember { mutableStateOf(format(field, initial, container.locale)) }
     var toAll by remember { mutableStateOf(false) }
@@ -614,12 +617,12 @@ private fun InputSheet(
             Button({
                 classes("stepper")
                 attr("aria-label", strings.less)
-                onClick { set(if (field == Field.WEIGHT) stepWeight(value, -1) else stepReps(value.toInt(), -1).toDouble()) }
+                onClick { set(if (field == Field.WEIGHT) stepWeight(value, -1, weightScale) else stepReps(value.toInt(), -1).toDouble()) }
             }) { Text("−") }
             Button({
                 classes("stepper")
                 attr("aria-label", strings.more)
-                onClick { set(if (field == Field.WEIGHT) stepWeight(value, 1) else stepReps(value.toInt(), 1).toDouble()) }
+                onClick { set(if (field == Field.WEIGHT) stepWeight(value, 1, weightScale) else stepReps(value.toInt(), 1).toDouble()) }
             }) { Text("+") }
         }
         if (othersOpen) {

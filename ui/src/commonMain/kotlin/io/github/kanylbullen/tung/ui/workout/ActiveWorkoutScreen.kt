@@ -100,7 +100,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kanylbullen.tung.core.LoggedSet
 import androidx.compose.runtime.saveable.rememberSaveable
 import io.github.kanylbullen.tung.core.RestTimer
-import io.github.kanylbullen.tung.core.WEIGHT_RULER
+import io.github.kanylbullen.tung.core.RulerScale
+import io.github.kanylbullen.tung.core.weightRulerFor
 import io.github.kanylbullen.tung.core.WORKOUT_CLOCK_SKEW_MILLIS
 import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.MAX_FINISH_DURATION_MILLIS
@@ -511,7 +512,7 @@ fun ActiveWorkoutScreen(
                 var setCount by remember { mutableIntStateOf(FIRST_TIME_DEFAULT_SETS) }
                 NumberInputSheet(
                     spec = when (target.field) {
-                        Field.WEIGHT -> weightSpec(localWeight(set.weightKg))
+                        Field.WEIGHT -> weightSpec(localWeight(set.weightKg), weightRulerFor(exercise.equipment))
                         Field.REPS -> repsSpec(set.reps.toString())
                     },
                     // Only offered when another un-ticked set would take the value.
@@ -1323,8 +1324,9 @@ private fun stepDescription(id: PluralStringResource, stepKg: Double): String {
 @Composable
 private fun stepLabel(stepKg: Double): String = stringResource(Res.string.input_step_weight, localWeight(stepKg))
 
+/** The weight sheet over [scale], the exercise's ruler ([weightRulerFor]): its ruler, −/+ and their labels all step on it. */
 @Composable
-private fun weightSpec(initial: String): NumberInputSpec {
+private fun weightSpec(initial: String, scale: RulerScale): NumberInputSpec {
     return NumberInputSpec(
         title = stringResource(Res.string.input_weight_title),
         unit = stringResource(Res.string.workout_unit_kg),
@@ -1332,22 +1334,22 @@ private fun weightSpec(initial: String): NumberInputSpec {
         keyboardType = KeyboardType.Decimal,
         fieldDescription = stringResource(Res.string.input_field_weight),
         minusDescription = { text ->
-            stepDescription(Res.plurals.input_minus_weight, WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0))
+            stepDescription(Res.plurals.input_minus_weight, scale.stepBelow(parseWeight(text) ?: 0.0))
         },
         plusDescription = { text ->
-            stepDescription(Res.plurals.input_plus_weight, WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0))
+            stepDescription(Res.plurals.input_plus_weight, scale.stepAt(parseWeight(text) ?: 0.0))
         },
         hint = stringResource(Res.string.input_hint),
         errorText = stringResource(Res.string.input_error_weight),
         doneText = stringResource(Res.string.input_done),
         minusText = stringResource(Res.string.input_minus),
         plusText = stringResource(Res.string.input_plus),
-        minusLabel = { text -> stepLabel(WEIGHT_RULER.stepBelow(parseWeight(text) ?: 0.0)) },
-        plusLabel = { text -> stepLabel(WEIGHT_RULER.stepAt(parseWeight(text) ?: 0.0)) },
+        minusLabel = { text -> stepLabel(scale.stepBelow(parseWeight(text) ?: 0.0)) },
+        plusLabel = { text -> stepLabel(scale.stepAt(parseWeight(text) ?: 0.0)) },
         isValid = { parseWeight(it) != null },
-        step = { text, steps -> localWeight(stepWeight(parseWeight(text) ?: 0.0, steps)) },
+        step = { text, steps -> localWeight(stepWeight(parseWeight(text) ?: 0.0, steps, scale)) },
         sanitize = { text -> text.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
-        ruler = WEIGHT_RULER,
+        ruler = scale,
         toValue = ::parseWeight,
         fromValue = ::localWeight,
         rulerDescription = stringResource(Res.string.input_ruler_weight),

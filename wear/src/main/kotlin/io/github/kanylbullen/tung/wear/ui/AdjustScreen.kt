@@ -37,18 +37,20 @@ import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import io.github.kanylbullen.tung.core.RulerScale
+import io.github.kanylbullen.tung.core.WEIGHT_RULER
 import io.github.kanylbullen.tung.wear.AdjustField
 import io.github.kanylbullen.tung.wear.R
 import io.github.kanylbullen.tung.wear.RotaryStepper
 import kotlin.math.roundToInt
 
 /**
- * Weight or reps for one set. The bezel or crown steps the value (the weight
- * ruler's local step, or one rep) with a tick of haptics per step; −/+ do the
- * same. Done sends it to the phone; a swipe back leaves it unchanged.
+ * Weight or reps for one set. The bezel or crown steps the value (the local
+ * step of [weightScale], the exercise's weight ruler, or one rep) with a tick
+ * of haptics per step; −/+ do the same. Done sends it to the phone; a swipe back leaves it unchanged.
  */
 @Composable
-fun AdjustScreen(field: AdjustField, initial: Double, onDone: (Double) -> Unit) {
+fun AdjustScreen(field: AdjustField, initial: Double, weightScale: RulerScale = WEIGHT_RULER, onDone: (Double) -> Unit) {
     var value by rememberSaveable { mutableDoubleStateOf(initial) }
     val stepper = remember { RotaryStepper() }
     val view = LocalView.current
@@ -59,7 +61,7 @@ fun AdjustScreen(field: AdjustField, initial: Double, onDone: (Double) -> Unit) 
     val valueSize = with(LocalDensity.current) { (diameter * 0.15f).toSp() }
 
     fun step(steps: Int) {
-        val next = field.step(value, steps)
+        val next = field.step(value, steps, weightScale)
         if (next != value) {
             value = next
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -85,11 +87,11 @@ fun AdjustScreen(field: AdjustField, initial: Double, onDone: (Double) -> Unit) 
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(diameter * 0.02f)) {
                 val minusDescription = when (field) {
-                    AdjustField.Weight -> stepDescription(R.plurals.input_minus_weight, field.stepBelow(value))
+                    AdjustField.Weight -> stepDescription(R.plurals.input_minus_weight, field.stepBelow(value, weightScale))
                     AdjustField.Reps -> stringResource(R.string.input_minus_reps)
                 }
                 val plusDescription = when (field) {
-                    AdjustField.Weight -> stepDescription(R.plurals.input_plus_weight, field.stepAbove(value))
+                    AdjustField.Weight -> stepDescription(R.plurals.input_plus_weight, field.stepAbove(value, weightScale))
                     AdjustField.Reps -> stringResource(R.string.input_plus_reps)
                 }
                 Button(
