@@ -268,6 +268,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* --- The workout in progress --- */
 .workout .topbar { gap: 8px; }
 .workout .clock { font-size: 20px; font-weight: 600; margin-right: auto; }
+.workout .clock.paused { color: var(--muted); }
+.workout .clock .paused-label { font-size: 14px; font-weight: 500; margin-left: 8px; }
 .workout .past-start { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .routine-name { display: flex; padding: 0 20px 8px; font-weight: 600; }
 .exercise { padding: 12px 0 8px; }

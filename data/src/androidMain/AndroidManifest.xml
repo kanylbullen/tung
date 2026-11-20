@@ -6,7 +6,8 @@
         <receiver
             android:name="io.github.kanylbullen.tung.timer.RestTimerReceiver"
             android:exported="false" />
-        <!-- "Log set" and "Add set" on the ongoing notification of a workout in progress (ongoing/OngoingWorkoutNotifier.kt). -->
+        <!-- "Log set" and "Add set" on the ongoing notification of a workout in progress (ongoing/OngoingWorkoutNotifier.kt),
+             and PauseAlarm's re-post when the workout pauses (issue #261). -->
         <receiver
             android:name="io.github.kanylbullen.tung.ongoing.OngoingWorkoutReceiver"
             android:exported="false" />

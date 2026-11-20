@@ -293,6 +293,8 @@
     <string name="workout_edit_reps">Change reps, %1$s</string>
     <string name="workout_edit_weight">Change weight, %1$s kilos</string>
     <string name="workout_elapsed_description">Time since start %1$s</string>
+    <string name="workout_paused">Paused</string>
+    <string name="workout_paused_description">Paused at %1$s: no input for an hour. Log a set to go on.</string>
     <string name="workout_empty">Add an exercise to begin.</string>
     <string name="workout_exercise_menu">Options for %1$s</string>
     <string name="workout_finish">Finish workout</string>

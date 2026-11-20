@@ -11,7 +11,9 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import io.github.kanylbullen.tung.core.PAUSE_AFTER_MILLIS
 import io.github.kanylbullen.tung.core.isPastWorkout
+import io.github.kanylbullen.tung.core.pausedSince
 import io.github.kanylbullen.tung.data.R
 import io.github.kanylbullen.tung.data.TungHost
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +21,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -59,6 +62,15 @@ import kotlinx.coroutines.launch
  * counts down to its end, so the rest is visible after switching to another
  * app; when it ends the notification is posted again with the elapsed time.
  *
+ * **A paused workout** (no input for an hour, `core.pausedSince`, issue #261)
+ * is posted as "Workout paused" with the time of its last input and no
+ * chronometer, and is no Live Update: a forgotten workout stops counting and
+ * leaves the status bar, and stays in the shade as a reminder to finish it.
+ * Nothing in the database changes at that moment, so the notifier re-posts
+ * itself when the hour runs out, and [pauseAlarm] is told when that is (null:
+ * no pause ahead), so that a process that is no longer running is woken to
+ * post it ([PauseAlarm]).
+ *
  * Nothing is posted without the notification permission (Android 13+); the
  * rest timer's one-time request asks for it ([io.github.kanylbullen.tung.timer.RestTimerController.firstTimeAskingForNotifications]).
  */
@@ -68,6 +80,8 @@ class OngoingWorkoutNotifier(
     private val scope: CoroutineScope,
     private val actions: Boolean = true,
     private val liveUpdate: Boolean = false,
+    /** When the workout on show will pause (epoch millis), or null for none: the phone and the watch set [PauseAlarm] with it. */
+    private val pauseAlarm: (atMillis: Long?) -> Unit = {},
     private val decorate: (builder: NotificationCompat.Builder, workout: OngoingWorkout, open: PendingIntent) -> Unit = { _, _, _ -> },
 ) {
     private val context: Context = context.applicationContext ?: context
@@ -75,6 +89,19 @@ class OngoingWorkoutNotifier(
 
     /** Posts the notification again when the rest on it ends, back to the elapsed time. */
     private var restEnd: Job? = null
+
+    /** Posts the notification again when the workout on it pauses (issue #261). */
+    private var pauseStart: Job? = null
+
+    /**
+     * Counts the posts; a timer's re-post carries the count it was set at and
+     * posts nothing when another post came since (it may have waited for the
+     * lock while a newer workout, or none, was shown).
+     */
+    private var generation = 0L
+
+    /** The pause [pauseAlarm] was last told about, so an unchanged one is not set again on every post. */
+    private var alarmAt: Long? = null
 
     private val promoting: Boolean get() = liveUpdate && Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA
 
@@ -93,7 +120,19 @@ class OngoingWorkoutNotifier(
         job = null
         restEnd?.cancel()
         restEnd = null
+        pauseStart?.cancel()
+        pauseStart = null
+        setPauseAlarm(null)
         cancel(context)
+    }
+
+    /** Reads [source] once and posts what it says now: what the pause alarm's broadcast runs. */
+    suspend fun refresh() = showNow(source.first())
+
+    private fun setPauseAlarm(atMillis: Long?) {
+        if (atMillis == alarmAt) return
+        alarmAt = atMillis
+        pauseAlarm(atMillis)
     }
 
     /**
@@ -105,23 +144,46 @@ class OngoingWorkoutNotifier(
      */
     fun showNow(workout: OngoingWorkout?) = show(workout)
 
+    /** A timer's re-post of [workout]: nothing when a post came after the one that set the timer. */
+    @Synchronized
+    private fun repost(at: Long, workout: OngoingWorkout) {
+        if (at == generation) show(workout)
+    }
+
     @Synchronized
     private fun show(workout: OngoingWorkout?) {
         // A show that was already on its way when [stop] ran (the source's emission, or the
         // rest's re-post) posts nothing: stop means no notification until the next start.
         if (job?.isActive != true) return
+        val current = ++generation
         restEnd?.cancel()
         restEnd = null
+        pauseStart?.cancel()
+        pauseStart = null
         if (workout == null) {
+            setPauseAlarm(null)
             cancel(context)
             return
         }
         val now = System.currentTimeMillis()
+        // A workout logged after the fact shows its start and never pauses; any other with no
+        // input for an hour is paused (issue #261), and one that runs is re-posted when it would.
+        val past = isPastWorkout(workout.startedAt, now)
+        val lastInput = workout.lastInputAt?.takeUnless { past }
+        val paused = lastInput?.let { pausedSince(workout.startedAt, it, now) }
+        val pausesAt = if (lastInput != null && paused == null) maxOf(lastInput, workout.startedAt).coerceAtMost(now) + PAUSE_AFTER_MILLIS + 1 else null
+        if (pausesAt != null) {
+            pauseStart = scope.launch {
+                delay(pausesAt - now)
+                repost(current, workout)
+            }
+        }
+        setPauseAlarm(pausesAt)
         val restEndsAt = workout.restEndsAt?.takeIf { it > now }
         if (restEndsAt != null) {
             restEnd = scope.launch {
                 delay(restEndsAt - now)
-                show(workout)
+                repost(current, workout)
             }
         }
         val host = context as? TungHost ?: return
@@ -131,7 +193,15 @@ class OngoingWorkoutNotifier(
         val open = activity(REQUEST_OPEN, host.openWorkoutIntent(workout.workoutId))
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(host.notificationIcon)
-            .setContentTitle(context.getString(if (restEndsAt != null) R.string.ongoing_rest_title else R.string.ongoing_title))
+            .setContentTitle(
+                context.getString(
+                    when {
+                        restEndsAt != null -> R.string.ongoing_rest_title
+                        paused != null -> R.string.ongoing_paused_title
+                        else -> R.string.ongoing_title
+                    },
+                ),
+            )
             .setContentText(workout.status.text(context))
             .setSubText(workout.startedByText(context))
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
@@ -144,9 +214,12 @@ class OngoingWorkoutNotifier(
         if (restEndsAt != null) {
             // The rest counts down to its end; the alarm and RestAlerts still say when it is over.
             builder.setWhen(restEndsAt).setUsesChronometer(true).setChronometerCountDown(true)
+        } else if (paused != null) {
+            // Paused: the time of its last input, no timer.
+            builder.setWhen(paused).setUsesChronometer(false)
         } else {
             // A workout logged after the fact shows when it started, not a timer running from days ago.
-            builder.setWhen(workout.startedAt).setUsesChronometer(!isPastWorkout(workout.startedAt, now))
+            builder.setWhen(workout.startedAt).setUsesChronometer(!past)
         }
         builder
             .setContentIntent(open)
@@ -177,7 +250,7 @@ class OngoingWorkoutNotifier(
             }
             builder.addAction(0, context.getString(R.string.ongoing_finish), activity(REQUEST_FINISH, host.finishWorkoutIntent(workout.workoutId)))
         }
-        if (promoting) {
+        if (promoting && paused == null) {
             // Android 16's Live Update (see the class comment). Guarded here, not left to the compat
             // builder, so that below 36 the notification carries neither extra.
             builder.setRequestPromotedOngoing(true)

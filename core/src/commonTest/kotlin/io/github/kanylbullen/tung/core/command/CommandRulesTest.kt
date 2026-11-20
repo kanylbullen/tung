@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.core.command
 
+import io.github.kanylbullen.tung.core.PAUSE_FINISH_MARGIN_MILLIS
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.MuscleGroup
@@ -296,6 +297,29 @@ class CommandRulesTest {
         tx.addSet(tx.addExercise(ahead, "bench"), 80.0, 8, completed = true)
         done { executor.finishWorkout(tx, ahead) }
         assertEquals(100_120_000L, runNow { tx.workout(ahead) }?.endedAt, "without ended_at a start a fast clock put ahead still finishes, at the start")
+    }
+
+    @Test
+    fun finishEndsAPausedWorkoutAtItsLastInput() {
+        val hour = 60L * 60 * 1000
+        tx.now = 100 * hour
+        val workoutId = tx.addWorkout(startedAt = 90 * hour)
+        tx.addSet(tx.addExercise(workoutId, "bench"), 80.0, 8, completed = true)
+        tx.lastInputs[workoutId] = 91 * hour
+        done { executor.finishWorkout(tx, workoutId) }
+        assertEquals(91 * hour + PAUSE_FINISH_MARGIN_MILLIS, runNow { tx.workout(workoutId) }?.endedAt, "paused: its last input plus the margin")
+
+        val running = tx.addWorkout(startedAt = 99 * hour)
+        tx.addSet(tx.addExercise(running, "bench"), 80.0, 8, completed = true)
+        tx.lastInputs[running] = 100 * hour - 30 * 60_000L
+        done { executor.finishWorkout(tx, running) }
+        assertEquals(100 * hour, runNow { tx.workout(running) }?.endedAt, "input half an hour ago: now")
+
+        val given = tx.addWorkout(startedAt = 90 * hour)
+        tx.addSet(tx.addExercise(given, "bench"), 80.0, 8, completed = true)
+        tx.lastInputs[given] = 91 * hour
+        done { executor.finishWorkout(tx, given, endedAt = 92 * hour) }
+        assertEquals(92 * hour, runNow { tx.workout(given) }?.endedAt, "a given end wins")
     }
 
     // --- set_workout_time ---

@@ -49,6 +49,14 @@ interface CommandTx {
     /** The workout in progress (no end), the latest started when there are several; null when none. */
     suspend fun activeWorkout(): WorkoutRow?
 
+    /**
+     * The workout's last input: the latest `updatedAt` of the workout, its
+     * live exercises and its live sets (a server's own stamp included); null
+     * when there is no such workout. What `finish_workout` reads to end a
+     * paused workout at its last input (`core.pausedSince`, issue #261).
+     */
+    suspend fun lastInput(workoutId: String): Long?
+
     suspend fun workoutExercise(id: String): WorkoutExerciseRow?
 
     suspend fun workoutExercises(workoutId: String): List<WorkoutExerciseRow>

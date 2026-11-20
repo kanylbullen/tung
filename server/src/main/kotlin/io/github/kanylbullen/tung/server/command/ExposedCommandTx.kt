@@ -141,6 +141,23 @@ internal class ExposedCommandTx(
             .singleOrNull()
             ?.toRow()
 
+    override suspend fun lastInput(workoutId: String): Long? {
+        val workout = Workouts.selectAll()
+            .where { (Workouts.userId eq userId) and (Workouts.id eq workoutId) and Workouts.deletedAt.isNull() }
+            .singleOrNull() ?: return null
+        val exercises = WorkoutExercises.selectAll()
+            .where { (WorkoutExercises.userId eq userId) and (WorkoutExercises.workoutId eq workoutId) and WorkoutExercises.deletedAt.isNull() }
+            .map { it[WorkoutExercises.id] to it[WorkoutExercises.updatedAt] }
+        val sets = if (exercises.isEmpty()) {
+            emptyList()
+        } else {
+            Sets.selectAll()
+                .where { (Sets.userId eq userId) and (Sets.workoutExerciseId inList exercises.map { it.first }) and Sets.deletedAt.isNull() }
+                .map { it[Sets.updatedAt] }
+        }
+        return (listOf(workout[Workouts.updatedAt]) + exercises.map { it.second } + sets).max()
+    }
+
     override suspend fun workoutExercise(id: String): WorkoutExerciseRow? =
         WorkoutExercises.selectAll()
             .where { (WorkoutExercises.userId eq userId) and (WorkoutExercises.id eq id) and WorkoutExercises.deletedAt.isNull() }

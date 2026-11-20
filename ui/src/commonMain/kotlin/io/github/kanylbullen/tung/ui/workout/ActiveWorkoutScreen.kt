@@ -107,6 +107,7 @@ import io.github.kanylbullen.tung.core.isLogged
 import io.github.kanylbullen.tung.core.MAX_FINISH_DURATION_MILLIS
 import io.github.kanylbullen.tung.core.finishDurationPreset
 import io.github.kanylbullen.tung.core.isPastWorkout
+import io.github.kanylbullen.tung.core.pausedSince
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepWeight
@@ -292,6 +293,8 @@ fun ActiveWorkoutScreen(
 
     // The clock, not a counter: what is left of the rest is always computed from it.
     val now = rememberNow()
+    // No input for an hour: paused (issue #261). A past workout shows its start instead.
+    val paused = if (state.loading || state.missing) null else pausedSince(state.startedAt, state.lastInputAt, now)
     val rest = state.rest?.takeIf { it.isRunningAt(now) }
     state.rest?.let { timer ->
         if (timer.isFinishedAt(now)) LaunchedEffect(timer) { vm.onRestOver(timer) }
@@ -357,6 +360,31 @@ fun ActiveWorkoutScreen(
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f, fill = false).clearAndSetSemantics { contentDescription = description },
                                 )
+                            } else if (paused != null) {
+                                // No input for an hour (issue #261): the clock stops at the last input and
+                                // says so; any input resumes it.
+                                val clock = clockText(paused - state.startedAt)
+                                val description = stringResource(Res.string.workout_paused_description, clock)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f, fill = false).clearAndSetSemantics { contentDescription = description },
+                                ) {
+                                    Text(
+                                        clock,
+                                        style = Tung.numbers.set.copy(fontSize = Tung.numbers.set.fontSize * 0.8f),
+                                        color = Tung.colors.muted,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Clip,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        stringResource(Res.string.workout_paused),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = Tung.colors.muted,
+                                        maxLines = 1,
+                                    )
+                                }
                             } else {
                                 val clock = clockText(now - state.startedAt)
                                 val description = stringResource(Res.string.workout_elapsed_description, clock)
@@ -608,8 +636,10 @@ fun ActiveWorkoutScreen(
         val emptyExercises = state.exercises.count { it.sets.isEmpty() }
         // A past workout ends when it really did: its start plus how long it lasted. Decided once,
         // when the dialog opens, so the duration never appears under the thumb mid-dialog.
-        val past = rememberSaveable { loggedAfterTheFact || isPastWorkout(state.startedAt, now) }
-        var duration by rememberSaveable { mutableLongStateOf(finishDurationPreset(state.startedAt, now, loggedAfterTheFact)) }
+        // A paused one (no input for an hour, issue #261) too, starting at its last input.
+        val pausedAtOpen = rememberSaveable { pausedSince(state.startedAt, state.lastInputAt, now) ?: -1L }.takeIf { it >= 0 }
+        val past = rememberSaveable { loggedAfterTheFact || isPastWorkout(state.startedAt, now) || pausedAtOpen != null }
+        var duration by rememberSaveable { mutableLongStateOf(finishDurationPreset(state.startedAt, now, loggedAfterTheFact, pausedAtOpen)) }
         val longest = minOf(MAX_FINISH_DURATION_MILLIS, now + WORKOUT_CLOCK_SKEW_MILLIS - state.startedAt)
         val lasted = duration.coerceAtMost(longest)
         AlertDialog(
