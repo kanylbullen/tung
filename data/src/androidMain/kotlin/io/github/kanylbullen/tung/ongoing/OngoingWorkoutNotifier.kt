@@ -93,6 +93,13 @@ class OngoingWorkoutNotifier(
     /** Posts the notification again when the workout on it pauses (issue #261). */
     private var pauseStart: Job? = null
 
+    /**
+     * Counts the posts; a timer's re-post carries the count it was set at and
+     * posts nothing when another post came since (it may have waited for the
+     * lock while a newer workout, or none, was shown).
+     */
+    private var generation = 0L
+
     /** The pause [pauseAlarm] was last told about, so an unchanged one is not set again on every post. */
     private var alarmAt: Long? = null
 
@@ -137,11 +144,18 @@ class OngoingWorkoutNotifier(
      */
     fun showNow(workout: OngoingWorkout?) = show(workout)
 
+    /** A timer's re-post of [workout]: nothing when a post came after the one that set the timer. */
+    @Synchronized
+    private fun repost(at: Long, workout: OngoingWorkout) {
+        if (at == generation) show(workout)
+    }
+
     @Synchronized
     private fun show(workout: OngoingWorkout?) {
         // A show that was already on its way when [stop] ran (the source's emission, or the
         // rest's re-post) posts nothing: stop means no notification until the next start.
         if (job?.isActive != true) return
+        val current = ++generation
         restEnd?.cancel()
         restEnd = null
         pauseStart?.cancel()
@@ -161,7 +175,7 @@ class OngoingWorkoutNotifier(
         if (pausesAt != null) {
             pauseStart = scope.launch {
                 delay(pausesAt - now)
-                show(workout)
+                repost(current, workout)
             }
         }
         setPauseAlarm(pausesAt)
@@ -169,7 +183,7 @@ class OngoingWorkoutNotifier(
         if (restEndsAt != null) {
             restEnd = scope.launch {
                 delay(restEndsAt - now)
-                show(workout)
+                repost(current, workout)
             }
         }
         val host = context as? TungHost ?: return
