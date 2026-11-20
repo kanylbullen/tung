@@ -2917,6 +2917,10 @@ The exact branch protection (no reviews required, admins may bypass, so
   read-only and checks `/healthz` (the database), `/openapi.yaml`, auth on
   (sync without a token is 401), the CORS preflight with `X-Tung-Device`, the
   landing page, `/privacy`, and `/app/` with `tung.js` and `sw.js`.
+- **Production is checked automatically** by `.github/workflows/prod-smoke.yml`:
+  `scripts/smoke-server.sh` against `https://tung.xuper.fun` at :07 and :37
+  every hour, with one retry after 60 s, and a failed run emails the owner.
+  Right after a deploy: `gh workflow run prod-smoke.yml -R kanylbullen/tung`.
 - The `ios` job runs on the owner's Mac mini; if that runner is offline the
   check stays pending. Merge with `--admin` then, or take `ios` out of
   `CI passed`'s `needs` on purpose.
