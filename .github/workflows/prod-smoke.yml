@@ -1,0 +1,39 @@
+name: Production smoke test
+
+# Runs scripts/smoke-server.sh against the deployed server twice an hour, and on
+# demand. A failed run emails the repository's notifications (GitHub tells the
+# person who last edited this schedule, and anyone watching Actions failures).
+#
+# After a deploy, run it at once instead of waiting for the next slot:
+#   gh workflow run prod-smoke.yml -R kanylbullen/tung
+# Another server: gh workflow run prod-smoke.yml -R kanylbullen/tung -f url=https://example.org
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Base URL to check"
+        default: "https://tung.xuper.fun"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Smoke test tung-server
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      # One retry after a pause: a deploy restarting the container, or one lost
+      # packet, is not an outage. Two failures in a row are.
+      - name: Run the smoke test
+        env:
+          URL: ${{ inputs.url || 'https://tung.xuper.fun' }}
+        run: scripts/smoke-server.sh "$URL" || { echo "Retrying in 60 s"; sleep 60; scripts/smoke-server.sh "$URL"; }
