@@ -115,7 +115,7 @@ interface ImportAdapter {
 }
 
 /** The adapters Tung has, in the order they are tried. */
-val IMPORT_ADAPTERS: List<ImportAdapter> = listOf(JefitImport)
+val IMPORT_ADAPTERS: List<ImportAdapter> = listOf(JefitImport, StrongImport)
 
 /** The adapter for [text], or null when no adapter recognises it. */
 fun adapterFor(text: String): ImportAdapter? = IMPORT_ADAPTERS.firstOrNull { it.recognises(text) }
