@@ -19,6 +19,7 @@ import io.github.kanylbullen.tung.data.RoutineSummaryRow
 import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
+import io.github.kanylbullen.tung.data.lastInputOf
 import io.github.kanylbullen.tung.ongoing.routineTargets
 import io.github.kanylbullen.tung.timer.RestTimerController
 import io.github.kanylbullen.tung.ui.common.displayName
@@ -157,6 +158,7 @@ class WatchStateSource(
             updatedAt = now,
             startedBy = parts.workout.startedBy,
             addable = addable(workoutId, parts.exercises.map { it.exercise.id }.toSet()),
+            lastInputAt = lastInputOf(parts.workout, parts.exercises),
         )
     }
 

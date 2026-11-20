@@ -47,6 +47,16 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout WHERE id = :id")
     suspend fun getWorkout(id: String): Workout?
 
+    /** The workout's last input: the latest `updatedAt` of the workout, its exercises and their sets (issue #261); null with no such workout. */
+    @Query(
+        """SELECT MAX(t) FROM (
+               SELECT updatedAt AS t FROM workout WHERE id = :id
+               UNION ALL SELECT updatedAt FROM workout_exercise WHERE workoutId = :id
+               UNION ALL SELECT s.updatedAt FROM set_entry s JOIN workout_exercise we ON s.workoutExerciseId = we.id WHERE we.workoutId = :id
+           )""",
+    )
+    suspend fun lastInput(id: String): Long?
+
     @Query("UPDATE workout SET endedAt = :endedAt, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setEndedAt(id: String, endedAt: Long, updatedAt: Long)
 

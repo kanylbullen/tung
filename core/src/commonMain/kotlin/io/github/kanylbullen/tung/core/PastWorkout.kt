@@ -29,15 +29,22 @@ const val DEFAULT_PAST_DURATION_MILLIS: Long = 60L * 60 * 1000
 const val MAX_FINISH_DURATION_MILLIS: Long = 6L * 60 * 60 * 1000
 
 /**
- * The duration the finish dialog of a past workout starts at. One logged
- * after the fact ([loggedAfterTheFact]) gets [DEFAULT_PAST_DURATION_MILLIS];
- * a live workout that ran past [PAST_WORKOUT_AFTER_MILLIS] gets the time
- * since its start when that is at most [MAX_FINISH_DURATION_MILLIS] (a long
- * session), else the default (one somebody forgot to finish). Never past
- * [nowMillis], never below zero.
+ * The duration the finish dialog of a past or paused workout starts at. One
+ * logged after the fact ([loggedAfterTheFact]) gets
+ * [DEFAULT_PAST_DURATION_MILLIS]; a paused one ([pausedSinceMillis], see
+ * `pausedSince`) lasted until its last input plus [PAUSE_FINISH_MARGIN_MILLIS]
+ * (`pausedEnd`); a live workout that ran past [PAST_WORKOUT_AFTER_MILLIS]
+ * gets the time since its start when that is at most
+ * [MAX_FINISH_DURATION_MILLIS] (a long session), else the default (one
+ * somebody forgot to finish). Never past [nowMillis], never below zero.
  */
-fun finishDurationPreset(startedAtMillis: Long, nowMillis: Long, loggedAfterTheFact: Boolean): Long {
+fun finishDurationPreset(startedAtMillis: Long, nowMillis: Long, loggedAfterTheFact: Boolean, pausedSinceMillis: Long? = null): Long {
     val elapsed = (nowMillis - startedAtMillis).coerceAtLeast(0L)
-    val preset = if (!loggedAfterTheFact && elapsed <= MAX_FINISH_DURATION_MILLIS) elapsed else DEFAULT_PAST_DURATION_MILLIS
+    val preset = when {
+        loggedAfterTheFact -> DEFAULT_PAST_DURATION_MILLIS
+        pausedSinceMillis != null -> (pausedEnd(pausedSinceMillis, nowMillis) - startedAtMillis).coerceAtLeast(0L)
+        elapsed <= MAX_FINISH_DURATION_MILLIS -> elapsed
+        else -> DEFAULT_PAST_DURATION_MILLIS
+    }
     return preset.coerceAtMost(elapsed)
 }

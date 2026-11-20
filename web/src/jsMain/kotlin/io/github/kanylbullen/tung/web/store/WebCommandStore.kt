@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web.store
 
+import io.github.kanylbullen.tung.core.lastInputAt
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.ExtendedExercise
 import io.github.kanylbullen.tung.core.extendedExerciseId
@@ -145,6 +146,14 @@ internal class WebCommandTx(private val store: TungStore, private val clock: () 
     override suspend fun activeWorkout(): WorkoutRow? =
         store.workouts.rows.values.mapNotNull { it.row.toRow() }.filter { it.endedAt == null }
             .maxByOrNull { it.startedAt }
+
+    override suspend fun lastInput(workoutId: String): Long? {
+        val workout = store.workouts.get(workoutId) ?: return null
+        val exercises = store.workoutExercises.rows.values.map { it.row }.filter { it.workoutId == workoutId }
+        val ids = exercises.map { it.id }.toSet()
+        val sets = store.sets.rows.values.map { it.row }.filter { it.workoutExerciseId in ids }
+        return lastInputAt(listOf(workout.updatedAt) + exercises.map { it.updatedAt } + sets.map { it.updatedAt })
+    }
 
     override suspend fun workoutExercise(id: String): WorkoutExerciseRow? = store.workoutExercises.get(id)?.toRow()
 

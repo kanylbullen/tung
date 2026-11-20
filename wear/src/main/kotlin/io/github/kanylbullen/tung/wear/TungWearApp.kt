@@ -44,6 +44,9 @@ class TungWearApp : Application(), Configuration.Provider, TungHost {
     override val notificationIcon: Int get() = R.drawable.ic_dumbbell
 
     /** The watch has one screen stack; opening it shows the workout in progress. */
+    /** The watch's Ongoing Activity, not the container's notifier, which the watch never starts. */
+    override suspend fun refreshOngoingWorkout() = ongoing.refresh()
+
     override fun openWorkoutIntent(workoutId: String): Intent = Intent(this, MainActivity::class.java)
 
     override fun onCreate() {

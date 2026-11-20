@@ -28,6 +28,11 @@ class LogSetFlowTest : FlowTest() {
     private val countdown get() = hasContentDescription(str(Res.string.rest_title))
     private val alarms: ShadowAlarmManager get() = shadowOf(app.getSystemService(AlarmManager::class.java))
 
+    /** The rest's alarms only: the ongoing notification also sets one, for when the workout would pause (issue #261). */
+    private fun restAlarms() = alarms.scheduledAlarms.filter {
+        shadowOf(it.operation).savedIntent.component?.className == RestTimerReceiver::class.java.name
+    }
+
     private fun logSet(weight: String, reps: String) = str(Res.string.workout_log_set, benchPress, weight, reps)
     private fun addSet(weight: String, reps: String) = str(Res.string.workout_sticky_add_set, benchPress, weight, reps)
 
@@ -42,7 +47,7 @@ class LogSetFlowTest : FlowTest() {
 
     /** The one rest alarm, as AlarmManager holds it: milliseconds from now until it goes off. */
     private fun alarmInMillis(): Long {
-        val scheduled = alarms.scheduledAlarms
+        val scheduled = restAlarms()
         assertEquals("one rest alarm", 1, scheduled.size)
         assertEquals(
             RestTimerReceiver::class.java.name,
@@ -159,7 +164,7 @@ class LogSetFlowTest : FlowTest() {
         clickText(str(Res.string.rest_skip))
         waitGone(countdown)
         compose.onNode(hasText(str(Res.string.rest_skip))).assertDoesNotExist()
-        waitUntil(15_000) { alarms.scheduledAlarms.isEmpty() }
+        waitUntil(15_000) { restAlarms().isEmpty() }
         screenshot("2-skipped")
     }
 
@@ -245,7 +250,7 @@ class LogSetFlowTest : FlowTest() {
         screenshot("1-reps-sheet")
         compose.onNode(countdown).assertDoesNotExist()
         assertEquals(0, activeSets("s.completed = 1"))
-        assertTrue(alarms.scheduledAlarms.isEmpty())
+        assertTrue(restAlarms().isEmpty())
     }
 
     /**
@@ -343,7 +348,7 @@ class LogSetFlowTest : FlowTest() {
         screenshot("1-refused")
         compose.onNode(countdown).assertDoesNotExist()
         assertEquals(0, activeSets("s.completed = 1"))
-        assertTrue(alarms.scheduledAlarms.isEmpty())
+        assertTrue(restAlarms().isEmpty())
         compose.onNode(hasText(addSet("80", "8"))).assertDoesNotExist()
     }
 

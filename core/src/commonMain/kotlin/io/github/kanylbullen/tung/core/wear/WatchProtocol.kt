@@ -103,6 +103,13 @@ data class WatchWorkoutState(
      * older phone leaves it out (the watch then offers no "Add exercise").
      */
     val addable: List<WatchChoice> = emptyList(),
+    /**
+     * The workout's last input (epoch millis, the latest `updatedAt` of its
+     * rows), or null: with none for an hour it is paused (`core.pausedSince`,
+     * issue #261) and the Ongoing Activity stops counting. Additive: an older
+     * watch ignores it, an older phone leaves it out (never paused).
+     */
+    val lastInputAt: Long? = null,
 ) {
     val isActive: Boolean get() = workoutId != null
 

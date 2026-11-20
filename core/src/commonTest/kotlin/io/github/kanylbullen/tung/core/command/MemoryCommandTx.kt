@@ -37,6 +37,9 @@ class MemoryCommandTx : CommandTx {
     /** Every write, in order, so a test can assert nothing was written. */
     val writes = mutableListOf<String>()
 
+    /** The last input per workout id, as a store would read it from its rows' `updatedAt`; none by default. */
+    val lastInputs = mutableMapOf<String, Long>()
+
     /** The store's clock. */
     var now = 1_000L
 
@@ -103,6 +106,8 @@ class MemoryCommandTx : CommandTx {
     override suspend fun workout(id: String): WorkoutRow? = workouts.firstOrNull { it.id == id }
 
     override suspend fun activeWorkout(): WorkoutRow? = workouts.filter { it.endedAt == null }.maxByOrNull { it.startedAt }
+
+    override suspend fun lastInput(workoutId: String): Long? = lastInputs[workoutId]
 
     override suspend fun workoutExercise(id: String): WorkoutExerciseRow? = exercises.firstOrNull { it.id == id }
 

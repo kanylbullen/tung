@@ -1,5 +1,6 @@
 package io.github.kanylbullen.tung.web.workout
 
+import io.github.kanylbullen.tung.core.lastInputAt
 import io.github.kanylbullen.tung.core.Equipment
 import io.github.kanylbullen.tung.core.LoggedSet
 import io.github.kanylbullen.tung.core.catalog.EquipmentFilter
@@ -30,6 +31,8 @@ data class WorkoutView(
     val startedAt: Long,
     val routineName: String?,
     val exercises: List<ExerciseView>,
+    /** The workout's last input, the latest `updatedAt` of its rows: with none for an hour it is paused (`core.pausedSince`, issue #261). */
+    val lastInputAt: Long = startedAt,
 ) {
     /** Sets that are ticked and have reps: what finishing keeps. */
     val loggedSets: Int get() = exercises.sumOf { e -> e.sets.count { it.completed && it.reps > 0 } }
@@ -56,8 +59,11 @@ fun activeWorkout(store: TungStore, displayName: (SyncExercise) -> String): Work
         .filter { it.endedAt == null && it.startedAt != null }
         .maxByOrNull { it.startedAt ?: 0L } ?: return null
     val setsByExercise = store.sets.rows.values.map { it.row }.groupBy { it.workoutExerciseId }
-    val exercises = store.workoutExercises.rows.values.map { it.row }
-        .filter { it.workoutId == workout.id }
+    val exerciseRows = store.workoutExercises.rows.values.map { it.row }.filter { it.workoutId == workout.id }
+    val lastInput = lastInputAt(
+        listOf(workout.updatedAt) + exerciseRows.map { it.updatedAt } + exerciseRows.flatMap { we -> setsByExercise[we.id].orEmpty().map { it.updatedAt } },
+    ) ?: workout.updatedAt
+    val exercises = exerciseRows
         .sortedBy { it.position ?: 0 }
         .mapNotNull { we ->
             val exerciseId = we.exerciseId ?: return@mapNotNull null
@@ -74,7 +80,7 @@ fun activeWorkout(store: TungStore, displayName: (SyncExercise) -> String): Work
                 equipment = Equipment.fromKey(exercise?.equipment),
             )
         }
-    return WorkoutView(workout.id, workout.startedAt ?: 0L, workout.routineId?.let { store.routines.get(it)?.name }, exercises)
+    return WorkoutView(workout.id, workout.startedAt ?: 0L, workout.routineId?.let { store.routines.get(it)?.name }, exercises, lastInput)
 }
 
 /** One row of the exercise picker. */

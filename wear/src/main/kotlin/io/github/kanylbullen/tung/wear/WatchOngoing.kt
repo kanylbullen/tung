@@ -13,6 +13,7 @@ import io.github.kanylbullen.tung.core.wear.WatchWorkoutState
 import io.github.kanylbullen.tung.data.TungContainer
 import io.github.kanylbullen.tung.ongoing.OngoingWorkout
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
+import io.github.kanylbullen.tung.ongoing.PauseAlarm
 import io.github.kanylbullen.tung.ongoing.text
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -47,6 +48,7 @@ fun watchOngoing(state: WatchWorkoutState?): OngoingWorkout? {
         startedAt = state.startedAt ?: state.updatedAt,
         status = ongoingStatus(exercises, current, state.addSetExerciseIndex()),
         startedBy = state.startedBy,
+        lastInputAt = state.lastInputAt,
     )
 }
 
@@ -79,7 +81,13 @@ class WatchOngoingActivity(
             .map(::watchOngoing)
             .distinctUntilChanged()
 
-    private val notifier = OngoingWorkoutNotifier(context, source, container.appScope, actions = false) { builder, workout, open ->
+    private val notifier = OngoingWorkoutNotifier(
+        context,
+        source,
+        container.appScope,
+        actions = false,
+        pauseAlarm = { PauseAlarm.set(context, it) },
+    ) { builder, workout, open ->
         OngoingActivity.Builder(context, OngoingWorkoutNotifier.NOTIFICATION_ID, builder)
             .setStaticIcon(R.drawable.ic_dumbbell)
             .setTouchIntent(open)

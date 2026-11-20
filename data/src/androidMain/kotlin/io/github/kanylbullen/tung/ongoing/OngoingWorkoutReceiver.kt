@@ -20,10 +20,29 @@ import kotlinx.coroutines.launch
  * or the workout is over), Add set when the workout is over, the exercise is
  * gone, or a set is open again (the notification would now offer Log set), so
  * a stale notification can never tick the wrong set or add one twice.
+ *
+ * It also takes [PauseAlarm]'s broadcast, which only re-posts the
+ * notification: the workout has paused (issue #261).
  */
 class OngoingWorkoutReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
+        if (action == ACTION_REFRESH) {
+            val host = context.applicationContext as? TungHost ?: return
+            val pending = goAsync()
+            host.container.appScope.launch {
+                try {
+                    host.refreshOngoingWorkout()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "refreshing the notification failed", e)
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
         if (action != ACTION_LOG_SET && action != ACTION_ADD_SET) return
         val workoutId = intent.getStringExtra(EXTRA_WORKOUT_ID) ?: return
         val setId = intent.getStringExtra(EXTRA_SET_ID)
@@ -63,6 +82,7 @@ class OngoingWorkoutReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_LOG_SET = "io.github.kanylbullen.tung.action.LOG_SET"
         const val ACTION_ADD_SET = "io.github.kanylbullen.tung.action.ADD_SET"
+        const val ACTION_REFRESH = "io.github.kanylbullen.tung.action.REFRESH_ONGOING"
         const val EXTRA_WORKOUT_ID = "workoutId"
         const val EXTRA_SET_ID = "setId"
         const val EXTRA_WORKOUT_EXERCISE_ID = "workoutExerciseId"

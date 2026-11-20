@@ -293,6 +293,8 @@
     <string name="workout_edit_reps">Ändra reps, %1$s</string>
     <string name="workout_edit_weight">Ändra vikt, %1$s kilo</string>
     <string name="workout_elapsed_description">Tid sedan start %1$s</string>
+    <string name="workout_paused">Pausat</string>
+    <string name="workout_paused_description">Pausat vid %1$s: ingen inmatning på en timme. Logga ett set för att fortsätta.</string>
     <string name="workout_empty">Lägg till en övning för att börja.</string>
     <string name="workout_exercise_menu">Val för %1$s</string>
     <string name="workout_finish">Avsluta pass</string>

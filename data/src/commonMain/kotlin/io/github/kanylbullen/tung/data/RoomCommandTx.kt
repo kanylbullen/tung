@@ -82,6 +82,8 @@ internal class RoomCommandTx(private val db: TungDatabase, private val clock: ()
 
     override suspend fun activeWorkout(): WorkoutRow? = dao.getActiveWorkout()?.toRow()
 
+    override suspend fun lastInput(workoutId: String): Long? = dao.lastInput(workoutId)
+
     override suspend fun workoutExercise(id: String): WorkoutExerciseRow? = dao.getWorkoutExercise(id)?.toRow()
 
     override suspend fun workoutExercises(workoutId: String): List<WorkoutExerciseRow> =
