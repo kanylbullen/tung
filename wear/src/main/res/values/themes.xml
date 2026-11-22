@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.TungWear" parent="@android:style/Theme.DeviceDefault">
-        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowBackground">@color/black</item>
+    </style>
+
+    <!--
+      The launch theme (androidx core-splashscreen, MainActivity.installSplashScreen): the app's
+      48 dp icon on black, as Wear OS's "Branded launch" guideline asks (#263), then Theme.TungWear.
+    -->
+    <style name="Theme.TungWear.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/black</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.TungWear</item>
     </style>
 </resources>

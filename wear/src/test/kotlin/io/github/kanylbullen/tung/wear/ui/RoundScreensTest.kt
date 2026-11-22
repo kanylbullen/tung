@@ -27,6 +27,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ApplicationProvider
+import androidx.wear.compose.material.MaterialTheme
 import io.github.kanylbullen.tung.core.sync.SyncState
 import io.github.kanylbullen.tung.core.wear.WatchExercise
 import io.github.kanylbullen.tung.core.wear.WatchLastSet
@@ -40,6 +41,7 @@ import io.github.kanylbullen.tung.wear.AdjustField
 import io.github.kanylbullen.tung.wear.LinkCodeInput
 import io.github.kanylbullen.tung.wear.LinkUi
 import io.github.kanylbullen.tung.wear.R
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -220,6 +222,63 @@ abstract class RoundScreensTest {
         assertOnCircle(chip(str(R.string.finish_workout)), chip = true)
     }
 
+    /** The finish page's chip opens the confirmation, in its own window (Play's evidence in #263). */
+    @Test
+    fun finishDialog() {
+        show { Workout(workout()) }
+        repeat(2) { compose.onRoot().performTouchInput { swipeLeft() } }
+        compose.waitForIdle()
+        compose.onNode(chip(str(R.string.finish_workout))).performClick()
+        compose.waitForIdle()
+        screenshot("dialog")
+        compose.onNode(hasText(str(R.string.finish_title))).assertIsDisplayed()
+        compose.onNode(hasContentDescription(str(R.string.keep_training))).assertIsDisplayed()
+        compose.onNode(hasContentDescription(str(R.string.finish_confirm))).assertIsDisplayed()
+    }
+
+    /**
+     * The confirmation itself (#263): at the default font size the title, the
+     * text and both buttons lie on the circle without scrolling, on black.
+     */
+    @Test
+    fun finishConfirmation() {
+        var finished = false
+        var kept = false
+        show { FinishConfirmation(onFinish = { finished = true }, onKeepTraining = { kept = true }) }
+        screenshot("confirm")
+        assertOnCircle(hasText(str(R.string.finish_title)))
+        assertOnCircle(hasText(str(R.string.finish_body)))
+        assertOnCircle(hasContentDescription(str(R.string.keep_training)), chip = true)
+        assertOnCircle(hasContentDescription(str(R.string.finish_confirm)), chip = true)
+        compose.onNode(hasContentDescription(str(R.string.keep_training))).performClick()
+        compose.onNode(hasContentDescription(str(R.string.finish_confirm))).performClick()
+        assertTrue(kept && finished)
+    }
+
+    /**
+     * Wear OS's quality guidelines want pure black behind every screen (#263):
+     * the theme's background is black, and the confirmation paints it itself
+     * (drawn here without the test's black backdrop, on the activity's white).
+     */
+    @Test
+    fun backgroundsAreBlack() {
+        var background = Color.Unspecified
+        compose.setContent {
+            TungWearTheme {
+                background = MaterialTheme.colors.background
+                FinishConfirmation(onFinish = {}, onKeepTraining = {})
+            }
+        }
+        compose.waitForIdle()
+        assertEquals(Color.Black, background)
+        val bitmap = draw()
+        // Inside the circle, above the title and beside the buttons.
+        for ((x, y) in listOf(0.5f to 0.06f, 0.15f to 0.5f, 0.85f to 0.5f, 0.5f to 0.96f)) {
+            val pixel = bitmap.getPixel((bitmap.width * x).toInt(), (bitmap.height * y).toInt())
+            assertEquals("pixel at $x, $y", android.graphics.Color.BLACK, pixel)
+        }
+    }
+
     @Test
     fun restCountdown() {
         val rest = WatchRest(endsAtMillis = System.currentTimeMillis() + 10 * 60_000L, durationMillis = 15 * 60_000L)
@@ -330,6 +389,16 @@ abstract class RoundScreensTest {
         assertTrue("${matcher.description} at $bounds leaves the ${diameter}px circle", fits)
     }
 
+    /** The top window (a dialog's, when one is open) drawn into a bitmap. */
+    private fun draw(): Bitmap {
+        compose.waitForIdle()
+        val roots = compose.onAllNodes(isRoot()).fetchSemanticsNodes()
+        val view = (roots.last().root as ViewRootForTest).view.rootView
+        val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+        compose.runOnUiThread { view.draw(Canvas(bitmap)) }
+        return bitmap
+    }
+
     /**
      * Saves the screen as `<test>-<step>.png` in the directory Gradle names
      * (wear/build.gradle.kts, debug only). Drawn from the view, as app/'s flow
@@ -337,11 +406,7 @@ abstract class RoundScreensTest {
      */
     private fun screenshot(step: String) {
         val dir = System.getProperty("tung.roundScreenshots")?.let(::File) ?: return
-        compose.waitForIdle()
-        val roots = compose.onAllNodes(isRoot()).fetchSemanticsNodes()
-        val view = (roots.last().root as ViewRootForTest).view.rootView
-        val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
-        compose.runOnUiThread { view.draw(Canvas(bitmap)) }
+        val bitmap = draw()
         dir.mkdirs()
         File(dir, "${javaClass.simpleName}-${testName.methodName}-$step.png").outputStream().use {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)

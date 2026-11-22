@@ -60,7 +60,6 @@ import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
-import androidx.wear.compose.material.dialog.Alert
 import androidx.wear.compose.material.dialog.Dialog
 import io.github.kanylbullen.tung.core.RestTimer
 import io.github.kanylbullen.tung.core.wear.WatchExercise
@@ -354,32 +353,13 @@ private fun FinishPage(phoneUnreachable: Boolean, onAddExercise: (() -> Unit)?, 
         )
     }
     Dialog(showDialog = confirming, onDismissRequest = { confirming = false }) {
-        Alert(
-            title = { Text(stringResource(R.string.finish_title), textAlign = TextAlign.Center) },
-            message = {
-                Text(stringResource(R.string.finish_body), textAlign = TextAlign.Center, style = MaterialTheme.typography.body2)
+        FinishConfirmation(
+            onFinish = {
+                confirming = false
+                onFinish()
             },
-        ) {
-            item {
-                Chip(
-                    label = { Text(stringResource(R.string.finish_confirm)) },
-                    onClick = {
-                        confirming = false
-                        onFinish()
-                    },
-                    colors = accentChipColors(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            item {
-                Chip(
-                    label = { Text(stringResource(R.string.keep_training)) },
-                    onClick = { confirming = false },
-                    colors = raisedChipColors(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
+            onKeepTraining = { confirming = false },
+        )
     }
 }
 

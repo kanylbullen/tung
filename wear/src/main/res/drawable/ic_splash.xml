@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher's plate (ic_launcher_foreground) alone, 48 dp: the splash screen's icon on black. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="56"
+    android:viewportHeight="56">
+    <group android:translateX="-26" android:translateY="-26">
+        <path
+            android:fillColor="@color/launcher_plate"
+            android:fillType="evenOdd"
+            android:pathData="M54,28a26,26 0,1 1,0 52a26,26 0,1 1,0 -52zM54,48a6,6 0,1 0,0 12a6,6 0,1 0,0 -12z" />
+    </group>
+</vector>
