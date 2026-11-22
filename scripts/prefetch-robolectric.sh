@@ -7,24 +7,32 @@
 # CI restores ~/.m2/repository/org/robolectric from a cache first, so this step
 # normally finds the file and downloads nothing.
 #
-# The artifact follows the Robolectric version and the SDK in
-# robolectric.properties (4.14.1 and sdk=34): change it with them.
+# The artifacts follow the Robolectric version and the SDK in
+# robolectric.properties (4.14.1 and sdk=34): change them with them.
 set -euo pipefail
 
-VERSION="${ROBOLECTRIC_ANDROID_ALL:-14-robolectric-10818077-i7}"
+# Two jars: the SDK the tests run on (robolectric.properties, sdk=34), and the
+# newest SDK Robolectric 4.14.1 knows (35, android-all 15), which it loads to
+# read the app's resources when it installs the application (loadAppPackage).
+# The second was never prefetched, so every Robolectric test in wear/ downloaded
+# it at test time, and a Maven hiccup failed 48 of them (CI, 2026-11-22, PR #264).
+VERSIONS="${ROBOLECTRIC_ANDROID_ALL:-14-robolectric-10818077-i7 15-robolectric-12650502-i7}"
 ART="android-all-instrumented"
-BASE="https://repo1.maven.org/maven2/org/robolectric/$ART/$VERSION"
-DIR="$HOME/.m2/repository/org/robolectric/$ART/$VERSION"
-mkdir -p "$DIR"
 
-fetch() { # file
-    curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --max-time 300 -o "$DIR/$1.part" "$BASE/$1"
-    mv "$DIR/$1.part" "$DIR/$1"
-}
-valid() { [[ -s "$DIR/$ART-$VERSION.jar" && -s "$DIR/$ART-$VERSION.jar.sha512" ]] &&
-    [[ "$(sha512sum "$DIR/$ART-$VERSION.jar" | cut -d' ' -f1)" == "$(cut -d' ' -f1 "$DIR/$ART-$VERSION.jar.sha512")" ]]; }
+for VERSION in $VERSIONS; do
+    BASE="https://repo1.maven.org/maven2/org/robolectric/$ART/$VERSION"
+    DIR="$HOME/.m2/repository/org/robolectric/$ART/$VERSION"
+    mkdir -p "$DIR"
 
-if valid; then echo "Robolectric $VERSION already in ~/.m2"; exit 0; fi
-for f in "$ART-$VERSION.pom" "$ART-$VERSION.pom.sha512" "$ART-$VERSION.jar.sha512" "$ART-$VERSION.jar"; do fetch "$f"; done
-valid || { echo "Checksum mismatch for $ART-$VERSION.jar" >&2; exit 1; }
-echo "Fetched Robolectric $VERSION"
+    fetch() { # file
+        curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --max-time 300 -o "$DIR/$1.part" "$BASE/$1"
+        mv "$DIR/$1.part" "$DIR/$1"
+    }
+    valid() { [[ -s "$DIR/$ART-$VERSION.jar" && -s "$DIR/$ART-$VERSION.jar.sha512" ]] &&
+        [[ "$(sha512sum "$DIR/$ART-$VERSION.jar" | cut -d' ' -f1)" == "$(cut -d' ' -f1 "$DIR/$ART-$VERSION.jar.sha512")" ]]; }
+
+    if valid; then echo "Robolectric $VERSION already in ~/.m2"; continue; fi
+    for f in "$ART-$VERSION.pom" "$ART-$VERSION.pom.sha512" "$ART-$VERSION.jar.sha512" "$ART-$VERSION.jar"; do fetch "$f"; done
+    valid || { echo "Checksum mismatch for $ART-$VERSION.jar" >&2; exit 1; }
+    echo "Fetched Robolectric $VERSION"
+done
