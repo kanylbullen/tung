@@ -16,7 +16,7 @@ import androidx.wear.compose.material.Typography
 import io.github.kanylbullen.tung.wear.R
 
 /**
- * The phone's dark tokens (app/.../ui/theme/Color.kt). A watch face is dark, so there is no light theme.
+ * The phone's dark tokens (ui/.../ui/theme/Color.kt). A watch face is dark, so there is no light theme.
  * Every screen and dialog is drawn on [black], not the phone's graphite: Wear OS's quality
  * guidelines require a pure black background, and Play refuses an update without it (#263).
  * The graphite [background] stays as the text on an accent fill.
