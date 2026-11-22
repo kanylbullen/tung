@@ -12,6 +12,7 @@
     <string name="ongoing_channel_description">Visar passet du kör, med Logga set och Avsluta.</string>
     <string name="ongoing_rest_title">Vila</string>
     <string name="ongoing_title">Pass pågår</string>
+    <string name="ongoing_paused_title">Passet är pausat</string>
     <string name="ongoing_at_set">%1$s · set %2$d av %3$d</string>
     <plurals name="ongoing_sets_logged">
         <item quantity="one">%d set loggat</item>

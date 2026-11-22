@@ -25,6 +25,7 @@ import io.github.kanylbullen.tung.importing.ImportHistory
 import io.github.kanylbullen.tung.importing.ImportService
 import io.github.kanylbullen.tung.importing.Importer
 import io.github.kanylbullen.tung.ongoing.OngoingWorkoutNotifier
+import io.github.kanylbullen.tung.ongoing.PauseAlarm
 import io.github.kanylbullen.tung.ongoing.ongoingWorkouts
 import io.github.kanylbullen.tung.push.AndroidPushEnvironment
 import io.github.kanylbullen.tung.push.PushEnvironment
@@ -199,6 +200,7 @@ class TungContainer(
             ongoingWorkouts(this.context, workoutRepository, routineRepository, rest = restTimer::stored, restChanges = settings.data),
             appScope,
             liveUpdate = true,
+            pauseAlarm = { PauseAlarm.set(this.context, it) },
         )
     }
 
@@ -308,4 +310,7 @@ interface TungHost {
 
     /** What the ongoing notification's "Finish" opens: [workoutId] with the finish dialog. Never finishes by itself. */
     fun finishWorkoutIntent(workoutId: String): Intent = openWorkoutIntent(workoutId)
+
+    /** Posts the ongoing notification again from the database, for [io.github.kanylbullen.tung.ongoing.PauseAlarm]; the watch posts its own. */
+    suspend fun refreshOngoingWorkout() = container.ongoingWorkout.refresh()
 }

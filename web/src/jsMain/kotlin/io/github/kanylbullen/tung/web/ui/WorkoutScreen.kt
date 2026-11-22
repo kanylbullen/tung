@@ -24,6 +24,7 @@ import io.github.kanylbullen.tung.core.currentSet
 import io.github.kanylbullen.tung.core.MAX_FINISH_DURATION_MILLIS
 import io.github.kanylbullen.tung.core.finishDurationPreset
 import io.github.kanylbullen.tung.core.isPastWorkout
+import io.github.kanylbullen.tung.core.pausedSince
 import io.github.kanylbullen.tung.core.parseReps
 import io.github.kanylbullen.tung.core.parseWeight
 import io.github.kanylbullen.tung.core.stepReps
@@ -150,7 +151,17 @@ fun WorkoutScreen(container: WebContainer) {
                 val started = workoutStartText(workout.startedAt, container, now)
                 Div({ classes("clock", "past-start"); attr("aria-label", strings.startedAt(started)) }) { Text(started) }
             } else {
-                Div({ classes("clock", "numbers") }) { Text(clockText(now - workout.startedAt)) }
+                val paused = pausedSince(workout.startedAt, workout.lastInputAt, now)
+                if (paused != null) {
+                    // No input for an hour (issue #261): the clock stops at the last input; any input resumes it.
+                    val clock = clockText(paused - workout.startedAt)
+                    Div({ classes("clock", "numbers", "paused"); attr("aria-label", strings.pausedAt(clock)) }) {
+                        Text(clock)
+                        Span({ classes("paused-label") }) { Text(strings.paused) }
+                    }
+                } else {
+                    Div({ classes("clock", "numbers") }) { Text(clockText(now - workout.startedAt)) }
+                }
             }
             rest?.let { timer ->
                 Button({
@@ -438,9 +449,11 @@ private fun FinishDialog(container: WebContainer, workout: WorkoutView, now: Lon
     val strings = container.strings
     // Decided once, when the dialog opens, so the duration never appears under the pointer mid-dialog.
     val explicit = remember { PastWorkoutStore.isLoggedAfterTheFact(workout.id) }
-    val past = remember { (explicit || isPastWorkout(workout.startedAt, now)) && workout.loggedSets > 0 }
+    // A paused workout (no input for an hour, issue #261) too, starting at its last input.
+    val paused = remember { pausedSince(workout.startedAt, workout.lastInputAt, now) }
+    val past = remember { (explicit || isPastWorkout(workout.startedAt, now) || paused != null) && workout.loggedSets > 0 }
     val longest = minOf(MAX_FINISH_DURATION_MILLIS, now + WORKOUT_CLOCK_SKEW_MILLIS - workout.startedAt)
-    var duration by remember { mutableStateOf(finishDurationPreset(workout.startedAt, now, explicit)) }
+    var duration by remember { mutableStateOf(finishDurationPreset(workout.startedAt, now, explicit, paused)) }
     val lasted = duration.coerceAtMost(longest)
     Div({ classes("sheet-backdrop"); onClick { onCancel() } })
     Div({ classes("dialog"); attr("role", "alertdialog"); attr("aria-modal", "true"); attr("aria-label", strings.finishTitle) }) {

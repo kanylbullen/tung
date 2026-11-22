@@ -14,6 +14,7 @@ import io.github.kanylbullen.tung.core.command.CommandResult
 import io.github.kanylbullen.tung.core.command.id
 import io.github.kanylbullen.tung.core.nextCurrentAfterLogging
 import io.github.kanylbullen.tung.core.restSecondsFor
+import io.github.kanylbullen.tung.data.lastInputOf
 import io.github.kanylbullen.tung.data.PastWorkoutSettings
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
@@ -122,6 +123,7 @@ class ActiveWorkoutViewModel(
             else -> ActiveWorkoutUiState(
                 loading = false,
                 startedAt = workout.startedAt,
+                lastInputAt = lastInputOf(workout, exercises),
                 exercises = exercises.map { e ->
                     val last = previous[e.exercise.id].orEmpty()
                     ActiveExerciseUi(

@@ -149,6 +149,9 @@ interface Strings {
     val durationShorter: String
     val durationLonger: String
     fun startedAt(when_: String): String
+    /** Beside the stopped clock of a workout with no input for an hour (issue #261). */
+    val paused: String
+    fun pausedAt(clock: String): String
     /** Why `set_workout_time` refused, from its reasons. */
     fun timeChangeRefused(reasons: List<String>): String
 
@@ -660,6 +663,8 @@ object English : Strings {
     override val durationShorter = "15 minutes shorter"
     override val durationLonger = "15 minutes longer"
     override fun startedAt(when_: String): String = "Started $when_"
+    override val paused = "Paused"
+    override fun pausedAt(clock: String): String = "Paused at $clock: no input for an hour. Log a set to go on."
     override fun timeChangeRefused(reasons: List<String>): String = when {
         reasons.any { it.endsWith("is in the future") } -> "That time is in the future."
         reasons.any { it.startsWith("a workout lasts at most") } -> "A workout can last at most 24 hours."
@@ -1310,6 +1315,8 @@ object Swedish : Strings {
     override val durationShorter = "15 minuter kortare"
     override val durationLonger = "15 minuter längre"
     override fun startedAt(when_: String): String = "Startade $when_"
+    override val paused = "Pausat"
+    override fun pausedAt(clock: String): String = "Pausat vid $clock: ingen inmatning på en timme. Logga ett set för att fortsätta."
     override fun timeChangeRefused(reasons: List<String>): String = when {
         reasons.any { it.endsWith("is in the future") } -> "Den tiden ligger i framtiden."
         reasons.any { it.startsWith("a workout lasts at most") } -> "Ett pass kan vara högst 24 timmar."

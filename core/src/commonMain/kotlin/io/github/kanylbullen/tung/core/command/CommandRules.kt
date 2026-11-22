@@ -9,6 +9,8 @@ import io.github.kanylbullen.tung.core.WORKOUT_CLOCK_SKEW_MILLIS
 import io.github.kanylbullen.tung.core.addedExerciseSets
 import io.github.kanylbullen.tung.core.addsNextSet
 import io.github.kanylbullen.tung.core.clampTargetSets
+import io.github.kanylbullen.tung.core.pausedEnd
+import io.github.kanylbullen.tung.core.pausedSince
 import io.github.kanylbullen.tung.core.command.CommandIds.ADDED_SET_ID
 import io.github.kanylbullen.tung.core.command.CommandIds.DELETED_COUNT
 import io.github.kanylbullen.tung.core.command.CommandIds.EXERCISE_ID
@@ -123,7 +125,9 @@ class CommandRules(private val ids: () -> String = { newId() }) {
      * `finish_workout`: sets that are not logged ([isLogged]: ticked with
      * reps) are dropped, then exercises left without sets, and a workout
      * without one logged set is deleted rather than kept empty (then no
-     * [WORKOUT_ID] comes back). It ends at [endedAt], or now (at its start if
+     * [WORKOUT_ID] comes back). It ends at [endedAt], or, paused (no input
+     * for an hour, `core.pausedSince`), at its last input plus
+     * `PAUSE_FINISH_MARGIN_MILLIS`, or now (at its start if
      * that lies ahead, a device clock that runs fast); an end before the start,
      * or a given end ahead of the store's clock by more than
      * [WORKOUT_CLOCK_SKEW_MILLIS], is refused. A workout already finished is left as it is.
@@ -131,7 +135,11 @@ class CommandRules(private val ids: () -> String = { newId() }) {
     suspend fun finishWorkout(tx: CommandTx, workoutId: String, endedAt: Long? = null): CommandResult {
         val workout = tx.workout(workoutId) ?: return noSuch("workout", workoutId)
         if (workout.endedAt != null) return Done(mapOf(WORKOUT_ID to workoutId))
-        val end = endedAt ?: maxOf(tx.now(), workout.startedAt)
+        // Without a given end a paused workout (no input for an hour, issue #261) ends at its
+        // last input plus a margin, not now: the watch, the web, an assistant and the
+        // notification's path all finish a forgotten workout at the time it really ended.
+        val paused = if (endedAt == null) tx.lastInput(workoutId)?.let { pausedSince(workout.startedAt, it, tx.now()) } else null
+        val end = endedAt ?: paused?.let { pausedEnd(it, tx.now()) } ?: maxOf(tx.now(), workout.startedAt)
         if (end < workout.startedAt) return Rejected(listOf("ended_at is before started_at"))
         // Only a given end: without one a start a fast clock put ahead is still finished, at the start.
         if (endedAt != null && endedAt > tx.now() + WORKOUT_CLOCK_SKEW_MILLIS) return Rejected(listOf("ended_at is in the future"))

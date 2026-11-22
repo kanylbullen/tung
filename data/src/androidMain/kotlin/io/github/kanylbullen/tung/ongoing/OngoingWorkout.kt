@@ -16,6 +16,7 @@ import io.github.kanylbullen.tung.data.RoutineRepository
 import io.github.kanylbullen.tung.data.Workout
 import io.github.kanylbullen.tung.data.WorkoutExerciseWithSets
 import io.github.kanylbullen.tung.data.WorkoutRepository
+import io.github.kanylbullen.tung.data.lastInputOf
 import io.github.kanylbullen.tung.ui.common.displayName
 import io.github.kanylbullen.tung.wear.lastTouchedByTime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,6 +43,9 @@ import java.text.DecimalFormatSymbols
  * @param restEndsAt when the stored rest of this workout ends (epoch millis),
  *   or null without one; the notification counts down to it while it runs
  *   (issue #215).
+ * @param lastInputAt the workout's last input (the latest `updatedAt` of its
+ *   rows), or null when unknown: with none for an hour the notification says
+ *   the workout is paused and stops counting (`core.pausedSince`, issue #261).
  */
 data class OngoingWorkout(
     val workoutId: String,
@@ -53,6 +57,7 @@ data class OngoingWorkout(
     val logSetReps: Int? = null,
     val addSetWorkoutExerciseId: String? = null,
     val restEndsAt: Long? = null,
+    val lastInputAt: Long? = null,
 ) {
     /**
      * False when the current set has 0 reps: logging it would tick a set that
@@ -159,5 +164,6 @@ internal fun ongoingWorkout(
         logSetWeightKg = set?.weightKg,
         logSetReps = set?.reps,
         addSetWorkoutExerciseId = addSet?.let { exercises[it.exercise].workoutExercise.id },
+        lastInputAt = lastInputOf(workout, exercises),
     )
 }

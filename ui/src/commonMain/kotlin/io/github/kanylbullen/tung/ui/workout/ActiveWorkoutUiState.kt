@@ -82,6 +82,8 @@ data class ActiveWorkoutUiState(
     val loading: Boolean = true,
     val missing: Boolean = false,
     val startedAt: Long = 0L,
+    /** The workout's last input (`data.lastInputOf`): with none for an hour it is paused (`core.pausedSince`, issue #261). */
+    val lastInputAt: Long = 0L,
     val exercises: List<ActiveExerciseUi> = emptyList(),
     /** The rest countdown, or null when none is running. */
     val rest: RestTimer? = null,

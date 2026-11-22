@@ -352,3 +352,11 @@ data class ProgramDayRow(
     val weekdays: Int,
     val routineName: String,
 )
+
+/**
+ * The workout's last input from loaded rows: the latest `updatedAt` of
+ * [workout], its [exercises] and their sets, as `WorkoutDao.lastInput` reads
+ * it in SQL; what `core.pausedSince` takes (issue #261).
+ */
+fun lastInputOf(workout: Workout, exercises: List<WorkoutExerciseWithSets>): Long =
+    maxOf(workout.updatedAt, exercises.maxOfOrNull { e -> maxOf(e.workoutExercise.updatedAt, e.sets.maxOfOrNull { it.updatedAt } ?: 0L) } ?: 0L)
