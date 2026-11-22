@@ -28,7 +28,7 @@ private object SiteRoutes
 
 /**
  * What a browser sees outside the API: the landing page at `/` and the
- * privacy page at `/privacy` and how to delete an account at
+ * privacy page at `/privacy`, the terms at `/terms` and how to delete an account at
  * `/delete-account` (with their
  * font and icon under `/site/`, classpath resources from `site/`), and the
  * web app at `/app/` when [ServerConfig.webDir] is set. The app is one
@@ -44,6 +44,8 @@ fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
     page("/privacy", "privacy.html")
     // How to delete an account, and what goes; the deletion link Google Play asks for.
     page("/delete-account", "delete-account.html")
+    // The terms of service; the link Google Play's app-level trader declaration asks for.
+    page("/terms", "terms.html")
     // The link in a confirmation email. Opening it (a GET, which mail scanners do by themselves) only shows a
     // button; pressing it (the POST) confirms, so only a person at the inbox can.
     if (accounts != null) {

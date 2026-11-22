@@ -33,7 +33,7 @@ class SecurityHeadersTest {
 
     @Test
     fun theSitePagesGetTheSitePolicyAndRunNoInlineScript() = tungTest {
-        for (path in listOf("/", "/privacy", "/delete-account")) {
+        for (path in listOf("/", "/privacy", "/terms", "/delete-account")) {
             val page = client.get(path)
             assertEquals(HttpStatusCode.OK, page.status, path)
             page.assertBrowserHeaders(SITE_CSP)

@@ -74,7 +74,7 @@ internal const val APP_CSP =
         LOCKED
 
 /**
- * The site (`/`, `/privacy`, `/delete-account`, the email links' pages and
+ * The site (`/`, `/privacy`, `/terms`, `/delete-account`, the email links' pages and
  * `/site/`): its own scripts only, no inline one (the landing page's is
  * `home.js`). Inline styles are allowed because the landing page's ruler
  * places its ticks with `style` attributes.
@@ -107,4 +107,4 @@ internal fun contentSecurityPolicy(path: String): String = when {
     else -> API_CSP
 }
 
-private val SITE_PAGES = setOf("/", "/privacy", "/delete-account", "/verify-email", "/reset-password")
+private val SITE_PAGES = setOf("/", "/privacy", "/terms", "/delete-account", "/verify-email", "/reset-password")
