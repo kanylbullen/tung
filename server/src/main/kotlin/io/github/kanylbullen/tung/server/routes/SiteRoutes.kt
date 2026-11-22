@@ -8,6 +8,7 @@ import io.github.kanylbullen.tung.server.ResetOutcome
 import io.github.kanylbullen.tung.server.AUTH_RATE_LIMIT
 import io.github.kanylbullen.tung.server.Accounts
 import io.github.kanylbullen.tung.server.PUBLIC_MAX_BODY_BYTES
+import io.github.kanylbullen.tung.server.SITE_PAGE_FILES
 import io.github.kanylbullen.tung.server.ServerConfig
 import io.github.kanylbullen.tung.server.bodyLimit
 import io.ktor.http.ContentType
@@ -27,10 +28,10 @@ import java.security.MessageDigest
 private object SiteRoutes
 
 /**
- * What a browser sees outside the API: the landing page at `/` and the
- * privacy page at `/privacy`, the terms at `/terms` and how to delete an account at
- * `/delete-account` (with their
- * font and icon under `/site/`, classpath resources from `site/`), and the
+ * What a browser sees outside the API: the site's pages (`SITE_PAGE_FILES`:
+ * the landing page, privacy, terms and account deletion), the email links'
+ * pages (with their font and icon under `/site/`, classpath resources from
+ * `site/`), and the
  * web app at `/app/` when [ServerConfig.webDir] is set. The app is one
  * page: every path under `/app/` that is not a file is its `index.html`, and
  * its service worker, served from `/app/`, controls `/app/` only, never the
@@ -39,13 +40,7 @@ private object SiteRoutes
 fun Route.siteRoutes(config: ServerConfig, accounts: Accounts? = null) {
     // The page itself by a route of its own: a static tree at "/" would also
     // claim every unknown API path and turn its 404 into another answer.
-    page("/", "index.html")
-    // What the site and the apps store; also the privacy policy Google Play asks for.
-    page("/privacy", "privacy.html")
-    // How to delete an account, and what goes; the deletion link Google Play asks for.
-    page("/delete-account", "delete-account.html")
-    // The terms of service; the link Google Play's app-level trader declaration asks for.
-    page("/terms", "terms.html")
+    for ((path, file) in SITE_PAGE_FILES) page(path, file)
     // The link in a confirmation email. Opening it (a GET, which mail scanners do by themselves) only shows a
     // button; pressing it (the POST) confirms, so only a person at the inbox can.
     if (accounts != null) {

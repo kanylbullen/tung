@@ -33,9 +33,10 @@ class SecurityHeadersTest {
 
     @Test
     fun theSitePagesGetTheSitePolicyAndRunNoInlineScript() = tungTest {
-        for (path in listOf("/", "/privacy", "/terms", "/delete-account")) {
+        for (path in SITE_PAGES) {
             val page = client.get(path)
-            assertEquals(HttpStatusCode.OK, page.status, path)
+            val expected = if (path in EMAIL_LINK_PAGES) HttpStatusCode.BadRequest else HttpStatusCode.OK
+            assertEquals(expected, page.status, path)
             page.assertBrowserHeaders(SITE_CSP)
             val html = page.bodyAsText()
             // script-src 'self' blocks an inline script, so the page must not have one.
@@ -50,7 +51,7 @@ class SecurityHeadersTest {
 
     @Test
     fun theEmailLinksPagesGetTheSitePolicyAndKeepTheirReferrerPolicy() = tungTest {
-        for (path in listOf("/verify-email?token=nothing", "/reset-password?token=nothing")) {
+        for (path in EMAIL_LINK_PAGES.map { "$it?token=nothing" }) {
             val page = client.get(path)
             assertEquals(HttpStatusCode.BadRequest, page.status, path)
             page.assertBrowserHeaders(SITE_CSP)

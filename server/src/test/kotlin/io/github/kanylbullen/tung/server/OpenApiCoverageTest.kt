@@ -66,8 +66,8 @@ class OpenApiCoverageTest {
         val routes = app.plugin(RoutingRoot).getAllRoutes()
             .mapNotNull(::describe)
             .filterNot { it.substringAfter(' ').startsWith("/docs") }
-            // The landing and privacy pages and their assets, and the web app: pages, not API (SiteRoutes.kt).
-            .filterNot { it.substringAfter(' ').let { path -> path == "/" || path == "/privacy" || path == "/terms" || path == "/delete-account" || path == "/verify-email" || path == "/reset-password" || path.startsWith("/site") || path.startsWith("/app") } }
+            // The site's pages and their assets, and the web app: pages, not API (SiteRoutes.kt).
+            .filterNot { it.substringAfter(' ').let { path -> path in SITE_PAGES || path.startsWith("/site") || path.startsWith("/app") } }
             .toSet()
         val operations = specOperations()
 

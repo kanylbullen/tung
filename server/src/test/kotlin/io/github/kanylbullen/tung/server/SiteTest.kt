@@ -8,14 +8,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** The landing, privacy, terms and account-deletion pages: served, and their stylesheet and script under a versioned URL a CDN cannot keep stale. */
+/** Every page of the site ([SITE_PAGES]): served, and their stylesheet and script under a versioned URL a CDN cannot keep stale. */
 class SiteTest {
 
     @Test
     fun thePagesLinkTheirAssetsByAVersion() = tungTest {
-        val versions = listOf("/", "/privacy", "/terms", "/delete-account").map { path ->
+        val versions = SITE_PAGES.map { path ->
             val response = client.get(path)
-            assertEquals(HttpStatusCode.OK, response.status, path)
+            // An email link's page without a token shows its "the link does not work" view.
+            val expected = if (path in EMAIL_LINK_PAGES) HttpStatusCode.BadRequest else HttpStatusCode.OK
+            assertEquals(expected, response.status, path)
             val html = response.bodyAsText()
             assertFalse("@assets@" in html, "$path: the token is replaced")
             val css = Regex("""/site/site\.css\?v=([0-9a-f]{12})""").find(html)?.groupValues?.get(1)

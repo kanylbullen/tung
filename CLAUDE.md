@@ -2831,7 +2831,8 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   that revokes and forgets the old copy's token and AI key (the log stays)
   and goes to `tung.xuper.fun/app/`, and a `sw.js` that retires the old
   service worker's cache. Give the app its own origin wherever it is served. `OpenApiCoverageTest` leaves
-  `/`, `/privacy`, `/terms`, `/delete-account`, `/site` and `/app` out: pages, not API. The site has no server of its
+  `SITE_PAGES` (`SecurityHeaders.kt`: the pages of `SITE_PAGE_FILES`, which `siteRoutes` serves, and the email
+  links' pages), `/site` and `/app` out: pages, not API; a new page is one entry in `SITE_PAGE_FILES`. The site has no server of its
   own: everything relative, so it works under any path.
 
 ## Building
