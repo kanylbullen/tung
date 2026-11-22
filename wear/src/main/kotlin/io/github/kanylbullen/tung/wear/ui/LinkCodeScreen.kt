@@ -99,7 +99,7 @@ private fun Key(key: Char, size: DpSize, label: TextUnit, link: LinkUi, onDigit:
             Button(
                 onClick = onDelete,
                 enabled = !link.busy && link.input.digits.isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(backgroundColor = TungColors.background, contentColor = TungColors.muted),
+                colors = ButtonDefaults.buttonColors(backgroundColor = TungColors.black, contentColor = TungColors.muted),
                 modifier = modifier.semantics { contentDescription = description },
             ) { Text(stringResource(R.string.link_delete_symbol), fontSize = label * 0.9f) }
         }

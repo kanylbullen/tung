@@ -151,6 +151,8 @@ dependencies {
     implementation("androidx.wear:wear-ongoing:1.0.0")
     // The same androidx.core as data/, which needs 1.17.0 for the phone's Live Update.
     implementation("androidx.core:core-ktx:1.17.0")
+    // The launch screen: the icon on black (Wear OS's "Branded launch", #263).
+    implementation("androidx.core:core-splashscreen:1.0.1")
     // TungWearApp is WorkManager's Configuration.Provider (sync in the background), and
     // syncs when the app comes to the foreground, as the phone does.
     implementation("androidx.work:work-runtime-ktx:2.10.0")
