@@ -2811,10 +2811,11 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   `routes/SiteRoutes.kt` serves that directory at `/app/` (every path under
   it that is not a file is the shell, `sw.js` and `index.html` revalidated)
   and the landing page at `/`, the privacy page at `/privacy` (also the
-  policy link Play asks for) and `/delete-account` (Play's account-deletion
-  link; see "Account deletion"); `server/src/main/resources/site/`, one
+  policy link Play asks for), the terms at `/terms` (the Terms of Service
+  link of Play's trader declaration) and `/delete-account` (Play's
+  account-deletion link; see "Account deletion"); `server/src/main/resources/site/`, one
   `site.css` and `site.js` (the language: `?lang=`, remembered, else the
-  browser's) for all three, the share image `og.png` and the app's screens drawn
+  browser's) for all of them, the share image `og.png` and the app's screens drawn
   from `SiteScreensFlowTest` in the light and the dark theme, shown by the
   page's theme, which follows the system until `theme.js`'s toggle picks one; `index.html`,
   English with Swedish swapped in by the browser's language, its font and
@@ -2830,7 +2831,8 @@ grammar, the phone's `voiceAction` rules; no hands-free mode yet).
   that revokes and forgets the old copy's token and AI key (the log stays)
   and goes to `tung.xuper.fun/app/`, and a `sw.js` that retires the old
   service worker's cache. Give the app its own origin wherever it is served. `OpenApiCoverageTest` leaves
-  `/`, `/privacy`, `/delete-account`, `/site` and `/app` out: pages, not API. The site has no server of its
+  `SITE_PAGES` (`SecurityHeaders.kt`: the pages of `SITE_PAGE_FILES`, which `siteRoutes` serves, and the email
+  links' pages), `/site` and `/app` out: pages, not API; a new page is one entry in `SITE_PAGE_FILES`. The site has no server of its
   own: everything relative, so it works under any path.
 
 ## Building

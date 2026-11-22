@@ -74,7 +74,7 @@ internal const val APP_CSP =
         LOCKED
 
 /**
- * The site (`/`, `/privacy`, `/delete-account`, the email links' pages and
+ * The site (`/`, `/privacy`, `/terms`, `/delete-account`, the email links' pages and
  * `/site/`): its own scripts only, no inline one (the landing page's is
  * `home.js`). Inline styles are allowed because the landing page's ruler
  * places its ticks with `style` attributes.
@@ -107,4 +107,23 @@ internal fun contentSecurityPolicy(path: String): String = when {
     else -> API_CSP
 }
 
-private val SITE_PAGES = setOf("/", "/privacy", "/delete-account", "/verify-email", "/reset-password")
+/**
+ * The site's plain pages, each with the file under `site/` it is read from; `siteRoutes` serves exactly these.
+ * A new page is added here once, and the routes, the site policy and the tests follow.
+ */
+internal val SITE_PAGE_FILES: Map<String, String> = linkedMapOf(
+    // The landing page.
+    "/" to "index.html",
+    // What the site and the apps store; also the privacy policy Google Play asks for.
+    "/privacy" to "privacy.html",
+    // How to delete an account, and what goes; the deletion link Google Play asks for.
+    "/delete-account" to "delete-account.html",
+    // The terms of service; the link Google Play's app-level trader declaration asks for.
+    "/terms" to "terms.html",
+)
+
+/** The pages an email's link opens (confirming an address, a password reset); served only with accounts. */
+internal val EMAIL_LINK_PAGES: Set<String> = setOf("/verify-email", "/reset-password")
+
+/** Every page of the site: what gets [SITE_CSP], and what OpenAPI coverage leaves out as pages, not API. */
+internal val SITE_PAGES: Set<String> = SITE_PAGE_FILES.keys + EMAIL_LINK_PAGES

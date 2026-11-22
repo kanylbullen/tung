@@ -157,6 +157,11 @@ Without the key it is signed with the debug key, as before.
      (Cloudflare, Hetzner backups, Google, Apple, Resend); no analytics, no
      ads. Firebase Cloud Messaging is active only in a build with a
      `google-services.json`.
+   - **Terms of service:** `https://tung.xuper.fun/terms`
+     (`server/src/main/resources/site/terms.html`, the source of truth like
+     the privacy page). It is the Terms of Service link of the app-level
+     trader status declaration (EU Digital Services Act), which the console
+     asks for because the developer account is declared a trader.
    - **Data safety:** what the policy says, in the form's terms. Personal
      info (email) and fitness info (workouts, and heart rate and calories
      when Health Connect is on), collected only with an account, transmitted
