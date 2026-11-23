@@ -31,6 +31,8 @@ data class AdminUser(
     @SerialName("has_password") val hasPassword: Boolean,
     @SerialName("google_linked") val googleLinked: Boolean,
     @SerialName("apple_linked") val appleLinked: Boolean = false,
+    /** False while the confirmation link is not opened; true from a server that leaves it out. */
+    @SerialName("email_verified") val emailVerified: Boolean = true,
     @SerialName("is_admin") val isAdmin: Boolean = false,
     @SerialName("last_seen_at") val lastSeenAt: Long? = null,
     @SerialName("active_tokens") val activeTokens: Int = 0,
@@ -221,6 +223,25 @@ class WebAdmin(
             else -> AdminDeleteResult.FAILED
         }
     }
+
+    /**
+     * Deletes [users] one at a time, each with its own email as the
+     * confirmation, as [deleteUser] does. An admin's account is skipped and
+     * counted as failed without a request, whatever the caller picked;
+     * the server refuses it too.
+     */
+    suspend fun deleteUsers(baseUrl: String, token: String, users: List<AdminUser>, onProgress: (Int) -> Unit = {}): BulkOutcome =
+        runBulk(users, onProgress) { user ->
+            if (!selectable(user)) BulkStep.FAILED else deleteUser(baseUrl, token, user.id, user.email).asStep()
+        }
+
+    /** Marks each of [ids] resolved, or open again, one request each. */
+    suspend fun setResolved(baseUrl: String, token: String, ids: List<String>, resolved: Boolean, onProgress: (Int) -> Unit = {}): BulkOutcome =
+        runBulk(ids, onProgress) { id -> if (setResolved(baseUrl, token, id, resolved)) BulkStep.DONE else BulkStep.FAILED }
+
+    /** Deletes each of [ids] and its screenshots, one request each. */
+    suspend fun deleteFeedback(baseUrl: String, token: String, ids: List<String>, onProgress: (Int) -> Unit = {}): BulkOutcome =
+        runBulk(ids, onProgress) { id -> if (deleteFeedback(baseUrl, token, id)) BulkStep.DONE else BulkStep.FAILED }
 
     suspend fun feedback(baseUrl: String, token: String): AdminResult<FeedbackList> =
         read(baseUrl + ADMIN_FEEDBACK_PATH, token, FeedbackList.serializer())

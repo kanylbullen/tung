@@ -37,7 +37,8 @@ enum class Route(val hash: String) {
 
     companion object {
         fun of(hash: String): Route = entries.firstOrNull { it.hash == hash }
-            ?: entries.firstOrNull { it != HOME && hash.startsWith(it.hash + "/") }
+            // The longest prefix wins, so `#/settings/admin/users` is Server admin, not Settings.
+            ?: entries.filter { it != HOME && hash.startsWith(it.hash + "/") }.maxByOrNull { it.hash.length }
             ?: HOME
     }
 }
@@ -85,7 +86,7 @@ private fun SignedIn(container: WebContainer, account: Account) {
         route == Route.EXERCISES -> ExercisesScreen(container, account)
         progressId != null -> ExerciseProgressScreen(container, progressId)
         route == Route.PROGRESS -> ProgressScreen(container, account)
-        route == Route.ADMIN -> AdminScreen(container, account)
+        route == Route.ADMIN -> AdminScreen(container, account, hash)
         route == Route.FEEDBACK -> FeedbackScreen(container, account)
         route == Route.IMPORT -> ImportScreen(container)
         route == Route.ASSISTANT -> AssistantScreen(container)

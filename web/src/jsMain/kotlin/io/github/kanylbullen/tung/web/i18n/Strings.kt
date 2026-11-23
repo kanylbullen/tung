@@ -461,6 +461,40 @@ interface Strings {
     val deleteFeedbackBody: String
     fun platformName(platform: String): String
 
+    // Server admin's tabs, filters and bulk actions
+    val adminTabs: String
+    fun adminTabFeedback(open: Int): String
+    fun adminTabUsers(count: Int): String
+    val filterOpen: String
+    val filterResolved: String
+    val filterAll: String
+    val filterAllKinds: String
+    val filterBugs: String
+    val filterIdeas: String
+    val searchFeedback: String
+    val searchAccounts: String
+    val sortBy: String
+    val sortNewest: String
+    val sortLastSeen: String
+    val sortWorkouts: String
+    val filterAccounts: String
+    val filterNeverSeen: String
+    val filterNoWorkouts: String
+    val filterUnconfirmed: String
+    val emailUnconfirmed: String
+    val nothingMatches: String
+    fun selectRow(name: String): String
+    fun selectAllShown(count: Int): String
+    val clearSelection: String
+    val deleteSelectedEllipsis: String
+    fun deleteFeedbackManyTitle(count: Int): String
+    fun deleteUsersTitle(count: Int): String
+    val deleteUsersBody: String
+    fun deleteUsersType(count: Int): String
+    fun deleteUsersConfirm(count: Int): String
+    fun bulkProgress(done: Int, total: Int): String
+    fun bulkFailed(done: Int, failed: Int): String
+
     // History
     val history: String
     val historyEmpty: String
@@ -1082,6 +1116,39 @@ object English : Strings {
         "ios" -> "iPhone"
         else -> platform
     }
+    // Server admin's tabs, filters and bulk actions
+    override val adminTabs = "Server admin sections"
+    override fun adminTabFeedback(open: Int): String = if (open == 0) "Feedback" else "Feedback ($open)"
+    override fun adminTabUsers(count: Int): String = "Accounts ($count)"
+    override val filterOpen = "Open"
+    override val filterResolved = "Resolved"
+    override val filterAll = "All"
+    override val filterAllKinds = "Bugs and ideas"
+    override val filterBugs = "Bugs"
+    override val filterIdeas = "Ideas"
+    override val searchFeedback = "Search text or email"
+    override val searchAccounts = "Search by email"
+    override val sortBy = "Sort"
+    override val sortNewest = "Newest"
+    override val sortLastSeen = "Last seen"
+    override val sortWorkouts = "Most workouts"
+    override val filterAccounts = "Show"
+    override val filterNeverSeen = "Never seen"
+    override val filterNoWorkouts = "No workouts"
+    override val filterUnconfirmed = "Email not confirmed"
+    override val emailUnconfirmed = "Email not confirmed"
+    override val nothingMatches = "Nothing matches."
+    override fun selectRow(name: String): String = "Select $name"
+    override fun selectAllShown(count: Int): String = "Select all ($count)"
+    override val clearSelection = "Clear"
+    override val deleteSelectedEllipsis = "Delete…"
+    override fun deleteFeedbackManyTitle(count: Int): String = if (count == 1) "Delete 1 feedback?" else "Delete $count feedback?"
+    override fun deleteUsersTitle(count: Int): String = if (count == 1) "Delete 1 account?" else "Delete $count accounts?"
+    override val deleteUsersBody = "Each account goes with everything in it: workouts, routines, sessions and feedback. This cannot be undone. Admin accounts are never deleted."
+    override fun deleteUsersType(count: Int): String = "Type $count to confirm"
+    override fun deleteUsersConfirm(count: Int): String = if (count == 1) "Delete 1 account" else "Delete $count accounts"
+    override fun bulkProgress(done: Int, total: Int): String = "Working… $done of $total"
+    override fun bulkFailed(done: Int, failed: Int): String = "$done done, $failed could not be. Try those again."
     override val history = "History"
     override val historyEmpty = "Finished workouts show up here."
     override val workoutUntitled = "Workout"
@@ -1734,6 +1801,39 @@ object Swedish : Strings {
         "ios" -> "iPhone"
         else -> platform
     }
+    // Server admin's tabs, filters and bulk actions
+    override val adminTabs = "Serveradminens delar"
+    override fun adminTabFeedback(open: Int): String = if (open == 0) "Feedback" else "Feedback ($open)"
+    override fun adminTabUsers(count: Int): String = "Konton ($count)"
+    override val filterOpen = "Öppna"
+    override val filterResolved = "Klara"
+    override val filterAll = "Alla"
+    override val filterAllKinds = "Buggar och idéer"
+    override val filterBugs = "Buggar"
+    override val filterIdeas = "Idéer"
+    override val searchFeedback = "Sök i text eller e-post"
+    override val searchAccounts = "Sök på e-post"
+    override val sortBy = "Sortera"
+    override val sortNewest = "Nyast"
+    override val sortLastSeen = "Senast sedd"
+    override val sortWorkouts = "Flest pass"
+    override val filterAccounts = "Visa"
+    override val filterNeverSeen = "Aldrig sedda"
+    override val filterNoWorkouts = "Inga pass"
+    override val filterUnconfirmed = "Obekräftad e-post"
+    override val emailUnconfirmed = "E-post ej bekräftad"
+    override val nothingMatches = "Inget matchar."
+    override fun selectRow(name: String): String = "Välj $name"
+    override fun selectAllShown(count: Int): String = "Välj alla ($count)"
+    override val clearSelection = "Avmarkera"
+    override val deleteSelectedEllipsis = "Radera…"
+    override fun deleteFeedbackManyTitle(count: Int): String = "Radera $count feedback?"
+    override fun deleteUsersTitle(count: Int): String = if (count == 1) "Radera 1 konto?" else "Radera $count konton?"
+    override val deleteUsersBody = "Varje konto försvinner med allt i det: pass, rutiner, sessioner och feedback. Det går inte att ångra. Admin-konton raderas aldrig."
+    override fun deleteUsersType(count: Int): String = "Skriv $count för att bekräfta"
+    override fun deleteUsersConfirm(count: Int): String = if (count == 1) "Radera 1 konto" else "Radera $count konton"
+    override fun bulkProgress(done: Int, total: Int): String = "Arbetar… $done av $total"
+    override fun bulkFailed(done: Int, failed: Int): String = "$done klara, $failed gick inte. Försök med dem igen."
     override val history = "Historik"
     override val historyEmpty = "Avslutade pass hamnar här."
     override val workoutUntitled = "Pass"
