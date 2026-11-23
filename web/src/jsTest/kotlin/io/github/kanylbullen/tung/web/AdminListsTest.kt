@@ -75,6 +75,8 @@ class AdminListsTest {
         assertEquals(listOf("1"), ids(FeedbackStatus.ALL, query = "BANKPRESS"), "case and accents do not matter")
         assertEquals(listOf("1"), ids(FeedbackStatus.ALL, query = "anna"), "the sender's email is searched too")
         assertEquals(emptyList(), ids(FeedbackStatus.RESOLVED, query = "charts"))
+        assertEquals(listOf("1", "2", "3"), ids(FeedbackStatus.ALL, query = " @ "), "a symbol is looked for as typed: every email has one")
+        assertEquals(emptyList(), filterFeedback(listOf(feedback("9", message = "plain", email = "nobody")), FeedbackStatus.ALL, FeedbackKind.ALL, "@"))
     }
 
     @Test
@@ -172,5 +174,18 @@ class AdminListsTest {
         )
         assertEquals(BulkOutcome(2, 0), admin.deleteFeedback("https://s", "t", listOf("1", "3")))
         assertEquals(listOf("https://s/api/v1/admin/feedback/1", "https://s/api/v1/admin/feedback/3"), deleted)
+    }
+
+    @Test
+    fun aFeedbackBulkStopsOnASessionThatCannotGoOnAndCountsAGoneDeleteAsDone() = runTest {
+        var calls = 0
+        val signedOut = WebAdmin(patch = { _, _, _ -> calls++; HttpReply(401, "") })
+        assertEquals(BulkOutcome(0, 3, stopped = true), signedOut.setResolved("https://s", "t", listOf("1", "2", "3"), resolved = true))
+        assertEquals(1, calls)
+        val notAdmin = WebAdmin(delete = { _, _ -> HttpReply(403, "") })
+        assertEquals(BulkOutcome(0, 2, stopped = true), notAdmin.deleteFeedback("https://s", "t", listOf("1", "2")))
+        val gone = WebAdmin(delete = { _, _ -> HttpReply(404, "") }, patch = { _, _, _ -> HttpReply(404, "") })
+        assertEquals(BulkOutcome(1, 0), gone.deleteFeedback("https://s", "t", listOf("1")), "deleted already")
+        assertEquals(BulkOutcome(0, 1), gone.setResolved("https://s", "t", listOf("1"), resolved = false), "gone cannot be reopened")
     }
 }

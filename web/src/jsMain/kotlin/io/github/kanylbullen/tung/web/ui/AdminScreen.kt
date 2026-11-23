@@ -26,6 +26,7 @@ import io.github.kanylbullen.tung.web.admin.TesterSignup
 import io.github.kanylbullen.tung.web.admin.playAddresses
 import io.github.kanylbullen.tung.web.sync.Account
 import kotlinx.browser.window
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.await
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AutoComplete
@@ -59,8 +60,10 @@ private sealed interface AdminView {
  * sent ([FeedbackTab]); every account on the server ([UsersTab]); and, on
  * a server that takes them (`TUNG_TESTER_SIGNUPS`, tung.xuper.fun), the
  * addresses signed up for a Play test ([TestersTab]). A self-hosted server
- * has no such list, so that tab is not there. The feedback and the accounts
- * are read separately, so one failing leaves the other.
+ * has no such list, so that tab is not there. The feedback is read apart
+ * from the accounts, so its failing leaves the other tabs; the accounts
+ * failing shows only the error and Try again. Actions run on this screen's
+ * scope, so switching tabs does not cut one short.
  */
 @Composable
 fun AdminScreen(container: WebContainer, account: Account, hash: String) {
@@ -70,6 +73,7 @@ fun AdminScreen(container: WebContainer, account: Account, hash: String) {
     var feedback by remember { mutableStateOf<FeedbackList?>(null) }
     var feedbackFailed by remember { mutableStateOf(false) }
     var feedbackReload by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
     val now = Date.now().toLong()
 
     LaunchedEffect(account, reload) {
@@ -142,8 +146,8 @@ fun AdminScreen(container: WebContainer, account: Account, hash: String) {
                 }
                 Div({ attr("role", "tabpanel") }) {
                     when (tab) {
-                        AdminTab.FEEDBACK -> FeedbackTab(container, account, feedback, feedbackFailed, now) { feedbackReload++ }
-                        AdminTab.USERS -> UsersTab(container, account, current.users, now) { reload++ }
+                        AdminTab.FEEDBACK -> FeedbackTab(container, account, scope, feedback, feedbackFailed, now) { feedbackReload++ }
+                        AdminTab.USERS -> UsersTab(container, account, scope, current.users, now) { reload++ }
                         AdminTab.TESTERS -> TestersTab(container, account, current.users, current.testers, now) { reload++ }
                     }
                 }
@@ -255,9 +259,8 @@ private fun TestersTab(container: WebContainer, account: Account, users: AdminUs
  * is deleted from its row with its email typed ([DeleteUserDialog]).
  */
 @Composable
-private fun UsersTab(container: WebContainer, account: Account, users: AdminUsers, now: Long, onChanged: () -> Unit) {
+private fun UsersTab(container: WebContainer, account: Account, scope: CoroutineScope, users: AdminUsers, now: Long, onChanged: () -> Unit) {
     val strings = container.strings
-    val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(UserFilter.ALL) }
     var sort by remember { mutableStateOf(UserSort.NEWEST) }
@@ -326,6 +329,7 @@ private fun UsersTab(container: WebContainer, account: Account, users: AdminUser
                             Button({
                                 classes("text-button", "danger-text")
                                 attr("aria-label", strings.deleteUserTitle(user.email))
+                                if (running != null) disabled()
                                 onClick { deleting = user }
                             }) { Text(strings.deleteUser) }
                         }

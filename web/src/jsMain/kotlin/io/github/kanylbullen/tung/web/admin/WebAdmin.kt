@@ -235,13 +235,38 @@ class WebAdmin(
             if (!selectable(user)) BulkStep.FAILED else deleteUser(baseUrl, token, user.id, user.email).asStep()
         }
 
-    /** Marks each of [ids] resolved, or open again, one request each. */
+    /** Marks each of [ids] resolved, or open again, one request each; a 401 or 403 stops the rest. */
     suspend fun setResolved(baseUrl: String, token: String, ids: List<String>, resolved: Boolean, onProgress: (Int) -> Unit = {}): BulkOutcome =
-        runBulk(ids, onProgress) { id -> if (setResolved(baseUrl, token, id, resolved)) BulkStep.DONE else BulkStep.FAILED }
+        runBulk(ids, onProgress) { id ->
+            stepOf(goneIsDone = false) {
+                patch(
+                    baseUrl + ADMIN_FEEDBACK_PATH + "/" + encodeURIComponent(id),
+                    json.encodeToString(ResolvedBody.serializer(), ResolvedBody(resolved)),
+                    bearer(token),
+                )
+            }
+        }
 
-    /** Deletes each of [ids] and its screenshots, one request each. */
+    /** Deletes each of [ids] and its screenshots, one request each; one gone already counts as deleted, a 401 or 403 stops the rest. */
     suspend fun deleteFeedback(baseUrl: String, token: String, ids: List<String>, onProgress: (Int) -> Unit = {}): BulkOutcome =
-        runBulk(ids, onProgress) { id -> if (deleteFeedback(baseUrl, token, id)) BulkStep.DONE else BulkStep.FAILED }
+        runBulk(ids, onProgress) { id ->
+            stepOf(goneIsDone = true) { delete(baseUrl + ADMIN_FEEDBACK_PATH + "/" + encodeURIComponent(id), bearer(token)) }
+        }
+
+    /** One request of a bulk action as a step: 2xx done, 401 or 403 stop (the rest would get the same), else failed. */
+    private suspend fun stepOf(goneIsDone: Boolean, request: suspend () -> HttpReply): BulkStep {
+        val reply = try {
+            request()
+        } catch (e: HttpUnreachable) {
+            return BulkStep.FAILED
+        }
+        return when {
+            reply.isSuccess -> BulkStep.DONE
+            reply.status == 401 || reply.status == 403 -> BulkStep.STOP
+            reply.status == 404 && goneIsDone -> BulkStep.DONE
+            else -> BulkStep.FAILED
+        }
+    }
 
     suspend fun feedback(baseUrl: String, token: String): AdminResult<FeedbackList> =
         read(baseUrl + ADMIN_FEEDBACK_PATH, token, FeedbackList.serializer())

@@ -32,7 +32,14 @@ enum class FeedbackKind { ALL, BUG, IDEA }
  * sender's email, whatever the case and the accents.
  */
 fun filterFeedback(items: List<FeedbackItem>, status: FeedbackStatus, kind: FeedbackKind, query: String): List<FeedbackItem> {
-    val needle = fold(query)
+    // A query of only symbols ("@", "-") folds to nothing; it is then looked for as typed.
+    val folded = fold(query)
+    val raw = query.trim().lowercase()
+    fun found(text: String): Boolean = when {
+        raw.isEmpty() -> true
+        folded.isEmpty() -> raw in text.lowercase()
+        else -> folded in fold(text)
+    }
     return items.filter { item ->
         val statusOk = when (status) {
             FeedbackStatus.OPEN -> item.resolvedAt == null
@@ -44,7 +51,7 @@ fun filterFeedback(items: List<FeedbackItem>, status: FeedbackStatus, kind: Feed
             FeedbackKind.BUG -> item.kind == "bug"
             FeedbackKind.IDEA -> item.kind != "bug"
         }
-        statusOk && kindOk && (needle.isEmpty() || needle in fold(item.message) || needle in fold(item.email))
+        statusOk && kindOk && (found(item.message) || found(item.email))
     }
 }
 

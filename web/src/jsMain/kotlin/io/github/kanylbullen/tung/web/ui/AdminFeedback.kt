@@ -7,7 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import io.github.kanylbullen.tung.web.WebContainer
 import io.github.kanylbullen.tung.web.admin.BulkOutcome
@@ -18,6 +17,7 @@ import io.github.kanylbullen.tung.web.admin.FeedbackStatus
 import io.github.kanylbullen.tung.web.admin.chosenOnShow
 import io.github.kanylbullen.tung.web.admin.filterFeedback
 import io.github.kanylbullen.tung.web.sync.Account
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.InputType
 import org.jetbrains.compose.web.attributes.disabled
@@ -42,12 +42,12 @@ import org.w3c.dom.url.URL
  * Delete. Rows on show can be ticked and resolved, reopened or deleted
  * together, one request each ([io.github.kanylbullen.tung.web.admin.runBulk]).
  * A resolved one is muted. [list] is read by [AdminScreen]; [onChanged]
- * reads it again.
+ * reads it again. Actions run on [scope], the screen's, so switching tabs
+ * neither stops a bulk action nor skips the read after it.
  */
 @Composable
-fun FeedbackTab(container: WebContainer, account: Account, list: FeedbackList?, failed: Boolean, now: Long, onChanged: () -> Unit) {
+fun FeedbackTab(container: WebContainer, account: Account, scope: CoroutineScope, list: FeedbackList?, failed: Boolean, now: Long, onChanged: () -> Unit) {
     val strings = container.strings
-    val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf(FeedbackStatus.OPEN) }
     var kind by remember { mutableStateOf(FeedbackKind.ALL) }
     var query by remember { mutableStateOf("") }
@@ -56,6 +56,7 @@ fun FeedbackTab(container: WebContainer, account: Account, list: FeedbackList?, 
     var progress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var outcome by remember { mutableStateOf<BulkOutcome?>(null) }
     var actFailed by remember { mutableStateOf(false) }
+    var acting by remember { mutableStateOf(false) }
 
     /** Runs a bulk action over [ids], then reads the list again; the selection stays when something failed. */
     fun bulk(ids: List<String>, action: suspend (String, (Int) -> Unit) -> BulkOutcome) {
@@ -74,12 +75,26 @@ fun FeedbackTab(container: WebContainer, account: Account, list: FeedbackList?, 
 
     fun one(block: suspend (String) -> Boolean) {
         val token = container.settings.token ?: return
-        scope.launch { if (block(token)) { actFailed = false; onChanged() } else actFailed = true }
+        if (acting || progress != null) return
+        acting = true
+        scope.launch {
+            try {
+                if (block(token)) { actFailed = false; onChanged() } else actFailed = true
+            } finally {
+                acting = false
+            }
+        }
     }
 
     if (failed || actFailed) P({ classes("error"); attr("role", "alert") }) { Text(strings.adminFailed) }
     if (list == null) {
-        if (!failed) P({ classes("hint") }) { Text(strings.loading) }
+        if (!failed) {
+            P({ classes("hint") }) { Text(strings.loading) }
+        } else {
+            Div({ classes("setting-buttons", "pad") }) {
+                Button({ classes("secondary"); onClick { onChanged() } }) { Text(strings.tryAgain) }
+            }
+        }
         return
     }
     if (list.feedback.isEmpty()) {
@@ -145,9 +160,10 @@ fun FeedbackTab(container: WebContainer, account: Account, list: FeedbackList?, 
                         Div({ classes("setting-buttons") }) {
                             Button({
                                 classes("secondary")
+                                if (running != null || acting) disabled()
                                 onClick { one { token -> container.admin.setResolved(account.serverUrl, token, item.id, item.resolvedAt == null) } }
                             }) { Text(if (item.resolvedAt == null) strings.markResolved else strings.reopen) }
-                            Button({ classes("text-button"); onClick { deleting = listOf(item.id) } }) { Text(strings.delete) }
+                            Button({ classes("text-button"); if (running != null) disabled(); onClick { deleting = listOf(item.id) } }) { Text(strings.delete) }
                         }
                     }
                 }
