@@ -115,7 +115,11 @@ number gives, checked against what Play reads in the bundle. `<dir>` holds one
 characters each), required for production. Committing the edit sends a
 completed release for review, since managed publishing is off; `--draft`
 saves it for the console instead, `--replace-in-review` cancels changes
-already in review and sends them along (without it the commit refuses), and
+already in review and sends them along (without it the commit refuses),
+`--not-sent-for-review` commits without sending when Play will not take an
+automatic submission ("Changes cannot be sent for review automatically", as
+on 2026-11-22 after a rejected Wear update; the change then waits in the
+console's Publishing overview for "Send for review"), and
 `--phone-only` leaves the watch out (there is no `wear:alpha`). Before the
 build a dry run checks the key and both tracks, so a bad key costs seconds,
 not a build. On its own, `scripts/play_upload.py --track production --dry-run`

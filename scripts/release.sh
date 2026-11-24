@@ -5,12 +5,14 @@
 # fit, and the Play Console side: deploy/play.md.
 #
 #   TUNG_KEYSTORE=~/.config/tung/release.jks TUNG_KEYSTORE_PASSWORD=… \
-#   TUNG_KEY_ALIAS=tung TUNG_KEY_PASSWORD=… scripts/release.sh [--upload TRACK [--notes DIR] [--draft] [--replace-in-review] [--phone-only]]
+#   TUNG_KEY_ALIAS=tung TUNG_KEY_PASSWORD=… scripts/release.sh [--upload TRACK [--notes DIR] [--draft] [--replace-in-review] [--not-sent-for-review] [--phone-only]]
 #
 # --upload TRACK then sends both bundles to Play in one edit (scripts/play_upload.py): the
 # phone to TRACK, the watch to wear:TRACK. --notes is a directory of <language>.txt ("What's
 # new", required for production); --draft saves the releases without sending them;
-# --replace-in-review cancels changes already in review and sends them along; --phone-only
+# --replace-in-review cancels changes already in review and sends them along;
+# --not-sent-for-review commits without sending, for when Play refuses an automatic
+# submission (send it from the console's Publishing overview); --phone-only
 # leaves the watch out (alpha has no wear:alpha). The service
 # account's key is $TUNG_PLAY_KEY or ~/.config/tung/play-publisher.json, checked against Play
 # before the build starts.
@@ -46,13 +48,14 @@ while [ $# -gt 0 ]; do
     --notes) [ -n "${2:-}" ] || fail "--notes needs a directory"; NOTES="$2"; shift 2 ;;
     --draft) UPLOAD_ARGS+=(--status draft); shift ;;
     --replace-in-review) UPLOAD_ARGS+=(--replace-in-review); shift ;;
+    --not-sent-for-review) UPLOAD_ARGS+=(--not-sent-for-review); shift ;;
     --phone-only) PHONE_ONLY=1; shift ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
 if [ -z "$UPLOAD_TRACK" ]; then
   { [ -z "$NOTES" ] && [ -z "$PHONE_ONLY" ] && [ ${#UPLOAD_ARGS[@]} -eq 0 ]; } \
-    || fail "--notes, --draft, --replace-in-review and --phone-only go with --upload"
+    || fail "--notes, --draft, --replace-in-review, --not-sent-for-review and --phone-only go with --upload"
 else
   if [ -n "$NOTES" ]; then
     [ -d "$NOTES" ] || fail "--notes is not a directory: $NOTES"

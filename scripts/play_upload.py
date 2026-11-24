@@ -7,6 +7,9 @@ edit holds both bundles, so the phone and the watch go out together or not at al
 The phone goes to TRACK and the watch to the Wear OS form factor's track of the same
 name (`wear:TRACK`). Committing the edit sends it for review where the track has one,
 since managed publishing is off; a draft release is saved and waits in the console.
+When Play refuses to send an edit for review by itself ("Changes cannot be sent for review
+automatically", as after a rejected update), `--not-sent-for-review` commits it unsent, to
+be sent from the console's Publishing overview.
 
     scripts/play_upload.py --track production --phone app.aab --watch wear.aab \
         --notes deploy/release-notes
@@ -161,6 +164,9 @@ def main() -> None:
                         help=f"the service account's JSON key (default $TUNG_PLAY_KEY or {DEFAULT_KEY})")
     parser.add_argument("--replace-in-review", action="store_true",
                         help="cancel changes already in review and send them with this edit; without it the commit refuses")
+    parser.add_argument("--not-sent-for-review", action="store_true",
+                        help="commit without sending for review (Play asks for it when it will not take an "
+                             "automatic submission, e.g. after a rejection); send from the console's Publishing overview")
     parser.add_argument("--phone-only", action="store_true",
                         help="a dry run checks only the phone's track (alpha has no wear:alpha)")
     parser.add_argument("--dry-run", action="store_true",
@@ -170,6 +176,8 @@ def main() -> None:
 
     if not re.fullmatch(r"[a-z0-9][a-z0-9_ -]*", args.track):
         fail(f"--track {args.track!r} is not a track name")
+    if args.not_sent_for_review and args.replace_in_review:
+        fail("--not-sent-for-review with --replace-in-review: nothing is sent, so nothing in review is replaced")
     if args.phone_only and args.watch:
         fail("--phone-only with --watch")
     if not args.dry_run and not (args.phone or args.watch):
@@ -233,6 +241,13 @@ def main() -> None:
             request("PUT", f"{API}/edits/{edit}/tracks/{urllib.parse.quote(track, safe='')}", token, body)
             print(f"{track}: versionCode {code}, {args.status}")
 
+        if args.not_sent_for_review:
+            # :validate does not take changesNotSentForReview, and Play's validation of such an
+            # edit answers that it cannot be sent for review; the commit validates it anyway.
+            request("POST", f"{API}/edits/{edit}:commit?changesNotSentForReview=true", token, b"{}")
+            edit = None
+            print("committed, not sent for review: send it from the Play Console's Publishing overview.")
+            return
         request("POST", f"{API}/edits/{edit}:validate", token, b"{}")
         behaviour = "CANCEL_IN_REVIEW_AND_SUBMIT" if args.replace_in_review else "ERROR_IF_IN_REVIEW"
         request("POST", f"{API}/edits/{edit}:commit?changesInReviewBehavior={behaviour}", token, b"{}")
