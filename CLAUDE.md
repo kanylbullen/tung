@@ -2471,7 +2471,7 @@ fallback, and only on a tap.
   (403 `session_required`), the account's email typed to confirm (400
   `email_mismatch`), and never an admin's account, the caller's own
   included (409 `cannot_delete_admin`); Server admin has "Delete…" on every
-  other row. `AdminTest`.
+  other row. The web's page is three tabs by hash (`#/settings/admin/feedback`, `/users`, `/testers`, `web/.../admin/AdminLists.kt`: filters, search, sort, and ticked rows resolved, reopened or deleted together, one request each through the per-item routes, an admin's row never tickable and skipped by `WebAdmin.deleteUsers` too; many accounts are confirmed by typing their number). `AdminTest`, `AdminListsTest`.
 - **Play test sign-ups** (`routes/TesterRoutes.kt`, `V12__tester_signups.sql`),
   only with `TUNG_TESTER_SIGNUPS=true` (tung.xuper.fun; a self-hosted server
   runs no Play test, so off by default: every route 404 `not_configured`).

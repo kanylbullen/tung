@@ -31,6 +31,8 @@ data class AdminUser(
     @SerialName("has_password") val hasPassword: Boolean,
     @SerialName("google_linked") val googleLinked: Boolean,
     @SerialName("apple_linked") val appleLinked: Boolean = false,
+    /** False while the confirmation link is not opened; true from a server that leaves it out. */
+    @SerialName("email_verified") val emailVerified: Boolean = true,
     @SerialName("is_admin") val isAdmin: Boolean = false,
     @SerialName("last_seen_at") val lastSeenAt: Long? = null,
     @SerialName("active_tokens") val activeTokens: Int = 0,
@@ -219,6 +221,50 @@ class WebAdmin(
             reply.status == 403 -> AdminDeleteResult.NOT_ADMIN
             reply.status == 404 -> AdminDeleteResult.GONE
             else -> AdminDeleteResult.FAILED
+        }
+    }
+
+    /**
+     * Deletes [users] one at a time, each with its own email as the
+     * confirmation, as [deleteUser] does. An admin's account is skipped and
+     * counted as failed without a request, whatever the caller picked;
+     * the server refuses it too.
+     */
+    suspend fun deleteUsers(baseUrl: String, token: String, users: List<AdminUser>, onProgress: (Int) -> Unit = {}): BulkOutcome =
+        runBulk(users, onProgress) { user ->
+            if (!selectable(user)) BulkStep.FAILED else deleteUser(baseUrl, token, user.id, user.email).asStep()
+        }
+
+    /** Marks each of [ids] resolved, or open again, one request each; a 401 or 403 stops the rest. */
+    suspend fun setResolved(baseUrl: String, token: String, ids: List<String>, resolved: Boolean, onProgress: (Int) -> Unit = {}): BulkOutcome =
+        runBulk(ids, onProgress) { id ->
+            stepOf(goneIsDone = false) {
+                patch(
+                    baseUrl + ADMIN_FEEDBACK_PATH + "/" + encodeURIComponent(id),
+                    json.encodeToString(ResolvedBody.serializer(), ResolvedBody(resolved)),
+                    bearer(token),
+                )
+            }
+        }
+
+    /** Deletes each of [ids] and its screenshots, one request each; one gone already counts as deleted, a 401 or 403 stops the rest. */
+    suspend fun deleteFeedback(baseUrl: String, token: String, ids: List<String>, onProgress: (Int) -> Unit = {}): BulkOutcome =
+        runBulk(ids, onProgress) { id ->
+            stepOf(goneIsDone = true) { delete(baseUrl + ADMIN_FEEDBACK_PATH + "/" + encodeURIComponent(id), bearer(token)) }
+        }
+
+    /** One request of a bulk action as a step: 2xx done, 401 or 403 stop (the rest would get the same), else failed. */
+    private suspend fun stepOf(goneIsDone: Boolean, request: suspend () -> HttpReply): BulkStep {
+        val reply = try {
+            request()
+        } catch (e: HttpUnreachable) {
+            return BulkStep.FAILED
+        }
+        return when {
+            reply.isSuccess -> BulkStep.DONE
+            reply.status == 401 || reply.status == 403 -> BulkStep.STOP
+            reply.status == 404 && goneIsDone -> BulkStep.DONE
+            else -> BulkStep.FAILED
         }
     }
 

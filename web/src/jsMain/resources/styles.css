@@ -591,3 +591,8 @@ a.chip { display: inline-flex; align-items: center; color: inherit; text-decorat
 .muscle-mini .rest, .muscle-routine .rest { fill: var(--border); }
 .muscle-mini .worked, .muscle-routine .worked { fill: var(--accent); }
 .hint.center { text-align: center; }
+/* Server admin: a tick box before a row, and the line of bulk actions. */
+.row-check { width: 22px; height: 22px; margin: 0 4px 0 12px; accent-color: var(--accent); flex: none; }
+.feedback-head .row-check { margin: 0; align-self: center; }
+.bulk-bar { align-items: center; flex-wrap: wrap; }
+.bulk-count { font-weight: 600; }
