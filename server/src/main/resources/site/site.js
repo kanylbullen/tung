@@ -77,3 +77,13 @@
   media.addEventListener("change", show);
   show();
 })();
+
+// App Store review (guideline 2.3.10): a visitor on an Apple device is not
+// shown another platform's store badge or the list of platforms. Everyone else
+// sees them. An iPad asks for the desktop site, so it is told by its touch points.
+(function () {
+  var ua = navigator.userAgent || "";
+  var apple = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (!apple) return;
+  document.querySelectorAll("[data-android-only]").forEach(function (el) { el.hidden = true; });
+})();
