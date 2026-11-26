@@ -38,6 +38,16 @@
   document.querySelectorAll("[data-sv-alt]").forEach(function (el) { el.setAttribute("alt", el.getAttribute("data-sv-alt")); });
 })();
 
+// App Store review (guideline 2.3.10): a visitor on an Apple device is not
+// shown another platform's store badge or the list of platforms. Everyone else
+// sees them. An iPad asks for the desktop site, so it is told by its touch points.
+(function () {
+  var ua = navigator.userAgent || "";
+  var apple = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (!apple) return;
+  document.querySelectorAll("[data-android-only]").forEach(function (el) { el.hidden = true; });
+})();
+
 // The theme toggle: the page follows the system until the toggle picks the
 // other theme; picking the system's own theme again forgets the choice.
 (function () {
